@@ -50,21 +50,21 @@ export function refreshTokenController(refreshToken?: string) {
     // Verify token
     const decoded = verifyRefreshToken(refreshToken) as { id: string; username: string };
 
-    // Generate new access token
-    const newAccessToken = generateAccessToken({
-      id: decoded.id,
-      username: decoded.username,
+    // ✅ Generate new access token
+    const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username });
+
+    // ✅ Set new access token in response cookies
+    const response = NextResponse.json({ message: "Token refreshed" });
+    response.cookies.set("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 15 * 60, // 15 minutes
+      path: "/",
     });
 
-    // Return a NextResponse with updated cookie
-    const response = NextResponse.json({ message: "Token refreshed!" });
-    response.headers.set(
-      "Set-Cookie",
-      `accessToken=${newAccessToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=900`
-    );
-
     return response;
-  } catch {
+  } catch (error) {
     return NextResponse.json({ error: "Invalid refresh token" }, { status: 403 });
   }
 }

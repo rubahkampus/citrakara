@@ -1,5 +1,5 @@
 // src/lib/controllers/UserController.ts
-import { registerUser } from "@/lib/services/UserService";
+import { checkUserAvailabilityService, registerUser } from "@/lib/services/UserService";
 import { RegisterSchema } from "@/schemas/UserSchema";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -33,3 +33,24 @@ export async function registerUserController(body: any) {
     );
   }
 }
+
+export async function checkUserAvailabilityController(req: NextRequest) {
+  console.log("Checking user availability");
+  try {
+    const { searchParams } = new URL(req.url);
+    const email = searchParams.get("email");
+    const username = searchParams.get("username");
+
+    console.log(searchParams);
+
+    if (!email && !username) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    const result = await checkUserAvailabilityService(email ?? undefined, username ?? undefined);
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+

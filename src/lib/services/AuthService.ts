@@ -1,5 +1,5 @@
 // src/lib/services/AuthService.ts
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { findUserByUsername } from "@/lib/repositories/UserRepository";
 import { generateAccessToken, generateRefreshToken } from "@/lib/utils/jwt";
 

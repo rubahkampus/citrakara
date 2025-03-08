@@ -1,5 +1,5 @@
 // src/lib/repositories/UserRepository.ts
-import { connectDB } from "@/lib/db";
+import { connectDB } from "@/lib/utils/db";
 import User from "@/lib/models/User";
 
 /** Return user by email */

@@ -1,4 +1,5 @@
 // src/middleware.ts
+// Global Next.js middleware
 import { NextResponse, NextRequest } from "next/server";
 import { verifyAccessToken } from "@/lib/utils/jwt";
 

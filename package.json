@@ -17,7 +17,6 @@
     "@mui/system": "^6.4.6",
     "@reduxjs/toolkit": "^2.6.0",
     "axios": "^1.8.1",
-    "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "formik": "^2.4.6",
     "mongodb": "^6.13.1",

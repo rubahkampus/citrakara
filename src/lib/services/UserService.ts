@@ -1,6 +1,6 @@
 // src/lib/services/UserService.ts
 import bcrypt from "bcryptjs";
-import { findUserByEmail, findUserByUsername, createUser } from "@/lib/repositories/UserRepository";
+import { findUserByEmail, findUserByUsername, createUser, findUserByUsernamePublic } from "@/lib/repositories/UserRepository";
 
 /** Register a new user */
 export async function registerUser(email: string, username: string, password: string) {
@@ -33,4 +33,12 @@ export async function checkUserAvailabilityService(email?: string, username?: st
   }
 
   throw new Error("Invalid parameters");
+}
+
+/** Fetch a user's public profile */
+export async function getUserProfile(username: string) {
+  const user = await findUserByUsernamePublic(username);
+  if (!user) throw new Error("User not found");
+
+  return user;
 }

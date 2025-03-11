@@ -5,7 +5,7 @@ import { verifyAccessToken } from "@/lib/utils/jwt";
 
 export async function middleware(req: NextRequest) {
   // Define protected routes
-  const protectedRoutes = ["/dashboard", "/profile"];
+  const protectedRoutes = ["/profile"];
   const isProtectedRoute = protectedRoutes.some((route) =>
     req.nextUrl.pathname.startsWith(route)
   );
@@ -30,5 +30,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard", "/profile"],
+  matcher: ["/profile"],
 };

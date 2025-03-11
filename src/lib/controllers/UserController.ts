@@ -1,5 +1,5 @@
 // src/lib/controllers/UserController.ts
-import { checkUserAvailabilityService, registerUser } from "@/lib/services/UserService";
+import { checkUserAvailabilityService, getUserProfile, registerUser } from "@/lib/services/UserService";
 import { RegisterSchema } from "@/schemas/UserSchema";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -54,3 +54,11 @@ export async function checkUserAvailabilityController(req: NextRequest) {
   }
 }
 
+export async function getUserProfileController(req: NextRequest, { params }: { params: { username: string } }) {
+  try {
+    const user = await getUserProfile(params.username);
+    return NextResponse.json({ user });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 404 });
+  }
+}

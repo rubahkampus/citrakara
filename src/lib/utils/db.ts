@@ -11,5 +11,7 @@ export async function connectDB() {
   if (mongoose.connection.readyState === 1) return;
 
   // Otherwise, connect
-  await mongoose.connect(MONGO_URI as string);
+  await mongoose.connect(MONGO_URI as string, {
+    dbName: "komis",  // ✅ Explicitly specify database name
+  });
 }

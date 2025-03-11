@@ -21,6 +21,11 @@ export const RegisterSchema = z.object({
     .refine((val) => val.trim().length > 0, {
       message: "Username cannot be empty or just spaces",
     }),
+
+  // Optional fields for user profile
+  bio: z.string().max(200, { message: "Bio must be at most 200 characters" }).optional(),
+  profilePicture: z.string().url({ message: "Invalid profile picture URL" }).optional(),
+  banner: z.string().url({ message: "Invalid banner URL" }).optional(),
 });
 
 export type RegisterType = z.infer<typeof RegisterSchema>;

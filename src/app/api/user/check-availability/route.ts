@@ -1,4 +1,7 @@
 // src/app/api/user/check-availability/route.ts
 import { checkUserAvailabilityController } from "@/lib/controllers/UserController";
+import { NextRequest } from "next/server";
 
-export { checkUserAvailabilityController as GET };
+export async function GET(req: NextRequest) {
+  return checkUserAvailabilityController(req);
+}

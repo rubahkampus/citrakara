@@ -16,7 +16,7 @@ export async function findUserByUsername(username: string) {
 
 
 /** Return user by username (without password) */
-export async function findUserByUsernamePublic(username: string) {
+export async function findUserPublicProfileByUsername(username: string) {
   await connectDB();
   return User.findOne({ username }).select("-password");
 }

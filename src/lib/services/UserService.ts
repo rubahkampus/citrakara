@@ -1,6 +1,6 @@
 // src/lib/services/UserService.ts
 import bcrypt from "bcryptjs";
-import { findUserByEmail, findUserByUsername, createUser, findUserByUsernamePublic } from "@/lib/repositories/UserRepository";
+import { findUserByEmail, findUserByUsername, createUser, findUserPublicProfileByUsername } from "@/lib/repositories/UserRepository";
 
 /** Register a new user */
 export async function registerUser(email: string, username: string, password: string) {
@@ -36,8 +36,8 @@ export async function checkUserAvailabilityService(email?: string, username?: st
 }
 
 /** Fetch a user's public profile */
-export async function getUserProfile(username: string) {
-  const user = await findUserByUsernamePublic(username);
+export async function getUserPublicProfile(username: string) {
+  const user = await findUserPublicProfileByUsername(username);
   if (!user) throw new Error("User not found");
 
   return user;

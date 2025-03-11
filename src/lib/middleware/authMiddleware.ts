@@ -14,7 +14,7 @@ export async function authMiddleware(req: NextRequest) {
   try {
     if (!accessToken) {
       // ✅ If no access token, attempt to refresh it
-      return await refreshTokenController(refreshToken);
+      return await refreshTokenController(req);
     }
 
     // ✅ Verify the access token
@@ -25,7 +25,7 @@ export async function authMiddleware(req: NextRequest) {
   } catch (error) {
     // ❌ If access token is invalid, try refreshing it
     try {
-      return await refreshTokenController(refreshToken);
+      return await refreshTokenController(req);
     } catch (refreshError) {
       return NextResponse.json({ error: "Session expired, please log in again" }, { status: 401 });
     }

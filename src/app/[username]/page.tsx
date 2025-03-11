@@ -1,4 +1,5 @@
-"use client";
+// src/app/[username]/page.tsx
+"use client"; // ✅ Ensure it's a Client Component
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -15,8 +16,10 @@ import {
 } from "@mui/material";
 
 export default function ProfilePage() {
-  const { username } = useParams(); // Get username from URL
-  const { user: loggedInUser } = useAppSelector((state) => state.auth); // Watch for login/logout
+  const params = useParams(); // ✅ Ensure params are accessed safely
+  const username = typeof params.username === "string" ? params.username : "";
+  const { user: loggedInUser } = useAppSelector((state) => state.auth);
+
   const [profile, setProfile] = useState<any>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -41,7 +44,7 @@ export default function ProfilePage() {
     if (username) {
       fetchProfile();
     }
-  }, [username, loggedInUser]); // 🔄 Re-fetch when user logs in/out
+  }, [username, loggedInUser]); // ✅ Dependency array ensures correct re-fetching
 
   if (loading) {
     return (
@@ -97,13 +100,13 @@ export default function ProfilePage() {
         </Stack>
       )}
 
-      {/* Portfolio Section (Placeholder) */}
+      {/* Portfolio Section */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h6" fontWeight="bold">Portfolio</Typography>
         <Typography color="text.secondary">(Artwork will be displayed here)</Typography>
       </Box>
 
-      {/* Commission Listings Section (Placeholder) */}
+      {/* Commission Listings Section */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h6" fontWeight="bold">Commission Listings</Typography>
         <Typography color="text.secondary">(Commissions will be displayed here)</Typography>

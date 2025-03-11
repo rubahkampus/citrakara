@@ -1,64 +1,76 @@
 // src/lib/controllers/UserController.ts
-import { checkUserAvailabilityService, getUserProfile, registerUser } from "@/lib/services/UserService";
-import { RegisterSchema } from "@/schemas/UserSchema";
 import { NextRequest, NextResponse } from "next/server";
+import { checkUserAvailabilityService, getUserPublicProfile, registerUser } from "@/lib/services/UserService";
+import { RegisterSchema } from "@/schemas/UserSchema";
+import { handleError } from "@/lib/utils/errorHandler";
+import { authMiddleware } from "@/lib/middleware/authMiddleware";
+import { JwtPayload } from "jsonwebtoken";
 
-export async function registerUserController(body: any) {
+export async function registerUserController(req: NextRequest) {
   try {
-    // Minimal server-side validation
-    if (!/^[a-zA-Z0-9_]+$/.test(body.username)) {
-      return NextResponse.json(
-        { error: "Invalid username format" },
-        { status: 400 }
-      );
-    }
-
-    // Validate using Zod
+    const body = await req.json();
     const validated = RegisterSchema.parse(body);
 
-    const user = await registerUser(
-      validated.email,
-      validated.username,
-      validated.password
-    );
+    const user = await registerUser(validated.email, validated.username, validated.password);
 
     return NextResponse.json({
       message: "User registered successfully!",
       user,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 400 }
-    );
+    return handleError(error);
   }
 }
 
 export async function checkUserAvailabilityController(req: NextRequest) {
-  console.log("Checking user availability");
   try {
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email");
     const username = searchParams.get("username");
 
-    console.log(searchParams);
-
-    if (!email && !username) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-    }
+    if (!email && !username) throw new Error("Invalid request");
 
     const result = await checkUserAvailabilityService(email ?? undefined, username ?? undefined);
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return handleError(error);
   }
 }
 
-export async function getUserProfileController(req: NextRequest, { params }: { params: { username: string } }) {
+export async function getUserPublicProfileController(
+  req: NextRequest,
+  context: { params: { username?: string } } // Ensure `username` is optional
+) {
   try {
-    const user = await getUserProfile(params.username);
-    return NextResponse.json({ user });
+    const username = context?.params?.username;
+    if (!username) throw new Error("Username is required");
+
+    // ✅ If user is authenticated, they can view their own profile
+    const authResponse = await authMiddleware(req);
+    const isOwner =
+      !(authResponse instanceof NextResponse) &&
+      (authResponse as any).user?.username === username;
+
+    const user = await getUserPublicProfile(username);
+
+    return NextResponse.json({ user, isOwner });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 404 });
+    return handleError(error, 404);
+  }
+}
+
+
+export async function getUserProfileController(
+  req: NextRequest,
+) {
+  try {
+    const authResponse = await authMiddleware(req);
+    if (authResponse instanceof NextResponse) return authResponse;
+
+    // ✅ If user is authenticated, return user info
+    return NextResponse.json({ user: authResponse.user });
+  
+  } catch (error) {
+    return handleError(error, 404);
   }
 }

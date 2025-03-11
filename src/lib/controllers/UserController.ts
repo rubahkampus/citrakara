@@ -5,6 +5,7 @@ import { RegisterSchema } from "@/schemas/UserSchema";
 import { handleError } from "@/lib/utils/errorHandler";
 import { authMiddleware } from "@/lib/middleware/authMiddleware";
 import { JwtPayload } from "jsonwebtoken";
+import { Console } from "console";
 
 export async function registerUserController(req: NextRequest) {
   try {
@@ -39,17 +40,16 @@ export async function checkUserAvailabilityController(req: NextRequest) {
 
 export async function getUserPublicProfileController(
   req: NextRequest,
-  context: { params: { username?: string } } // Ensure `username` is optional
+  context: { params: { username?: string } }
 ) {
   try {
     const username = context?.params?.username;
     if (!username) throw new Error("Username is required");
 
-    // ✅ If user is authenticated, they can view their own profile
     const authResponse = await authMiddleware(req);
     const isOwner =
       !(authResponse instanceof NextResponse) &&
-      (authResponse as any).user?.username === username;
+      (authResponse as JwtPayload).user?.username === username;
 
     const user = await getUserPublicProfile(username);
 
@@ -59,17 +59,12 @@ export async function getUserPublicProfileController(
   }
 }
 
-
-export async function getUserProfileController(
-  req: NextRequest,
-) {
+export async function getUserProfileController(req: NextRequest) {
   try {
     const authResponse = await authMiddleware(req);
     if (authResponse instanceof NextResponse) return authResponse;
 
-    // ✅ If user is authenticated, return user info
     return NextResponse.json({ user: authResponse.user });
-  
   } catch (error) {
     return handleError(error, 404);
   }

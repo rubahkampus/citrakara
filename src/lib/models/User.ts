@@ -1,5 +1,6 @@
 // src/lib/models/User.ts
 import mongoose, { Schema, Document } from "mongoose";
+import { defaultUserConfig } from "@/config";
 
 export interface IUser extends Document {
   email: string;
@@ -8,6 +9,7 @@ export interface IUser extends Document {
   bio?: string;
   profilePicture?: string;
   banner?: string;
+  isDeleted?: boolean;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -15,8 +17,10 @@ const UserSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   bio: { type: String, default: "" },
-  profilePicture: { type: String, default: "/default-profile.png" },
-  banner: { type: String, default: "/default-banner.jpg" },
+  profilePicture: { type: String, default: defaultUserConfig.profilePicture },
+  banner: { type: String, default: defaultUserConfig.banner },
+  isDeleted: { type: Boolean, default: false },
 });
 
-export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export default mongoose.models.User ||
+  mongoose.model<IUser>("User", UserSchema);

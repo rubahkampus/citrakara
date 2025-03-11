@@ -31,5 +31,5 @@ export async function createUser(data: {
   banner?: string;
 }) {
   await connectDB();
-  return User.create(data);
+  return User.create(new User(data)); // ✅ Ensures Mongoose schema validation
 }

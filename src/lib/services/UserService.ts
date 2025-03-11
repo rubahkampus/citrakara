@@ -1,16 +1,17 @@
 // src/lib/services/UserService.ts
 import bcrypt from "bcryptjs";
 import { findUserByEmail, findUserByUsername, createUser, findUserPublicProfileByUsername } from "@/lib/repositories/UserRepository";
+import { authConfig } from "@/config";
 
 /** Register a new user */
 export async function registerUser(email: string, username: string, password: string) {
   const existingEmail = await findUserByEmail(email);
-  if (existingEmail) throw new Error("Email already registered");
+  if (existingEmail) throw new Error("Email already in use");
 
   const existingUsername = await findUserByUsername(username);
-  if (existingUsername) throw new Error("Username already used");
+  if (existingUsername) throw new Error("Username already taken");
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, authConfig.bcryptSaltRounds);
   return createUser({ email, username, password: hashedPassword });
 }
 
@@ -19,17 +20,17 @@ export async function checkUserAvailabilityService(email?: string, username?: st
   if (email) {
     const user = await findUserByEmail(email);
     if (user) {
-      return { error: "Email is already registered" };
+      return { error: "Email is already in use" };
     }
-    return { message: "Email is available" };
+    return { message: "Available" };
   }
 
   if (username) {
     const user = await findUserByUsername(username);
     if (user) {
-      return { error: "Username is already taken" };
+      return { error: "Username is taken" };
     }
-    return { message: "Username is available" };
+    return { message: "Available" };
   }
 
   throw new Error("Invalid parameters");
@@ -37,8 +38,5 @@ export async function checkUserAvailabilityService(email?: string, username?: st
 
 /** Fetch a user's public profile */
 export async function getUserPublicProfile(username: string) {
-  const user = await findUserPublicProfileByUsername(username);
-  if (!user) throw new Error("User not found");
-
-  return user;
+  return findUserPublicProfileByUsername(username); // Removed redundant checks
 }

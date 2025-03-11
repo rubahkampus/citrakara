@@ -5,6 +5,7 @@ import { verifyRefreshToken, generateAccessToken } from "@/lib/utils/jwt";
 import { LoginSchema } from "@/schemas/AuthSchema";
 import { handleError } from "@/lib/utils/errorHandler";
 import { cookieOptions } from "@/lib/utils/cookies";
+import { authConfig } from "@/config";
 
 export async function loginController(req: NextRequest) {
   try {
@@ -18,8 +19,8 @@ export async function loginController(req: NextRequest) {
       user: { id: user._id.toString(), username: user.username, email: user.email },
     });
 
-    response.cookies.set("accessToken", accessToken, { ...cookieOptions, maxAge: 15 * 60 });
-    response.cookies.set("refreshToken", refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 });
+    response.cookies.set("accessToken", accessToken, { ...cookieOptions, maxAge: authConfig.accessTokenExpiry });
+    response.cookies.set("refreshToken", refreshToken, { ...cookieOptions, maxAge: authConfig.refreshTokenExpiry });
 
     return response;
   } catch (error) {
@@ -36,7 +37,7 @@ export function refreshTokenController(req: NextRequest) {
     const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username });
 
     const response = NextResponse.json({ message: "Token refreshed" });
-    response.cookies.set("accessToken", newAccessToken, { ...cookieOptions, maxAge: 15 * 60 });
+    response.cookies.set("accessToken", newAccessToken, { ...cookieOptions, maxAge: authConfig.accessTokenExpiry });
 
     return response;
   } catch (error) {

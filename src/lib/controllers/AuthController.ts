@@ -41,11 +41,17 @@ export function refreshTokenController(req: NextRequest) {
 
     return response;
   } catch (error) {
-    return handleError(error, 403);
+    // ⛔ If refresh token is invalid or expired, log out the user
+    const response = NextResponse.json({ error: "Session expired. Please log in again." }, { status: 401 });
+    response.cookies.set("accessToken", "", { ...cookieOptions, maxAge: 0 });
+    response.cookies.set("refreshToken", "", { ...cookieOptions, maxAge: 0 });
+
+    return response;
   }
 }
 
-export function logoutController() {
+
+export async function logoutController() {
   const response = NextResponse.json({ message: "Logged out successfully" });
 
   response.cookies.set("accessToken", "", { ...cookieOptions, maxAge: 0 });

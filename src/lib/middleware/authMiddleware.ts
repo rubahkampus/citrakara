@@ -23,17 +23,25 @@ export async function authMiddleware(req: NextRequest) {
 
   // ✅ If no access token, attempt to refresh
   if (!accessToken) {
-    return await attemptTokenRefresh(req);
+    const refreshedResponse = await refreshTokenController(req);
+    if (refreshedResponse.status !== 200) {
+      return refreshedResponse; // Force logout if refresh failed
+    }
+    
+    const newAccessToken = refreshedResponse.cookies.get("accessToken")?.value;
+    if (!newAccessToken) {
+      return NextResponse.json({ error: "Session expired. Please log in again." }, { status: 401 });
+    }
+
+    // Store new access token in request headers for subsequent calls
+    req.headers.set("Authorization", `Bearer ${newAccessToken}`);
   }
 
   try {
-    // ✅ Verify the access token
-    const decoded = verifyAccessToken(accessToken);
-    
-    // ✅ If valid, return user data
+    const decoded = verifyAccessToken(accessToken || req.headers.get("Authorization")?.split(" ")[1] || "");
     return { user: decoded };
   } catch {
-    // ❌ If access token is invalid, attempt to refresh ONCE
-    return await attemptTokenRefresh(req);
+    return NextResponse.json({ error: "Invalid session. Please log in again." }, { status: 401 });
   }
 }
+

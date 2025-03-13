@@ -1,11 +1,11 @@
 // src/lib/controllers/UserController.ts
 import { NextRequest, NextResponse } from "next/server";
-import { checkUserAvailabilityService, getUserPublicProfile, registerUser } from "@/lib/services/UserService";
-import { RegisterSchema } from "@/schemas/UserSchema";
+import { checkUserAvailabilityService, getUserPublicProfile, registerUser, updateUserProfileService } from "@/lib/services/UserService";
+import { RegisterSchema, UpdateProfileSchema } from "@/schemas/UserSchema";
 import { handleError } from "@/lib/utils/errorHandler";
 import { authMiddleware } from "@/lib/middleware/authMiddleware";
 import { JwtPayload } from "jsonwebtoken";
-import { Console } from "console";
+import { z } from "zod";
 
 export async function registerUserController(req: NextRequest) {
   try {
@@ -19,9 +19,18 @@ export async function registerUserController(req: NextRequest) {
       user,
     });
   } catch (error) {
-    return handleError(error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid input format" }, { status: 400 });
+    }
+
+    if ((error as Error).message.includes("already")) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 409 }); // 409 Conflict
+    }
+
+    return handleError(error, 500);
   }
 }
+
 
 export async function checkUserAvailabilityController(req: NextRequest) {
   try {
@@ -43,7 +52,9 @@ export async function getUserPublicProfileController(
   context: { params: { username?: string } }
 ) {
   try {
-    const username = context?.params?.username;
+    // Await the params before using them
+    const params = await context.params;
+    const username = params?.username;
     if (!username) throw new Error("Username is required");
 
     const authResponse = await authMiddleware(req);
@@ -67,5 +78,31 @@ export async function getUserProfileController(req: NextRequest) {
     return NextResponse.json({ user: authResponse.user });
   } catch (error) {
     return handleError(error, 404);
+  }
+}
+
+export async function updateUserProfileController(req: NextRequest) {
+  try {
+    const authResponse = await authMiddleware(req);
+    if (authResponse instanceof NextResponse) return authResponse;
+
+    const username = (authResponse as JwtPayload).user?.username; // ✅ Get username instead of userId
+    const formData = await req.formData(); // ✅ Handle multipart form data
+
+    // Convert FormData to an object
+    const updateData: Record<string, any> = {};
+    formData.forEach((value, key) => {
+      updateData[key] = value;
+    });
+
+    const validatedData = UpdateProfileSchema.parse(updateData);
+    const updatedUser = await updateUserProfileService(username, validatedData); // ✅ Pass username instead of userId
+
+    return NextResponse.json({
+      message: "Profile updated successfully!",
+      user: updatedUser,
+    });
+  } catch (error) {
+    return handleError(error);
   }
 }

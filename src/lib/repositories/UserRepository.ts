@@ -33,3 +33,10 @@ export async function createUser(data: {
   await connectDB();
   return User.create(new User(data)); // ✅ Ensures Mongoose schema validation
 }
+
+
+/** Update user by username */
+export async function updateUserByUsername(username: string, updates: Record<string, any>) {
+  await connectDB();
+  return User.findOneAndUpdate({ username }, updates, { new: true }).select("-password");
+}

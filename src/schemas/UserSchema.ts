@@ -28,4 +28,10 @@ export const RegisterSchema = z.object({
   banner: z.string().url({ message: "Invalid banner URL" }).optional(),
 });
 
+export const UpdateProfileSchema = z.object({
+  bio: z.string().max(200, "Bio must be at most 200 characters").optional(),
+  profilePicture: z.any().optional(), // ✅ Accepts files
+  banner: z.any().optional(), // ✅ Accepts files
+});
+
 export type RegisterType = z.infer<typeof RegisterSchema>;

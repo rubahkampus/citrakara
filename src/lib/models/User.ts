@@ -22,5 +22,7 @@ const UserSchema = new Schema<IUser>({
   isDeleted: { type: Boolean, default: false },
 });
 
+UserSchema.index({ email: 1, username: 1 });
+
 export default mongoose.models.User ||
   mongoose.model<IUser>("User", UserSchema);

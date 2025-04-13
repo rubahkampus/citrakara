@@ -2,32 +2,33 @@
 "use client";
 
 import React from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
-import { useAppSelector, useAppDispatch } from "@/redux/store";
-import { closeAuthDialog, openAuthDialog } from "@/redux/slices/AuthSlice";
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Box, Typography
+} from "@mui/material";
 import LoginForm from "./AuthDialogLoginForm";
 import RegisterForm from "./AuthDialogRegisterForm";
 
-export default function AuthDialog() {
-  const dispatch = useAppDispatch();
-  const { dialogOpen, dialogMode } = useAppSelector((state) => state.auth);
+interface AuthDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+export default function AuthDialog({ open, onClose }: AuthDialogProps) {
+  const [mode, setMode] = React.useState<"login" | "register">("login");
 
   const toggleMode = () => {
-    dispatch(openAuthDialog(dialogMode === "login" ? "register" : "login"));
-  };
-
-  const handleClose = () => {
-    dispatch(closeAuthDialog());
+    setMode(mode === "login" ? "register" : "login");
   };
 
   return (
-    <Dialog open={dialogOpen} onClose={handleClose} fullWidth maxWidth="xs">
-      <DialogTitle>{dialogMode === "login" ? "Login" : "Register"}</DialogTitle>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle>{mode === "login" ? "Login" : "Register"}</DialogTitle>
       <DialogContent>
-        {dialogMode === "login" ? <LoginForm /> : <RegisterForm />}
+        {mode === "login" ? <LoginForm onSuccess={onClose} /> : <RegisterForm onSuccess={onClose} />}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={onClose}>Cancel</Button>
       </DialogActions>
       <Box textAlign="center" mb={2}>
         <Typography
@@ -35,7 +36,7 @@ export default function AuthDialog() {
           sx={{ cursor: "pointer", color: "blue" }}
           onClick={toggleMode}
         >
-          {dialogMode === "login" ? "New user? Register here" : "Already a user? Log In"}
+          {mode === "login" ? "New user? Register here" : "Already a user? Log In"}
         </Typography>
       </Box>
     </Dialog>

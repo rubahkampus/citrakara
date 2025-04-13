@@ -1,24 +1,31 @@
 // src/app/layout.tsx
-// src/app/layout.tsx
-import ThemeRegistry from "@/components/ThemeRegistry";
-import { Container } from "@mui/material";
-import AuthProvider, { ReduxProvider } from "@/redux/provider";
-import AuthDialog from "@/components/AuthDialog";
-import Navbar from "@/components/Navbar"; // Import the new Navbar component
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { Container } from '@mui/material';
+import { Roboto } from 'next/font/google';
+import Navbar from '@/components/Navbar';
+import AuthDialog from '@/components/AuthDialog'; // will become client if needed
+import theme from '@/theme';
+
+const roboto = Roboto({
+  weight: ['300', '400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-roboto',
+});
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={roboto.variable}>
       <body>
-        <ReduxProvider>
-          <AuthProvider>
-            <ThemeRegistry>
-              <Navbar /> {/* ✅ Use the new Navbar component here */}
-              <Container sx={{ mt: 4 }}>{children}</Container>
-              <AuthDialog />
-            </ThemeRegistry>
-          </AuthProvider>
-        </ReduxProvider>
+        <AppRouterCacheProvider options={{ key: 'css' }}>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Navbar />
+            <Container sx={{ mt: 4 }}>{children}</Container>
+            <AuthDialog />
+          </ThemeProvider>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );

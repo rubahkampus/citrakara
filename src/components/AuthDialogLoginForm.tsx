@@ -1,67 +1,68 @@
 // src/components/AuthDialogLoginForm.tsx
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { TextField, Button, Box, Typography } from "@mui/material";
-import { useAppDispatch } from "@/redux/store";
-import { closeAuthDialog, loginThunk } from "@/redux/slices/AuthSlice";
-import { useFormik } from "formik";
-import { LoginSchema } from "@/schemas/AuthSchema";
-import { validateZodSchema } from "@/lib/utils/zodFormikValidate";
+import { axiosClient } from "@/lib/utils/axiosClient";
+import { useRouter } from "next/navigation";
 
-export default function LoginForm() {
-  const dispatch = useAppDispatch();
+
+interface LoginFormProps {
+  onSuccess: () => void;
+}
+
+export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [loginError, setLoginError] = useState("");
+  const router = useRouter();
 
-  const formik = useFormik({
-    initialValues: {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    defaultValues: {
       username: "",
       password: "",
     },
-    validate: validateZodSchema(LoginSchema),
-    onSubmit: async (values) => {
-      setLoginError(""); // Reset error message before new login attempt
-
-      const action = await dispatch(loginThunk(values)); // Dispatch login action
-
-      if (loginThunk.rejected.match(action)) {
-        // Extract error message from Redux's rejected payload
-        setLoginError(typeof action.payload === 'string' ? action.payload : "Invalid username or password");
-      } else {
-        dispatch(closeAuthDialog())
-      }
-    },
   });
 
+  const onSubmit = async (data: { username: string; password: string }) => {
+    setLoginError("");
+
+    try {
+      await axiosClient.post("/api/auth/login", data);
+      onSuccess(); // ✅ Close dialog or refresh after login
+      router.refresh(); // ✅ reflect session
+    } catch (error: any) {
+      setLoginError(
+        error?.response?.data?.error || "Invalid username or password"
+      );
+    }
+  };
+
   return (
-    <form onSubmit={formik.handleSubmit}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <TextField
         label="Username"
         variant="outlined"
         fullWidth
         margin="normal"
-        name="username"
-        value={formik.values.username}
-        onChange={formik.handleChange}
-        onBlur={formik.handleBlur}
-        error={Boolean(formik.touched.username && formik.errors.username)}
-        helperText={formik.touched.username ? formik.errors.username : ""}
+        {...register("username", { required: "Username is required" })}
+        error={!!errors.username}
+        helperText={errors.username?.message}
       />
       <TextField
         label="Password"
+        type="password"
         variant="outlined"
         fullWidth
         margin="normal"
-        type="password"
-        name="password"
-        value={formik.values.password}
-        onChange={formik.handleChange}
-        onBlur={formik.handleBlur}
-        error={Boolean(formik.touched.password && formik.errors.password)}
-        helperText={formik.touched.password ? formik.errors.password : ""}
+        {...register("password", { required: "Password is required" })}
+        error={!!errors.password}
+        helperText={errors.password?.message}
       />
 
-      {/* Display login error */}
       {loginError && (
         <Typography color="error" textAlign="center" mt={2}>
           {loginError}
@@ -69,7 +70,13 @@ export default function LoginForm() {
       )}
 
       <Box textAlign="center" mt={2}>
-        <Button type="submit" variant="contained" color="primary" fullWidth>
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          fullWidth
+          disabled={isSubmitting}
+        >
           Login
         </Button>
       </Box>

@@ -1,6 +1,11 @@
 // src/app/api/auth/logout/route.ts
-import { logoutController } from "@/lib/controllers/AuthController";
+import { logoutUser } from "@/lib/services/auth.service";
+import { handleError } from "@/lib/utils/errorHandler";
 
 export async function POST() {
-  return logoutController();
+  try {
+    return logoutUser();
+  } catch (error) {
+    return handleError(error);
+  }
 }

@@ -1,45 +1,36 @@
 // src/components/Navbar.tsx
-"use client";
+import Link from "next/link";
+import { AppBar, Toolbar, Typography, Button, Avatar, IconButton, Menu, MenuItem } from "@mui/material";
+import { getAuthSession } from "@/lib/utils/session";
+import LogoutButton from "./LogoutButton"; // A small client component for logout (if needed)
+import LoginDialogTrigger from "./LoginDialogTrigger";
 
-import { useState } from "react";
-import { AppBar, Toolbar, Typography, Button, Avatar, Menu, MenuItem, IconButton } from "@mui/material";
-import { useAppSelector, useAppDispatch } from "@/redux/store";
-import { openAuthDialog, logoutThunk } from "@/redux/slices/AuthSlice";
-
-export default function Navbar() {
-  const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
-
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
+export default async function Navbar() {
+  const session = await getAuthSession();
 
   return (
     <AppBar position="static">
       <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Typography variant="h6">Marketplace</Typography>
+        <Link href="/">
+          <Typography variant="h6" color="inherit" sx={{ textDecoration: "none" }}>
+            KOMIS
+          </Typography>
+        </Link>
 
-        {user ? (
-          <>
-            <IconButton onClick={handleMenuOpen}>
-              <Avatar src="/default-profile.png" />
-            </IconButton>
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-              <MenuItem onClick={() => dispatch(logoutThunk())}>Logout</MenuItem>
-            </Menu>
-          </>
+        {session && typeof session === "object" && "username" in session ? (
+          <div>
+            <Link href={`/${session.username}`}>
+              <IconButton>
+                <Avatar src="/default-profile.png" />
+              </IconButton>
+            </Link>
+            <LogoutButton />
+          </div>
         ) : (
-          <Button color="inherit" onClick={() => dispatch(openAuthDialog("login"))}>
-            Login
-          </Button>
+          <LoginDialogTrigger /> // A small client component for login dialog trigger
         )}
       </Toolbar>
     </AppBar>
   );
 }
+

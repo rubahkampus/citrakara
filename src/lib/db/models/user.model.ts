@@ -1,4 +1,4 @@
-// src/lib/models/User.ts
+// src/lib/db/models/user.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 import { defaultUserConfig } from "@/config";
 

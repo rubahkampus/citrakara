@@ -1,6 +1,6 @@
-// src/lib/repositories/UserRepository.ts
-import { connectDB } from "@/lib/utils/db";
-import User from "@/lib/models/User";
+// lib/db/repositories/user.repository.ts
+import User from "@/lib/db/models/user.model";
+import { connectDB } from "@/lib/db/connection";
 
 /** Return user by email */
 export async function findUserByEmail(email: string) {

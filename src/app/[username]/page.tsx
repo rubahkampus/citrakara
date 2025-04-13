@@ -1,72 +1,32 @@
 // src/app/[username]/page.tsx
-"use client";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { useAppSelector } from "@/redux/store";
-import { axiosClient } from "@/lib/utils/axiosClient";
-import {
-  Container,
-  CircularProgress,
-  Typography,
-} from "@mui/material";
+import { getUserPublicProfile } from "@/lib/services/user.service";
+import { getAuthSession } from "@/lib/utils/session";
+import { notFound } from "next/navigation";
 import ProfileContent from "@/components/ProfileContent";
-import EditProfileDialog from "@/components/ProfileDialog";
 
-export default function ProfilePage() {
-  const params = useParams();
-  const username = typeof params.username === "string" ? params.username : "";
-  const { user: loggedInUser } = useAppSelector((state) => state.auth);
-  const [profile, setProfile] = useState<any>(null);
-  const [isOwner, setIsOwner] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+interface ProfilePageProps {
+  params: { username: string };
+}
 
-  useEffect(() => {
-    if (!username) return;
-   
-    const fetchProfile = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await axiosClient.get(`/api/user/${username}`);
-        setProfile(response.data.user);
-        setIsOwner(response.data.isOwner);
-      } catch (err: any) {
-        setError(err.response?.data?.error || "Profile not found");
-      } finally {
-        setLoading(false);
-      }
-    };
+export default async function ProfilePage({ params }: ProfilePageProps) {
+  // Await the params object before accessing properties
+  const { username } = await params;
+  
+  const session = await getAuthSession();
+  const rawProfile = await getUserPublicProfile(username);
+  const profile = JSON.parse(JSON.stringify(rawProfile));
 
-    fetchProfile();
-  }, [username, loggedInUser]);
 
-  const handleOpenEditDialog = () => setEditDialogOpen(true);
+  if (!profile) return notFound();
+
+  const isOwner = !!(
+    session &&
+    typeof session === "object" &&
+    "username" in session &&
+    session.username === username
+  );
 
   return (
-    <Container sx={{ mt: 4 }}>
-      {loading ? (
-        <CircularProgress />
-      ) : error ? (
-        <Typography color="error">{error}</Typography>
-      ) : profile ? (
-        <>
-          <ProfileContent 
-            profile={profile} 
-            isOwner={isOwner} 
-            onEditProfile={handleOpenEditDialog}
-          />
-          <EditProfileDialog
-            open={editDialogOpen}
-            onClose={() => setEditDialogOpen(false)}
-            profile={profile}
-            onUpdateSuccess={setProfile}
-          />
-        </>
-      ) : (
-        <Typography>No profile data available</Typography>
-      )}
-    </Container>
+    <ProfileContent profile={profile} isOwner={isOwner} />
   );
 }

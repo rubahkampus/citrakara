@@ -1,67 +1,62 @@
 // src/components/AuthDialogRegisterForm.tsx
 "use client";
 
-import React, { useState } from "react";
-import { TextField, Button, Box, CircularProgress, Typography } from "@mui/material";
-import { useAppDispatch } from "@/redux/store";
-import { closeAuthDialog, registerThunk } from "@/redux/slices/AuthSlice";
-import { useFormik } from "formik";
-import { RegisterSchema } from "@/schemas/UserSchema";
-import { validateZodSchema } from "@/lib/utils/zodFormikValidate";
+import { useState } from "react";
+import {
+  TextField,
+  Button,
+  Box,
+  CircularProgress,
+  Typography,
+} from "@mui/material";
+import { useForm } from "react-hook-form";
 import { axiosClient } from "@/lib/utils/axiosClient";
+import { useRouter } from "next/navigation";
 
-export default function RegisterForm() {
-  const dispatch = useAppDispatch();
+
+interface RegisterFormProps {
+  onSuccess: () => void;
+}
+
+export default function RegisterForm({ onSuccess }: RegisterFormProps) {
+  const router = useRouter();
+
   const [step, setStep] = useState(1);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [usernameError, setUsernameError] = useState("");
-  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  // Define a consistent form structure
-  const formik = useFormik({
-    initialValues: {
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    defaultValues: {
       email: "",
       password: "",
       username: "",
     },
-    validate: (values) => {
-      if (step === 1) {
-        return validateZodSchema(RegisterSchema.pick({ email: true, password: true }))(values);
-      }
-      return validateZodSchema(RegisterSchema.pick({ username: true }))(values);
-    },
-    onSubmit: async (values) => {
-      if (step === 1) {
-        await checkAvailability("email", values.email, setEmailError, () => setStep(2));
-      } else {
-        await checkAvailability("username", values.username, setUsernameError, async () => {
-          await dispatch(registerThunk(values));
-          dispatch(closeAuthDialog()); // ✅ Close dialog after successful register
-        });
-      }
-    },
   });
 
-  // Check email or username availability
   const checkAvailability = async (
     type: "email" | "username",
     value: string,
-    setError: (error: string) => void,
+    setError: (msg: string) => void,
     onSuccess: () => void
   ) => {
     try {
-      setError(""); // Reset previous errors
+      setError("");
       setCheckingAvailability(true);
-  
-      const response = await axiosClient.get(`/api/user/check-availability?${type}=${value}`);
-  
-      if (response.data.error) {
-        // If API returns an error message, manually throw an error
-        throw new Error(response.data.error);
-      }
-  
-      if (response.data.message.includes("available")) {
+      const res = await axiosClient.get(
+        `/api/user/check-availability?${type}=${value}`
+      );
+
+      if (res.data?.message?.includes("Available")) {
         onSuccess();
+      } else {
+        throw new Error(res.data?.error || `${type} is already taken`);
       }
     } catch (err: any) {
       setError(err.message || `Error checking ${type}`);
@@ -69,69 +64,106 @@ export default function RegisterForm() {
       setCheckingAvailability(false);
     }
   };
-  
+
+  const onSubmit = async (values: {
+    email: string;
+    password: string;
+    username: string;
+  }) => {
+    if (step === 1) {
+      await checkAvailability("email", values.email, setEmailError, () =>
+        setStep(2)
+      );
+    } else {
+      await checkAvailability("username", values.username, setUsernameError, async () => {
+        try {
+          await axiosClient.post("/api/auth/register", values);
+          onSuccess(); // ✅ Close dialog or refresh after success
+          router.refresh(); // ✅ reflect session
+        } catch (err: any) {
+          setUsernameError(err?.response?.data?.error || "Registration failed");
+        }
+      });
+    }
+  };
 
   return (
-    <form onSubmit={formik.handleSubmit}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       {step === 1 && (
         <>
           <TextField
             label="Email"
-            variant="outlined"
             fullWidth
             margin="normal"
-            name="email"
-            value={formik.values.email}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            error={Boolean(formik.touched.email && (formik.errors.email || emailError))}
-            helperText={formik.touched.email ? formik.errors.email || emailError : ""}
+            {...register("email", {
+              required: "Email is required",
+              pattern: {
+                value: /^[^@]+@[^@]+\.[^@]+$/,
+                message: "Invalid email format",
+              },
+            })}
+            error={!!errors.email || !!emailError}
+            helperText={errors.email?.message || emailError}
           />
           <TextField
             label="Password"
-            variant="outlined"
+            type="password"
             fullWidth
             margin="normal"
-            type="password"
-            name="password"
-            value={formik.values.password}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            error={Boolean(formik.touched.password && formik.errors.password)}
-            helperText={formik.touched.password && formik.errors.password}
+            {...register("password", {
+              required: "Password is required",
+              minLength: {
+                value: 6,
+                message: "Password must be at least 6 characters",
+              },
+            })}
+            error={!!errors.password}
+            helperText={errors.password?.message}
           />
         </>
       )}
 
       {step === 2 && (
         <TextField
-          label="Username"
-          variant="outlined"
-          fullWidth
-          margin="normal"
-          name="username"
-          value={formik.values.username}
-          onChange={(e) => {
-            const sanitizedValue = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "");
-            formik.setFieldValue("username", sanitizedValue);
-          }}
-          onBlur={formik.handleBlur}
-          error={Boolean(formik.touched.username && (formik.errors.username || usernameError))}
-          helperText={formik.touched.username ? formik.errors.username || usernameError : ""}
-        />
+        label="Username"
+        fullWidth
+        margin="normal"
+        error={!!errors.username || !!usernameError}
+        helperText={errors.username?.message || usernameError}
+        {...register("username", {
+          required: "Username is required",
+          minLength: {
+            value: 3,
+            message: "Username must be at least 3 characters",
+          },
+          onChange: (e) => {
+            const sanitized = e.target.value
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, "");
+            setValue("username", sanitized, { shouldValidate: true });
+          },
+        })}
+      />
+      
       )}
 
       {checkingAvailability && (
         <Box textAlign="center" mt={2}>
           <CircularProgress size={24} />
-          <Typography variant="body2" sx={{ mt: 1 }}>
+          <Typography variant="body2" mt={1}>
             Checking availability...
           </Typography>
         </Box>
       )}
 
       <Box textAlign="center" mt={2}>
-        <Button type="submit" variant="contained" color="primary" fullWidth>
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          fullWidth
+          disabled={isSubmitting || checkingAvailability}
+        >
           {step === 1 ? "Next" : "Register"}
         </Button>
       </Box>

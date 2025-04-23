@@ -15,7 +15,7 @@ export default function ProfileContent({ profile, isOwner }: ProfileContentProps
         sx={{
           width: "100%",
           height: 200,
-          backgroundImage: `url(${profile.banner || "/default-banner.jpg"})`,
+          backgroundImage: `url(${profile.banner || "/default-banner.jpg"}?t=${Date.now()})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           borderRadius: 2,
@@ -25,7 +25,7 @@ export default function ProfileContent({ profile, isOwner }: ProfileContentProps
       {/* Info */}
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mt: -6, ml: 3 }}>
         <Avatar
-          src={profile.profilePicture || "/default-profile.png"}
+          src={`${profile.profilePicture || "/default-profile.png"}?t=${Date.now()}`}
           sx={{ width: 100, height: 100, border: "4px solid white" }}
         />
         <Box>
@@ -35,7 +35,7 @@ export default function ProfileContent({ profile, isOwner }: ProfileContentProps
       </Stack>
 
       {/* Actions */}
-      {isOwner && <ProfileActions profile={profile} />}
+      {isOwner && <ProfileActions />}
 
       {/* Portfolio */}
       <Box sx={{ mt: 4 }}>

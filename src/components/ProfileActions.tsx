@@ -1,29 +1,18 @@
-// srqc/components/ProfileActions.tsx
-"use client";
+// src/components/ProfileActions.tsx
+'use client';
 
-import { useState } from "react";
-import { Button, Stack } from "@mui/material";
-import EditProfileDialog from "@/components/ProfileDialog";
-import { useRouter } from "next/navigation";
+import { Stack } from '@mui/material';
+import { useUserDialogStore } from '@/lib/stores/userDialogStore';
+import { KButton } from './KButton';
 
-export default function ProfileActions({ profile }: { profile: any }) {
-  const [editOpen, setEditOpen] = useState(false);
-  const router = useRouter();
+export default function ProfileActions() {
+  const { open } = useUserDialogStore();
 
   return (
-    <>
-      <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-        <Button variant="contained" onClick={() => setEditOpen(true)}>Edit Profile</Button>
-        <Button variant="contained" color="secondary">Upload Art</Button>
-        <Button variant="contained">Create Commission</Button>
-      </Stack>
-
-      <EditProfileDialog
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        profile={profile}
-        onUpdateSuccess={() => router.refresh()}
-      />
-    </>
+    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+      <KButton onClick={() => open('editProfile')}>Edit Profile</KButton>
+      <KButton variantType="secondary">Upload Art</KButton>
+      <KButton>Create Commission</KButton>
+    </Stack>
   );
 }

@@ -1,6 +1,7 @@
 // lib/db/repositories/user.repository.ts
 import User from "@/lib/db/models/user.model";
 import { connectDB } from "@/lib/db/connection";
+import { defaultUserConfig } from "@/config";
 
 /** Return user by email */
 export async function findUserByEmail(email: string) {
@@ -22,16 +23,36 @@ export async function findUserPublicProfileByUsername(username: string) {
 }
 
 /** Create a new user */
+/** Create a new user */
 export async function createUser(data: {
   email: string;
   username: string;
   password: string;
-  bio?: string;
-  profilePicture?: string;
-  banner?: string;
 }) {
   await connectDB();
-  return User.create(new User(data)); // ✅ Ensures Mongoose schema validation
+
+  const user = new User({
+    email: data.email,
+    username: data.username,
+    password: data.password,
+    roles: ["user"],
+    displayName: data.username, // default to username
+    bio: "",
+    profilePicture: defaultUserConfig.profilePicture,
+    banner: defaultUserConfig.banner,
+    tags: [],
+    socials: [],
+    openForCommissions: false,
+    defaultCurrency: "IDR",
+    rating: { avg: 0, count: 0 },
+    completedOrders: 0,
+    earningsTotal: 0,
+    isDeleted: false,
+    isSuspended: false,
+    emailVerified: false,
+  });
+
+  return user.save();
 }
 
 

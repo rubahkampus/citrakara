@@ -4,8 +4,8 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Container } from '@mui/material';
 import { Roboto } from 'next/font/google';
-import Navbar from '@/components/Navbar';
-import AuthDialog from '@/components/AuthDialog'; // will become client if needed
+import GlobalNavbar from '@/components/GlobalNavbar';
+import GlobalDialogs from '@/components/GlobalDialogs';
 import theme from '@/theme';
 
 const roboto = Roboto({
@@ -21,9 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppRouterCacheProvider options={{ key: 'css' }}>
           <ThemeProvider theme={theme}>
             <CssBaseline />
-            <Navbar />
+            <GlobalNavbar />
             <Container sx={{ mt: 4 }}>{children}</Container>
-            <AuthDialog />
+            <GlobalDialogs /> {/* ✅ mount all dialogs here */}
           </ThemeProvider>
         </AppRouterCacheProvider>
       </body>

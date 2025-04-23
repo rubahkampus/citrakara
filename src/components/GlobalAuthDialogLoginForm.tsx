@@ -1,4 +1,4 @@
-// src/components/AuthDialogLoginForm.tsx
+// src/components/GlobalAuthDialogLoginForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -8,11 +8,11 @@ import { axiosClient } from "@/lib/utils/axiosClient";
 import { useRouter } from "next/navigation";
 
 
-interface LoginFormProps {
+interface GlobalLoginFormProps {
   onSuccess: () => void;
 }
 
-export default function LoginForm({ onSuccess }: LoginFormProps) {
+export default function GlobalLoginForm({ onSuccess }: GlobalLoginFormProps) {
   const [loginError, setLoginError] = useState("");
   const router = useRouter();
 

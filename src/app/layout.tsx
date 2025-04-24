@@ -1,12 +1,10 @@
 // src/app/layout.tsx
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import { Container } from '@mui/material';
 import { Roboto } from 'next/font/google';
 import GlobalNavbar from '@/components/GlobalNavbar';
 import GlobalDialogs from '@/components/GlobalDialogs';
-import theme from '@/theme';
+import ThemeProviderWrapper from '@/components/ThemeProviderWraper';
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -19,12 +17,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={roboto.variable}>
       <body>
         <AppRouterCacheProvider options={{ key: 'css' }}>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
+          <ThemeProviderWrapper>
             <GlobalNavbar />
             <Container sx={{ mt: 4 }}>{children}</Container>
-            <GlobalDialogs /> {/* ✅ mount all dialogs here */}
-          </ThemeProvider>
+            <GlobalDialogs />
+          </ThemeProviderWrapper>
         </AppRouterCacheProvider>
       </body>
     </html>

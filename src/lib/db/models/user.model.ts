@@ -1,5 +1,5 @@
 // src/lib/db/models/user.model.ts
-import mongoose, { Schema, Document, model, models } from "mongoose";
+import { Schema, Document, model, models } from "mongoose";
 import { defaultUserConfig } from "@/config";
 import type { ObjectId, ISODate, Cents } from "@/types/common";
 
@@ -28,8 +28,8 @@ export interface IUser extends Document {
   defaultCurrency: "IDR" | "USD" | string;
 
   // Linked references
-  tosEntries: ObjectId[];         // 🆕 reference to all their TOS documents
-  wallet: ObjectId;               // 🆕 reference to user's wallet document
+  tosEntries: ObjectId[];           // reference to all their TOS documents
+  wallet: ObjectId;                 // reference to user's wallet document
 
   // Stats (read-only)
   rating: { avg: number; count: number };

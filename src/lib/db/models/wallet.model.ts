@@ -1,5 +1,5 @@
 // src/lib/db/models/wallet.model.ts
-import mongoose, { Schema, model, models, Document } from "mongoose";
+import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate, Cents } from "@/types/common";
 
 export interface IWallet extends Document {

@@ -1,5 +1,5 @@
 // src/lib/db/models/review.model.ts
-import { Schema, model, models, Document } from "mongoose";
+import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate } from "@/types/common";
 
 export interface IReview extends Document {
@@ -27,11 +27,11 @@ const ReviewSchema = new Schema<IReview>(
     artistId:  { type: Schema.Types.ObjectId, ref: "User", required: true },
     clientId:  { type: Schema.Types.ObjectId, ref: "User", required: true },
 
-    rating:  { type: Number, min: 1, max: 5, required: true },
-    comment: { type: String, maxlength: 1024 },
+    rating:    { type: Number, min: 1, max: 5, required: true },
+    comment:   { type: String, maxlength: 1024 },
 
-    images:  { type: [String], default: [] },
-
+    images:    { type: [String], default: [] },
+    editedAt:  { type: Date },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

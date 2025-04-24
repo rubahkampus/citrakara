@@ -1,10 +1,9 @@
-
-
-import { Schema, model, models, Document } from "mongoose";
+// src/lib/db/models/proposal.model.ts
+import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate, Cents } from "@/types/common";
 import type { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
-export interface IProposal {
+export interface IProposal extends Document {
   _id: ObjectId;
 
   /* ---- relationships ---- */
@@ -83,8 +82,6 @@ export interface IProposal {
   updatedAt: ISODate;
 }
 
-
-
 const ProposalSchema = new Schema<IProposal>(
   {
     /* relationships */
@@ -95,10 +92,10 @@ const ProposalSchema = new Schema<IProposal>(
     /* status */
     status: { 
       type: String, 
-      enum: ["draft","pending","negotiating","accepted","rejected","expired"],
+      enum: ["draft", "pending", "negotiating", "accepted", "rejected", "expired"],
       default: "draft"
     },
-    expiresAt: Date,
+    expiresAt: { type: Date },
 
     /* listing snapshot */
     listingSnapshot: { type: Schema.Types.Mixed, required: true },
@@ -112,9 +109,9 @@ const ProposalSchema = new Schema<IProposal>(
 
     /* rush info */
     rush: {
-      days:     Number,
-      paidDays: Number,
-      fee:      Number
+      days:     { type: Number },
+      paidDays: { type: Number },
+      fee:      { type: Number }
     },
 
     /* brief */
@@ -126,26 +123,32 @@ const ProposalSchema = new Schema<IProposal>(
     },
 
     /* general & subject option selections */
-    generalOptions: Schema.Types.Mixed,
-    subjectOptions: Schema.Types.Mixed,
+    generalOptions: { type: Schema.Types.Mixed },
+    subjectOptions: { type: Schema.Types.Mixed },
 
     /* price breakdown */
     calculatedPrice: {
-      base:         Number,
-      optionGroups: Number,
-      addons:       Number,
-      rush:         Number,
-      discount:     Number,
-      surcharge:    Number,
+      base:         { type: Number, required: true },
+      optionGroups: { type: Number, required: true },
+      addons:       { type: Number, required: true },
+      rush:         { type: Number, required: true },
+      discount:     { type: Number, required: true },
+      surcharge:    { type: Number, required: true },
       total:        { type: Number, required: true }
     },
 
     artistAdjustments: {
-      surcharge: { amount: Number, reason: String },
-      discount:  { amount: Number, reason: String }
+      surcharge: { 
+        amount: { type: Number }, 
+        reason: { type: String }
+      },
+      discount: { 
+        amount: { type: Number }, 
+        reason: { type: String }
+      }
     },
 
-    rejectionReason: String
+    rejectionReason: { type: String }
   },
   { timestamps: true }
 );

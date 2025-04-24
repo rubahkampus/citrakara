@@ -1,7 +1,8 @@
 // src/lib/stores/userDialogStore.ts
 import { create } from 'zustand';
 
-type UserDialogType = 'editProfile' | 'createCommission' | 'uploadArtwork' | null;
+// Update the type to include all required dialog types
+type UserDialogType = 'editProfile' | 'createCommission' | 'uploadArtwork' | 'accountSettings' | null;
 
 interface UserDialogState {
   openDialog: UserDialogType;

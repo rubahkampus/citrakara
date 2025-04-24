@@ -1,5 +1,5 @@
 // src/lib/db/models/tos.model.ts
-import mongoose, { Schema, model, models, Document } from "mongoose";
+import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate } from "@/types/common";
 
 interface TosSection {

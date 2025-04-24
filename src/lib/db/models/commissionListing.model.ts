@@ -46,11 +46,7 @@ export interface ICommissionListing extends Document {
 
   // ─── Capacity ────────────────────────────────────────────
   slots: number; // −1 = unlimited
-  slotsUsed: number;
-  counters: {
-    activeOrders: ObjectId[]; // orderIds
-    pendingOrders: ObjectId[]; // proposalIds
-  };
+  slotsUsed: number; // active + pending orders
 
   tos: string; // link to TOS page / doc
 
@@ -128,15 +124,6 @@ export interface ICommissionListing extends Document {
 /* -----------------------------------------------------------
    2. Mongoose Schema
 -------------------------------------------------------------*/
-const CounterSchema = new Schema(
-  {
-    activeOrders: [{ type: Schema.Types.ObjectId, ref: "Order", default: [] }],
-    pendingOrders: [
-      { type: Schema.Types.ObjectId, ref: "Proposal", default: [] },
-    ],
-  },
-  { _id: false }
-);
 
 const CommissionListingSchema = new Schema<ICommissionListing>(
   {
@@ -158,8 +145,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
 
     slots: { type: Number, default: -1 },
     slotsUsed: { type: Number, default: 0 },
-    counters: { type: CounterSchema, default: () => ({}) },
-
+    
     tos: { type: String, required: true },
 
     type: { type: String, enum: ["template", "custom"], required: true },

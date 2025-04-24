@@ -25,17 +25,17 @@ const GalleryPostSchema = new Schema<IGalleryPost>(
     galleryId: { type: Schema.Types.ObjectId, ref: "Gallery", required: true },
 
     image:      { type: String, required: true },
-    description:{ type: String, default: "" },
+    description: { type: String, default: "" },
 
-    commissionListingId:{ type: Schema.Types.ObjectId, ref: "CommissionListing" },
-    orderId:            { type: Schema.Types.ObjectId, ref: "Order" },
+    commissionListingId: { type: Schema.Types.ObjectId, ref: "CommissionListing" },
+    orderId:     { type: Schema.Types.ObjectId, ref: "Order" },
 
-    isDeleted: { type: Boolean, default: false },
+    isDeleted:   { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-GalleryPostSchema.index({ userId:1, galleryId:1, isDeleted:1 });
-GalleryPostSchema.index({ commissionListingId:1 });
+GalleryPostSchema.index({ userId: 1, galleryId: 1, isDeleted: 1 });
+GalleryPostSchema.index({ commissionListingId: 1 });
 
 export default models.GalleryPost || model<IGalleryPost>("GalleryPost", GalleryPostSchema);

@@ -1,4 +1,4 @@
-// src/app/api/user/me/update/route.ts
+// src/app/api/me/update/route.ts
 import { updateUserProfile } from "@/lib/services/user.service";
 import { getAuthSession } from "@/lib/utils/session";
 import { NextRequest, NextResponse } from "next/server";

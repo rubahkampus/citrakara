@@ -188,62 +188,66 @@ export default function GlobalNavbarClient({ session }: Props) {
             }
           }}
         >
-          <MenuItem onClick={() => { router.push('/explore'); setMobileMenuOpen(false); }}>
-            Explore
-          </MenuItem>
-          <MenuItem onClick={() => { router.push('/artists'); setMobileMenuOpen(false); }}>
-            Artists
-          </MenuItem>
-          <MenuItem onClick={() => { router.push('/commissions'); setMobileMenuOpen(false); }}>
-            Commissions
-          </MenuItem>
-          <MenuItem onClick={() => { router.push('/how-it-works'); setMobileMenuOpen(false); }}>
-            How It Works
-          </MenuItem>
-          
-          <Divider />
-          
-          {isLoggedIn ? (
-            <>
-              <MenuItem onClick={() => { router.push(`/${session.username}`); setMobileMenuOpen(false); }}>
-                <ListItemIcon>
-                  <PersonIcon fontSize="small" />
-                </ListItemIcon>
-                Profile
-              </MenuItem>
-              <MenuItem onClick={() => { router.push(`/${session.username}/dashboard`); setMobileMenuOpen(false); }}>
-                <ListItemIcon>
-                  <DashboardIcon fontSize="small" />
-                </ListItemIcon>
-                Dashboard
-              </MenuItem>
-              <MenuItem onClick={async () => { 
-                await axiosClient.post("/api/auth/logout"); 
-                router.refresh();
-                setMobileMenuOpen(false);
-              }}>
-                <ListItemIcon>
-                  <LogoutIcon fontSize="small" />
-                </ListItemIcon>
-                Logout
-              </MenuItem>
-            </>
-          ) : (
-            <>
-              <MenuItem onClick={() => { 
-                useAuthDialogStore.getState().open("login"); 
-                setMobileMenuOpen(false);
-              }}>
-                Login
-              </MenuItem>
-              <MenuItem onClick={() => { 
-                useAuthDialogStore.getState().open("register"); 
-                setMobileMenuOpen(false);
-              }}>
-                Register
-              </MenuItem>
-            </>
-          )}
+          {/* Combine all menu items into a flat array without fragments */}
+          {[
+            // Common navigation items
+            <MenuItem key="explore" onClick={() => { router.push('/explore'); setMobileMenuOpen(false); }}>
+              Explore
+            </MenuItem>,
+            <MenuItem key="artists" onClick={() => { router.push('/artists'); setMobileMenuOpen(false); }}>
+              Artists
+            </MenuItem>,
+            <MenuItem key="commissions" onClick={() => { router.push('/commissions'); setMobileMenuOpen(false); }}>
+              Commissions
+            </MenuItem>,
+            <MenuItem key="how-it-works" onClick={() => { router.push('/how-it-works'); setMobileMenuOpen(false); }}>
+              How It Works
+            </MenuItem>,
+            
+            <Divider key="divider" />,
+            
+            // Conditional items based on login state
+            ...(isLoggedIn 
+              ? [
+                  <MenuItem key="profile" onClick={() => { router.push(`/${session.username}`); setMobileMenuOpen(false); }}>
+                    <ListItemIcon>
+                      <PersonIcon fontSize="small" />
+                    </ListItemIcon>
+                    Profile
+                  </MenuItem>,
+                  <MenuItem key="dashboard" onClick={() => { router.push(`/${session.username}/dashboard`); setMobileMenuOpen(false); }}>
+                    <ListItemIcon>
+                      <DashboardIcon fontSize="small" />
+                    </ListItemIcon>
+                    Dashboard
+                  </MenuItem>,
+                  <MenuItem key="logout" onClick={async () => { 
+                    await axiosClient.post("/api/auth/logout"); 
+                    router.refresh();
+                    setMobileMenuOpen(false);
+                  }}>
+                    <ListItemIcon>
+                      <LogoutIcon fontSize="small" />
+                    </ListItemIcon>
+                    Logout
+                  </MenuItem>
+                ]
+              : [
+                  <MenuItem key="login" onClick={() => { 
+                    useAuthDialogStore.getState().open("login"); 
+                    setMobileMenuOpen(false);
+                  }}>
+                    Login
+                  </MenuItem>,
+                  <MenuItem key="register" onClick={() => { 
+                    useAuthDialogStore.getState().open("register"); 
+                    setMobileMenuOpen(false);
+                  }}>
+                    Register
+                  </MenuItem>
+                ]
+            )
+          ]}
         </Menu>
       )}
     </AppBar>
@@ -346,43 +350,46 @@ function AuthenticatedControls({ username }: { username: string }) {
           }
         }}
       >
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <Typography variant="subtitle2" fontWeight="bold">
-            {username}
-          </Typography>
-        </Box>
-        
-        <Divider />
-        
-        <MenuItem onClick={() => router.push(`/${username}`)}>
-          <ListItemIcon>
-            <PersonIcon fontSize="small" />
-          </ListItemIcon>
-          Profile
-        </MenuItem>
-        
-        <MenuItem onClick={() => router.push(`/${username}/dashboard`)}>
-          <ListItemIcon>
-            <DashboardIcon fontSize="small" />
-          </ListItemIcon>
-          Dashboard
-        </MenuItem>
-        
-        <MenuItem onClick={() => router.push('/settings')}>
-          <ListItemIcon>
-            <SettingsIcon fontSize="small" />
-          </ListItemIcon>
-          Settings
-        </MenuItem>
-        
-        <Divider />
-        
-        <MenuItem onClick={logout}>
-          <ListItemIcon>
-            <LogoutIcon fontSize="small" />
-          </ListItemIcon>
-          Logout
-        </MenuItem>
+        {[
+          // Custom header (not a MenuItem)
+          <Box key="header" sx={{ px: 2, py: 1.5 }}>
+            <Typography variant="subtitle2" fontWeight="bold">
+              {username}
+            </Typography>
+          </Box>,
+          
+          <Divider key="divider-1" />,
+          
+          <MenuItem key="profile" onClick={() => router.push(`/${username}`)}>
+            <ListItemIcon>
+              <PersonIcon fontSize="small" />
+            </ListItemIcon>
+            Profile
+          </MenuItem>,
+          
+          <MenuItem key="dashboard" onClick={() => router.push(`/${username}/dashboard`)}>
+            <ListItemIcon>
+              <DashboardIcon fontSize="small" />
+            </ListItemIcon>
+            Dashboard
+          </MenuItem>,
+          
+          <MenuItem key="settings" onClick={() => router.push('/settings')}>
+            <ListItemIcon>
+              <SettingsIcon fontSize="small" />
+            </ListItemIcon>
+            Settings
+          </MenuItem>,
+          
+          <Divider key="divider-2" />,
+          
+          <MenuItem key="logout" onClick={logout}>
+            <ListItemIcon>
+              <LogoutIcon fontSize="small" />
+            </ListItemIcon>
+            Logout
+          </MenuItem>
+        ]}
       </Menu>
     </>
   );

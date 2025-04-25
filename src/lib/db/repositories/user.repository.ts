@@ -5,6 +5,7 @@ import { defaultUserConfig } from "@/config";
 import { createWallet } from "./wallet.repository";
 import { createDefaultTos } from "./tos.repository";
 import { createDefaultGalleries } from "./gallery.repository";
+import mongoose from "mongoose";
 
 /** Return user by email */
 export async function findUserByEmail(email: string) {
@@ -32,7 +33,7 @@ export async function createUser(data: {
 }) {
   await connectDB();
 
-  // First create the user without references
+  // First create the user with a temporary placeholder for wallet
   const tempUser = new User({
     email: data.email,
     username: data.username,
@@ -51,9 +52,11 @@ export async function createUser(data: {
     isDeleted: false,
     isSuspended: false,
     emailVerified: false,
+    // Add a temporary ObjectId for validation
+    wallet: new mongoose.Types.ObjectId(), 
   });
 
-  // Need to save to get an _id for relationships
+  // Save to get the _id
   const savedTempUser = await tempUser.save();
   const userId = savedTempUser._id;
 
@@ -65,22 +68,20 @@ export async function createUser(data: {
       createDefaultGalleries(userId)
     ]);
 
-    // Update user with relationship IDs
-    const galleryIds = galleries.map(gallery => gallery._id);
-    
+    // Update user with real wallet ID
     const user = await User.findByIdAndUpdate(
       userId,
       {
         wallet: wallet._id,
         tosEntries: [tos._id],
-        galleries: galleryIds
+        galleries: galleries.map(gallery => gallery._id)
       },
       { new: true }
     );
     
     return user;
   } catch (error) {
-    // If anything fails, try to clean up the temporary user
+    // If anything fails, clean up the temporary user
     await User.findByIdAndDelete(userId);
     throw error;
   }

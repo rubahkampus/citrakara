@@ -22,13 +22,13 @@ export interface WorkUpload {
 
 export const WorkUploadSchema = new Schema<WorkUpload>(
   {
-    kind:           { type: String, enum: ["progress", "final"], required: true },
+    kind: { type: String, enum: ["progress", "final"], required: true },
     milestoneIndex: Number,
-    status:         { type: String, enum: ["submitted","reviewing","approved","rejected"], required: true },
-    revisionTicketId:Schema.Types.ObjectId,
-    images:         { type: [String], required: true },
-    description:    String,
-    uploadedAt:     { type: Date, default: Date.now }
+    status: { type: String, enum: ["submitted", "reviewing", "approved", "rejected"], required: true },
+    revisionTicketId: Types.ObjectId,
+    images: { type: [String], required: true },
+    description: String,
+    uploadedAt: { type: Date, default: Date.now }
   },
   { _id: false }
 );
@@ -74,15 +74,14 @@ export interface ContractEvent {
 
 export const ContractEventSchema = new Schema<ContractEvent>(
   {
-    type:{ type:String, enum:[
-      "status_change","milestone_progress",
-      "revision_requested","revision_delivered",
-      "cancel_opened","cancel_resolved",
-      "change_request","change_applied",
-      "late_flagged","payout_released","refund_issued"
-    ], required:true },
-    timestamp:{ type:Date, default:Date.now },
-    actor:{ type:String, enum:["client","artist","system","admin"], required:true },
+    type: { type: String, enum: [
+      "status_change","milestone_progress","revision_requested",
+      "revision_delivered","cancel_opened","cancel_resolved",
+      "change_request","change_applied","late_flagged",
+      "payout_released","refund_issued"
+    ], required: true },
+    timestamp: { type: Date, default: Date.now },
+    actor: { type: String, enum: ["client","artist","system","admin"], required: true },
     actorId:{ type:Schema.Types.ObjectId, ref:"User", required:true },
     data:Schema.Types.Mixed
   },
@@ -98,34 +97,29 @@ export interface Milestone {
   status: "pending" | "in_progress" | "reviewing" | "approved" | "rejected";
   startedAt?: ISODate;
   completedAt?: ISODate;
-
-  /** All uploads ever submitted for this milestone */
+  /** Every upload ever submitted for this milestone */
   uploads: WorkUpload[];
-
-  /** Upload finally approved by the client (null until approved) */
+  /** Final approved upload (null until accepted) */
   acceptedUploadId?: ObjectId;
-
   revisionsUsed: number;
   revisionPolicy?: Record<string, unknown>;
 }
 
 export const MilestoneSchema = new Schema<Milestone>(
   {
-    title:{ type:String, required:true },
-    description:String,
-    index:{ type:Number, required:true },
-    percent:{ type:Number, min:0, max:100, required:true },
-    status:{ type:String, enum:["pending","in_progress","reviewing","approved","rejected"], default:"pending" },
-    startedAt:Date,
-    completedAt:Date,
-
-    uploads:[ WorkUploadSchema ],
-    acceptedUploadId:Schema.Types.ObjectId,
-
-    revisionsUsed:{ type:Number, default:0 },
-    revisionPolicy:Schema.Types.Mixed
+    title: { type: String, required: true },
+    description: String,
+    index: { type: Number, required: true },
+    percent: { type: Number, min: 0, max: 100, required: true },
+    status: { type: String, enum: ["pending","in_progress","reviewing","approved","rejected"], default: "pending" },
+    startedAt: Date,
+    completedAt: Date,
+    uploads: [WorkUploadSchema],
+    acceptedUploadId: Types.ObjectId,
+    revisionsUsed: { type: Number, default: 0 },
+    revisionPolicy: Schema.Types.Mixed
   },
-  { _id:false }
+  { _id: false }
 );
 
 /*──────────────────── 5 ▸ Tickets ────────────────────────*/
@@ -135,36 +129,27 @@ export interface RevisionTicket {
   milestoneIdx?: number;
   description: string;
   referenceImages?: string[];
-  status:
-    | "awaiting_artist" | "artist_revising" | "client_review"
-    | "awaiting_payment" | "closed_success" | "closed_rejected"
-    | "closed_out_of_scope" | "closed_cancelled" | "disputed"
-    | "closed_by_staff";
+  status: "awaiting_artist" | "artist_revising" | "client_review" | "awaiting_payment" | "closed_success" | "closed_rejected" | "closed_out_of_scope" | "closed_cancelled" | "disputed" | "closed_by_staff";
   reviewExpiresAt?: ISODate;
-  paidFee?: Cents;
-  paymentTxnId?: ObjectId;
-
-  /** Single upload that answers this revision request */
+  paidFee?: Cents; paymentTxnId?: ObjectId;
   workUploadId?: ObjectId;
 }
 
 export const RevisionTicketSchema = new Schema<RevisionTicket>(
   {
     _id:{ type:Schema.Types.ObjectId, default:() => new Types.ObjectId() },
-    milestoneIdx:Number,
-    description:{ type:String, required:true },
-    referenceImages:[String],
-    status:{ type:String, enum:[
-      "awaiting_artist","artist_revising","client_review","awaiting_payment",
-      "closed_success","closed_rejected","closed_out_of_scope",
-      "closed_cancelled","disputed","closed_by_staff"
-    ], default:"awaiting_artist" },
-    reviewExpiresAt:Date,
-    paidFee:Number,
-    paymentTxnId:Schema.Types.ObjectId,
-    workUploadId:Schema.Types.ObjectId
+    milestoneIdx: Number,
+    description: { type: String, required: true },
+    referenceImages: [String],
+    status: { type: String, enum: [
+      "awaiting_artist","artist_revising","client_review","awaiting_payment","closed_success","closed_rejected","closed_out_of_scope","closed_cancelled","disputed","closed_by_staff"
+    ], default: "awaiting_artist" },
+    reviewExpiresAt: Date,
+    paidFee: Number,
+    paymentTxnId: Types.ObjectId,
+    workUploadId: Types.ObjectId
   },
-  { _id:false }
+  { _id: false }
 );
 
 /* 5b ▸ Cancel – unchanged */

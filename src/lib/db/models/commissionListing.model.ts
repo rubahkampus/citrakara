@@ -168,9 +168,11 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       },
     },
 
+    basePrice:{type:Number,required:true}, // If user don't input basePrice, it will be 0
+
     price: {
-      min: { type: Number, required: true },
-      max: { type: Number, required: true },
+      min: { type: Number, required: true, default: 0 }, // calculated from basePrice + cheapest options
+      max: { type: Number, required: true, default: 0 }, // calculated from basePrice + most expensive options + all possible addons
     },
 
     cancelationFee: {

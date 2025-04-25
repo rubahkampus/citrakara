@@ -20,4 +20,6 @@ const WalletSchema = new Schema<IWallet>(
   { timestamps: true }
 );
 
+WalletSchema.index({ user: 1 });
+
 export default models.Wallet || model<IWallet>("Wallet", WalletSchema);

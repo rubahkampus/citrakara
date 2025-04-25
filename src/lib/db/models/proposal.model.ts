@@ -92,7 +92,7 @@ const ProposalSchema = new Schema<IProposal>(
     /* status */
     status: { 
       type: String, 
-      enum: ["draft", "pending", "accepted", "rejected", "expired"],
+      enum: ["draft", "pending", "negotiating", "accepted", "rejected", "expired"],
       default: "draft"
     },
     expiresAt: { type: Date },
@@ -128,13 +128,13 @@ const ProposalSchema = new Schema<IProposal>(
 
     /* price breakdown */
     calculatedPrice: {
-      base:         { type: Number, required: true },
-      optionGroups: { type: Number, required: true },
-      addons:       { type: Number, required: true },
-      rush:         { type: Number, required: true },
-      discount:     { type: Number, required: true },
-      surcharge:    { type: Number, required: true },
-      total:        { type: Number, required: true }
+      base:         { type: Number, required: true, default: 0 },
+      optionGroups: { type: Number, required: true, default: 0 },
+      addons:       { type: Number, required: true, default: 0 },
+      rush:         { type: Number, required: true, default: 0 },
+      discount:     { type: Number, required: true, default: 0 },
+      surcharge:    { type: Number, required: true, default: 0 },
+      total:        { type: Number, required: true, default: 0 },
     },
 
     artistAdjustments: {

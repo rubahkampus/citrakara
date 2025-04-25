@@ -46,7 +46,7 @@ const PaymentSchema = new Schema<Payment>(
   { _id:false }
 );
 
-/* ───────────────────────── Contract interface (no structural change) ───── */
+/* ───────────────────────── Contract interface (fixed actorId nullable) ───── */
 export interface IContract extends Document {
   _id: ObjectId;
   clientId: ObjectId;
@@ -67,6 +67,7 @@ export interface IContract extends Document {
   currentMilestoneIndex?: number;
   milestones?: Milestone[];
 
+  // Option A: Keep top-level work (unified view across milestones)
   work: WorkUpload[];
 
   revisionTickets: RevisionTicket[];
@@ -126,7 +127,7 @@ export interface IContract extends Document {
   addEvent(
     type: ContractEventType,
     actor: "client" | "artist" | "system" | "admin",
-    actorId: ObjectId,
+    actorId: ObjectId | null,  // Fixed: Made actorId nullable to match implementation
     data?: Record<string, unknown>
   ): void;
   changeStatus(
@@ -221,6 +222,18 @@ ContractSchema.methods.changeStatus = function (
 
   this.addEvent("status_change", actor, aid, { oldStatus, newStatus });
 };
+
+/* Add pre-save hook to update root graceEndsAt when late extensions are added */
+ContractSchema.pre('save', function(next) {
+  // Check if we have late extensions and update the root graceEndsAt
+  if (this.late && this.late.extensions && this.late.extensions.length > 0) {
+    const lastExtension = this.late.extensions[this.late.extensions.length - 1];
+    if (lastExtension && lastExtension.newGraceEndsAt) {
+      this.graceEndsAt = lastExtension.newGraceEndsAt;
+    }
+  }
+  next();
+});
 
 /* ───────────────────────── Indexes (unchanged) ──────────────────────────── */
 ContractSchema.index({ artistId:1, status:1 });

@@ -72,7 +72,7 @@ export interface ICommissionListing extends Document {
 
   // ─── Client‑side edit toggles ────────────────────────────
   allowContractChange: boolean;
-  changeable?: Array<"deadline" | "generalOptions" | "subjectOptions">;
+  changeable?: Array<"deadline" | "generalOptions" | "subjectOptions" | "description" | "generalDescription" | "referenceImages">;
 
   // ─── Revision policy snapshot ────────────────────────────
   revisions?: {

@@ -92,7 +92,7 @@ const ProposalSchema = new Schema<IProposal>(
     /* status */
     status: { 
       type: String, 
-      enum: ["draft", "pending", "negotiating", "accepted", "rejected", "expired"],
+      enum: ["draft", "pending", "accepted", "rejected", "expired"],
       default: "draft"
     },
     expiresAt: { type: Date },

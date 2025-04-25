@@ -54,3 +54,9 @@ export function serializeProfile(profile: Profile | null): Profile | null {
   if (!profile) return null;
   return JSON.parse(JSON.stringify(profile));
 }
+
+export interface AuthSession {
+  userId: string;            // your Mongo ObjectId string
+  roles: ("user" | "admin")[];
+  username: string;
+}

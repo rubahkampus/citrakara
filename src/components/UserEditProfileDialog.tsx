@@ -212,7 +212,7 @@ export default function UserEditProfileDialog({
       if (banner) formData.append("banner", banner);
 
       const response = await axiosClient.patch(
-        "/api/user/me/update",
+        "/api/me/update",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },

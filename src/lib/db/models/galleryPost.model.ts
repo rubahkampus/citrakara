@@ -7,7 +7,7 @@ export interface IGalleryPost extends Document {
   userId:    ObjectId;
   galleryId: ObjectId;
 
-  image: string;                 // CDN / R2 URL
+  images: string[];                 // CDN / R2 URL
   description?: string;
 
   /** Optional cross-links for richer context */
@@ -24,7 +24,7 @@ const GalleryPostSchema = new Schema<IGalleryPost>(
     userId:    { type: Schema.Types.ObjectId, ref: "User", required: true },
     galleryId: { type: Schema.Types.ObjectId, ref: "Gallery", required: true },
 
-    image:      { type: String, required: true },
+    images: { type: [String], required: true }, // CDN / R2 URL
     description: { type: String, default: "" },
 
     commissionListingId: { type: Schema.Types.ObjectId, ref: "CommissionListing" },

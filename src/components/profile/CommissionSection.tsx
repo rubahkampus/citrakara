@@ -14,7 +14,7 @@ const mockCommissions: CommissionData[] = [
   {
     id: 'c1',
     title: 'A Very, Very, Long Text for Reference Furry Commission 1',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.',
     price: { min: 999999999, max: 999999999 },
     currency: 'Rp',
     thumbnail: '/placeholders/comm1.jpg',
@@ -94,8 +94,8 @@ export default function CommissionSection({ username, isOwner }: CommissionSecti
         <Box sx={{ 
           display: 'flex', 
           gap: 2, 
-          mb: 3, 
-          justifyContent: 'center'
+          mb: 2, 
+          justifyContent: 'flex-start',
         }}>
           <KButton 
             variant="contained"
@@ -103,7 +103,7 @@ export default function CommissionSection({ username, isOwner }: CommissionSecti
             onClick={navigateToCreateCommission}
             sx={{ px: 2, py: 1 }}
           >
-            Create New Commission +
+            Create New Commission
           </KButton>
           <KButton 
             variant="outlined"
@@ -145,7 +145,7 @@ export default function CommissionSection({ username, isOwner }: CommissionSecti
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={0}>
           {commissions.map((commission) => (
             <Grid item xs={12} key={commission.id}>
               <CommissionCard 

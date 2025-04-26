@@ -115,7 +115,7 @@ export default function GallerySection({ username, isOwner }: GallerySectionProp
         <Box sx={{ 
           display: 'flex', 
           gap: 2, 
-          mb: 3,
+          mb: 2,
           justifyContent: 'center'
         }}>
           <KButton

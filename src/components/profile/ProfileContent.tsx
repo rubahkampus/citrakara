@@ -1,4 +1,4 @@
-// src/components/ProfileContent.tsx
+// src/components/profile/ProfileContent.tsx
 "use client";
 
 import { useState } from "react";
@@ -502,7 +502,7 @@ export default function ProfileContent({
             {/* Main Content */}
             <Box sx={{ flex: 1 }}>
               {/* Tabs Navigation */}
-              <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+              <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
                 <Tabs
                   value={activeTab}
                   onChange={handleTabChange}

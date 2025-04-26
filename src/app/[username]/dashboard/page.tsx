@@ -31,7 +31,7 @@ function ProfileLoading() {
 }
 
 export default async function DashboardPage({ params }: Props) {
-  const { username } = params;
+  const { username } = await params;
   
   // Parallel data fetching for better performance
   const [profile, walletData, tosEntries] = await Promise.all([

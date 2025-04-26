@@ -7,7 +7,7 @@ import {
   Session,
 } from "@/lib/utils/session";
 import { notFound } from "next/navigation";
-import ProfileContent from "@/components/ProfileContent";
+import ProfileContent from "@/components/profile/ProfileContent";
 
 interface ProfilePageProps {
   params: { username: string };

@@ -374,13 +374,6 @@ function AuthenticatedControls({ username }: { username: string }) {
             Dashboard
           </MenuItem>,
           
-          <MenuItem key="settings" onClick={() => router.push('/settings')}>
-            <ListItemIcon>
-              <SettingsIcon fontSize="small" />
-            </ListItemIcon>
-            Settings
-          </MenuItem>,
-          
           <Divider key="divider-2" />,
           
           <MenuItem key="logout" onClick={logout}>

@@ -215,18 +215,6 @@ export default function DashboardProfileRenderer({ profile, saldo, tosSummary }:
               Upload Artwork
             </KButton>
           </Grid>
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <KButton
-              fullWidth
-              variantType="ghost"
-              sx={{ py: 1.5 }}
-              startIcon={<SettingsIcon />}
-              onClick={() => open('accountSettings')}
-            >
-              Account Settings
-            </KButton>
-          </Grid>
         </Grid>
       </Paper>
     </Box>

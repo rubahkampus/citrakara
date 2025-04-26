@@ -16,10 +16,10 @@ const variantStyles: Record<Variant, object> = {
   secondary: { bgcolor: 'secondary.main', color: 'white', '&:hover': { bgcolor: 'secondary.dark' } },
   ghost: {
     bgcolor: 'transparent',
-    color: 'text.primary',
+    color: 'primary.main',
     '&:hover': { bgcolor: 'action.hover' },
-    border: '1px solid',
-    borderColor: 'divider',
+    border: '2px solid',
+    borderColor: 'primary.main',
   },
   danger: { bgcolor: 'error.main', color: 'white', '&:hover': { bgcolor: 'error.dark' } },
 };

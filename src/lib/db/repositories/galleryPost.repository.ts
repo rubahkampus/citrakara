@@ -24,6 +24,17 @@ export async function findPostsByGallery(
   });
 }
 
+export async function findPostsByUser(
+  userId: string | ObjectId,
+  { includeDeleted = false } = {}
+) {
+  await connectDB();
+  return GalleryPost.find({
+    userId,
+    ...(includeDeleted ? {} : { isDeleted: false })
+  }).sort({ createdAt: -1 });
+}
+
 export async function findPostById(id: string | ObjectId) {
   await connectDB();
   return GalleryPost.findById(id);

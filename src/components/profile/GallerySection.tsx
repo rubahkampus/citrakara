@@ -11,23 +11,6 @@ import { GalleryData, GalleryPostData, useProfilePageStore } from '@/lib/stores/
 import { useUserDialogStore } from '@/lib/stores/userDialogStore';
 import { axiosClient } from '@/lib/utils/axiosClient';
 
-// Mock data
-const mockGalleries: GalleryData[] = [
-  { id: 'g1', name: 'Commissions', thumbnails: ['/placeholders/art1.jpg', '/placeholders/art2.jpg', '/placeholders/art3.jpg'], postCount: 17 },
-  { id: 'g2', name: 'Album X', thumbnails: ['/placeholders/art4.jpg'], postCount: 5 },
-  { id: 'g3', name: 'Album X', thumbnails: ['/placeholders/art5.jpg'], postCount: 8 },
-  { id: 'g4', name: 'Album X', thumbnails: ['/placeholders/art6.jpg'], postCount: 3 },
-];
-
-const mockPosts: GalleryPostData[] = [
-  { id: 'p1', galleryId: 'g1', images: ['/placeholders/art1.jpg'], description: 'Commission artwork', createdAt: '2023-10-01' },
-  { id: 'p2', galleryId: 'g1', images: ['/placeholders/art2.jpg'], description: 'Another commission', createdAt: '2023-09-28' },
-  { id: 'p3', galleryId: 'g2', images: ['/placeholders/art4.jpg'], description: 'Album X artwork', createdAt: '2023-09-25' },
-  { id: 'p4', galleryId: 'g3', images: ['/placeholders/art5.jpg'], description: 'Album Y artwork', createdAt: '2023-09-20' },
-  { id: 'p5', galleryId: 'g4', images: ['/placeholders/art6.jpg'], description: 'Album Z artwork', createdAt: '2023-09-15' },
-  { id: 'p6', galleryId: 'g1', images: ['/placeholders/art3.jpg'], description: 'Commission piece', createdAt: '2023-09-10' },
-];
-
 interface GallerySectionProps {
   username: string;
   isOwner: boolean;
@@ -41,27 +24,81 @@ export default function GallerySection({ username, isOwner }: GallerySectionProp
   const [galleries, setGalleries] = useState<GalleryData[]>([]);
   const [posts, setPosts] = useState<GalleryPostData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  // For real data, uncomment this and comment out the useEffect below
-  /*
+  // Fetch galleries and posts based on the active gallery
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
         // Fetch user galleries
-        const galleriesResponse = await axiosClient.get(`/api/gallery/user/${username}`);
-        setGalleries(galleriesResponse.data.galleries);
+        const galleriesResponse = await axiosClient.get(`/api/user/${username}/galleries`);
         
-        // Fetch posts (either for specific gallery or all)
-        const postsUrl = activeGalleryId 
-          ? `/api/gallery/${activeGalleryId}/posts`
-          : `/api/gallery/user/${username}/posts`;
+        // Transform the gallery data to match the GalleryData interface
+        const transformedGalleries: GalleryData[] = galleriesResponse.data.galleries.map((gallery: any) => ({
+          id: gallery._id,
+          name: gallery.name,
+          thumbnails: [],  // We'll fill these in below
+          postCount: 0     // We'll fill this in below
+        }));
         
-        const postsResponse = await axiosClient.get(postsUrl);
-        setPosts(postsResponse.data.posts);
+        // Fetch all posts for this user to extract thumbnails and count for each gallery
+        const allPostsResponse = await axiosClient.get(`/api/user/${username}/posts`);
+        const allPosts = allPostsResponse.data.posts || [];
+        
+        // Group posts by gallery
+        const postsByGallery: Record<string, any[]> = {};
+        allPosts.forEach((post: any) => {
+          if (!postsByGallery[post.galleryId]) {
+            postsByGallery[post.galleryId] = [];
+          }
+          postsByGallery[post.galleryId].push(post);
+        });
+        
+        // Update galleries with thumbnails and post counts
+        const enrichedGalleries = transformedGalleries.map(gallery => ({
+          ...gallery,
+          thumbnails: (postsByGallery[gallery.id] || [])
+            .slice(0, 4)
+            .map((post: any) => post.images[0] || ''),
+          postCount: (postsByGallery[gallery.id] || []).length
+        }));
+        
+        setGalleries(enrichedGalleries);
+        
+        // Fetch posts for specific gallery or all posts if no gallery selected
+        if (activeGalleryId) {
+          const galleryPostsResponse = await axiosClient.get(`/api/gallery/${activeGalleryId}/posts`);
+          const galleryPosts = galleryPostsResponse.data.posts || [];
+          
+          // Transform to match GalleryPostData interface
+          setPosts(galleryPosts.map((post: any) => ({
+            id: post._id,
+            galleryId: post.galleryId,
+            images: post.images,
+            description: post.description || '',
+            createdAt: post.createdAt
+          })));
+        } else {
+          // Show recent posts from all galleries
+          const recentPosts = allPosts
+            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 12);
+            
+          setPosts(recentPosts.map((post: any) => ({
+            id: post._id,
+            galleryId: post.galleryId,
+            images: post.images,
+            description: post.description || '',
+            createdAt: post.createdAt
+          })));
+        }
       } catch (error) {
         console.error('Error fetching gallery data:', error);
+        setError('Failed to load galleries. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -69,25 +106,6 @@ export default function GallerySection({ username, isOwner }: GallerySectionProp
     
     fetchData();
   }, [username, activeGalleryId]);
-  */
-
-  // Mock data loading - replace with real API calls
-  useEffect(() => {
-    setLoading(true);
-    // Simulate API request
-    setTimeout(() => {
-      setGalleries(mockGalleries);
-      
-      if (activeGalleryId) {
-        // Filter posts for the specific gallery
-        setPosts(mockPosts.filter(post => post.galleryId === activeGalleryId));
-      } else {
-        // Show all posts
-        setPosts(mockPosts);
-      }
-      setLoading(false);
-    }, 300);
-  }, [activeGalleryId]);
   
   const navigateToManageGalleries = () => {
     router.push(`/${username}/dashboard/galleries`);
@@ -110,13 +128,28 @@ export default function GallerySection({ username, isOwner }: GallerySectionProp
 
   return (
     <Box>
+      {/* Error Message */}
+      {error && (
+        <Box 
+          sx={{ 
+            p: 2, 
+            mb: 3, 
+            bgcolor: 'error.light', 
+            color: 'error.contrastText',
+            borderRadius: 1 
+          }}
+        >
+          <Typography>{error}</Typography>
+        </Box>
+      )}
+      
       {/* Action Buttons */}
       {isOwner && (
         <Box sx={{ 
           display: 'flex', 
           gap: 2, 
           mb: 2,
-          justifyContent: 'center'
+          justifyContent: 'flex-start',
         }}>
           <KButton
             variant="contained"
@@ -124,10 +157,10 @@ export default function GallerySection({ username, isOwner }: GallerySectionProp
             onClick={handleUploadArtClick}
             sx={{ px: 2, py: 1 }}
           >
-            Upload New Art +
+            Upload New Art
           </KButton>
           <KButton
-            variant="outlined"
+            variantType='ghost'
             onClick={navigateToManageGalleries}
             sx={{ px: 2, py: 1 }}
           >
@@ -184,21 +217,43 @@ export default function GallerySection({ username, isOwner }: GallerySectionProp
       ) : (
         // Overview galleries
         <>
-          <GalleryGrid 
-            galleries={displayedGalleries} 
-            onGalleryClick={(galleryId) => setActiveGalleryId(galleryId)} 
-          />
-          
-          {/* See More button */}
-          {galleries.length > 4 && (
-            <Box sx={{ textAlign: 'center', mt: 2, mb: 3 }}>
-              <KButton 
-                variant="text"
-                onClick={toggleExpanded}
-              >
-                {expanded ? 'Show Less' : 'See More...'}
-              </KButton>
+          {galleries.length === 0 ? (
+            <Box 
+              sx={{ 
+                height: 120, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                bgcolor: 'background.paper',
+                border: '1px dashed',
+                borderColor: 'divider',
+                borderRadius: 1,
+                mb: 3
+              }}
+            >
+              <Typography color="text.secondary">
+                No galleries found
+              </Typography>
             </Box>
+          ) : (
+            <>
+              <GalleryGrid 
+                galleries={displayedGalleries} 
+                onGalleryClick={(galleryId) => setActiveGalleryId(galleryId)} 
+              />
+              
+              {/* See More button */}
+              {galleries.length > 4 && (
+                <Box sx={{ textAlign: 'center', mt: 2, mb: 3 }}>
+                  <KButton 
+                    variant="text"
+                    onClick={toggleExpanded}
+                  >
+                    {expanded ? 'Show Less' : 'See More...'}
+                  </KButton>
+                </Box>
+              )}
+            </>
           )}
           
           {/* Recent uploads section */}

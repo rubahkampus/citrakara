@@ -6,6 +6,7 @@ import {
   softDeleteGalleryPost,
   findPostById,
   findPostsByGallery,
+  findPostsByUser
 } from "@/lib/db/repositories/galleryPost.repository";
 import { findGalleryById } from "@/lib/db/repositories/gallery.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
@@ -20,6 +21,21 @@ export async function listGalleryPosts(
   { includeDeleted = false } = {}
 ) {
   return findPostsByGallery(galleryId, { includeDeleted });
+}
+
+/**
+ * Get all posts for a specific user by username
+ */
+export async function getUserPosts(
+  username: string,
+  { includeDeleted = false } = {}
+) {
+  const user = await findUserByUsername(username);
+  if (!user) {
+    throw new Error("User not found");
+  }
+  
+  return findPostsByUser(user._id, { includeDeleted });
 }
 
 /**

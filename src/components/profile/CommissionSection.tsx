@@ -106,7 +106,7 @@ export default function CommissionSection({ username, isOwner }: CommissionSecti
             Create New Commission
           </KButton>
           <KButton 
-            variant="outlined"
+            variantType="ghost"
             onClick={navigateToManageCommissions}
             sx={{ px: 2, py: 1 }}
           >

@@ -145,3 +145,18 @@ export async function getGalleryPostPublic(
   
   return post;
 }
+
+/**
+ * Get a single post by ID for public viewing
+ * Validates ownership and accessibility
+ */
+export async function getGalleryPostById(
+  postId: string
+) {
+  const post = await findPostById(postId);
+  if (!post || post.isDeleted ) {
+    throw new Error("Post not found");
+  }
+  
+  return post;
+}

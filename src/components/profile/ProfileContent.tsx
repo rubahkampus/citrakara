@@ -30,7 +30,6 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import { KButton } from "@/components/KButton";
 import GallerySection from "@/components/profile/GallerySection";
 import CommissionSection from "@/components/profile/CommissionSection";
-import GalleryPostDialog from "@/components/profile/dialogs/GalleryPostDialog";
 import CommissionDialog from "@/components/profile/dialogs/CommissionDialog";
 import UploadArtDialog from "@/components/profile/dialogs/UploadArtDialog";
 import { useUserDialogStore } from "@/lib/stores/userDialogStore";
@@ -530,7 +529,6 @@ export default function ProfileContent({
       </Container>
 
       {/* Dialogs */}
-      <GalleryPostDialog />
       <CommissionDialog isOwner={isOwner} />
       {isOwner && <UploadArtDialog />}
     </Box>

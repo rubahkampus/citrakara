@@ -1,4 +1,4 @@
-// src/components/dashboard/galleries/DasboardGalleryDetailPage.tsx
+// src/components/dashboard/galleries/DashboardGalleryDetailPage.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,11 +17,9 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Chip,
   Alert,
   CircularProgress,
   Card,
-  CardMedia,
   CardContent,
   CardActions
 } from '@mui/material';
@@ -35,7 +33,7 @@ import {
 import { axiosClient } from '@/lib/utils/axiosClient';
 import { KButton } from '@/components/KButton';
 import { useUserDialogStore } from '@/lib/stores/userDialogStore';
-import { useProfilePageStore } from '@/lib/stores/profilePageStore';
+import { useGalleryPostStore } from '@/lib/stores/galleryPostStore';
 
 interface Gallery {
   _id: string;
@@ -68,7 +66,7 @@ export default function DashboardGalleryDetailPage({
 }: DashboardGalleryDetailPageProps) {
   const router = useRouter();
   const { open: openDialog } = useUserDialogStore();
-  const { openGalleryPostDialog } = useProfilePageStore();
+  const { openDialog: openGalleryPostDialog } = useGalleryPostStore();
   
   const [posts, setPosts] = useState<GalleryPost[]>(initialPosts);
   const [loading, setLoading] = useState(false);
@@ -78,6 +76,7 @@ export default function DashboardGalleryDetailPage({
   // Menu state for post actions
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [activePostIdToBeModified, setActivePostIdToBeModified] = useState<string | null>(null);
   
   // Delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -121,6 +120,7 @@ export default function DashboardGalleryDetailPage({
   
   // Handle edit post dialog
   const handleEditClick = (post: GalleryPost) => {
+    setActivePostIdToBeModified(post._id);
     setEditPostDescription(post.description || '');
     setEditDialogOpen(true);
     handleMenuClose();
@@ -129,33 +129,37 @@ export default function DashboardGalleryDetailPage({
   const handleEditDialogClose = () => {
     setEditDialogOpen(false);
     setEditPostDescription('');
+    setActivePostIdToBeModified(null);
   };
   
   // Handle delete post dialog
-  const handleDeleteClick = () => {
+  const handleDeleteClick = (post: GalleryPost) => {
+    setActivePostIdToBeModified(post._id);
     setDeleteDialogOpen(true);
     handleMenuClose();
   };
   
   const handleDeleteDialogClose = () => {
     setDeleteDialogOpen(false);
+    setActivePostIdToBeModified(null);
   };
   
   // Edit post description
   const handleSavePostDescription = async () => {
-    if (!activePostId) return;
+    if (!activePostIdToBeModified) return;
     
     setEditLoading(true);
     setError(null);
     
     try {
-      await axiosClient.patch(`/api/gallery/post/${activePostId}`, { description: editPostDescription.trim() });
+      await axiosClient.patch(`/api/gallery/post/${activePostIdToBeModified}`, { description: editPostDescription.trim() });
       setSuccess('Post updated successfully');
       handleEditDialogClose();
       refreshPosts();
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
+      setActivePostIdToBeModified(null);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update post. Please try again.');
     } finally {
@@ -165,19 +169,20 @@ export default function DashboardGalleryDetailPage({
   
   // Delete post
   const handleDeletePost = async () => {
-    if (!activePostId) return;
+    if (!activePostIdToBeModified) return;
     
     setDeleteLoading(true);
     setError(null);
     
     try {
-      await axiosClient.delete(`/api/gallery/post/${activePostId}`);
+      await axiosClient.delete(`/api/gallery/post/${activePostIdToBeModified}`);
       setSuccess('Post deleted successfully');
       handleDeleteDialogClose();
       refreshPosts();
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
+      setActivePostIdToBeModified(null);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete post. Please try again.');
     } finally {
@@ -355,23 +360,27 @@ export default function DashboardGalleryDetailPage({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         {activePostId && (
-          [
+          <>
             <MenuItem 
-              key="edit"
               onClick={() => handleEditClick(posts.find(p => p._id === activePostId)!)}
               sx={{ minWidth: 140 }}
             >
-              <ListItemWithIcon icon={<EditIcon fontSize="small" />} text="Edit Description" />
-            </MenuItem>,
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <EditIcon fontSize="small" />
+                <Typography variant="body2">Edit Description</Typography>
+              </Box>
+            </MenuItem>
             
             <MenuItem 
-              key="delete"
-              onClick={handleDeleteClick}
+              onClick={() => handleDeleteClick(posts.find(p => p._id === activePostId)!)}
               sx={{ color: 'error.main' }}
             >
-              <ListItemWithIcon icon={<DeleteIcon fontSize="small" />} text="Delete Post" />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <DeleteIcon fontSize="small" />
+                <Typography variant="body2">Delete Post</Typography>
+              </Box>
             </MenuItem>
-          ]
+          </>
         )}
       </Menu>
       
@@ -440,16 +449,6 @@ export default function DashboardGalleryDetailPage({
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
-  );
-}
-
-// Helper component for menu items with icons
-function ListItemWithIcon({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      {icon}
-      <Typography variant="body2">{text}</Typography>
     </Box>
   );
 }

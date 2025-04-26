@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { KButton } from '@/components/KButton';
 import GalleryGrid from './GalleryGrid';
 import GalleryPostGrid from './GalleryPostGrid';
-import { useProfilePageStore, GalleryData, GalleryPostData } from '@/lib/stores/profilePageStore';
+import { GalleryData, GalleryPostData, useProfilePageStore } from '@/lib/stores/profilePageStore';
 import { useUserDialogStore } from '@/lib/stores/userDialogStore';
 import { axiosClient } from '@/lib/utils/axiosClient';
 

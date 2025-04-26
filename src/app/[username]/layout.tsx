@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import UserDialogs from '@/components/UserDialogs';
 import { getUserPublicProfile } from '@/lib/services/user.service';
 import { getAuthSession, isUserOwner, serializeProfile, Session } from '@/lib/utils/session';
+import GalleryPostDialog from '@/components/dashboard/galleries/GalleryPostDialog';
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ export default async function UserLayout({ children, params }: LayoutProps) {
     <>
       {children}
       <UserDialogs profile={profile} isOwner={isOwner} />
+      <GalleryPostDialog />
     </>
   );
 }

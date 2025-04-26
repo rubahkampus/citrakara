@@ -2,7 +2,8 @@
 'use client';
 
 import { Box, Grid, Typography, useTheme } from '@mui/material';
-import { useProfilePageStore, GalleryPostData } from '@/lib/stores/profilePageStore';
+import { GalleryPostData } from '@/lib/stores/profilePageStore';
+import { useGalleryPostStore } from '@/lib/stores/galleryPostStore';
 import Image from 'next/image';
 
 interface GalleryPostGridProps {
@@ -12,7 +13,7 @@ interface GalleryPostGridProps {
 
 export default function GalleryPostGrid({ posts, loading = false }: GalleryPostGridProps) {
   const theme = useTheme();
-  const { openGalleryPostDialog } = useProfilePageStore();
+  const { openDialog } = useGalleryPostStore();
   
   if (posts.length === 0) {
     return (
@@ -45,7 +46,7 @@ export default function GalleryPostGrid({ posts, loading = false }: GalleryPostG
       {sortedPosts.map((post) => (
         <Grid item xs={6} sm={3} key={post.id}>
           <Box
-            onClick={() => openGalleryPostDialog(post.id)}
+            onClick={() => openDialog(post.id)}
             sx={{
               position: 'relative',
               paddingBottom: '100%', // Square aspect ratio

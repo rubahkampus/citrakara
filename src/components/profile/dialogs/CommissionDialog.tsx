@@ -1,0 +1,297 @@
+// src/components/profile/dialogs/CommissionDialog.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogActions,
+  Box,
+  Typography,
+  Divider,
+  IconButton,
+  useTheme,
+  useMediaQuery,
+  Slide,
+  Grid,
+  Paper,
+  Tooltip,
+  Chip
+} from '@mui/material';
+import { Close as CloseIcon, Chat as ChatIcon } from '@mui/icons-material';
+import { TransitionProps } from '@mui/material/transitions';
+import React from 'react';
+import Image from 'next/image';
+import { KButton } from '@/components/KButton';
+import { CommissionData, useProfilePageStore } from '@/lib/stores/profilePageStore';
+import { useAuthDialogStore } from '@/lib/stores/authDialogStore';
+import { useRouter } from 'next/navigation';
+import { axiosClient } from '@/lib/utils/axiosClient';
+
+// Mock data for commission details
+const mockCommissionDetails: Record<string, CommissionData> = {
+  'c1': {
+    id: 'c1',
+    title: 'A Very, Very, Long Text for Reference Furry Commission 1',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nThis commission includes:\n- Full color illustration\n- High resolution file\n- Commercial rights for personal use\n- Up to 2 characters\n\nThe expected delivery time is 2-3 weeks depending on complexity.',
+    price: { min: 999999999, max: 999999999 },
+    currency: 'Rp',
+    thumbnail: '/placeholders/comm1.jpg',
+    isActive: true,
+    slots: 5,
+    slotsUsed: 2
+  },
+  'c2': {
+    id: 'c2',
+    title: 'A Very, Very, Long Text for Reference Furry Commission 2',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nDetails:\n- Black and white illustration\n- Single character\n- Simple background\n- 2 free revisions included\n\nPlease note that additional characters or complex backgrounds will incur extra charges.',
+    price: { min: 999999999, max: 999999999 },
+    currency: 'Rp',
+    thumbnail: '/placeholders/comm2.jpg',
+    isActive: true,
+    slots: 3,
+    slotsUsed: 3
+  }
+};
+
+const Transition = React.forwardRef(function Transition(
+  props: TransitionProps & { children: React.ReactElement },
+  ref: React.Ref<unknown>,
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
+export default function CommissionDialog({ isOwner }: { isOwner: boolean }) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+  const router = useRouter();
+  const { open: openAuthDialog } = useAuthDialogStore();
+  const { isCommissionDialogOpen, activeCommissionId, closeCommissionDialog } = useProfilePageStore();
+  const [commission, setCommission] = useState<CommissionData | null>(null);
+  const [loading, setLoading] = useState(false);
+  
+  // For real data, uncomment this and comment out the useEffect below
+  /*
+  useEffect(() => {
+    if (!activeCommissionId || !isCommissionDialogOpen) return;
+    
+    const fetchCommissionDetails = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosClient.get(`/api/commission/listing/${activeCommissionId}`);
+        setCommission(response.data.listing);
+      } catch (error) {
+        console.error('Error fetching commission details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCommissionDetails();
+  }, [activeCommissionId, isCommissionDialogOpen]);
+  */
+  
+  // Mock data loading
+  useEffect(() => {
+    if (!activeCommissionId || !isCommissionDialogOpen) return;
+    
+    setLoading(true);
+    // Simulate API request
+    setTimeout(() => {
+      setCommission(mockCommissionDetails[activeCommissionId] || null);
+      setLoading(false);
+    }, 500);
+  }, [activeCommissionId, isCommissionDialogOpen]);
+  
+  const handleClose = () => {
+    closeCommissionDialog();
+  };
+  
+  const handleChatClick = () => {
+    // For owners, go to chat dashboard
+    if (isOwner) {
+      router.push('/dashboard/chat');
+      handleClose();
+      return;
+    }
+    
+    // For visitors, check login status first (mock for now)
+    const isLoggedIn = true; // Replace with actual auth check
+    
+    if (isLoggedIn) {
+      router.push('/dashboard/chat');
+      handleClose();
+    } else {
+      openAuthDialog('login');
+    }
+  };
+  
+  const handleSendRequest = () => {
+    // TODO: Implement request submission
+    console.log('Sending request for commission:', activeCommissionId);
+    handleClose();
+  };
+  
+  // Format price range
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('id-ID').format(price);
+  };
+  
+  if (!commission) return null;
+  
+  const priceDisplay = `${commission.currency}${formatPrice(commission.price.min)}${
+    commission.price.min !== commission.price.max ? ` - ${formatPrice(commission.price.max)}` : ''
+  }`;
+  
+  // Check if slots are available
+  const slotsAvailable = commission.slots === -1 || commission.slotsUsed < commission.slots;
+  
+  return (
+    <Dialog
+      open={isCommissionDialogOpen}
+      onClose={handleClose}
+      fullScreen={fullScreen}
+      maxWidth="md"
+      fullWidth
+      TransitionComponent={Transition}
+      PaperProps={{
+        sx: {
+          borderRadius: fullScreen ? 0 : 3,
+          overflow: 'hidden',
+        }
+      }}
+    >
+      {/* Header */}
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" fontWeight="bold">
+          Commission Details
+        </Typography>
+        <IconButton onClick={handleClose} edge="end">
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      <Divider />
+      
+      <DialogContent sx={{ p: 0 }}>
+        <Grid container>
+          {/* Image section */}
+          <Grid item xs={12} md={5}>
+            <Box sx={{ 
+              position: 'relative',
+              height: { xs: 250, md: '100%' },
+              minHeight: { md: 400 },
+              bgcolor: 'background.default',
+            }}>
+              {commission.thumbnail ? (
+                <Image
+                  src={commission.thumbnail}
+                  alt={commission.title}
+                  layout="fill"
+                  objectFit="cover"
+                  unoptimized={true}
+                />
+              ) : (
+                <Box sx={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  bgcolor: theme.palette.divider,
+                }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No Image
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Grid>
+          
+          {/* Details section */}
+          <Grid item xs={12} md={7}>
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h5" fontWeight="bold" gutterBottom>
+                {commission.title}
+              </Typography>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 3 }}>
+                <Typography variant="h6" fontWeight="bold" color="primary.main">
+                  {priceDisplay}
+                </Typography>
+                
+                {!slotsAvailable && (
+                  <Chip 
+                    label="Slot Unavailable" 
+                    size="small" 
+                    color="default"
+                    sx={{ ml: 2 }}
+                  />
+                )}
+              </Box>
+              
+              <Typography variant="body1" fontWeight="medium" gutterBottom>
+                Description
+              </Typography>
+              
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                sx={{ 
+                  whiteSpace: 'pre-line',
+                  mb: 3
+                }}
+              >
+                {commission.description}
+              </Typography>
+              
+              {/* Slot information */}
+              <Paper 
+                variant="outlined" 
+                sx={{ p: 2, mb: 3, borderRadius: 2 }}
+              >
+                <Typography variant="body2" fontWeight="medium">
+                  Availability
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {commission.slots === -1 
+                    ? 'Unlimited slots available'
+                    : `${commission.slots - commission.slotsUsed} out of ${commission.slots} slots available`
+                  }
+                </Typography>
+              </Paper>
+            </Box>
+          </Grid>
+        </Grid>
+      </DialogContent>
+      
+      <Divider />
+      
+      {/* Actions */}
+      <DialogActions sx={{ p: 3 }}>
+        {!isOwner && (
+          <>
+            <Tooltip title="Message about this commission">
+              <KButton
+                variantType="ghost"
+                onClick={handleChatClick}
+                startIcon={<ChatIcon />}
+              >
+                Message
+              </KButton>
+            </Tooltip>
+            
+            <KButton 
+              onClick={handleSendRequest}
+              disabled={!slotsAvailable}
+            >
+              {slotsAvailable ? 'Send Request' : 'Unavailable'}
+            </KButton>
+          </>
+        )}
+        
+        {isOwner && (
+          <KButton onClick={handleClose}>Close</KButton>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+}

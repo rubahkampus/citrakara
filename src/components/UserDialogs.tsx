@@ -1,8 +1,9 @@
-// src/app/components/UserDialogs.tsx
+// src/components/UserDialogs.tsx
 'use client';
 
 import { useUserDialogStore } from '@/lib/stores/userDialogStore';
 import EditUserProfileDialog from './UserEditProfileDialog';
+import UploadArtDialog from './profile/dialogs/UploadArtDialog';
 
 export default function UserDialogs({
   profile,
@@ -26,6 +27,8 @@ export default function UserDialogs({
           console.log("Profile updated!", updated);
         }}
       />
+      
+      <UploadArtDialog />
     </>
   );
 }

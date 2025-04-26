@@ -1,25 +1,34 @@
 // src/app/layout.tsx
-import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
-import { Container } from '@mui/material';
-import { Roboto } from 'next/font/google';
-import GlobalNavbar from '@/components/GlobalNavbar';
-import GlobalDialogs from '@/components/GlobalDialogs';
-import ThemeProviderWrapper from '@/components/ThemeProviderWraper';
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
+import { Container } from "@mui/material";
+import { Roboto } from "next/font/google";
+import GlobalNavbar from "@/components/GlobalNavbar";
+import GlobalDialogs from "@/components/GlobalDialogs";
+import ThemeProviderWrapper from "@/components/ThemeProviderWraper";
 
 const roboto = Roboto({
-  weight: ['300', '400', '500', '700'],
-  subsets: ['latin'],
-  variable: '--font-roboto',
+  weight: ["300", "400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-roboto",
 });
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={roboto.variable}>
       <body>
-        <AppRouterCacheProvider options={{ key: 'css' }}>
+        <AppRouterCacheProvider options={{ key: "css" }}>
           <ThemeProviderWrapper>
             <GlobalNavbar />
-            <Container sx={{ mt: 4 }}>{children}</Container>
+            <Container
+              maxWidth={false}
+              disableGutters
+            >
+              {children}
+            </Container>
             <GlobalDialogs />
           </ThemeProviderWrapper>
         </AppRouterCacheProvider>

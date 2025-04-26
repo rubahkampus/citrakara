@@ -18,7 +18,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const { username } = await params;
 
   const session = (await getAuthSession()) as Session | null;
-  const rawProfile = await getUserPublicProfile(params.username);
+  const rawProfile = await getUserPublicProfile(username);
   const profile = serializeProfile(rawProfile);
 
   if (!profile) return notFound();

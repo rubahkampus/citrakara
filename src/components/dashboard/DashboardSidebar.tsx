@@ -16,7 +16,7 @@ import {
   Divider
 } from '@mui/material';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Person as ProfileIcon,
   Chat as ChatIcon,
@@ -84,13 +84,30 @@ export default function DashboardSidebar({
 }: Props) {
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(expanded);
+
+  useEffect(() => {
+    setIsExpanded(expanded);
+  }, [expanded]);
   
   // Toggle expanded state on mobile
   const { toggleSidebar } = useDashboardStore();
   
   const toggleExpanded = () => {
     toggleSidebar();
-    setIsExpanded(prev => !prev);
+  };
+  
+  // Check if a path is active - also checks for sub-paths
+  const isPathActive = (path: string) => {
+    // Exact match
+    if (pathname === path) return true;
+    
+    // Check if it's a sub-path (like /username/dashboard/galleries/123)
+    // But avoid matching just the root path
+    if (path !== `/${username}/dashboard` && pathname.startsWith(path)) {
+      return true;
+    }
+    
+    return false;
   };
   
   return (
@@ -104,61 +121,73 @@ export default function DashboardSidebar({
         height: '100%'
       }}
     >
-      {/* Header card - Avatar + name */}
-      <Box
-        sx={{
-          p: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: { xs: 'space-between', md: 'center' },
-          textAlign: { xs: 'left', md: 'center' },
-          bgcolor: 'background.paper',
-          borderBottom: '1px solid',
-          borderColor: 'divider'
-        }}
+      {/* Header card - Avatar + name (now clickable) */}
+      <Link 
+        href={`/${username}/dashboard`} 
+        style={{ textDecoration: 'none', color: 'inherit' }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Avatar
-            src={profilePicture}
-            alt={username}
-            sx={{ 
-              width: 40, 
-              height: 40,
-              mr: { xs: 2, md: isExpanded ? 2 : 0 }
-            }}
-          />
-          
-          {/* Show name only when expanded */}
-          {isExpanded && (
-            <Typography 
-              fontWeight="bold"
-              variant="body1"
-              noWrap
+        <Box
+          sx={{
+            p: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: { xs: 'space-between', md: 'center' },
+            textAlign: { xs: 'left', md: 'center' },
+            bgcolor: 'background.paper',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            cursor: 'pointer',
+            '&:hover': {
+              bgcolor: 'action.hover',
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Avatar
+              src={profilePicture}
+              alt={username}
               sx={{ 
-                maxWidth: 150,
-                display: { xs: 'block', md: 'block' }
+                width: 40, 
+                height: 40,
+                mr: { xs: 2, md: isExpanded ? 2 : 0 }
               }}
-            >
-              {displayName || username}
-            </Typography>
-          )}
+            />
+            
+            {/* Show name only when expanded */}
+            {expanded  && (
+              <Typography 
+                fontWeight="bold"
+                variant="body1"
+                noWrap
+                sx={{ 
+                  maxWidth: 150,
+                  display: { xs: 'block', md: 'block' }
+                }}
+              >
+                {displayName || username}
+              </Typography>
+            )}
+          </Box>
+          
+          {/* Only show toggle on xs and sm screens */}
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <IconButton onClick={(e) => {
+              e.preventDefault(); // Prevent navigation when clicking the toggle
+              toggleExpanded();
+            }} size="small">
+              {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+            </IconButton>
+          </Box>
         </Box>
-        
-        {/* Only show toggle on xs and sm screens */}
-        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-          <IconButton onClick={toggleExpanded} size="small">
-            {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-          </IconButton>
-        </Box>
-      </Box>
+      </Link>
 
       {/* Navigation - conditionally collapsed on mobile */}
-      <Collapse in={isExpanded} sx={{ display: { md: 'block' } }}>
+      <Collapse in={expanded } sx={{ display: { md: 'block' } }}>
         <Box sx={{ p: 1 }}>
           <List disablePadding>
             {links.map(link => {
               const href = link.href(username);
-              const active = pathname === href;
+              const active = isPathActive(href);
               
               return (
                 <Link 

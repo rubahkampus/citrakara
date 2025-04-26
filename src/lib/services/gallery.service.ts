@@ -21,6 +21,7 @@ export async function getUserGalleries(userId: string) {
   return findGalleriesByUserId(userId);
 }
 
+
 /**
  * Create a new gallery for the user
  */

@@ -15,7 +15,7 @@ interface Props {
 
 // Context provider is moved to a separate component to avoid hydration issues
 export default async function DashboardLayout({ children, params }: Props) {
-  const { username } = params;
+  const { username } = await params;
   const session = await getAuthSession() as Session | null;
   const profile = await getUserPublicProfile(username);
 

@@ -20,6 +20,7 @@ import {
   Paper,
   FormHelperText,
   CircularProgress,
+  Alert,
   useMediaQuery,
   useTheme
 } from '@mui/material';
@@ -28,56 +29,58 @@ import { KButton } from '@/components/KButton';
 import { useUserDialogStore } from '@/lib/stores/userDialogStore';
 import { axiosClient } from '@/lib/utils/axiosClient';
 
-// Mock gallery data
-const mockGalleries = [
-  { id: 'g1', name: 'Commissions' },
-  { id: 'g2', name: 'Personal Artwork' },
-  { id: 'g3', name: 'Sketches' },
-  { id: 'g4', name: 'Fanart' },
-];
+interface Gallery {
+  _id: string;
+  name: string;
+}
 
 export default function UploadArtDialog() {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const { openDialog, close } = useUserDialogStore(); // Keep destructuring consistent
+  const { openDialog, close } = useUserDialogStore();
+  
   const [selectedGallery, setSelectedGallery] = useState('');
   const [description, setDescription] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [galleries, setGalleries] = useState<{id: string, name: string}[]>([]);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [galleries, setGalleries] = useState<Gallery[]>([]);
+  const [galleriesLoading, setGalleriesLoading] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // For real data, uncomment this and comment out the useEffect below
-  /*
+  // Load galleries and check for default selection
   useEffect(() => {
+    if (openDialog !== 'uploadArtwork') return;
+    
     const fetchGalleries = async () => {
+      setGalleriesLoading(true);
+      
       try {
         const response = await axiosClient.get('/api/gallery');
-        setGalleries(response.data.galleries);
-        // Set default gallery to first one if available
-        if (response.data.galleries.length > 0) {
-          setSelectedGallery(response.data.galleries[0].id);
+        setGalleries(response.data.galleries || []);
+        
+        // Check for default gallery from localStorage (set from gallery detail page)
+        const defaultGalleryId = localStorage.getItem('defaultGalleryId');
+        if (defaultGalleryId) {
+          setSelectedGallery(defaultGalleryId);
+          localStorage.removeItem('defaultGalleryId'); // Clear it after use
+        } else if (response.data.galleries && response.data.galleries.length > 0) {
+          // Otherwise default to first gallery
+          setSelectedGallery(response.data.galleries[0]._id);
         }
       } catch (error) {
         console.error('Error fetching galleries:', error);
         setError('Failed to load galleries');
+      } finally {
+        setGalleriesLoading(false);
       }
     };
     
     fetchGalleries();
-  }, []);
-  */
-  
-  // Mock data
-  useEffect(() => {
-    setGalleries(mockGalleries);
-    // Set default gallery to first one
-    if (mockGalleries.length > 0) {
-      setSelectedGallery(mockGalleries[0].id);
-    }
-  }, []);
+  }, [openDialog]);
   
   const handleAddImages = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -150,11 +153,12 @@ export default function UploadArtDialog() {
     previewUrls.forEach(url => URL.revokeObjectURL(url));
     
     // Reset state
-    setSelectedGallery(galleries[0]?.id || '');
+    setSelectedGallery('');
     setDescription('');
     setImages([]);
     setPreviewUrls([]);
     setError(null);
+    setSuccess(null);
     
     // Close dialog
     close();
@@ -185,38 +189,23 @@ export default function UploadArtDialog() {
     setLoading(true);
     setError(null);
     
-    // For real API, uncomment this and comment out the setTimeout below
-    /*
     try {
-      const response = await axiosClient.post('/api/gallery/post', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await axiosClient.post('/api/gallery/post', formData);
+      setSuccess('Artwork uploaded successfully');
       
-      // Success
-      handleClose();
-      // You might want to show a success message or refresh the gallery
-    } catch (error) {
-      console.error('Error uploading artwork:', error);
-      setError('Failed to upload artwork. Please try again.');
-    } finally {
+      // Auto close after success
+      setTimeout(() => {
+        handleClose();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to upload artwork. Please try again.');
       setLoading(false);
     }
-    */
-    
-    // Mock upload
-    setTimeout(() => {
-      console.log('Uploaded to gallery:', selectedGallery);
-      console.log('Description:', description);
-      console.log('Images:', images.map(img => img.name));
-      
-      setLoading(false);
-      handleClose();
-    }, 1500);
   };
   
   return (
     <Dialog
-      open={openDialog === 'uploadArtwork'} // Using the state property correctly here
+      open={openDialog === 'uploadArtwork'}
       onClose={handleClose}
       fullScreen={fullScreen}
       fullWidth
@@ -234,6 +223,19 @@ export default function UploadArtDialog() {
       <Divider />
       
       <DialogContent sx={{ py: 3 }}>
+        {/* Status messages */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+        
+        {success && (
+          <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
+            {success}
+          </Alert>
+        )}
+        
         {/* Gallery Selection */}
         <FormControl fullWidth margin="normal">
           <InputLabel id="gallery-select-label">Gallery</InputLabel>
@@ -242,12 +244,24 @@ export default function UploadArtDialog() {
             value={selectedGallery}
             onChange={(e) => setSelectedGallery(e.target.value)}
             label="Gallery"
+            disabled={galleriesLoading}
           >
-            {galleries.map((gallery) => (
-              <MenuItem key={gallery.id} value={gallery.id}>
-                {gallery.name}
+            {galleriesLoading ? (
+              <MenuItem value="">
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                Loading galleries...
               </MenuItem>
-            ))}
+            ) : galleries.length === 0 ? (
+              <MenuItem value="" disabled>
+                No galleries available
+              </MenuItem>
+            ) : (
+              galleries.map((gallery) => (
+                <MenuItem key={gallery._id} value={gallery._id}>
+                  {gallery.name}
+                </MenuItem>
+              ))
+            )}
           </Select>
         </FormControl>
         
@@ -355,13 +369,6 @@ export default function UploadArtDialog() {
         <Typography variant="caption" color="text.secondary">
           Supported formats: JPG, PNG, GIF, WebP. Maximum size: 5MB per image.
         </Typography>
-        
-        {/* Error message */}
-        {error && (
-          <Typography color="error" variant="body2" sx={{ mt: 2 }}>
-            {error}
-          </Typography>
-        )}
       </DialogContent>
       
       <Divider />
@@ -372,7 +379,7 @@ export default function UploadArtDialog() {
         </Button>
         <KButton
           onClick={handleSubmit}
-          disabled={loading || images.length === 0}
+          disabled={loading || images.length === 0 || !selectedGallery}
           loading={loading}
         >
           {loading ? 'Uploading...' : 'Upload Artwork'}

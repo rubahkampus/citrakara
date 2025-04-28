@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    const newTos = await createNewTosEntry(session.id, title, content);
+    const newTos = await createNewTosEntry(session.id, title, content, true); // Always set as default
     
     const response = NextResponse.json({ 
-      message: "TOS created successfully",
+      message: "Terms of Service created successfully",
       tos: newTos 
     });
     

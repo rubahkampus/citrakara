@@ -1,11 +1,9 @@
 // src/app/api/tos/[id]/route.ts
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/utils/session";
-import { updateTosEntry, setDefaultTos, deleteTosEntry } from "@/lib/services/tos.service";
+import { updateTosEntry, getTosById } from "@/lib/services/tos.service";
 import { handleError } from "@/lib/utils/errorHandler";
 import { cookieOptions } from "@/lib/utils/cookies";
-import Tos from "@/lib/db/models/tos.model";
-import { connectDB } from "@/lib/db/connection";
 
 // Get a specific TOS entry by ID
 export async function GET(
@@ -13,14 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const param = await params
-    const tosId = param.id;
-    if (!tosId) {
-      return NextResponse.json(
-        { error: "TOS ID is required" },
-        { status: 400 }
-      );
-    }
+    const tosId = params.id;
     
     const session = await getAuthSession();
     
@@ -31,25 +22,16 @@ export async function GET(
       );
     }
     
-    // Check if the TOS entry belongs to the authenticated user
-    await connectDB();
-    const tosEntry = await Tos.findById(tosId);
+    const tos = await getTosById(tosId, session.id);
     
-    if (!tosEntry) {
+    if (!tos) {
       return NextResponse.json(
         { error: "TOS entry not found" },
         { status: 404 }
       );
     }
     
-    if (tosEntry.user.toString() !== session.id) {
-      return NextResponse.json(
-        { error: "Unauthorized - this TOS entry does not belong to you" },
-        { status: 403 }
-      );
-    }
-    
-    const response = NextResponse.json({ tos: tosEntry });
+    const response = NextResponse.json({ tos });
     
     // If token was refreshed, set the new access token
     if ("_refreshedAccessToken" in session) {
@@ -71,14 +53,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const param = await params
-    const tosId = param.id;
-    if (!tosId) {
-      return NextResponse.json(
-        { error: "TOS ID is required" },
-        { status: 400 }
-      );
-    }
+    const tosId = params.id;
     
     const session = await getAuthSession();
     
@@ -89,37 +64,32 @@ export async function PATCH(
       );
     }
     
-    // Check if the TOS entry belongs to the authenticated user
-    await connectDB();
-    const tosEntry = await Tos.findById(tosId);
-    
-    if (!tosEntry) {
-      return NextResponse.json(
-        { error: "TOS entry not found" },
-        { status: 404 }
-      );
-    }
-    
-    if (tosEntry.user.toString() !== session.id) {
-      return NextResponse.json(
-        { error: "Unauthorized - this TOS entry does not belong to you" },
-        { status: 403 }
-      );
-    }
-    
     const { title, content, setAsDefault } = await req.json();
     
-    // Update the TOS entry
-    const updatedTos = await updateTosEntry(tosId, title, content);
-    
-    // Set as default if requested
-    if (setAsDefault) {
-      await setDefaultTos(session.id, tosId);
+    // Validate the data
+    if (!title || !content || !Array.isArray(content)) {
+      return NextResponse.json(
+        { error: "Invalid TOS data" },
+        { status: 400 }
+      );
     }
     
-    const response = NextResponse.json({ 
+    // Validate content structure
+    for (const section of content) {
+      if (!section.subtitle || !section.text) {
+        return NextResponse.json(
+          { error: "Each TOS section must have a subtitle and text" },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // Update the TOS
+    const updatedTos = await updateTosEntry(tosId, session.id, title, content, setAsDefault === true);
+    
+    const response = NextResponse.json({
       message: "TOS updated successfully",
-      tos: updatedTos 
+      tos: updatedTos
     });
     
     // If token was refreshed, set the new access token

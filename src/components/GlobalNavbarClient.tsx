@@ -297,24 +297,6 @@ function AuthenticatedControls({ username }: { username: string }) {
 
   return (
     <>
-      {/* Notification icon */}
-      <Tooltip title="Notifications">
-        <IconButton color="inherit" size="small">
-          <Badge badgeContent={2} color="error">
-            <NotificationsIcon />
-          </Badge>
-        </IconButton>
-      </Tooltip>
-      
-      {/* Messages icon */}
-      <Tooltip title="Messages">
-        <IconButton color="inherit" size="small">
-          <Badge badgeContent={4} color="primary">
-            <ChatIcon />
-          </Badge>
-        </IconButton>
-      </Tooltip>
-      
       {/* User menu */}
       <Tooltip title="Account menu">
         <IconButton

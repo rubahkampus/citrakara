@@ -26,8 +26,7 @@ import {
   GavelRounded as ContractIcon,
   SupportAgent as ResolutionIcon,
   ExpandMore as ExpandMoreIcon,
-  ChevronRight as ChevronRightIcon,
-  Description
+  ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import { useDashboardStore } from '@/lib/stores/dashboardStore';
 
@@ -59,11 +58,6 @@ const links = [
     label: 'Galeri', 
     href: (username: string) => `/${username}/dashboard/galleries`,
     icon: <GalleryIcon fontSize="small" />
-  },
-  { 
-    label: 'Terms of Service', 
-    href: (username: string) => `/${username}/dashboard/tos`,
-    icon: <Description fontSize="small" />
   },
   { 
     label: 'Proposal', 

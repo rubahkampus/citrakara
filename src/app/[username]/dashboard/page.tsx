@@ -1,6 +1,5 @@
 // src/app/[username]/dashboard/page.tsx
 import { getUserWalletBalance } from '@/lib/services/wallet.service';
-import { getUserTosEntries } from '@/lib/services/tos.service'; 
 import { getUserPublicProfile } from '@/lib/services/user.service';
 import DashboardProfileRenderer from '@/components/dashboard/DashboardProfileRenderer';
 import { Suspense } from 'react';
@@ -34,7 +33,7 @@ export default async function DashboardPage({ params }: Props) {
   const { username } = await params;
   
   // Parallel data fetching for better performance
-  const [profile, walletData, tosEntries] = await Promise.all([
+  const [profile, walletData] = await Promise.all([
     getUserPublicProfile(username),
     getUserWalletBalance(username).catch((): WalletBalanceResponse => ({ 
       saldoAvailable: 0, 
@@ -42,8 +41,7 @@ export default async function DashboardPage({ params }: Props) {
       available: 0,
       escrowed: 0,
       total: 0 
-    })),
-    getUserTosEntries(username).catch(() => [])
+    }))
   ]);
 
   // Handle case where profile might not exist
@@ -60,11 +58,6 @@ export default async function DashboardPage({ params }: Props) {
   // Format wallet balance (convert from cents to IDR)
   const formattedBalance = Math.round((walletData.saldoAvailable || 0) / 100);
   
-  // TOS summary text based on entries
-  const tosSummary = tosEntries && tosEntries.length > 0 
-    ? `${tosEntries.length} TOS template${tosEntries.length > 1 ? 's' : ''} created`
-    : 'Belum membuat TOS';
-
   // Serialize data for client component
   const serializedProfile = JSON.parse(JSON.stringify(profile));
   
@@ -73,7 +66,7 @@ export default async function DashboardPage({ params }: Props) {
       <DashboardProfileRenderer
         profile={serializedProfile}
         saldo={formattedBalance}
-        tosSummary={tosSummary}
+        tosSummary=""
       />
     </Suspense>
   );

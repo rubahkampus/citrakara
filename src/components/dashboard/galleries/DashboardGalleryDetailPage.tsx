@@ -32,7 +32,7 @@ import {
 } from '@mui/icons-material';
 import { axiosClient } from '@/lib/utils/axiosClient';
 import { KButton } from '@/components/KButton';
-import { useUserDialogStore } from '@/lib/stores/userDialogStore';
+import { useUserDialogStore } from '@/lib/stores/userStore';
 import { useGalleryPostStore } from '@/lib/stores/galleryPostStore';
 
 interface Gallery {

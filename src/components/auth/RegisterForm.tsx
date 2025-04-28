@@ -1,4 +1,4 @@
-// src/components/GlobalAuthDialogRegisterForm.tsx
+// src/components/auth/RegisterForm.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -37,13 +37,12 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
 }));
 
-interface GlobalRegisterFormProps {
+interface RegisterFormProps {
   onSuccess: () => void;
 }
 
-export default function GlobalRegisterForm({ onSuccess }: GlobalRegisterFormProps) {
+export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   const router = useRouter();
-
   const [step, setStep] = useState(1);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [emailError, setEmailError] = useState("");
@@ -63,7 +62,7 @@ export default function GlobalRegisterForm({ onSuccess }: GlobalRegisterFormProp
     setValue,
     watch,
     trigger,
-    formState: { errors, isSubmitting, isValid, dirtyFields },
+    formState: { errors, isSubmitting, dirtyFields },
   } = useForm({
     defaultValues: {
       email: "",
@@ -150,8 +149,8 @@ export default function GlobalRegisterForm({ onSuccess }: GlobalRegisterFormProp
         await checkAvailability("username", values.username, setUsernameError, async () => {
           try {
             await axiosClient.post("/api/auth/register", values);
-            onSuccess(); // Close dialog or refresh after success
-            router.refresh(); // reflect session
+            onSuccess();
+            router.refresh();
           } catch (err: any) {
             setUsernameError(err?.response?.data?.error || "Registration failed");
           }

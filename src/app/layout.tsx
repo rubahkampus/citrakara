@@ -3,7 +3,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { Container } from "@mui/material";
 import { Roboto } from "next/font/google";
 import GlobalNavbar from "@/components/GlobalNavbar";
-import GlobalDialogs from "@/components/GlobalDialogs";
+import Dialogs from "@/components/Dialogs";
 import ThemeProviderWrapper from "@/components/ThemeProviderWraper";
 
 const roboto = Roboto({
@@ -29,7 +29,7 @@ export default function RootLayout({
             >
               {children}
             </Container>
-            <GlobalDialogs />
+            <Dialogs />
           </ThemeProviderWrapper>
         </AppRouterCacheProvider>
       </body>

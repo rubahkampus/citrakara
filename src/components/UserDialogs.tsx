@@ -1,7 +1,7 @@
 // src/components/UserDialogs.tsx
 'use client';
 
-import { useUserDialogStore } from '@/lib/stores/userDialogStore';
+import { useUserDialogStore } from '@/lib/stores/userStore';
 import EditUserProfileDialog from './profile/dialogs/UserEditProfileDialog';
 import UploadArtDialog from './profile/dialogs/UploadArtDialog';
 

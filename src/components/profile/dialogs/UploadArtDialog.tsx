@@ -27,7 +27,7 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, AddPhotoAlternate, Delete } from '@mui/icons-material';
 import { KButton } from '@/components/KButton';
-import { useUserDialogStore } from '@/lib/stores/userDialogStore';
+import { useUserDialogStore } from '@/lib/stores/userStore';
 import { axiosClient } from '@/lib/utils/axiosClient';
 
 interface Gallery {

@@ -1,12 +1,11 @@
 // src/lib/stores/dashboardStore.ts
 import { create } from 'zustand';
-
-type DashboardSidebarState = 'expanded' | 'collapsed';
+import { SidebarState } from './types';
 
 interface DashboardState {
-  sidebarState: DashboardSidebarState;
+  sidebarState: SidebarState;
   toggleSidebar: () => void;
-  setSidebarState: (state: DashboardSidebarState) => void;
+  setSidebarState: (state: SidebarState) => void;
   activeSidebar: string | null;
   setActiveSidebar: (key: string | null) => void;
 }
@@ -20,3 +19,4 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   activeSidebar: null,
   setActiveSidebar: (key) => set({ activeSidebar: key })
 }));
+

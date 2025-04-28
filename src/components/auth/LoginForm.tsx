@@ -1,4 +1,4 @@
-// src/components/GlobalAuthDialogLoginForm.tsx
+// src/components/auth/LoginForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,12 +7,11 @@ import { TextField, Button, Box, Typography } from "@mui/material";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { useRouter } from "next/navigation";
 
-
-interface GlobalLoginFormProps {
+interface LoginFormProps {
   onSuccess: () => void;
 }
 
-export default function GlobalLoginForm({ onSuccess }: GlobalLoginFormProps) {
+export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [loginError, setLoginError] = useState("");
   const router = useRouter();
 
@@ -32,8 +31,8 @@ export default function GlobalLoginForm({ onSuccess }: GlobalLoginFormProps) {
 
     try {
       await axiosClient.post("/api/auth/login", data);
-      onSuccess(); // ✅ Close dialog or refresh after login
-      router.refresh(); // ✅ reflect session
+      onSuccess();
+      router.refresh();
     } catch (error: any) {
       setLoginError(
         error?.response?.data?.error || "Invalid username or password"

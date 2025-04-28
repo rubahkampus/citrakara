@@ -1,8 +1,7 @@
 // src/lib/stores/themeStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-type ThemeMode = 'light' | 'dark';
+import { ThemeMode } from './types';
 
 interface ThemeState {
   mode: ThemeMode;

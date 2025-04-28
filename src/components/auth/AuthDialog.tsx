@@ -1,4 +1,4 @@
-// src/components/AuthDialog.tsx
+// src/components/auth/AuthDialog.tsx
 'use client';
 
 import { useState } from "react";
@@ -15,14 +15,14 @@ import {
   Paper
 } from "@mui/material";
 import { TransitionProps } from '@mui/material/transitions';
-import GlobalLoginForm from "./GlobalAuthDialogLoginForm";
-import GlobalRegisterForm from "./GlobalAuthDialogRegisterForm";
-import { useAuthDialogStore } from "@/lib/stores/authDialogStore";
-import { KButton } from "./KButton";
+import LoginForm from "./LoginForm";
+import RegisterForm from "./RegisterForm";
+import { useAuthStore } from "@/lib/stores";
+import { KButton } from "../KButton";
 import { Close as CloseIcon } from "@mui/icons-material";
 import React from "react";
 
-interface GlobalAuthDialogProps {
+interface AuthDialogProps {
   open: boolean;
   onClose: () => void;
 }
@@ -36,8 +36,8 @@ const Transition = React.forwardRef(function Transition(
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-export default function GlobaluthDialog({ open, onClose }: GlobalAuthDialogProps) {
-  const { openDialog, toggle } = useAuthDialogStore();
+export default function AuthDialog({ open, onClose }: AuthDialogProps) {
+  const { dialog, toggle } = useAuthStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [isClosing, setIsClosing] = useState(false);
@@ -58,7 +58,7 @@ export default function GlobaluthDialog({ open, onClose }: GlobalAuthDialogProps
     }, 300);
   };
 
-  if (!openDialog) return null;
+  if (!dialog) return null;
 
   return (
     <Dialog 
@@ -93,7 +93,7 @@ export default function GlobaluthDialog({ open, onClose }: GlobalAuthDialogProps
           }}
         >
           <Typography variant="h5" fontWeight="bold">
-            {openDialog === "login" ? "Welcome back" : "Create your account"}
+            {dialog === "login" ? "Welcome back" : "Create your account"}
           </Typography>
           <IconButton onClick={handleClose} edge="end">
             <CloseIcon />
@@ -113,10 +113,10 @@ export default function GlobaluthDialog({ open, onClose }: GlobalAuthDialogProps
               width: '100%'
             }}
           >
-            {openDialog === "login" ? (
-              <GlobalLoginForm onSuccess={handleSuccess} />
+            {dialog === "login" ? (
+              <LoginForm onSuccess={handleSuccess} />
             ) : (
-              <GlobalRegisterForm onSuccess={handleSuccess} />
+              <RegisterForm onSuccess={handleSuccess} />
             )}
           </Box>
         </DialogContent>
@@ -133,14 +133,14 @@ export default function GlobaluthDialog({ open, onClose }: GlobalAuthDialogProps
             }}
           >
             <Typography variant="body2" color="text.secondary">
-              {openDialog === "login" ? "Don't have an account?" : "Already have an account?"}
+              {dialog === "login" ? "Don't have an account?" : "Already have an account?"}
             </Typography>
             <KButton 
               variantType="ghost" 
               onClick={toggle} 
               sx={{ mt: 1, fontWeight: 600 }}
             >
-              {openDialog === "login" ? "Sign up" : "Sign in"}
+              {dialog === "login" ? "Sign up" : "Sign in"}
             </KButton>
           </Paper>
         </Box>

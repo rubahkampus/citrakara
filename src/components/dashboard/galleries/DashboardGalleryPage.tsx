@@ -33,7 +33,7 @@ import {
 } from '@mui/icons-material';
 import { axiosClient } from '@/lib/utils/axiosClient';
 import { KButton } from '@/components/KButton';
-import { useUserDialogStore } from '@/lib/stores/userDialogStore';
+import { useUserDialogStore } from '@/lib/stores/userStore';
 import { useProfilePageStore } from '@/lib/stores/profilePageStore';
 
 interface Gallery {

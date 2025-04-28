@@ -13,7 +13,7 @@ import {
   Divider
 } from '@mui/material';
 import { KButton } from '../KButton';
-import { useUserDialogStore } from '@/lib/stores/userDialogStore';
+import { useUserStore } from '@/lib/stores'; // Updated import from the central store
 import { useState, useEffect } from 'react';
 import {
   Edit as EditIcon,
@@ -38,7 +38,7 @@ interface Props {
 }
 
 export default function DashboardProfileRenderer({ profile, saldo, tosSummary }: Props) {
-  const { open } = useUserDialogStore();
+  const { open } = useUserStore(); // Updated store hook
   const [mounted, setMounted] = useState(false);
   
   // This prevents hydration mismatch with timestamps
@@ -119,7 +119,7 @@ export default function DashboardProfileRenderer({ profile, saldo, tosSummary }:
           </Box>
           
           <KButton 
-            onClick={() => open('editProfile')}
+            onClick={() => open('editProfile')} // Call signature remains the same
             variantType="ghost"
             sx={{ 
               alignSelf: { xs: 'center', sm: 'flex-start' },
@@ -217,7 +217,7 @@ export default function DashboardProfileRenderer({ profile, saldo, tosSummary }:
               fullWidth
               sx={{ py: 1.5 }}
               startIcon={<AddIcon />}
-              onClick={() => open('createCommission')}
+              onClick={() => open('createCommission')} // Same method name, updated store
             >
               Create Commission
             </KButton>
@@ -229,7 +229,7 @@ export default function DashboardProfileRenderer({ profile, saldo, tosSummary }:
               variantType="secondary"
               sx={{ py: 1.5 }}
               startIcon={<AddIcon />}
-              onClick={() => open('uploadArtwork')}
+              onClick={() => open('uploadArtwork')} // Same method name, updated store
             >
               Upload Artwork
             </KButton>

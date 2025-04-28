@@ -8,7 +8,7 @@ import { KButton } from '@/components/KButton';
 import GalleryGrid from './GalleryGrid';
 import GalleryPostGrid from './GalleryPostGrid';
 import { GalleryData, GalleryPostData, useProfilePageStore } from '@/lib/stores/profilePageStore';
-import { useUserDialogStore } from '@/lib/stores/userDialogStore';
+import { useUserDialogStore } from '@/lib/stores/userStore';
 import { axiosClient } from '@/lib/utils/axiosClient';
 
 interface GallerySectionProps {

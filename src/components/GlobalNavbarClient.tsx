@@ -23,7 +23,7 @@ import {
   Stack,
   Badge
 } from "@mui/material";
-import { useAuthDialogStore } from "@/lib/stores/authDialogStore";
+import { useAuthStore } from "@/lib/stores";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { KButton } from "./KButton";
 import { useThemeStore } from '@/lib/stores/themeStore';
@@ -234,13 +234,13 @@ export default function GlobalNavbarClient({ session }: Props) {
                 ]
               : [
                   <MenuItem key="login" onClick={() => { 
-                    useAuthDialogStore.getState().open("login"); 
+                    useAuthStore.getState().open("login"); 
                     setMobileMenuOpen(false);
                   }}>
                     Login
                   </MenuItem>,
                   <MenuItem key="register" onClick={() => { 
-                    useAuthDialogStore.getState().open("register"); 
+                    useAuthStore.getState().open("register"); 
                     setMobileMenuOpen(false);
                   }}>
                     Register
@@ -372,7 +372,7 @@ function AuthenticatedControls({ username }: { username: string }) {
 
 // Component for unauthenticated users
 function UnauthenticatedControls() {
-  const { open } = useAuthDialogStore();
+  const { open } = useAuthStore();
   
   return (
     <Stack direction="row" spacing={1}>

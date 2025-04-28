@@ -24,7 +24,7 @@ import React from 'react';
 import Image from 'next/image';
 import { KButton } from '@/components/KButton';
 import { CommissionData, useProfilePageStore } from '@/lib/stores/profilePageStore';
-import { useAuthDialogStore } from '@/lib/stores/authDialogStore';
+import { useAuthDialogStore } from '@/lib/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { axiosClient } from '@/lib/utils/axiosClient';
 

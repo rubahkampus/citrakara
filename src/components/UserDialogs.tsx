@@ -2,8 +2,8 @@
 'use client';
 
 import { useUserDialogStore } from '@/lib/stores/userStore';
-import EditUserProfileDialog from './user/profile/dialogs/UserEditProfileDialog';
-import UploadArtDialog from './user/profile/dialogs/UploadArtDialog';
+import EditUserProfileDialog from './profile/dialogs/UserEditProfileDialog';
+import UploadArtDialog from './profile/dialogs/UploadArtDialog';
 
 export default function UserDialogs({
   profile,

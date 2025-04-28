@@ -28,10 +28,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 
 import { KButton } from "@/components/KButton";
-import GallerySection from "@/components/user/profile/GallerySection";
-import CommissionSection from "@/components/user/profile/CommissionSection";
-import CommissionDialog from "@/components/user/profile/dialogs/CommissionDialog";
-import UploadArtDialog from "@/components/user/profile/dialogs/UploadArtDialog";
+import GallerySection from "@/components/profile/GallerySection";
+import CommissionSection from "@/components/profile/CommissionSection";
+import CommissionDialog from "@/components/profile/dialogs/CommissionDialog";
+import UploadArtDialog from "@/components/profile/dialogs/UploadArtDialog";
 import { useUserDialogStore } from "@/lib/stores/userStore";
 import { useAuthDialogStore } from "@/lib/stores/authStore";
 import LinkIcon from "@mui/icons-material/Link";

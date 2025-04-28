@@ -12,7 +12,7 @@ interface DialogsProps {
   isOwner?: boolean;
 }
 
-export default function Dialogs({ profile, isOwner = false }: DialogsProps) {
+export default function UserDialogs({ profile, isOwner = false }: DialogsProps) {
   const { dialog: userDialog, close: closeUserDialog } = useUserStore();
   const { commissionDialogOpen, galleryDialogOpen, closeCommissionDialog, closeGalleryDialog } = useProfileStore();
   const { isOpen: galleryPostOpen, close: closeGalleryPost } = useGalleryStore();

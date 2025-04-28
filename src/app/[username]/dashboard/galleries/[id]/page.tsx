@@ -1,7 +1,7 @@
 // src/app/[username]/dashboard/galleries/[id]/page.tsx
 import { findGalleryById } from '@/lib/db/repositories/gallery.repository';
 import { listGalleryPosts } from '@/lib/services/galleryPost.service';
-import DashboardGalleryDetailPage from '@/components/dashboard/galleries/DashboardGalleryDetailPage';
+import DashboardGalleryDetailPage from '@/components/user/dashboard/galleries/DashboardGalleryDetailPage';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Box, Skeleton, Typography } from '@mui/material';

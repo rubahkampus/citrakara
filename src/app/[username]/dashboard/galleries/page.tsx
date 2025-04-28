@@ -1,7 +1,7 @@
 // src/app/[username]/dashboard/galleries/page.tsx
 import { getGalleriesByUsername, getUserGalleries } from '@/lib/services/gallery.service';
 import { listGalleryPosts } from '@/lib/services/galleryPost.service';
-import DashboardGalleryPage from '@/components/dashboard/galleries/DashboardGalleryPage';
+import DashboardGalleryPage from '@/components/user/dashboard/galleries/DashboardGalleryPage';
 import { Suspense } from 'react';
 import { Box, Skeleton, Typography } from '@mui/material';
 

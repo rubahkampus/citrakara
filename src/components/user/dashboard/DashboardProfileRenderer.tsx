@@ -12,7 +12,7 @@ import {
   Avatar,
   Divider
 } from '@mui/material';
-import { KButton } from '../KButton';
+import { KButton } from '../../KButton';
 import { useUserStore } from '@/lib/stores'; // Updated import from the central store
 import { useState, useEffect } from 'react';
 import {

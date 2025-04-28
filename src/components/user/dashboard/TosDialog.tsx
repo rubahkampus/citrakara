@@ -23,7 +23,7 @@ import {
   Delete as DeleteIcon,
   Description as DescriptionIcon
 } from '@mui/icons-material';
-import { KButton } from '../KButton';
+import { KButton } from '../../KButton';
 import { axiosClient } from '@/lib/utils/axiosClient';
 
 // Types for TOS data

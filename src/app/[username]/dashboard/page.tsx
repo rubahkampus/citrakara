@@ -1,7 +1,7 @@
 // src/app/[username]/dashboard/page.tsx
 import { getUserWalletBalance } from '@/lib/services/wallet.service';
 import { getUserPublicProfile } from '@/lib/services/user.service';
-import DashboardProfileRenderer from '@/components/dashboard/DashboardProfileRenderer';
+import DashboardProfileRenderer from '@/components/user/dashboard/DashboardProfileRenderer';
 import { Suspense } from 'react';
 import { Skeleton, Box, Typography, Paper } from '@mui/material';
 import { WalletBalanceResponse } from '@/types/wallet';

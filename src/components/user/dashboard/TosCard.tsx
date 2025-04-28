@@ -17,7 +17,7 @@ import {
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { axiosClient } from '@/lib/utils/axiosClient';
-import { KButton } from '../KButton';
+import { KButton } from '../../KButton';
 import TosDialog from './TosDialog';
 
 interface TosCardProps {

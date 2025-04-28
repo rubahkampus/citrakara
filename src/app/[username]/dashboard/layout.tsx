@@ -3,10 +3,10 @@ import type { ReactNode } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import { getAuthSession, isUserOwner, Session } from '@/lib/utils/session';
 import { getUserPublicProfile } from '@/lib/services/user.service';
-import DashboardSidebarWrapper from '@/components/dashboard/DashboardSidebarWrapper';
+import DashboardSidebarWrapper from '@/components/user/dashboard/DashboardSidebarWrapper';
 import { Box, Container } from '@mui/material';
 import { Suspense } from 'react';
-import DashboardLoadingSkeleton from '@/components/dashboard/DashboardLoadingSkeleton';
+import DashboardLoadingSkeleton from '@/components/user/dashboard/DashboardLoadingSkeleton';
 
 interface Props {
   children: ReactNode;

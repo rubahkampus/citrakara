@@ -1,12 +1,27 @@
-// src/lib/stores/types.ts
-/**
- * Common interface types used across multiple stores
- */
+// src/lib/stores/types.ts - Consolidated types for all stores
+export type DialogType = 
+  // Auth dialogs
+  | 'login' 
+  | 'register' 
+  // Profile & content dialogs
+  | 'editProfile'
+  | 'uploadArtwork'
+  // Commission dialogs  
+  | 'createCommission'
+  | 'viewCommission'
+  | 'editCommission'
+  // Gallery dialogs
+  | 'viewGalleryPost'
+  | 'editGalleryPost'
+  // Settings dialogs
+  | 'accountSettings'
+  // TOS dialogs
+  | 'viewTos'
+  | 'editTos'
+  | 'createTos'
+  | null;
 
-// Dialog-related types
-export type DialogType = 'login' | 'register' | 'editProfile' | 'createCommission' | 'uploadArtwork' | 'accountSettings' | 'tos' | null;
-
-// Gallery and commission data types
+// Common entity types
 export interface GalleryData {
   id: string;
   name: string;
@@ -24,14 +39,6 @@ export interface GalleryPost {
   updatedAt: string;
 }
 
-export interface GalleryPostData {
-  id: string;
-  galleryId: string;
-  images: string[];
-  description?: string;
-  createdAt: string;
-}
-
 export interface CommissionData {
   id: string;
   title: string;
@@ -47,14 +54,24 @@ export interface CommissionData {
   slotsUsed: number;
 }
 
-// Theme mode
+export interface TosData {
+  _id: string;
+  title: string;
+  content: Array<{ subtitle: string; text: string }>;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Dialog state interfaces
+export interface DialogState {
+  type: DialogType;
+  entityId?: string; // ID of the entity being viewed/edited (commission, post, etc.)
+  data?: any; // Optional data to pass to the dialog
+  isOwner?: boolean; // Whether the current user owns the entity
+}
+
+// Theme and UI types
 export type ThemeMode = 'light' | 'dark';
-
-// Dashboard sidebar state
 export type SidebarState = 'expanded' | 'collapsed';
-
-// TOS dialog mode
-export type TosDialogMode = 'view' | 'create' | 'edit' | null;
-
-// Profile page view types
 export type ProfileView = 'overview' | 'gallery' | 'specificGallery' | 'commission';

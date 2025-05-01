@@ -18,7 +18,6 @@ import { Close as CloseIcon, ArrowBack, ArrowForward, CalendarMonth } from '@mui
 import { TransitionProps } from '@mui/material/transitions';
 import Image from 'next/image';
 import React from 'react';
-import { useGalleryStore, useProfileStore } from '@/lib/stores';
 import { axiosClient } from '@/lib/utils/axiosClient';
 
 // Interface for gallery post
@@ -40,30 +39,34 @@ const Transition = React.forwardRef(function Transition(
 });
 
 interface GalleryPostDialogProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
+  postId?: string;
+  mode?: 'view' | 'edit';
+  isOwner?: boolean;
 }
 
-export default function GalleryPostDialog({ isOpen, onClose }: GalleryPostDialogProps) {
+export default function GalleryPostDialog({ 
+  open, 
+  onClose, 
+  postId,
+  mode = 'view',
+  isOwner = false 
+}: GalleryPostDialogProps) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  // Get values from stores
-  const { activePostId: galleryPostId, post, loading: galleryLoading, setPost, setLoading } = useGalleryStore();
-  const { activePostId: profilePostId } = useProfileStore();
-  
-  // Local state
+  // State
+  const [post, setPost] = useState<GalleryPost | null>(null);
+  const [loading, setLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  // Determine active post ID
-  const activePostId = galleryPostId || profilePostId;
-  
   // Fetch post data when dialog opens with a postId
   useEffect(() => {
-    if (!activePostId || !isOpen) return;
+    if (!postId || !open) return;
     
     const fetchPostDetails = async () => {
       try {
@@ -71,18 +74,19 @@ export default function GalleryPostDialog({ isOpen, onClose }: GalleryPostDialog
         setError(null);
         setImageLoaded(false);
         
-        const response = await axiosClient.get(`/api/gallery/post/${activePostId}`);
+        const response = await axiosClient.get(`/api/gallery/post/${postId}`);
         setPost(response.data.post);
         setCurrentImageIndex(0);
       } catch (error: any) {
         console.error('Error fetching post details:', error);
         setError(error?.response?.data?.error || 'Failed to load post details');
+      } finally {
         setLoading(false);
       }
     };
     
     fetchPostDetails();
-  }, [activePostId, isOpen, setPost, setLoading]);
+  }, [postId, open]);
   
   const handleClose = () => {
     onClose();
@@ -112,7 +116,7 @@ export default function GalleryPostDialog({ isOpen, onClose }: GalleryPostDialog
   
   return (
     <Dialog
-      open={isOpen}
+      open={open}
       onClose={handleClose}
       fullScreen={fullScreen}
       maxWidth="xl"
@@ -158,7 +162,7 @@ export default function GalleryPostDialog({ isOpen, onClose }: GalleryPostDialog
         flexDirection: { xs: 'column', md: 'row' },
         height: fullScreen ? '100vh' : 'auto'
       }}>
-        {galleryLoading ? (
+        {loading ? (
           <Box sx={{ 
             width: '100%', 
             height: { xs: 350, sm: 450, md: 650 },

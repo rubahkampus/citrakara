@@ -21,7 +21,7 @@ import { TransitionProps } from '@mui/material/transitions';
 import React from 'react';
 import Image from 'next/image';
 import { KButton } from '@/components/KButton';
-import { useProfileStore, useAuthStore } from '@/lib/stores';
+import { useDialogStore } from '@/lib/stores';
 import { useRouter } from 'next/navigation';
 import { axiosClient } from '@/lib/utils/axiosClient';
 
@@ -72,29 +72,38 @@ const Transition = React.forwardRef(function Transition(
 });
 
 interface CommissionDialogProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
-  isOwner: boolean;
+  commissionId?: string;
+  mode?: 'view' | 'edit' | 'create';
+  isOwner?: boolean;
+  initialData?: any;
 }
 
-export default function CommissionDialog({ isOpen, onClose, isOwner }: CommissionDialogProps) {
+export default function CommissionDialog({ 
+  open, 
+  onClose, 
+  commissionId,
+  mode = 'view',
+  isOwner = false,
+  initialData = null
+}: CommissionDialogProps) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
-  const { open: openAuthDialog } = useAuthStore();
-  const { activeCommissionId } = useProfileStore();
+  const { open: openDialog } = useDialogStore();
   const [commission, setCommission] = useState<CommissionData | null>(null);
   const [loading, setLoading] = useState(false);
   
   // For real data, uncomment this and comment out the useEffect below
   /*
   useEffect(() => {
-    if (!activeCommissionId || !isOpen) return;
+    if (!commissionId || !open) return;
     
     const fetchCommissionDetails = async () => {
       try {
         setLoading(true);
-        const response = await axiosClient.get(`/api/commission/listing/${activeCommissionId}`);
+        const response = await axiosClient.get(`/api/commission/listing/${commissionId}`);
         setCommission(response.data.listing);
       } catch (error) {
         console.error('Error fetching commission details:', error);
@@ -104,20 +113,20 @@ export default function CommissionDialog({ isOpen, onClose, isOwner }: Commissio
     };
     
     fetchCommissionDetails();
-  }, [activeCommissionId, isOpen]);
+  }, [commissionId, open]);
   */
   
   // Mock data loading
   useEffect(() => {
-    if (!activeCommissionId || !isOpen) return;
+    if (!commissionId || !open) return;
     
     setLoading(true);
     // Simulate API request
     setTimeout(() => {
-      setCommission(mockCommissionDetails[activeCommissionId] || null);
+      setCommission(mockCommissionDetails[commissionId] || null);
       setLoading(false);
     }, 500);
-  }, [activeCommissionId, isOpen]);
+  }, [commissionId, open]);
   
   const handleChatClick = () => {
     // For owners, go to chat dashboard
@@ -134,13 +143,13 @@ export default function CommissionDialog({ isOpen, onClose, isOwner }: Commissio
       router.push('/dashboard/chat');
       onClose();
     } else {
-      openAuthDialog('login');
+      openDialog('login');
     }
   };
   
   const handleSendRequest = () => {
     // TODO: Implement request submission
-    console.log('Sending request for commission:', activeCommissionId);
+    console.log('Sending request for commission:', commissionId);
     onClose();
   };
   
@@ -149,18 +158,18 @@ export default function CommissionDialog({ isOpen, onClose, isOwner }: Commissio
     return new Intl.NumberFormat('id-ID').format(price);
   };
   
-  if (!commission) return null;
+  if (!commission && mode !== 'create') return null;
   
-  const priceDisplay = `${commission.currency}${formatPrice(commission.price.min)}${
+  const priceDisplay = commission ? `${commission.currency}${formatPrice(commission.price.min)}${
     commission.price.min !== commission.price.max ? ` - ${formatPrice(commission.price.max)}` : ''
-  }`;
+  }` : '';
   
   // Check if slots are available
-  const slotsAvailable = commission.slots === -1 || commission.slotsUsed < commission.slots;
+  const slotsAvailable = commission ? (commission.slots === -1 || commission.slotsUsed < commission.slots) : true;
   
   return (
     <Dialog
-      open={isOpen}
+      open={open}
       onClose={onClose}
       fullScreen={fullScreen}
       maxWidth="md"
@@ -176,7 +185,9 @@ export default function CommissionDialog({ isOpen, onClose, isOwner }: Commissio
       {/* Header */}
       <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6" fontWeight="bold">
-          Commission Details
+          {mode === 'create' ? 'Create Commission' : 
+           mode === 'edit' ? 'Edit Commission' : 
+           'Commission Details'}
         </Typography>
         <IconButton onClick={onClose} edge="end">
           <CloseIcon />
@@ -185,101 +196,111 @@ export default function CommissionDialog({ isOpen, onClose, isOwner }: Commissio
       <Divider />
       
       <DialogContent sx={{ p: 0 }}>
-        <Grid container>
-          {/* Image section */}
-          <Grid item xs={12} md={5}>
-            <Box sx={{ 
-              position: 'relative',
-              height: { xs: 250, md: '100%' },
-              minHeight: { md: 400 },
-              bgcolor: 'background.default',
-            }}>
-              {commission.thumbnail ? (
-                <Image
-                  src={commission.thumbnail}
-                  alt={commission.title}
-                  layout="fill"
-                  objectFit="cover"
-                  unoptimized={true}
-                />
-              ) : (
-                <Box sx={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  bgcolor: theme.palette.divider,
-                }}>
-                  <Typography variant="body1" color="text.secondary">
-                    No Image
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          </Grid>
-          
-          {/* Details section */}
-          <Grid item xs={12} md={7}>
-            <Box sx={{ p: 3 }}>
-              <Typography variant="h5" fontWeight="bold" gutterBottom>
-                {commission.title}
-              </Typography>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold" color="primary.main">
-                  {priceDisplay}
-                </Typography>
-                
-                {!slotsAvailable && (
-                  <Chip 
-                    label="Slot Unavailable" 
-                    size="small" 
-                    color="default"
-                    sx={{ ml: 2 }}
+        {mode === 'create' ? (
+          <Box sx={{ p: 3 }}>
+            <Typography>Create commission form will go here</Typography>
+          </Box>
+        ) : mode === 'edit' ? (
+          <Box sx={{ p: 3 }}>
+            <Typography>Edit commission form will go here</Typography>
+          </Box>
+        ) : commission && (
+          <Grid container>
+            {/* Image section */}
+            <Grid item xs={12} md={5}>
+              <Box sx={{ 
+                position: 'relative',
+                height: { xs: 250, md: '100%' },
+                minHeight: { md: 400 },
+                bgcolor: 'background.default',
+              }}>
+                {commission.thumbnail ? (
+                  <Image
+                    src={commission.thumbnail}
+                    alt={commission.title}
+                    layout="fill"
+                    objectFit="cover"
+                    unoptimized={true}
                   />
+                ) : (
+                  <Box sx={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    bgcolor: theme.palette.divider,
+                  }}>
+                    <Typography variant="body1" color="text.secondary">
+                      No Image
+                    </Typography>
+                  </Box>
                 )}
               </Box>
-              
-              <Typography variant="body1" fontWeight="medium" gutterBottom>
-                Description
-              </Typography>
-              
-              <Typography 
-                variant="body2" 
-                color="text.secondary"
-                sx={{ 
-                  whiteSpace: 'pre-line',
-                  mb: 3
-                }}
-              >
-                {commission.description}
-              </Typography>
-              
-              {/* Slot information */}
-              <Paper 
-                variant="outlined" 
-                sx={{ p: 2, mb: 3, borderRadius: 2 }}
-              >
-                <Typography variant="body2" fontWeight="medium">
-                  Availability
+            </Grid>
+            
+            {/* Details section */}
+            <Grid item xs={12} md={7}>
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h5" fontWeight="bold" gutterBottom>
+                  {commission.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {commission.slots === -1 
-                    ? 'Unlimited slots available'
-                    : `${commission.slots - commission.slotsUsed} out of ${commission.slots} slots available`
-                  }
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 3 }}>
+                  <Typography variant="h6" fontWeight="bold" color="primary.main">
+                    {priceDisplay}
+                  </Typography>
+                  
+                  {!slotsAvailable && (
+                    <Chip 
+                      label="Slot Unavailable" 
+                      size="small" 
+                      color="default"
+                      sx={{ ml: 2 }}
+                    />
+                  )}
+                </Box>
+                
+                <Typography variant="body1" fontWeight="medium" gutterBottom>
+                  Description
                 </Typography>
-              </Paper>
-            </Box>
+                
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ 
+                    whiteSpace: 'pre-line',
+                    mb: 3
+                  }}
+                >
+                  {commission.description}
+                </Typography>
+                
+                {/* Slot information */}
+                <Paper 
+                  variant="outlined" 
+                  sx={{ p: 2, mb: 3, borderRadius: 2 }}
+                >
+                  <Typography variant="body2" fontWeight="medium">
+                    Availability
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {commission.slots === -1 
+                      ? 'Unlimited slots available'
+                      : `${commission.slots - commission.slotsUsed} out of ${commission.slots} slots available`
+                    }
+                  </Typography>
+                </Paper>
+              </Box>
+            </Grid>
           </Grid>
-        </Grid>
+        )}
       </DialogContent>
       
       <Divider />
       
       {/* Actions */}
       <DialogActions sx={{ p: 3 }}>
-        {!isOwner && (
+        {mode === 'view' && !isOwner && (
           <>
             <Tooltip title="Message about this commission">
               <KButton
@@ -300,7 +321,18 @@ export default function CommissionDialog({ isOpen, onClose, isOwner }: Commissio
           </>
         )}
         
-        {isOwner && (
+        {(mode === 'create' || mode === 'edit') && (
+          <>
+            <KButton variantType="ghost" onClick={onClose}>
+              Cancel
+            </KButton>
+            <KButton>
+              {mode === 'create' ? 'Create Commission' : 'Save Changes'}
+            </KButton>
+          </>
+        )}
+        
+        {mode === 'view' && isOwner && (
           <KButton onClick={onClose}>Close</KButton>
         )}
       </DialogActions>

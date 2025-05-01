@@ -37,7 +37,7 @@ interface ProfileDialogProps {
   open: boolean;
   onClose: () => void;
   profile: UserProfile | null;
-  onUpdateSuccess: (updatedUser: UserProfile) => void;
+  onUpdateSuccess?: (updatedUser: UserProfile) => void;
 }
 
 interface UserProfile {
@@ -80,7 +80,7 @@ export default function ProfileDialog({
   open,
   onClose,
   profile,
-  onUpdateSuccess,
+  onUpdateSuccess
 }: ProfileDialogProps) {
   // Form handling
   const {
@@ -244,7 +244,9 @@ export default function ProfileDialog({
         updatedUser.banner += `?t=${Date.now()}`;
       }
 
-      onUpdateSuccess(updatedUser);
+      if (onUpdateSuccess) {
+        onUpdateSuccess(updatedUser);
+      }
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to update profile.");

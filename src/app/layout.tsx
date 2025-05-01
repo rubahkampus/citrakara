@@ -5,6 +5,7 @@ import { Roboto } from "next/font/google";
 import GlobalNavbar from "@/components/GlobalNavbar";
 import Dialogs from "@/components/Dialogs";
 import ThemeProviderWrapper from "@/components/ThemeProviderWraper";
+import DialogManager from '@/components/dialogs/DialogManager';
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -29,6 +30,7 @@ export default function RootLayout({
             >
               {children}
             </Container>
+            <DialogManager />
             <Dialogs />
           </ThemeProviderWrapper>
         </AppRouterCacheProvider>

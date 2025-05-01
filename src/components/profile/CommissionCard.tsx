@@ -1,57 +1,67 @@
 // src/components/profile/CommissionCard.tsx
-'use client';
+"use client";
 
-import { Box, Typography, Grid, useTheme, Button, Avatar } from '@mui/material';
-import Image from 'next/image';
-import { CommissionData } from '@/lib/stores/profilePageStore';
-import { KButton } from '@/components/KButton';
+import { Box, Typography, Grid, useTheme, Avatar } from "@mui/material";
+import Image from "next/image";
+import { CommissionData } from "@/lib/stores";
+import { useDialogStore } from "@/lib/stores";
+import { KButton } from "@/components/KButton";
 
 interface CommissionCardProps {
   commission: CommissionData;
-  onClick: () => void;
   isOwner: boolean;
 }
 
-export default function CommissionCard({ commission, onClick, isOwner }: CommissionCardProps) {
+export default function CommissionCard({
+  commission,
+  isOwner,
+}: CommissionCardProps) {
   const theme = useTheme();
-  
-  // Check if slots are available
-  const slotsAvailable = commission.slots === -1 || commission.slotsUsed < commission.slots;
-  
-  // Format price range
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID').format(price);
+  const openDialog = useDialogStore((state) => state.open);
+
+  // Check slot availability
+  const slotsAvailable =
+    commission.slots === -1 || commission.slotsUsed < commission.slots;
+
+  // Format price
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("id-ID").format(price);
+  const priceDisplay =
+    `${commission.currency}${formatPrice(commission.price.min)}` +
+    (commission.price.min !== commission.price.max
+      ? ` - ${formatPrice(commission.price.max)}`
+      : "");
+
+  const handleView = () => {
+    openDialog("viewCommission", commission._id, commission, isOwner);
   };
-  
-  const priceDisplay = `${commission.currency}${formatPrice(commission.price.min)}${
-    commission.price.min !== commission.price.max ? ` - ${formatPrice(commission.price.max)}` : ''
-  }`;
-  
+
+  const handleChat = () => {
+    openDialog("viewCommission", commission._id, commission, isOwner);
+  };
+
   return (
-    <Box 
-      onClick={onClick}
+    <Box
+      onClick={handleView}
       sx={{
-        cursor: 'pointer',
+        cursor: "pointer",
         mb: 2,
-        transition: 'transform 0.15s, box-shadow 0.15s',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-        },
+        transition: "transform 0.15s, box-shadow 0.15s",
+        "&:hover": { transform: "translateY(-2px)" },
       }}
     >
       <Grid container spacing={0}>
-        {/* Left image section */}
         <Grid item xs={12} sm={4} md={3}>
-          <Box 
-            sx={{ 
-              position: 'relative',
+          <Box
+            sx={{
+              position: "relative",
               height: { xs: 200, sm: 150 },
-              width: '100%',
+              width: "100%",
               bgcolor: theme.palette.divider,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
             }}
           >
             {commission.thumbnail ? (
@@ -60,91 +70,82 @@ export default function CommissionCard({ commission, onClick, isOwner }: Commiss
                 alt={commission.title}
                 layout="fill"
                 objectFit="cover"
-                unoptimized={true}
+                unoptimized
               />
             ) : (
               <Typography color="text.secondary">No Image</Typography>
             )}
           </Box>
         </Grid>
-        
-        {/* Right content section */}
+
         <Grid item xs={12} sm={8} md={9}>
-          <Box sx={{ 
-            p: 2, 
-            height: '100%',
-            bgcolor: 'background.paper',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            {/* Title */}
-            <Typography 
-              variant="h6" 
-              component="h2" 
+          <Box
+            sx={{
+              p: 2,
+              height: "100%",
+              bgcolor: "background.paper",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Typography
+              variant="h6"
+              component="h2"
               fontWeight="medium"
               sx={{ mb: 1 }}
             >
               {commission.title}
             </Typography>
-            
-            {/* Description */}
-            <Typography 
-              variant="body2" 
+
+            <Typography
+              variant="body2"
               color="text.secondary"
-              sx={{ 
+              sx={{
                 mb: 2,
-                display: '-webkit-box',
+                display: "-webkit-box",
                 WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
               }}
             >
               {commission.description}
             </Typography>
-            
-            {/* Bottom row with price and actions */}
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mt: 'auto',
+
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mt: "auto",
               }}
             >
-              {/* Price */}
-              <Typography 
-                variant="h6" 
-                fontWeight="medium" 
-                color="text.primary"
-              >
+              <Typography variant="h6" fontWeight="medium" color="text.primary">
                 {priceDisplay}
               </Typography>
-              
-              {/* Actions */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {/* Additional avatar for chat */}
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {!isOwner && (
-                  <Avatar 
-                    sx={{ 
-                      width: 32, 
-                      height: 32,
-                      cursor: 'pointer'
+                  <Avatar
+                    sx={{ width: 32, height: 32 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleChat();
                     }}
                   />
                 )}
-                
-                {/* Send Request button */}
+
                 {!isOwner && (
-                  <KButton 
+                  <KButton
                     size="small"
                     variant="contained"
                     disabled={!slotsAvailable}
-                    sx={{ 
-                      minWidth: 110,
-                      fontSize: '0.875rem',
+                    sx={{ minWidth: 110, fontSize: "0.875rem" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleChat();
                     }}
                   >
-                    {slotsAvailable ? 'Send Request' : 'Slot Unavailable'}
+                    {slotsAvailable ? "Send Request" : "Slot Unavailable"}
                   </KButton>
                 )}
               </Box>

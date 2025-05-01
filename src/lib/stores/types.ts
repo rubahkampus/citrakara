@@ -23,13 +23,13 @@ export type DialogType =
 
 // Common entity types
 export interface GalleryData {
-  id: string;
+  _id: string;
   name: string;
   thumbnails: string[];
   postCount: number;
 }
 
-export interface GalleryPost {
+export interface GalleryPostData {
   _id: string;
   galleryId: string;
   userId: string;
@@ -40,7 +40,7 @@ export interface GalleryPost {
 }
 
 export interface CommissionData {
-  id: string;
+  _id: string;
   title: string;
   description: string;
   price: {

@@ -20,7 +20,7 @@ import {
   Switch,
   MenuItem,
   InputAdornment,
-  Tooltip
+  Tooltip,
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { axiosClient } from "@/lib/utils/axiosClient";
@@ -30,7 +30,7 @@ import {
   CameraAlt,
   Image,
   InfoOutlined,
-  Link as LinkIcon
+  Link as LinkIcon,
 } from "@mui/icons-material";
 
 interface ProfileDialogProps {
@@ -73,14 +73,14 @@ const SOCIAL_PLATFORMS: SocialPlatforms = {
   linkedin: "LinkedIn",
   github: "GitHub",
   behance: "Behance",
-  dribbble: "Dribbble"
+  dribbble: "Dribbble",
 };
 
 export default function ProfileDialog({
   open,
   onClose,
   profile,
-  onUpdateSuccess
+  onUpdateSuccess,
 }: ProfileDialogProps) {
   // Form handling
   const {
@@ -89,7 +89,7 @@ export default function ProfileDialog({
     reset,
     formState: { errors, isDirty },
     watch,
-    control
+    control,
   } = useForm<FormValues>({
     defaultValues: {
       bio: profile?.bio || "",
@@ -104,13 +104,19 @@ export default function ProfileDialog({
   const [error, setError] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>(profile?.tags || []);
   const [tagInput, setTagInput] = useState("");
-  const [socials, setSocials] = useState<Array<{label: string; url: string}>>(profile?.socials || []);
+  const [socials, setSocials] = useState<Array<{ label: string; url: string }>>(
+    profile?.socials || []
+  );
   const [socialLabel, setSocialLabel] = useState("");
   const [socialUrl, setSocialUrl] = useState("");
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [banner, setBanner] = useState<File | null>(null);
-  const [profilePreview, setProfilePreview] = useState<string | undefined>(profile?.profilePicture);
-  const [bannerPreview, setBannerPreview] = useState<string | undefined>(profile?.banner);
+  const [profilePreview, setProfilePreview] = useState<string | undefined>(
+    profile?.profilePicture
+  );
+  const [bannerPreview, setBannerPreview] = useState<string | undefined>(
+    profile?.banner
+  );
 
   // Constants
   const MAX_BIO_LENGTH = 250;
@@ -120,8 +126,11 @@ export default function ProfileDialog({
   // Computed values
   const watchBio = watch("bio");
   const bioLength = watchBio?.length || 0;
-  const hasChanges = isDirty || profilePicture !== null || banner !== null || 
-    tags.join(',') !== (profile?.tags || []).join(',') || 
+  const hasChanges =
+    isDirty ||
+    profilePicture !== null ||
+    banner !== null ||
+    tags.join(",") !== (profile?.tags || []).join(",") ||
     JSON.stringify(socials) !== JSON.stringify(profile?.socials || []);
 
   // Reset form when dialog opens
@@ -202,7 +211,11 @@ export default function ProfileDialog({
   // Dialog actions
   const handleClose = () => {
     if (hasChanges) {
-      if (window.confirm("You have unsaved changes. Are you sure you want to close?")) {
+      if (
+        window.confirm(
+          "You have unsaved changes. Are you sure you want to close?"
+        )
+      ) {
         onClose();
       }
     } else {
@@ -228,13 +241,9 @@ export default function ProfileDialog({
       if (profilePicture) formData.append("profilePicture", profilePicture);
       if (banner) formData.append("banner", banner);
 
-      const response = await axiosClient.patch(
-        "/api/me/update",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      const response = await axiosClient.patch("/api/me/update", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       const updatedUser = response.data.user;
       if (updatedUser.profilePicture) {
@@ -258,35 +267,58 @@ export default function ProfileDialog({
   if (!profile) return null;
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose} 
-      fullWidth 
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullWidth
       maxWidth="md"
       PaperProps={{ sx: { borderRadius: 2 } }}
     >
       <DialogTitle sx={{ pb: 1 }}>
-        <Typography variant="h5" fontWeight="bold">Edit Your Profile</Typography>
+        <Typography variant="h5" fontWeight="bold">
+          Edit Your Profile
+        </Typography>
       </DialogTitle>
       <Divider />
-      
+
       <DialogContent sx={{ pt: 3 }}>
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            gap: 4,
+          }}
+        >
           {/* Left column - Profile images */}
           <Box sx={{ width: { xs: "100%", md: "40%" } }}>
-            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}>
-              <Typography variant="h6" gutterBottom>Profile Picture</Typography>
-              
-              <Box display="flex" justifyContent="center" mb={2} position="relative">
-                <Avatar 
-                  src={profilePreview} 
-                  sx={{ width: 150, height: 150, border: "4px solid #f5f5f5" }} 
+            <Paper
+              elevation={0}
+              sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+            >
+              <Typography variant="h6" gutterBottom>
+                Profile Picture
+              </Typography>
+
+              <Box
+                display="flex"
+                justifyContent="center"
+                mb={2}
+                position="relative"
+              >
+                <Avatar
+                  src={profilePreview}
+                  sx={{ width: 150, height: 150, border: "4px solid #f5f5f5" }}
                 />
-                <Button 
-                  variant="contained" 
-                  component="label" 
+                <Button
+                  variant="contained"
+                  component="label"
                   size="small"
-                  sx={{ position: "absolute", bottom: 0, borderRadius: 10, bgcolor: "primary.main" }}
+                  sx={{
+                    position: "absolute",
+                    bottom: 0,
+                    borderRadius: 10,
+                    bgcolor: "primary.main",
+                  }}
                 >
                   <CameraAlt sx={{ mr: 1 }} fontSize="small" />
                   Change
@@ -294,25 +326,39 @@ export default function ProfileDialog({
                     type="file"
                     accept="image/*"
                     hidden
-                    onChange={(e) => handleFileChange(e, setProfilePicture, setProfilePreview)}
+                    onChange={(e) =>
+                      handleFileChange(e, setProfilePicture, setProfilePreview)
+                    }
                   />
                 </Button>
               </Box>
-              
-              <Typography variant="body2" color="text.secondary" align="center" gutterBottom>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                align="center"
+                gutterBottom
+              >
                 Recommended size: 400x400px, max 5MB
               </Typography>
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}>
-              <Typography variant="h6" gutterBottom>Profile Banner</Typography>
-              
-              <Box 
+            <Paper
+              elevation={0}
+              sx={{ p: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+            >
+              <Typography variant="h6" gutterBottom>
+                Profile Banner
+              </Typography>
+
+              <Box
                 sx={{
                   position: "relative",
                   width: "100%",
                   height: 120,
-                  backgroundImage: bannerPreview ? `url(${bannerPreview})` : "none",
+                  backgroundImage: bannerPreview
+                    ? `url(${bannerPreview})`
+                    : "none",
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   backgroundColor: bannerPreview ? "transparent" : "#f0f0f0",
@@ -320,15 +366,22 @@ export default function ProfileDialog({
                   mb: 2,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center"
+                  justifyContent: "center",
                 }}
               >
-                {!bannerPreview && <Image color="action" sx={{ opacity: 0.5 }} />}
-                <Button 
-                  variant="contained" 
+                {!bannerPreview && (
+                  <Image color="action" sx={{ opacity: 0.5 }} />
+                )}
+                <Button
+                  variant="contained"
                   component="label"
                   size="small"
-                  sx={{ position: "absolute", bottom: 8, right: 8, borderRadius: 10 }}
+                  sx={{
+                    position: "absolute",
+                    bottom: 8,
+                    right: 8,
+                    borderRadius: 10,
+                  }}
                 >
                   <Image sx={{ mr: 1 }} fontSize="small" />
                   Upload
@@ -336,11 +389,13 @@ export default function ProfileDialog({
                     type="file"
                     accept="image/*"
                     hidden
-                    onChange={(e) => handleFileChange(e, setBanner, setBannerPreview)}
+                    onChange={(e) =>
+                      handleFileChange(e, setBanner, setBannerPreview)
+                    }
                   />
                 </Button>
               </Box>
-              
+
               <Typography variant="body2" color="text.secondary" align="center">
                 Recommended size: 1200x400px, max 5MB
               </Typography>
@@ -350,16 +405,24 @@ export default function ProfileDialog({
           {/* Right column - Profile details */}
           <Box sx={{ width: { xs: "100%", md: "60%" } }}>
             {/* Basic Information */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}>
-              <Typography variant="h6" gutterBottom>Basic Information</Typography>
-              
+            <Paper
+              elevation={0}
+              sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+            >
+              <Typography variant="h6" gutterBottom>
+                Basic Information
+              </Typography>
+
               <TextField
                 label="Display Name"
                 fullWidth
                 variant="outlined"
-                {...register("displayName", { 
+                {...register("displayName", {
                   required: "Display name is required",
-                  maxLength: { value: 50, message: "Display name must be less than 50 characters" }
+                  maxLength: {
+                    value: 50,
+                    message: "Display name must be less than 50 characters",
+                  },
                 })}
                 error={!!errors.displayName}
                 helperText={errors.displayName?.message}
@@ -373,29 +436,46 @@ export default function ProfileDialog({
                 rows={4}
                 variant="outlined"
                 {...register("bio", {
-                  maxLength: { value: MAX_BIO_LENGTH, message: `Must be less than ${MAX_BIO_LENGTH} characters` },
+                  maxLength: {
+                    value: MAX_BIO_LENGTH,
+                    message: `Must be less than ${MAX_BIO_LENGTH} characters`,
+                  },
                 })}
                 error={bioLength > MAX_BIO_LENGTH || !!errors.bio}
-                helperText={errors.bio?.message || `${bioLength}/${MAX_BIO_LENGTH} characters`}
-                sx={{ 
+                helperText={
+                  errors.bio?.message ||
+                  `${bioLength}/${MAX_BIO_LENGTH} characters`
+                }
+                sx={{
                   mb: 3,
                   "& .MuiFormHelperText-root": {
                     textAlign: "right",
                     mr: 0,
-                    color: bioLength > MAX_BIO_LENGTH * 0.8 
-                      ? bioLength > MAX_BIO_LENGTH ? "error.main" : "warning.main"
-                      : "text.secondary"
-                  }
+                    color:
+                      bioLength > MAX_BIO_LENGTH * 0.8
+                        ? bioLength > MAX_BIO_LENGTH
+                          ? "error.main"
+                          : "warning.main"
+                        : "text.secondary",
+                  },
                 }}
               />
 
-              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+              <Box
+                sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
+              >
                 <Controller
                   name="openForCommissions"
                   control={control}
                   render={({ field }) => (
                     <FormControlLabel
-                      control={<Switch checked={field.value} onChange={field.onChange} color="primary" />}
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={field.onChange}
+                          color="primary"
+                        />
+                      }
                       label="Open for Commissions"
                     />
                   )}
@@ -415,7 +495,9 @@ export default function ProfileDialog({
                       sx={{ width: 120 }}
                     >
                       {CURRENCIES.map((currency) => (
-                        <MenuItem key={currency} value={currency}>{currency}</MenuItem>
+                        <MenuItem key={currency} value={currency}>
+                          {currency}
+                        </MenuItem>
                       ))}
                     </TextField>
                   )}
@@ -424,11 +506,19 @@ export default function ProfileDialog({
             </Paper>
 
             {/* Tags */}
-            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}>
+            <Paper
+              elevation={0}
+              sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+            >
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6">Tags</Typography>
-                <Tooltip title={`Add up to ${MAX_TAGS} tags to help people find your profile`}>
-                  <InfoOutlined fontSize="small" sx={{ ml: 1, color: "text.secondary" }} />
+                <Tooltip
+                  title={`Add up to ${MAX_TAGS} tags to help people find your profile`}
+                >
+                  <InfoOutlined
+                    fontSize="small"
+                    sx={{ ml: 1, color: "text.secondary" }}
+                  />
                 </Tooltip>
               </Box>
 
@@ -440,17 +530,17 @@ export default function ProfileDialog({
                 ) : (
                   <Box display="flex" gap={1} flexWrap="wrap" mb={2}>
                     {tags.map((tag) => (
-                      <Chip 
-                        key={tag} 
-                        label={tag} 
-                        onDelete={() => removeTag(tag)} 
-                        sx={{ 
-                          bgcolor: "primary.light", 
+                      <Chip
+                        key={tag}
+                        label={tag}
+                        onDelete={() => removeTag(tag)}
+                        sx={{
+                          bgcolor: "primary.light",
                           color: "primary.contrastText",
                           "& .MuiChip-deleteIcon": {
                             color: "primary.contrastText",
-                            "&:hover": { color: "white" }
-                          }
+                            "&:hover": { color: "white" },
+                          },
                         }}
                       />
                     ))}
@@ -471,19 +561,23 @@ export default function ProfileDialog({
                     }}
                     size="small"
                     disabled={tags.length >= MAX_TAGS}
-                    helperText={tags.length >= MAX_TAGS ? `Maximum ${MAX_TAGS} tags` : ""}
+                    helperText={
+                      tags.length >= MAX_TAGS ? `Maximum ${MAX_TAGS} tags` : ""
+                    }
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
-                          <Button 
-                            onClick={addTag} 
-                            disabled={!tagInput.trim() || tags.length >= MAX_TAGS}
+                          <Button
+                            onClick={addTag}
+                            disabled={
+                              !tagInput.trim() || tags.length >= MAX_TAGS
+                            }
                             size="small"
                           >
                             Add
                           </Button>
                         </InputAdornment>
-                      )
+                      ),
                     }}
                   />
                 </Box>
@@ -491,11 +585,17 @@ export default function ProfileDialog({
             </Paper>
 
             {/* Social Links */}
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}>
+            <Paper
+              elevation={0}
+              sx={{ p: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+            >
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6">Social Links</Typography>
                 <Tooltip title="Connect your social profiles">
-                  <InfoOutlined fontSize="small" sx={{ ml: 1, color: "text.secondary" }} />
+                  <InfoOutlined
+                    fontSize="small"
+                    sx={{ ml: 1, color: "text.secondary" }}
+                  />
                 </Tooltip>
               </Box>
 
@@ -506,33 +606,44 @@ export default function ProfileDialog({
               ) : (
                 <Box sx={{ mb: 3 }}>
                   {socials.map((s, i) => (
-                    <Box 
-                      key={i} 
+                    <Box
+                      key={i}
                       sx={{
                         display: "flex",
-                        alignItems: "center", 
+                        alignItems: "center",
                         p: 1.5,
                         mb: 1,
                         borderRadius: 1,
                         bgcolor: "background.paper",
-                        border: "1px solid #e0e0e0"
+                        border: "1px solid #e0e0e0",
                       }}
                     >
-                      <Typography 
-                        variant="body2" 
-                        sx={{ fontWeight: "bold", minWidth: 100, color: "text.secondary" }}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: "bold",
+                          minWidth: 100,
+                          color: "text.secondary",
+                        }}
                       >
-                        {SOCIAL_PLATFORMS[s.label as keyof typeof SOCIAL_PLATFORMS] || s.label}
+                        {SOCIAL_PLATFORMS[
+                          s.label as keyof typeof SOCIAL_PLATFORMS
+                        ] || s.label}
                       </Typography>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
                       >
                         {s.url}
                       </Typography>
-                      <IconButton 
-                        onClick={() => removeSocial(i)} 
-                        size="small" 
+                      <IconButton
+                        onClick={() => removeSocial(i)}
+                        size="small"
                         sx={{ color: "error.light" }}
                       >
                         <Delete fontSize="small" />
@@ -553,10 +664,10 @@ export default function ProfileDialog({
                 >
                   <MenuItem value="">Select platform</MenuItem>
                   {Object.entries(SOCIAL_PLATFORMS).map(([value, label]) => (
-                    <MenuItem 
-                      key={value} 
-                      value={value} 
-                      disabled={socials.some(s => s.label === value)}
+                    <MenuItem
+                      key={value}
+                      value={value}
+                      disabled={socials.some((s) => s.label === value)}
                     >
                       {label}
                     </MenuItem>
@@ -575,12 +686,12 @@ export default function ProfileDialog({
                       <InputAdornment position="start">
                         <LinkIcon fontSize="small" />
                       </InputAdornment>
-                    )
+                    ),
                   }}
                 />
 
-                <Button 
-                  onClick={addSocial} 
+                <Button
+                  onClick={addSocial}
                   variant="outlined"
                   disabled={!socialLabel || !socialUrl.trim()}
                   sx={{ height: 40 }}
@@ -601,11 +712,7 @@ export default function ProfileDialog({
 
       <Divider />
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button 
-          onClick={handleClose} 
-          disabled={loading}
-          variant="outlined"
-        >
+        <Button onClick={handleClose} disabled={loading} variant="outlined">
           Cancel
         </Button>
         <Button

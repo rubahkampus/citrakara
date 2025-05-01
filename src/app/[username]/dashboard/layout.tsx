@@ -1,54 +1,42 @@
 // src/app/[username]/dashboard/layout.tsx
-import type { ReactNode } from 'react';
-import { redirect, notFound } from 'next/navigation';
-import { getAuthSession, isUserOwner, Session } from '@/lib/utils/session';
-import { getUserPublicProfile } from '@/lib/services/user.service';
-import DashboardSidebarWrapper from '@/components/dashboard/DashboardSidebarWrapper';
-import { Box, Container } from '@mui/material';
-import { Suspense } from 'react';
-import DashboardLoadingSkeleton from '@/components/dashboard/DashboardLoadingSkeleton';
+import { ReactNode } from "react";
+import { redirect, notFound } from "next/navigation";
+import { Box, Container } from "@mui/material";
+import { Suspense } from "react";
+import DashboardSidebarWrapper from "@/components/dashboard/DashboardSidebarWrapper";
+import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
+import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
+import { getUserPublicProfile } from "@/lib/services/user.service";
 
 interface Props {
   children: ReactNode;
   params: { username: string };
 }
 
-// Context provider is moved to a separate component to avoid hydration issues
-export default async function DashboardLayout({ children, params }: Props) {
-  const { username } = await params;
-  const session = await getAuthSession() as Session | null;
+export default async function DashboardLayout({
+  children,
+  params: { username },
+}: Props) {
+  const session = await getAuthSession();
   const profile = await getUserPublicProfile(username);
 
-  // Handle auth and 404 errors
-  if (!profile) {
-    notFound();
-  }
-  
-  if (!isUserOwner(session, username)) {
+  if (!profile) notFound();
+  if (!session || typeof session !== "object" || !("username" in session)) {
     redirect(`/${username}`);
   }
+  if (!isUserOwner(session as Session, username)) redirect(`/${username}`);
 
-  // Serialize the data to avoid passing complex MongoDB objects to client components
+  // Serialize for client
   const serializedProfile = JSON.parse(JSON.stringify(profile));
-  
+
   return (
-    <Container maxWidth="lg" sx={{ pt: 4, pb: 8 }}>
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', md: 'row' }, 
-        gap: 3 
-      }}>
-        {/* Sidebar - wrapped in client component for interactivity */}
-        <DashboardSidebarWrapper 
-          username={username} 
-          profile={serializedProfile} 
+    <Container maxWidth="lg"  sx={{ pt: 4, pb: 8 }}>
+      <Box display="flex" flexDirection={{ xs: "column", md: "row" }} gap={3}>
+        <DashboardSidebarWrapper
+          username={username}
+          profile={serializedProfile}
         />
-        
-        {/* Main content area */}
-        <Box sx={{ 
-          flex: 1,
-          minWidth: 0, // Important for flexbox to respect content width
-        }}>
+        <Box flex={1} minWidth={0}>
           <Suspense fallback={<DashboardLoadingSkeleton />}>
             {children}
           </Suspense>

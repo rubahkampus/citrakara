@@ -3,9 +3,8 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { Container } from "@mui/material";
 import { Roboto } from "next/font/google";
 import GlobalNavbar from "@/components/GlobalNavbar";
-import Dialogs from "@/components/Dialogs";
 import ThemeProviderWrapper from "@/components/ThemeProviderWraper";
-import DialogManager from '@/components/dialogs/DialogManager';
+import DialogManager from "@/components/dialogs/DialogManager";
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -24,14 +23,10 @@ export default function RootLayout({
         <AppRouterCacheProvider options={{ key: "css" }}>
           <ThemeProviderWrapper>
             <GlobalNavbar />
-            <Container
-              maxWidth={false}
-              disableGutters
-            >
+            <Container maxWidth={false} disableGutters>
               {children}
             </Container>
             <DialogManager />
-            <Dialogs />
           </ThemeProviderWrapper>
         </AppRouterCacheProvider>
       </body>

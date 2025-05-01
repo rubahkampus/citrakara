@@ -1,28 +1,31 @@
 // src/app/page.tsx
-import { Typography, Box, CircularProgress, Stack } from "@mui/material";
+import { Box, Typography, CircularProgress, Stack } from "@mui/material";
 import { Suspense } from "react";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <Box textAlign="center" sx={{ mt: 5 }}>
-      <Typography variant="h3" sx={{ fontWeight: "bold", color: "primary.main" }}>
+      <Typography variant="h3" fontWeight="bold" color="primary.main">
         ✨ Welcome to KOMIS! ✨
       </Typography>
-      <Typography variant="h5" sx={{ mt: 2, color: "gray" }}>
+      <Typography variant="h5" mt={2} color="text.secondary">
         Your one-stop marketplace for amazing digital art commissions.
       </Typography>
 
-      <Box sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
-        {/* Add image later */}
+      <Box mt={4} display="flex" justifyContent="center">
+        {/* hero image goes here */}
       </Box>
 
-      {/* Commission listing (placeholder) */}
-      <Suspense fallback={
-        <Stack alignItems="center" sx={{ mt: 3 }}>
-          <CircularProgress />
-          <Typography sx={{ mt: 2, fontStyle: "italic" }}>Fetching amazing commissions...</Typography>
-        </Stack>
-      }>
+      <Suspense
+        fallback={
+          <Stack alignItems="center" mt={3}>
+            <CircularProgress />
+            <Typography mt={2} fontStyle="italic">
+              Fetching amazing commissions...
+            </Typography>
+          </Stack>
+        }
+      >
         <PlaceholderCommission />
       </Suspense>
     </Box>
@@ -31,7 +34,7 @@ export default function Home() {
 
 function PlaceholderCommission() {
   return (
-    <Typography sx={{ mt: 3, fontSize: "18px", color: "gray" }}>
+    <Typography mt={3} fontSize={18} color="text.secondary">
       (Commissions will be displayed here soon! 🎨)
     </Typography>
   );

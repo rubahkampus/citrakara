@@ -1,10 +1,10 @@
 // src/components/dashboard/DashboardSidebarWrapper.tsx
-'use client';
+"use client";
 
-import { Box, useMediaQuery, Theme } from '@mui/material';
-import { useState, useEffect } from 'react';
-import DashboardSidebar from './DashboardSidebar';
-import { useDashboardStore } from '@/lib/stores/dashboardStore';
+import { Box, useMediaQuery, Theme } from "@mui/material";
+import { useState, useEffect } from "react";
+import DashboardSidebar from "./DashboardSidebar";
+import { useUIStore } from "@/lib/stores";
 
 interface Props {
   username: string;
@@ -14,38 +14,22 @@ interface Props {
   };
 }
 
-/**
- * Client wrapper for the sidebar to handle responsive behavior
- * This component determines whether the sidebar is expanded/collapsed
- * based on screen size and manages sidebar state via Zustand
- */
 export default function DashboardSidebarWrapper({ username, profile }: Props) {
-  // Check viewport for responsive behavior
-  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
-  const { sidebarState, setSidebarState } = useDashboardStore();
+  const isMobile = useMediaQuery((theme: Theme) =>
+    theme.breakpoints.down("md")
+  );
+  const { sidebar, setSidebar } = useUIStore();
   const [mounted, setMounted] = useState(false);
-  
-  // This prevents hydration mismatch
+
   useEffect(() => {
     setMounted(true);
-    
-    // Set initial sidebar state based on viewport
-    if (isMobile) {
-      setSidebarState('collapsed');
-    } else {
-      setSidebarState('expanded');
-    }
-  }, [isMobile, setSidebarState]);
-  
-  // If not mounted yet, render the minimum amount of content
-  // to ensure SSR and client match
+    setSidebar(isMobile ? "collapsed" : "expanded");
+  }, [isMobile, setSidebar]);
+
   if (!mounted) {
     return (
-      <Box sx={{ 
-        width: { xs: '100%', md: 240 },
-        flexShrink: 0,
-      }}>
-        <DashboardSidebar 
+      <Box sx={{ width: { xs: "100%", md: 240 }, flexShrink: 0 }}>
+        <DashboardSidebar
           username={username}
           profilePicture={profile.profilePicture}
           displayName={profile.displayName}
@@ -54,18 +38,20 @@ export default function DashboardSidebarWrapper({ username, profile }: Props) {
       </Box>
     );
   }
-  
+
   return (
-    <Box sx={{ 
-      width: { xs: '100%', md: 240 },
-      flexShrink: 0,
-      mb: { xs: 3, md: 0 }
-    }}>
-      <DashboardSidebar 
-        username={username} 
+    <Box
+      sx={{
+        width: { xs: "100%", md: 240 },
+        flexShrink: 0,
+        mb: { xs: 3, md: 0 },
+      }}
+    >
+      <DashboardSidebar
+        username={username}
         profilePicture={profile.profilePicture}
         displayName={profile.displayName}
-        expanded={sidebarState === 'expanded'}
+        expanded={sidebar === "expanded"}
       />
     </Box>
   );

@@ -1,29 +1,29 @@
 // src/app/[username]/page.tsx
-import { getUserPublicProfile } from "@/lib/services/user.service";
+import { notFound } from 'next/navigation';
+import ProfileContent from '@/components/profile/ProfileContent';
 import {
   getAuthSession,
   isUserOwner,
   serializeProfile,
-  Session,
-} from "@/lib/utils/session";
-import { notFound } from "next/navigation";
-import ProfileContent from "@/components/profile/ProfileContent";
+  Session
+} from '@/lib/utils/session';
+import { getUserPublicProfile } from '@/lib/services/user.service';
 
-interface ProfilePageProps {
+interface Props {
   params: { username: string };
 }
 
-export default async function ProfilePage({ params }: ProfilePageProps) {
-  // Await the params object before accessing properties
-  const { username } = await params;
-
-  const session = (await getAuthSession()) as Session | null;
-  const rawProfile = await getUserPublicProfile(username);
+export default async function ProfilePage({ params: { username } }: Props) {
+  const [rawSession, rawProfile] = await Promise.all([
+    getAuthSession(),
+    getUserPublicProfile(username)
+  ]);
+  const session = typeof rawSession === 'object' && rawSession !== null && 'username' in rawSession
+    ? (rawSession as Session | null)
+    : null;
   const profile = serializeProfile(rawProfile);
-
   if (!profile) return notFound();
-  
-  const isOwner = isUserOwner(session, username);
 
+  const isOwner = isUserOwner(session, username);
   return <ProfileContent profile={profile} isOwner={isOwner} />;
 }

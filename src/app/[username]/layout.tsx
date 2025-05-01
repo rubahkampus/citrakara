@@ -1,29 +1,22 @@
 // src/app/[username]/layout.tsx
-import type { ReactNode } from 'react';
-import UserDialogs from '@/components/UserDialogs';
-import { getUserPublicProfile } from '@/lib/services/user.service';
-import { getAuthSession, isUserOwner, serializeProfile, Session } from '@/lib/utils/session';
-import GalleryPostDialog from '@/components/profile/dialogs/GalleryPostDialog';
+import { ReactNode } from "react";
+import { notFound } from "next/navigation";
+import { getAuthSession, isUserOwner } from "@/lib/utils/session";
+import { getUserPublicProfile } from "@/lib/services/user.service";
 
-interface LayoutProps {
+interface Props {
   children: ReactNode;
   params: { username: string };
 }
 
-export default async function UserLayout({ children, params }: LayoutProps) {
-  // Await the params object before accessing properties
-  const { username } = await params;
-
-  const session = await getAuthSession() as Session | null;
+export default async function ProfileLayout({
+  children,
+  params: { username },
+}: Props) {
+  const session = await getAuthSession();
   const rawProfile = await getUserPublicProfile(username);
-  const profile = serializeProfile(rawProfile);
-  const isOwner = isUserOwner(session, username);
+  if (!rawProfile) notFound();
 
-  return (
-    <>
-      {children}
-      <UserDialogs profile={profile} isOwner={isOwner} />
-      <GalleryPostDialog />
-    </>
-  );
+  // We leave routing decisions (dashboard, etc.) to child pages
+  return <>{children}</>;
 }

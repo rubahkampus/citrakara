@@ -17,7 +17,7 @@ import {
   Fade,
   Paper,
   Tooltip,
-  styled
+  styled,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { axiosClient } from "@/lib/utils/axiosClient";
@@ -27,14 +27,17 @@ import {
   VisibilityOff,
   CheckCircle,
   Error as ErrorIcon,
-  HelpOutline
+  HelpOutline,
 } from "@mui/icons-material";
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(2),
   borderRadius: theme.spacing(1),
-  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
+  backgroundColor:
+    theme.palette.mode === "dark"
+      ? "rgba(255,255,255,0.05)"
+      : "rgba(0,0,0,0.02)",
 }));
 
 interface RegisterFormProps {
@@ -51,10 +54,10 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     message: "",
-    color: ""
+    color: "",
   });
 
-  const steps = ['Account Details', 'Choose Username'];
+  const steps = ["Account Details", "Choose Username"];
 
   const {
     register,
@@ -69,7 +72,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
       password: "",
       username: "",
     },
-    mode: "onChange"
+    mode: "onChange",
   });
 
   const email = watch("email");
@@ -95,13 +98,13 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
       { message: "Weak", color: "#ff9800" },
       { message: "Medium", color: "#ffeb3b" },
       { message: "Strong", color: "#8bc34a" },
-      { message: "Very strong", color: "#4caf50" }
+      { message: "Very strong", color: "#4caf50" },
     ];
 
     setPasswordStrength({
       score,
       message: strengthMap[score].message,
-      color: strengthMap[score].color
+      color: strengthMap[score].color,
     });
   }, [password]);
 
@@ -139,22 +142,29 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
       // Validate fields before checking availability
       const isValid = await trigger(["email", "password"]);
       if (!isValid) return;
-      
+
       await checkAvailability("email", values.email, setEmailError, () => {
         setStep(2);
       });
     } else {
       try {
         setUsernameError("");
-        await checkAvailability("username", values.username, setUsernameError, async () => {
-          try {
-            await axiosClient.post("/api/auth/register", values);
-            onSuccess();
-            router.refresh();
-          } catch (err: any) {
-            setUsernameError(err?.response?.data?.error || "Registration failed");
+        await checkAvailability(
+          "username",
+          values.username,
+          setUsernameError,
+          async () => {
+            try {
+              await axiosClient.post("/api/auth/register", values);
+              onSuccess();
+              router.refresh();
+            } catch (err: any) {
+              setUsernameError(
+                err?.response?.data?.error || "Registration failed"
+              );
+            }
           }
-        });
+        );
       } catch (error) {
         // Error is already handled in checkAvailability
       }
@@ -170,8 +180,13 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   };
 
   const isValidEmail = !errors.email && email && dirtyFields.email;
-  const isStrongPassword = !errors.password && passwordStrength.score >= 3 && password && dirtyFields.password;
-  const isNextButtonEnabled = isValidEmail && isStrongPassword && !checkingAvailability;
+  const isStrongPassword =
+    !errors.password &&
+    passwordStrength.score >= 3 &&
+    password &&
+    dirtyFields.password;
+  const isNextButtonEnabled =
+    isValidEmail && isStrongPassword && !checkingAvailability;
 
   return (
     <Box>
@@ -189,7 +204,8 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             <Box>
               <StyledPaper elevation={0}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Enter your email address and create a secure password to get started.
+                  Enter your email address and create a secure password to get
+                  started.
                 </Typography>
 
                 <TextField
@@ -205,7 +221,9 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                         {isValidEmail ? (
                           <CheckCircle color="success" fontSize="small" />
                         ) : (
-                          errors.email && <ErrorIcon color="error" fontSize="small" />
+                          errors.email && (
+                            <ErrorIcon color="error" fontSize="small" />
+                          )
                         )}
                       </InputAdornment>
                     ),
@@ -254,29 +272,42 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
 
                 {password && password.length > 0 && (
                   <Box sx={{ mt: 1, mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", mb: 0.5 }}
+                    >
                       <Typography variant="body2" sx={{ mr: 1 }}>
                         Password strength:
                       </Typography>
-                      <Typography 
-                        variant="body2" 
-                        fontWeight="bold" 
+                      <Typography
+                        variant="body2"
+                        fontWeight="bold"
                         sx={{ color: passwordStrength.color }}
                       >
                         {passwordStrength.message}
                       </Typography>
                       <Tooltip title="Use at least 8 characters with uppercase letters, numbers, and symbols for a strong password">
-                        <HelpOutline fontSize="small" sx={{ ml: 1, color: 'text.secondary', fontSize: 16 }} />
+                        <HelpOutline
+                          fontSize="small"
+                          sx={{ ml: 1, color: "text.secondary", fontSize: 16 }}
+                        />
                       </Tooltip>
                     </Box>
-                    <Box sx={{ width: '100%', height: 4, bgcolor: 'background.paper', borderRadius: 1, overflow: 'hidden' }}>
-                      <Box 
-                        sx={{ 
-                          width: `${(passwordStrength.score / 4) * 100}%`, 
-                          height: '100%', 
+                    <Box
+                      sx={{
+                        width: "100%",
+                        height: 4,
+                        bgcolor: "background.paper",
+                        borderRadius: 1,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: `${(passwordStrength.score / 4) * 100}%`,
+                          height: "100%",
                           bgcolor: passwordStrength.color,
-                          transition: 'width 0.3s ease-in-out'
-                        }} 
+                          transition: "width 0.3s ease-in-out",
+                        }}
                       />
                     </Box>
                   </Box>
@@ -296,7 +327,9 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                   color="primary"
                   fullWidth
                   size="large"
-                  disabled={!isNextButtonEnabled || isSubmitting || checkingAvailability}
+                  disabled={
+                    !isNextButtonEnabled || isSubmitting || checkingAvailability
+                  }
                   sx={{ py: 1.5 }}
                 >
                   {checkingAvailability ? (
@@ -318,9 +351,10 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             <Box>
               <StyledPaper elevation={0}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Choose a unique username for your account. This will be your identity on the platform.
+                  Choose a unique username for your account. This will be your
+                  identity on the platform.
                 </Typography>
-                
+
                 <TextField
                   label="Username"
                   fullWidth
@@ -330,16 +364,18 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                   autoComplete="username"
                   error={!!errors.username || !!usernameError}
                   helperText={
-                    errors.username?.message || 
-                    usernameError || 
+                    errors.username?.message ||
+                    usernameError ||
                     "Only lowercase letters and numbers allowed"
                   }
                   InputProps={{
-                    endAdornment: username && !errors.username && !usernameError && (
-                      <InputAdornment position="end">
-                        <CheckCircle color="success" fontSize="small" />
-                      </InputAdornment>
-                    ),
+                    endAdornment: username &&
+                      !errors.username &&
+                      !usernameError && (
+                        <InputAdornment position="end">
+                          <CheckCircle color="success" fontSize="small" />
+                        </InputAdornment>
+                      ),
                   }}
                   {...register("username", {
                     required: "Username is required",
@@ -349,11 +385,11 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                     },
                     maxLength: {
                       value: 20,
-                      message: "Username must be less than 20 characters"
+                      message: "Username must be less than 20 characters",
                     },
                     pattern: {
                       value: /^[a-z0-9]+$/,
-                      message: "Only lowercase letters and numbers allowed"
+                      message: "Only lowercase letters and numbers allowed",
                     },
                     onChange: (e) => {
                       const sanitized = e.target.value
@@ -385,7 +421,12 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={!username || !!errors.username || isSubmitting || checkingAvailability}
+                  disabled={
+                    !username ||
+                    !!errors.username ||
+                    isSubmitting ||
+                    checkingAvailability
+                  }
                   sx={{ flex: 2, py: 1.5 }}
                 >
                   {checkingAvailability ? (

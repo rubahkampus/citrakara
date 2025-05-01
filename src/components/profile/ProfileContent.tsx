@@ -20,30 +20,28 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { Message as MessageIcon } from "@mui/icons-material";
-
-import BookmarkIcon from "@mui/icons-material/BookmarkBorder";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
-import EditIcon from "@mui/icons-material/Edit";
-import DashboardIcon from "@mui/icons-material/Dashboard";
+import {
+  Message as MessageIcon,
+  BookmarkBorder as BookmarkIcon,
+  ChatBubbleOutline as ChatBubbleOutlineIcon,
+  Edit as EditIcon,
+  Dashboard as DashboardIcon,
+} from "@mui/icons-material";
 
 import { KButton } from "@/components/KButton";
 import GallerySection from "@/components/profile/GallerySection";
 import CommissionSection from "@/components/profile/CommissionSection";
-import CommissionDialog from "@/components/profile/dialogs/CommissionDialog";
-import UploadArtDialog from "@/components/profile/dialogs/UploadArtDialog";
-import { useUserDialogStore } from "@/lib/stores/userStore";
-import { useAuthDialogStore } from "@/lib/stores/authStore";
-import LinkIcon from "@mui/icons-material/Link";
+import { useDialogStore } from "@/lib/stores";
+
+// Helper to get social icon
 import InstagramIcon from "@mui/icons-material/Instagram";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import PublicIcon from "@mui/icons-material/Public";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import LinkIcon from "@mui/icons-material/Link";
 
-// Helper function to get social media icon
-const getSocialIcon = (socialType: string) => {
-  switch (socialType?.toLowerCase()) {
+const getSocialIcon = (platform: string) => {
+  switch (platform.toLowerCase()) {
     case "instagram":
       return <InstagramIcon fontSize="small" />;
     case "twitter":
@@ -70,16 +68,15 @@ export default function ProfileContent({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const router = useRouter();
-  const { open: openUserDialog } = useUserDialogStore();
-  const { open: openAuthDialog } = useAuthDialogStore();
+  const openDialog = useDialogStore((s) => s.open);
   const [activeTab, setActiveTab] = useState(0);
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+  const handleTabChange = (_: any, newVal: number) => {
+    setActiveTab(newVal);
   };
 
   const handleEditProfile = () => {
-    openUserDialog("editProfile");
+    openDialog("editProfile", undefined, profile, isOwner);
   };
 
   const handleOpenDashboard = () => {
@@ -87,15 +84,14 @@ export default function ProfileContent({
   };
 
   const handleMessageCreator = () => {
-    // Check if user is logged in (mock for now)
-    const isLoggedIn = true; // Replace with actual auth check
-
-    if (isLoggedIn) {
-      router.push("/dashboard/chat");
-    } else {
-      openAuthDialog("login");
-    }
+    // Replace with real auth check
+    const loggedIn = true;
+    if (loggedIn) router.push("/dashboard/chat");
+    else openDialog("login");
   };
+
+  const bannerUrl = profile.banner || "/default-banner.jpg";
+  const avatarUrl = profile.profilePicture || "/default-profile.png";
 
   return (
     <Box>
@@ -104,29 +100,24 @@ export default function ProfileContent({
         sx={{
           width: "100%",
           height: 250,
-          backgroundImage: `url(${
-            profile.banner || "/default-banner.jpg"
-          }?t=${Date.now()})`,
+          backgroundImage: `url(${bannerUrl}?t=${Date.now()})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           position: "relative",
         }}
       />
 
-      {/* Profile Content Container */}
       <Container
         maxWidth={false}
         disableGutters
-        sx={{
-          backgroundColor: "#FAFAFA",
-        }}
+        sx={{ backgroundColor: "#FAFAFA" }}
       >
-        {/* Profile Header Section */}
+        {/* Header */}
         <Box
           sx={{
-            position: "relative",
             display: "flex",
             justifyContent: "center",
+            position: "relative",
           }}
         >
           <Box
@@ -138,12 +129,9 @@ export default function ProfileContent({
               gap: 3,
             }}
           >
-            {/* Profile Picture and User Info */}
             <Stack direction="row" spacing={2.5} alignItems="flex-start">
               <Avatar
-                src={`${
-                  profile.profilePicture || "/default-profile.png"
-                }?t=${Date.now()}`}
+                src={`${avatarUrl}?t=${Date.now()}`}
                 alt={profile.username}
                 sx={{
                   width: { xs: 110, sm: 130, md: 150 },
@@ -151,10 +139,8 @@ export default function ProfileContent({
                   border: "3px solid white",
                   top: -40,
                   boxShadow: "0 6px 16px rgba(0,0,0,0.15)",
-                  transition: "transform 0.2s ease-in-out",
-                  "&:hover": {
-                    transform: "scale(1.05)",
-                  },
+                  transition: "transform 0.2s",
+                  "&:hover": { transform: "scale(1.05)" },
                 }}
               />
 
@@ -162,7 +148,6 @@ export default function ProfileContent({
                 <Typography variant="h5" fontWeight="bold" sx={{ mb: 0.5 }}>
                   {profile.displayName || profile.username}
                 </Typography>
-
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -170,8 +155,6 @@ export default function ProfileContent({
                 >
                   @{profile.username}
                 </Typography>
-
-                {/* Commission Status Badge */}
                 {profile.openForCommissions && (
                   <Box
                     sx={{
@@ -183,14 +166,10 @@ export default function ProfileContent({
                       color: "white",
                       borderRadius: "12px",
                       fontSize: "0.8rem",
-                      fontWeight: "600",
+                      fontWeight: 600,
                       boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        bgcolor: "success.main",
-                        color: "common.white",
-                        cursor: "pointer",
-                      },
+                      transition: "0.2s",
+                      "&:hover": { bgcolor: "success.main", cursor: "pointer" },
                     }}
                   >
                     Open for Commissions
@@ -199,102 +178,40 @@ export default function ProfileContent({
               </Box>
             </Stack>
 
-            {/* Action Buttons */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-end",
-                pt: 2.5,
-              }}
-            >
+            <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 2.5 }}>
               {isOwner ? (
                 <Stack direction="row" spacing={1.5}>
                   <Button
                     variant="outlined"
-                    color="primary"
                     startIcon={<EditIcon />}
                     onClick={handleEditProfile}
-                    size="medium"
-                    sx={{
-                      borderRadius: 2,
-                      px: 2,
-                      textTransform: "none",
-                      fontWeight: 500,
-                      boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                        transform: "translateY(-2px)",
-                      },
-                    }}
+                    sx={{ textTransform: "none", fontWeight: 500 }}
                   >
                     Edit Profile
                   </Button>
                   <Button
                     variant="contained"
-                    color="primary"
                     startIcon={<DashboardIcon />}
                     onClick={handleOpenDashboard}
-                    size="medium"
-                    sx={{
-                      borderRadius: 2,
-                      px: 2.5,
-                      textTransform: "none",
-                      fontWeight: 500,
-                      boxShadow: "0 2px 5px rgba(58,53,225,0.3)",
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        boxShadow: "0 4px 10px rgba(58,53,225,0.4)",
-                        transform: "translateY(-2px)",
-                      },
-                    }}
+                    sx={{ textTransform: "none", fontWeight: 500 }}
                   >
                     Open Dashboard
                   </Button>
                 </Stack>
               ) : (
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Tooltip title="Bookmark Creator" arrow placement="top">
-                    <IconButton
-                      size="medium"
-                      sx={{
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: 2,
-                        p: 1,
-                        color: "text.secondary",
-                        transition: "all 0.2s",
-                        "&:hover": {
-                          bgcolor: "action.hover",
-                          transform: "translateY(-2px)",
-                          boxShadow: "0 3px 6px rgba(0,0,0,0.1)",
-                        },
-                      }}
-                    >
-                      <BookmarkIcon fontSize="small" />
+                  <Tooltip title="Bookmark Creator">
+                    <IconButton>
+                      <BookmarkIcon />
                     </IconButton>
                   </Tooltip>
                   <Button
                     variant="contained"
-                    color="primary"
                     startIcon={<ChatBubbleOutlineIcon />}
                     onClick={handleMessageCreator}
-                    size="medium"
-                    sx={{
-                      borderRadius: 2,
-                      px: 2.5,
-                      py: 1,
-                      textTransform: "none",
-                      fontWeight: 500,
-                      boxShadow: "0 2px 5px rgba(58,53,225,0.3)",
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        boxShadow: "0 4px 10px rgba(58,53,225,0.4)",
-                        transform: "translateY(-2px)",
-                      },
-                    }}
+                    sx={{ textTransform: "none", fontWeight: 500 }}
                   >
-                    Message Creator
+                    Message
                   </Button>
                 </Stack>
               )}
@@ -302,7 +219,7 @@ export default function ProfileContent({
           </Box>
         </Box>
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <Box
           sx={{
             display: "flex",
@@ -310,15 +227,8 @@ export default function ProfileContent({
             backgroundColor: "#EEEEEE",
           }}
         >
-          <Box
-            sx={{
-              mt: 4,
-              width: "80vw",
-              display: "flex",
-              gap: 4,
-            }}
-          >
-            {/* Left Sidebar */}
+          <Box sx={{ mt: 4, width: "80vw", display: "flex", gap: 4 }}>
+            {/* Sidebar */}
             <Box sx={{ width: 280, flexShrink: 0 }}>
               <Paper
                 elevation={0}
@@ -327,13 +237,8 @@ export default function ProfileContent({
                   borderRadius: 3,
                   border: "1px solid",
                   borderColor: "divider",
-                  transition: "box-shadow 0.3s ease",
-                  "&:hover": {
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                  },
                 }}
               >
-                {/* About Section */}
                 <Typography
                   variant="subtitle1"
                   fontWeight="bold"
@@ -354,23 +259,18 @@ export default function ProfileContent({
                 >
                   About
                 </Typography>
-
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{
                     mb: 3.5,
                     lineHeight: 1.6,
-                    fontWeight: profile.bio ? 400 : 300,
                     fontStyle: profile.bio ? "normal" : "italic",
                   }}
                 >
                   {profile.bio || "No bio yet."}
                 </Typography>
-
                 <Divider sx={{ mb: 3 }} />
-
-                {/* Social Links */}
                 <Typography
                   variant="subtitle1"
                   fontWeight="bold"
@@ -391,42 +291,22 @@ export default function ProfileContent({
                 >
                   Socials
                 </Typography>
-
                 <Box
                   sx={{ display: "flex", gap: 1.5, mb: 3.5, flexWrap: "wrap" }}
                 >
-                    {profile.socials?.length > 0 ? (
-                    profile.socials.map((social: { label: string; url: string; platform: string }, index: number) => (
-                      <Tooltip
-                      key={index}
-                      title={social.label}
-                      arrow
-                      placement="top"
-                      >
-                      <IconButton
-                      size="small"
-                      sx={{
-                      bgcolor: "action.hover",
-                      color: "text.primary",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        bgcolor: "primary.main",
-                        color: "white",
-                        transform: "translateY(-3px)",
-                        boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                      },
-                      width: 36,
-                      height: 36,
-                      }}
-                      href={social.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      >
-                      {getSocialIcon(social.platform)}
-                      </IconButton>
+                  {profile.socials?.length > 0 ? (
+                    profile.socials.map((s: any, i: number) => (
+                      <Tooltip key={i} title={s.label}>
+                        <IconButton
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {getSocialIcon(s.platform)}
+                        </IconButton>
                       </Tooltip>
                     ))
-                    ) : (
+                  ) : (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -434,12 +314,9 @@ export default function ProfileContent({
                     >
                       No social links added
                     </Typography>
-                    )}
+                  )}
                 </Box>
-
                 <Divider sx={{ mb: 3 }} />
-
-                {/* Tags */}
                 <Typography
                   variant="subtitle1"
                   fontWeight="bold"
@@ -460,29 +337,14 @@ export default function ProfileContent({
                 >
                   Tags
                 </Typography>
-
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8 }}>
-                  {profile.tags && profile.tags.length > 0 ? (
+                  {profile.tags?.length > 0 ? (
                     profile.tags.map((tag: string) => (
                       <Chip
                         key={tag}
                         label={tag}
                         size="small"
-                        sx={{
-                          fontSize: "0.75rem",
-                          height: 26,
-                          borderRadius: "12px",
-                          fontWeight: 500,
-                          bgcolor: "action.hover",
-                          color: "text.primary",
-                          transition: "all 0.2s ease",
-                          "&:hover": {
-                            bgcolor: "primary.light",
-                            color: "primary.contrastText",
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 2px 5px rgba(0,0,0,0.08)",
-                          },
-                        }}
+                        sx={{ fontSize: "0.75rem", height: 26 }}
                       />
                     ))
                   ) : (
@@ -498,9 +360,8 @@ export default function ProfileContent({
               </Paper>
             </Box>
 
-            {/* Main Content */}
+            {/* Tabs and Sections */}
             <Box sx={{ flex: 1 }}>
-              {/* Tabs Navigation */}
               <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
                 <Tabs
                   value={activeTab}
@@ -513,7 +374,6 @@ export default function ProfileContent({
                 </Tabs>
               </Box>
 
-              {/* Tab Content */}
               {activeTab === 0 && (
                 <CommissionSection
                   username={profile.username}
@@ -527,10 +387,6 @@ export default function ProfileContent({
           </Box>
         </Box>
       </Container>
-
-      {/* Dialogs */}
-      <CommissionDialog isOwner={isOwner} />
-      {isOwner && <UploadArtDialog />}
     </Box>
   );
 }

@@ -59,7 +59,7 @@ export async function findActiveListingsByArtist(
   artistId: string | Types.ObjectId
 ) {
   await connectDB();
-  return CommissionListing.find({ artistId, isDeleted: false });
+  return CommissionListing.find({ artistId, isDeleted: false }).lean();
 }
 
 /** Public search –  simple tag/keyword filter */
@@ -87,7 +87,7 @@ export async function searchListings({
   if (tags?.length) filter.tags = { $in: tags };
   if (text) filter.$text = { $search: text };
 
-  return CommissionListing.find(filter).skip(skip).limit(limit);
+  return CommissionListing.find(filter).skip(skip).limit(limit).lean();
 }
 
 /** Generic atomic update */

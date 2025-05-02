@@ -25,6 +25,94 @@ export interface RevisionPolicy {
   /** Fee per extra revision (rupiah‑cents) */
   fee: Cents;
 }
+const RevisionPolicySchema = new Schema<RevisionPolicy>(
+  {
+    limit: { type: Boolean, required: true },
+    free: { type: Number, required: true },
+    extraAllowed: { type: Boolean, required: true },
+    fee: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+/* -----------------------------------------------------------
+   Option selection and grouping sub-schemas
+-------------------------------------------------------------*/
+const OptionSelectionSchema = new Schema<{ label: string; price: Cents }>(
+  {
+    label: { type: String, required: true },
+    price: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const OptionGroupSchema = new Schema<{
+  title: string;
+  selections: { label: string; price: Cents }[];
+}>(
+  {
+    title: { type: String, required: true },
+    selections: { type: [OptionSelectionSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const AddonSchema = new Schema<{ label: string; price: Cents }>(
+  {
+    label: { type: String, required: true },
+    price: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+/* -----------------------------------------------------------
+   GeneralOptions as explicit sub-schema (no Mixed)
+-------------------------------------------------------------*/
+const GeneralOptionsSchema = new Schema<{
+  optionGroups?: (typeof OptionGroupSchema)[];
+  addons?: (typeof AddonSchema)[];
+  questions?: string[];
+}>(
+  {
+    optionGroups: { type: [OptionGroupSchema], default: [] },
+    addons: { type: [AddonSchema], default: [] },
+    questions: { type: [String], default: [] },
+  },
+  { _id: false }
+);
+
+/* -----------------------------------------------------------
+   SubjectOptions sub-schema (custom flow)
+-------------------------------------------------------------*/
+const SubjectOptionGroupSchema = new Schema<{
+  title: string;
+  selections: { label: string; price: Cents }[];
+}>(
+  {
+    title: { type: String, required: true },
+    selections: { type: [OptionSelectionSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const SubjectOptionsSchema = new Schema<{
+  title: string;
+  limit: number;
+  discount?: number;
+  optionGroups?: (typeof SubjectOptionGroupSchema)[];
+  addons?: (typeof AddonSchema)[];
+  questions?: string[];
+}>(
+  {
+    title: { type: String, required: true },
+    limit: { type: Number, required: true, default: 1 },
+    discount: { type: Number, default: 0 },
+    optionGroups: { type: [SubjectOptionGroupSchema], default: [] },
+    addons: { type: [AddonSchema], default: [] },
+    questions: { type: [String], default: [] },
+  },
+  { _id: false }
+);
 
 /* -----------------------------------------------------------
    1. TS Interface (for service / API layer)
@@ -170,12 +258,20 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
         type: {
           type: String,
           enum: ["flat", "perDay"],
+          required: function () {
+            return this.deadline.mode === "withRush";
+          },
         },
-        amount: Number,
+        amount: {
+          type: Number,
+          required: function () {
+            return this.deadline.mode === "withRush";
+          },
+        },
       },
     },
 
-    basePrice: { type: Number, required: true }, // If user don't input basePrice, it will be 0
+    basePrice: { type: Number, default: 0 }, // If user don't input basePrice, it will be 0
 
     price: {
       min: { type: Number, required: true, default: 0 }, // calculated from basePrice + cheapest options
@@ -197,17 +293,27 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       type: {
         type: String,
         enum: ["none", "standard", "milestone"],
+        default: "none",
       },
-      policy: { type: Schema.Types.Mixed },
+      policy: {
+        type: RevisionPolicySchema,
+        required: function () {
+          return this.revisions?.type === "standard";
+        },
+      },
     },
-
     milestones: [
-      { title: String, percent: Number, policy: Schema.Types.Mixed },
+      new Schema<{ title: string; percent: number; policy?: RevisionPolicy }>(
+        {
+          title: { type: String, required: true },
+          percent: { type: Number, required: true, min: 0, max: 100 },
+          policy: RevisionPolicySchema,
+        },
+        { _id: false }
+      ),
     ],
-
-    generalOptions: Schema.Types.Mixed,
-    subjectOptions: Schema.Types.Mixed,
-
+    generalOptions: { type: GeneralOptionsSchema, default: () => ({}) },
+    subjectOptions: { type: [SubjectOptionsSchema], default: [] },
     reviewsSummary: {
       avg: { type: Number, default: 0 },
       count: { type: Number, default: 0 },

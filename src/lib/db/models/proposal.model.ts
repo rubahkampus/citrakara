@@ -88,6 +88,36 @@ export interface IProposal extends Document {
   updatedAt: ISODate;
 }
 
+/** ---- Sub-schemas for clearer validation ---- */
+const GeneralOptionsSchema = new Schema(
+  {
+    toggles: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: {},
+    },
+    answers: {
+      type: Map,
+      of: String,
+      default: {},
+    },
+  },
+  { _id: false }
+);
+
+const SubjectOptionSchema = new Schema(
+  {
+    selectionIds: { type: [String], required: true },
+    addons: { type: [String], default: [] },
+    answers: {
+      type: Map,
+      of: String,
+      default: {},
+    },
+  },
+  { _id: false }
+);
+
 const ProposalSchema = new Schema<IProposal>(
   {
     /* relationships */
@@ -135,13 +165,20 @@ const ProposalSchema = new Schema<IProposal>(
     generalDescription: { type: String, required: true },
     referenceImages: {
       type: [String],
-      validate: (arr: string[]) => arr.length <= 5,
       default: [],
+      validate: {
+        validator: (arr: string[]) => arr.length <= 5,
+        message: "You can attach up to 5 reference images only",
+      },
     },
 
     /* general & subject option selections */
-    generalOptions: { type: Schema.Types.Mixed },
-    subjectOptions: { type: Schema.Types.Mixed },
+    generalOptions: { type: GeneralOptionsSchema, default: {} },
+    subjectOptions: {
+      type: Map,
+      of: SubjectOptionSchema,
+      default: {},
+    },
 
     /* price breakdown */
     calculatedPrice: {
@@ -175,5 +212,9 @@ ProposalSchema.index({ artistId: 1, status: 1 });
 ProposalSchema.index({ clientId: 1, status: 1 });
 ProposalSchema.index({ listingId: 1 });
 ProposalSchema.index({ expiresAt: 1 });
+ProposalSchema.index(
+  { expiresAt: 1, status: 1 },
+  { partialFilterExpression: { status: { $in: ["pending", "negotiating"] } } }
+);
 
 export default models.Proposal || model<IProposal>("Proposal", ProposalSchema);

@@ -32,7 +32,7 @@ export async function getTosById(tosId: string, userId: string) {
 
   const tos = await Tos.findById(tosId);
 
-  if (!tos || tos.user.toString() !== userId || tos.isDeleted) {
+  if (!tos || tos.user.toString() !== userId ) {
     return null;
   }
 

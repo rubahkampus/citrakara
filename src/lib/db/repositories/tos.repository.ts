@@ -47,7 +47,7 @@ export async function createDefaultTos(userId: string | ObjectId) {
  */
 export async function findTosByUserId(userId: string | ObjectId) {
   await connectDB();
-  return Tos.find({ user: userId, isDeleted: { $ne: true } });
+  return Tos.find({ user: userId });
 }
 
 /**

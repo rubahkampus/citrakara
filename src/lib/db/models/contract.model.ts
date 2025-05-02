@@ -291,18 +291,20 @@ ContractSchema.methods.changeStatus = function (
   this.addEvent("status_change", actor, aid, { oldStatus, newStatus });
 };
 
-/* Add pre-save hook to update root graceEndsAt when late extensions are added */
+/* -------------------------------- Hooks -------------------------------- */
+// Ensure chronological consistency: graceEndsAt should always be after deadlineAt
 ContractSchema.pre("save", function (next) {
-  // Check if we have late extensions and update the root graceEndsAt
-  if (this.late && this.late.extensions && this.late.extensions.length > 0) {
-    const lastExtension = this.late.extensions[this.late.extensions.length - 1];
-    if (lastExtension && lastExtension.newGraceEndsAt) {
-      this.graceEndsAt = lastExtension.newGraceEndsAt;
-    }
+  if (this.graceEndsAt <= this.deadlineAt) {
+    return next(new Error("graceEndsAt must be after deadlineAt"));
+  }
+  // Sync graceEndsAt with last extension if present
+  const exts = this.late?.extensions;
+  if (exts && exts.length) {
+    const last = exts[exts.length - 1];
+    if (last.newGraceEndsAt) this.graceEndsAt = last.newGraceEndsAt;
   }
   next();
 });
-
 /* ───────────────────────── Indexes (unchanged) ──────────────────────────── */
 ContractSchema.index({ artistId: 1, status: 1 });
 ContractSchema.index({ clientId: 1, status: 1 });

@@ -1,11 +1,21 @@
 // src/lib/db/repositories/walletTransaction.repository.ts
+
 import WalletTransaction from "@/lib/db/models/walletTransaction.model";
+import Wallet from "@/lib/db/models/wallet.model";
 import { connectDB } from "@/lib/db/connection";
-import { ObjectId } from "mongoose";
-import { updateWalletBalance, findWalletByUserId } from "./wallet.repository";
+import type { ObjectId } from "mongoose";
+
+type TransactionInput = {
+  walletId: string | ObjectId;
+  type: "credit" | "debit";
+  amount: number;
+  target: "available" | "escrowed";
+  source: "commission" | "refund" | "payment" | "manual" | "release";
+  note?: string;
+};
 
 /**
- * Create a transaction and update wallet balance
+ * Create a transaction and update wallet balance atomically.
  */
 export async function createTransaction({
   walletId,
@@ -14,24 +24,16 @@ export async function createTransaction({
   target,
   source,
   note,
-}: {
-  walletId: string | ObjectId;
-  type: "credit" | "debit";
-  amount: number;
-  target: "available" | "escrowed";
-  source: "commission" | "refund" | "payment" | "manual" | "release";
-  note?: string;
-}) {
+}: TransactionInput) {
   await connectDB();
 
   // Start a session for transaction
   const session = await WalletTransaction.startSession();
-
   try {
     session.startTransaction();
 
-    // Create the transaction record
-    const transaction = new WalletTransaction({
+    // 1) Record the transaction
+    const txn = new WalletTransaction({
       wallet: walletId,
       type,
       amount,
@@ -39,37 +41,33 @@ export async function createTransaction({
       source,
       note,
     });
+    await txn.save({ session });
 
-    await transaction.save({ session });
+    // 2) Read the wallet under the same session
+    const wallet = await Wallet.findOne({ _id: walletId }).session(session);
+    if (!wallet) throw new Error("Wallet not found");
 
-    // Update the wallet balance
-    const updateField =
-      target === "available" ? "saldoAvailable" : "saldoEscrowed";
-    const updateAmount = type === "credit" ? amount : -amount;
+    // 3) Compute new balance
+    const field = target === "available" ? "saldoAvailable" : "saldoEscrowed";
+    const delta = type === "credit" ? amount : -amount;
+    const current =
+      field === "saldoAvailable" ? wallet.saldoAvailable : wallet.saldoEscrowed;
+    const updated = current + delta;
+    if (updated < 0) throw new Error(`Insufficient ${target} balance`);
 
-    // Get current wallet balance
-    const wallet = await findWalletByUserId(walletId);
-    if (!wallet) {
-      throw new Error("Wallet not found");
-    }
+    // 4) Persist the new balance in the same session
+    await Wallet.updateOne(
+      { _id: walletId },
+      { $set: { [field]: updated } },
+      { session }
+    );
 
-    const currentBalance =
-      target === "available" ? wallet.saldoAvailable : wallet.saldoEscrowed;
-    const newBalance = currentBalance + updateAmount;
-
-    // Make sure we don't go negative
-    if (newBalance < 0) {
-      throw new Error(`Insufficient ${target} balance`);
-    }
-
-    // Update wallet
-    await updateWalletBalance(walletId, { [updateField]: newBalance });
-
+    // 5) Commit and return
     await session.commitTransaction();
-    return transaction;
-  } catch (error) {
+    return txn;
+  } catch (err) {
     await session.abortTransaction();
-    throw error;
+    throw err;
   } finally {
     session.endSession();
   }
@@ -91,7 +89,7 @@ export async function getTransactionHistory(
 }
 
 /**
- * Get transaction history for a user
+ * Get transaction history for a user (via their wallet)
  */
 export async function getTransactionHistoryByUserId(
   userId: string | ObjectId,
@@ -99,12 +97,7 @@ export async function getTransactionHistoryByUserId(
   skip = 0
 ) {
   await connectDB();
-
-  // First find the user's wallet
-  const wallet = await findWalletByUserId(userId);
-  if (!wallet) {
-    throw new Error("Wallet not found");
-  }
-
+  const wallet = await Wallet.findOne({ user: userId });
+  if (!wallet) throw new Error("Wallet not found");
   return getTransactionHistory(wallet._id, limit, skip);
 }

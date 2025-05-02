@@ -3,32 +3,67 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api/withAuth";
 import { rotateToken } from "@/lib/api/rotateToken";
 import { handleError } from "@/lib/utils/errorHandler";
-import { setListingActiveState, deleteListing } from "@/lib/services/commissionListing.service";
+import {
+  setListingActiveState,
+  deleteListing,
+  updateListing,
+  getListingPublic,
+} from "@/lib/services/commissionListing.service";
 
-// Update commission listing status
+// Get a specific commission listing
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const listingId = params.id;
+    const listing = await getListingPublic(listingId);
+
+    return NextResponse.json({ listing });
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+// Update commission listing
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const listingId = params.id;
-    const { active } = await req.json();
-    
-    if (typeof active !== 'boolean') {
-      return NextResponse.json(
-        { error: "Active status must be a boolean value" },
-        { status: 400 }
-      );
-    }
-    
-    return withAuth(async (session) => {
-      const updatedListing = await setListingActiveState(session.id, listingId, active);
-      
-      const response = NextResponse.json({
-        message: `Listing ${active ? 'activated' : 'deactivated'} successfully`,
-        listing: updatedListing
+    const body = await req.json();
+
+    // If 'active' is present, it's an active status update
+    if ("active" in body && typeof body.active === "boolean") {
+      return withAuth(async (session) => {
+        const updatedListing = await setListingActiveState(
+          session.id,
+          listingId,
+          body.active
+        );
+
+        const response = NextResponse.json({
+          message: `Listing ${
+            body.active ? "activated" : "deactivated"
+          } successfully`,
+          listing: updatedListing,
+        });
+
+        rotateToken(response, session);
+        return response;
       });
-      
+    }
+
+    // Otherwise, it's a content update
+    return withAuth(async (session) => {
+      const updatedListing = await updateListing(session.id, listingId, body);
+
+      const response = NextResponse.json({
+        message: "Listing updated successfully",
+        listing: updatedListing,
+      });
+
       rotateToken(response, session);
       return response;
     });
@@ -44,14 +79,14 @@ export async function DELETE(
 ) {
   try {
     const listingId = params.id;
-    
+
     return withAuth(async (session) => {
       await deleteListing(session.id, listingId);
-      
+
       const response = NextResponse.json({
-        message: "Listing deleted successfully"
+        message: "Listing deleted successfully",
       });
-      
+
       rotateToken(response, session);
       return response;
     });

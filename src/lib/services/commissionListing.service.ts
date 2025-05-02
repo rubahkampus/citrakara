@@ -9,15 +9,26 @@ import {
   softDeleteListing,
   searchListings,
   adjustSlotsUsed,
-  CommissionListingCreateInput,
+  CommissionListingPayload,
 } from "@/lib/db/repositories/commissionListing.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
+
+// Custom error class for HTTP status mapping
+class HttpError extends Error {
+  status: number;
+
+  constructor(message: string, status: number = 400) {
+    super(message);
+    this.status = status;
+    this.name = "HttpError";
+  }
+}
 
 /**
  * Computes the price range (min/max) for a commission listing
  * based on all options, selections, and addons
  */
-function computePriceRange(input: CommissionListingCreateInput) {
+function computePriceRange(input: Partial<CommissionListingPayload>) {
   let min = input.basePrice ?? 0;
   let max = input.basePrice ?? 0;
 
@@ -46,30 +57,95 @@ function computePriceRange(input: CommissionListingCreateInput) {
 /**
  * Validates a commission listing payload before creation
  */
-function validateListingPayload(payload: CommissionListingCreateInput) {
+function validateListingPayload(payload: Partial<CommissionListingPayload>) {
+  // Check required fields
+  const requiredFields = [
+    "title",
+    "tos",
+    "type",
+    "flow",
+    "artistId",
+    "thumbnail",
+    "deadline",
+    "basePrice",
+    "cancelationFee",
+  ];
+
+  for (const field of requiredFields) {
+    if (!payload[field as keyof typeof payload]) {
+      throw new HttpError(`Required field missing: ${field}`);
+    }
+  }
+
   // Check milestone requirements for milestone flow
   if (
     payload.flow === "milestone" &&
     (!payload.milestones || !payload.milestones.length)
   ) {
-    throw new Error("Milestone flow requires milestones array");
+    throw new HttpError("Milestone flow requires milestones array");
   }
 
   // Validate milestone percentages sum to 100%
-  if (payload.milestones) {
+  if (payload.milestones && payload.milestones.length > 0) {
     const sum = payload.milestones.reduce(
       (acc, milestone) => acc + milestone.percent,
       0
     );
     if (sum !== 100) {
-      throw new Error("Milestone percentages must sum to 100%");
+      throw new HttpError("Milestone percentages must sum to 100%");
     }
+  }
+
+  // Enforce correct revision policy based on flow
+  if (payload.flow === "standard" && payload.revisions?.type !== "standard") {
+    throw new HttpError("Standard flow requires standard revision type");
+  }
+
+  if (payload.flow === "milestone" && payload.revisions?.type === "standard") {
+    throw new HttpError("Milestone flow cannot use standard revision type");
   }
 
   // Validate slots
   if (payload.slots === 0) {
-    throw new Error("Slots cannot be 0");
+    throw new HttpError("Slots cannot be 0");
   }
+}
+
+/**
+ * Extract only allowed fields from JSON for commission listing
+ */
+function sanitizePayload(rawPayload: any): Partial<CommissionListingPayload> {
+  const allowedFields = [
+    "title",
+    "description",
+    "tags",
+    "slots",
+    "tos",
+    "type",
+    "flow",
+    "deadline",
+    "basePrice",
+    "cancelationFee",
+    "latePenaltyPercent",
+    "graceDays",
+    "currency",
+    "allowContractChange",
+    "changeable",
+    "revisions",
+    "milestones",
+    "generalOptions",
+    "subjectOptions",
+  ];
+
+  const sanitized: any = {};
+
+  for (const field of allowedFields) {
+    if (field in rawPayload) {
+      sanitized[field] = rawPayload[field];
+    }
+  }
+
+  return sanitized;
 }
 
 /**
@@ -78,10 +154,10 @@ function validateListingPayload(payload: CommissionListingCreateInput) {
  */
 export async function createListing(
   artistId: string,
-  payload: Omit<CommissionListingCreateInput, "artistId" | "price">
+  payload: Omit<CommissionListingPayload, "artistId" | "price">
 ) {
   // Prepare the complete listing data
-  const listingData: any = {
+  const listingData = {
     ...payload,
     artistId: toObjectId(artistId),
     description: payload.description ?? [], // Ensure description is an array
@@ -90,11 +166,14 @@ export async function createListing(
   // Validate the listing data
   validateListingPayload(listingData);
 
-  // Calculate and attach price range
-  listingData.price = computePriceRange(listingData);
+  // Calculate price range
+  const priceRange = computePriceRange(listingData);
 
-  // Create the listing
-  return createCommissionListing(listingData as CommissionListingCreateInput);
+  // Create the listing with price
+  return createCommissionListing({
+    ...listingData,
+    price: priceRange,
+  });
 }
 
 /**
@@ -102,20 +181,48 @@ export async function createListing(
  * Handles file uploads to R2 and JSON parsing
  */
 export async function createListingFromForm(artistId: string, form: FormData) {
-  // Validate required fields
+  // Parse JSON payload if provided
+  const jsonPayload = (() => {
+    const raw = form.get("payload");
+    if (raw && typeof raw === "string") {
+      try {
+        return sanitizePayload(JSON.parse(raw));
+      } catch (error) {
+        throw new HttpError("Invalid JSON payload", 400);
+      }
+    }
+    return {};
+  })();
+
+  // Ensure essential fields are present
   const requiredFields = ["title", "tos", "type", "flow"];
   for (const field of requiredFields) {
     const value = form.get(field);
     if (!value || typeof value !== "string") {
-      throw new Error(`Required field missing: ${field}`);
+      throw new HttpError(`Required field missing: ${field}`, 400);
     }
   }
 
   // Handle thumbnail upload
   const thumbBlob = form.get("thumbnail");
   if (!(thumbBlob instanceof Blob)) {
-    throw new Error("Thumbnail image is required");
+    throw new HttpError("Thumbnail image is required", 400);
   }
+
+  // Prepare basic listing data for validation
+  const listingData: Partial<CommissionListingPayload> = {
+    ...jsonPayload,
+    artistId: toObjectId(artistId),
+    title: form.get("title")!.toString(),
+    tos: form.get("tos")!.toString(),
+    type: form.get("type") as "template" | "custom",
+    flow: form.get("flow") as "standard" | "milestone",
+    basePrice: Number(form.get("basePrice") ?? 0),
+    description: jsonPayload.description ?? [],
+  };
+
+  // Validate before file upload
+  validateListingPayload(listingData);
 
   // Collect sample images
   const sampleBlobs: Blob[] = [];
@@ -132,41 +239,16 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     "listing"
   );
 
-  // Parse JSON payload if provided
-  const jsonPayload = (() => {
-    const raw = form.get("payload");
-    if (raw && typeof raw === "string") {
-      try {
-        return JSON.parse(raw) as Partial<CommissionListingCreateInput>;
-      } catch (error) {
-        throw new Error("Invalid JSON payload");
-      }
-    }
-    return {};
-  })();
+  // Calculate price range
+  const priceRange = computePriceRange(listingData);
 
-  // Prepare the complete listing data
-  const listingData: any = {
-    ...jsonPayload,
-    artistId: toObjectId(artistId),
-    title: form.get("title")!.toString(),
-    tos: form.get("tos")!.toString(),
-    type: form.get("type") as any,
-    flow: form.get("flow") as any,
+  // Create the listing with uploaded image URLs and price
+  return createCommissionListing({
+    ...(listingData as CommissionListingPayload),
     thumbnail: thumbnailUrl,
     samples: sampleUrls,
-    basePrice: Number(form.get("basePrice") ?? 0),
-    description: jsonPayload.description ?? [], // Ensure description is an array
-  };
-
-  // Validate the listing data
-  validateListingPayload(listingData);
-
-  // Calculate and attach price range
-  listingData.price = computePriceRange(listingData);
-
-  // Create the listing
-  return createCommissionListing(listingData as CommissionListingCreateInput);
+    price: priceRange,
+  });
 }
 
 /**
@@ -208,7 +290,7 @@ export async function applySlotDelta(listingId: string, delta: number) {
 export async function getListingsByUsername(username: string) {
   const artist = await findUserByUsername(username);
   if (!artist) {
-    throw new Error("User not found");
+    throw new HttpError("User not found", 404);
   }
   return findActiveListingsByArtist(artist._id);
 }
@@ -220,7 +302,7 @@ export async function getListingsByUsername(username: string) {
 export async function getListingPublic(listingId: string) {
   const listing = await findCommissionListingById(listingId, { lean: true });
   if (!listing || listing.isDeleted || !listing.isActive) {
-    throw new Error("Listing not found");
+    throw new HttpError("Listing not found", 404);
   }
   return listing;
 }
@@ -236,4 +318,61 @@ export async function browseListings(options: {
   limit?: number;
 }) {
   return searchListings(options);
+}
+
+/**
+ * Update a commission listing
+ */
+export async function updateListing(
+  artistId: string,
+  listingId: string,
+  updates: Partial<CommissionListingPayload>
+) {
+  // First fetch the existing listing
+  const existing = await findCommissionListingById(listingId);
+
+  if (!existing) {
+    throw new HttpError("Listing not found", 404);
+  }
+
+  if (existing.artistId.toString() !== artistId) {
+    throw new HttpError("Not authorized to update this listing", 403);
+  }
+
+  // Sanitize and merge updates
+  const sanitizedUpdates = sanitizePayload(updates);
+
+  // Only certain fields can be updated
+  const allowedUpdates = [
+    "title",
+    "description",
+    "tags",
+    "slots",
+    "isActive",
+    "currency",
+    "latePenaltyPercent",
+    "graceDays",
+  ];
+
+  const filteredUpdates: any = {};
+  for (const field of allowedUpdates) {
+    if (field in sanitizedUpdates) {
+      filteredUpdates[field] =
+        sanitizedUpdates[field as keyof typeof sanitizedUpdates];
+    }
+  }
+
+  // If any pricing fields changed, recalculate price
+  const pricingFields = ["basePrice", "generalOptions", "subjectOptions"];
+  const needsPriceUpdate = pricingFields.some(
+    (field) => field in filteredUpdates
+  );
+
+  if (needsPriceUpdate) {
+    const merged = { ...existing.toObject(), ...filteredUpdates };
+    filteredUpdates.price = computePriceRange(merged);
+  }
+
+  // Save via repository
+  return updateCommissionListing(listingId, filteredUpdates);
 }

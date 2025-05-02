@@ -1,4 +1,4 @@
-// src//lib/db/repositories/commissionListing.ts
+// src/lib/db/repositories/commissionListing.repository.ts
 import { connectDB } from "@/lib/db/connection";
 import CommissionListing, {
   ICommissionListing,
@@ -7,17 +7,74 @@ import { Types, ClientSession } from "mongoose";
 
 /* ----------------------------- Input DTOs ----------------------------- */
 
-export type CommissionListingCreateInput = Omit<
-  ICommissionListing,
-  | "_id"
-  | "slotsUsed"
-  | "isActive"
-  | "isDeleted"
-  | "reviewsSummary"
-  | "createdAt"
-  | "updatedAt"
-> & { slotsUsed?: number };
+// Pure payload type instead of derived from Mongoose Document
+// In src/lib/db/repositories/commissionListing.repository.ts
+// Add the price property to the interface
 
+export interface CommissionListingPayload {
+  artistId: Types.ObjectId;
+  title: string;
+  description: { title: string; detail: string }[];
+  tags: string[];
+  thumbnail: string;
+  samples: string[];
+  slots: number;
+  tos: string;
+  type: "template" | "custom";
+  flow: "standard" | "milestone";
+  deadline: {
+    mode: "standard" | "withDeadline" | "withRush";
+    min: number;
+    max: number;
+    rushFee?: { kind: "flat" | "perDay"; amount: number };
+  };
+  basePrice: number;
+  price: { min: number; max: number }; // Add this property
+  cancelationFee: { kind: "flat" | "percentage"; amount: number };
+  latePenaltyPercent?: number;
+  graceDays?: number;
+  currency?: string;
+  allowContractChange?: boolean;
+  changeable?: string[];
+  revisions?: {
+    type: "none" | "standard" | "milestone";
+    policy?: {
+      limit: boolean;
+      free: number;
+      extraAllowed: boolean;
+      fee: number;
+    };
+  };
+  milestones?: Array<{
+    title: string;
+    percent: number;
+    policy?: {
+      limit: boolean;
+      free: number;
+      extraAllowed: boolean;
+      fee: number;
+    };
+  }>;
+  generalOptions?: {
+    optionGroups?: Array<{
+      title: string;
+      selections: { label: string; price: number }[];
+    }>;
+    addons?: { label: string; price: number }[];
+    questions?: string[];
+  };
+  subjectOptions?: Array<{
+    title: string;
+    limit: number;
+    discount?: number;
+    optionGroups?: Array<{
+      title: string;
+      selections: { label: string; price: number }[];
+    }>;
+    addons?: { label: string; price: number }[];
+    questions?: string[];
+  }>;
+}
 export type CommissionListingUpdateInput = Partial<
   Pick<
     ICommissionListing,
@@ -33,7 +90,7 @@ export type CommissionListingUpdateInput = Partial<
 /* ----------------------------- CRUD helpers --------------------------- */
 
 export async function createCommissionListing(
-  payload: CommissionListingCreateInput,
+  payload: CommissionListingPayload,
   session?: ClientSession
 ) {
   await connectDB();
@@ -51,8 +108,16 @@ export async function findCommissionListingById(
   { lean = false }: { lean?: boolean } = {}
 ) {
   await connectDB();
-  const q = CommissionListing.findById(id);
-  return lean ? q.lean() : q;
+  try {
+    const q = CommissionListing.findById(id);
+    return lean ? q.lean() : q;
+  } catch (err) {
+    // Handle CastError (invalid ID format)
+    if ((err as any).name === "CastError") {
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function findActiveListingsByArtist(
@@ -87,7 +152,13 @@ export async function searchListings({
   if (tags?.length) filter.tags = { $in: tags };
   if (text) filter.$text = { $search: text };
 
-  return CommissionListing.find(filter).skip(skip).limit(limit).lean();
+  // Execute queries in parallel for efficiency
+  const [items, total] = await Promise.all([
+    CommissionListing.find(filter).skip(skip).limit(limit).lean(),
+    CommissionListing.countDocuments(filter),
+  ]);
+
+  return { items, total };
 }
 
 /** Generic atomic update */

@@ -147,13 +147,13 @@ export interface ICommissionListing extends Document {
     mode: "standard" | "withDeadline" | "withRush";
     min: number; // days
     max: number; // days
-    rushFee?: { type: "flat" | "perDay"; amount: Cents };
+    rushFee?: { kind: "flat" | "perDay"; amount: Cents };
   };
 
   // ─── Financial guardrails ───────────────────────────────
-  basePrice?: Cents;
+  basePrice: Cents; // Changed from optional to required
   price: { min: Cents; max: Cents }; // calculated from basePrice + options
-  cancelationFee: { type: "flat" | "percentage"; amount: number };
+  cancelationFee: { kind: "flat" | "percentage"; amount: number }; // Changed 'type' to 'kind'
   latePenaltyPercent?: number; // hardcode 10%
   graceDays?: number; // hardcode 7 days
   currency: string; // ISO‑4217, default "IDR"
@@ -255,7 +255,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       min: { type: Number, required: true },
       max: { type: Number, required: true },
       rushFee: {
-        type: {
+        kind: { // Changed from 'type' to 'kind'
           type: String,
           enum: ["flat", "perDay"],
           required: function () {
@@ -271,7 +271,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       },
     },
 
-    basePrice: { type: Number, default: 0 }, // If user don't input basePrice, it will be 0
+    basePrice: { type: Number, default: 0, required: true },
 
     price: {
       min: { type: Number, required: true, default: 0 }, // calculated from basePrice + cheapest options
@@ -279,7 +279,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
     },
 
     cancelationFee: {
-      type: { type: String, enum: ["flat", "percentage"], required: true },
+      kind: { type: String, enum: ["flat", "percentage"], required: true }, // Changed from 'type' to 'kind'
       amount: { type: Number, required: true },
     },
     latePenaltyPercent: Number,
@@ -300,6 +300,13 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
         required: function () {
           return this.revisions?.type === "standard";
         },
+        validate: {
+          validator: function(value: any) {
+            // Reject policy if type is 'none' or 'milestone'
+            return this.revisions?.type === "standard" || !value;
+          },
+          message: "Revision policy should only be provided when type is 'standard'"
+        }
       },
     },
     milestones: [

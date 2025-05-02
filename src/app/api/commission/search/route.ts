@@ -17,12 +17,13 @@ export async function GET(req: NextRequest) {
       limit: Math.min(parseInt(searchParams.get('limit') || '20'), 50), // Max 50 items per page
     };
     
-    const results = await browseListings(query);
+    const { items, total } = await browseListings(query);
     
     return NextResponse.json({
-      results,
+      results: items,
       meta: {
-        count: results.length,
+        count: items.length,
+        total,
         skip: query.skip,
         limit: query.limit,
       }

@@ -3,27 +3,27 @@
 
 import { Box, Grid, Typography, useTheme } from "@mui/material";
 import Image from "next/image";
-import { useDialogStore } from "@/lib/stores";
+import { useRouter } from "next/navigation";
 import { GalleryData } from "@/lib/stores";
 
 export default function GalleryGrid({
   galleries,
+  username,
+  setActiveGalleryId,
 }: {
   galleries: GalleryData[];
+  username: string;
+  setActiveGalleryId: (id: string) => void;
 }) {
   const theme = useTheme();
-  const openDialog = useDialogStore((state) => state.open);
-
-  const handleClick = (galleryId: string) => {
-    openDialog("viewGalleryPost", galleryId, undefined, false);
-  };
+  const router = useRouter();
 
   return (
     <Grid container spacing={2}>
       {galleries.map((gallery) => (
         <Grid item xs={6} sm={3} key={gallery._id}>
           <Box
-            onClick={() => handleClick(gallery._id)}
+            onClick={() => setActiveGalleryId(gallery._id)}
             sx={{
               position: "relative",
               paddingBottom: "100%", // 1:1 aspect

@@ -50,14 +50,14 @@ export default function CommissionSection({
   return (
     <Box>
       {isOwner && (
-        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-          <KButton onClick={handleCreate} sx={{ px: 2, py: 1 }}>
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+          <KButton onClick={handleCreate} sx={{ px: 4, py: 1 }}>
             Create New Commission
           </KButton>
           <KButton
             variantType="ghost"
             onClick={handleManage}
-            sx={{ px: 2, py: 1 }}
+            sx={{ px: 4, py: 1 }}
           >
             Manage Commissions
           </KButton>

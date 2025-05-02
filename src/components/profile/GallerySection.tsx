@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Box, Typography, Grid, Skeleton } from "@mui/material";
+import { useRouter } from "next/navigation";
 import { useDialogStore } from "@/lib/stores";
 import { KButton } from "@/components/KButton";
 import GalleryGrid from "./GalleryGrid";
@@ -19,6 +20,7 @@ export default function GallerySection({
   username,
   isOwner,
 }: GallerySectionProps) {
+  const router = useRouter();
   const openDialog = useDialogStore((state) => state.open);
   const [galleries, setGalleries] = useState<GalleryData[]>([]);
   const [posts, setPosts] = useState<GalleryPostData[]>([]);
@@ -53,7 +55,7 @@ export default function GallerySection({
 
         // Enrich galleries
         const enriched: GalleryData[] = rawGalleries.map((g: any) => ({
-          id: g._id,
+          _id: g._id,
           name: g.name,
           thumbnails: (postsByGallery[g._id] || [])
             .slice(0, 4)
@@ -70,7 +72,7 @@ export default function GallerySection({
           const galleryPosts = resp.data.posts || [];
           setPosts(
             galleryPosts.map((p: any) => ({
-              id: p._id,
+              _id: p._id,
               galleryId: p.galleryId,
               images: p.images,
               description: p.description || "",
@@ -88,7 +90,7 @@ export default function GallerySection({
             .slice(0, 12);
           setPosts(
             recent.map((p: any) => ({
-              id: p._id,
+              _id: p._id,
               galleryId: p.galleryId,
               images: p.images,
               description: p.description || "",
@@ -112,7 +114,8 @@ export default function GallerySection({
   };
 
   const handleManage = () => {
-    openDialog("viewGalleryPost"); // no args, or route elsewhere
+    // Redirect to dashboard galleries page
+    router.push(`/${username}/dashboard/galleries`);
   };
 
   const toggleExpanded = () => setExpanded((ex) => !ex);
@@ -138,9 +141,9 @@ export default function GallerySection({
       )}
 
       {isOwner && (
-        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-          <KButton onClick={handleUploadArt}>Upload New Art</KButton>
-          <KButton variantType="ghost" onClick={handleManage}>
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+          <KButton onClick={handleUploadArt} sx={{ px: 4, py: 1 }}>Upload New Art</KButton>
+          <KButton variantType="ghost" onClick={handleManage} sx={{ px: 4, py: 1 }}>
             Manage Galleries
           </KButton>
         </Box>
@@ -170,7 +173,8 @@ export default function GallerySection({
             </Typography>
           </Box>
           <Typography variant="h6" fontWeight="medium" sx={{ mb: 2 }}>
-            {galleries.find((g) => g._id === activeGalleryId)?.name || "Gallery"}
+            {galleries.find((g) => g._id === activeGalleryId)?.name ||
+              "Gallery"}
           </Typography>
           <GalleryPostGrid posts={posts} />
         </Box>
@@ -194,7 +198,11 @@ export default function GallerySection({
             </Box>
           ) : (
             <>
-              <GalleryGrid galleries={displayedGalleries} />
+              <GalleryGrid
+                galleries={displayedGalleries}
+                username={username}
+                setActiveGalleryId={setActiveGalleryId}
+              />
               {galleries.length > 4 && (
                 <Box sx={{ textAlign: "center", mt: 2, mb: 3 }}>
                   <KButton variant="text" onClick={toggleExpanded}>

@@ -61,6 +61,12 @@ export default async function DashboardPage({ params: { username } }: Props) {
     );
   }
 
+  // Check if the current user is the owner of this profile
+  const isOwner = !!(session && 
+                     typeof session === 'object' && 
+                     'username' in session && 
+                     session.username === username);
+
   const formattedBalance = Math.round((walletData.saldoAvailable || 0) / 100);
   const serializedProfile = JSON.parse(JSON.stringify(profile));
 
@@ -70,6 +76,7 @@ export default async function DashboardPage({ params: { username } }: Props) {
         profile={serializedProfile}
         saldo={formattedBalance}
         tosSummary=""
+        isOwner={isOwner} // Add this prop with the correct value
       />
     </Suspense>
   );

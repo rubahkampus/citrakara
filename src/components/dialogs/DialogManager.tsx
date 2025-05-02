@@ -10,7 +10,7 @@ const ProfileDialog = dynamic(() => import("./ProfileDialog"));
 const UploadArtDialog = dynamic(() => import("./UploadArtDialog"));
 const CommissionDialog = dynamic(() => import("./CommissionDialog"));
 const GalleryPostDialog = dynamic(() => import("./GalleryPostDialog"));
-// const TosDialog = dynamic(() => import('./TosDialog')); // Uncomment when TOS dialog is implemented
+const TosDialog = dynamic(() => import("./TosDialog")); // Now uncommented
 
 export default function DialogManager() {
   const { dialog, close } = useDialogStore();
@@ -76,17 +76,20 @@ export default function DialogManager() {
     );
   }
 
-  // // TOS dialogs
-  // if (type === 'viewTos' || type === 'editTos' || type === 'createTos') {
-  //   return (
-  //     <TosDialog
-  //       open={true}
-  //       onClose={close}
-  //       tosId={entityId}
-  //       mode={type === 'createTos' ? 'create' : type === 'editTos' ? 'edit' : 'view'}
-  //     />
-  //   );
-  // }
+  // TOS dialogs
+  if (type === "viewTos" || type === "editTos" || type === "createTos") {
+    return (
+      <TosDialog
+        open={true}
+        onClose={close}
+        tosId={entityId}
+        mode={
+          type === "createTos" ? "create" : type === "editTos" ? "edit" : "view"
+        }
+        isOwner={isOwner} // Make sure this prop is passed correctly
+      />
+    );
+  }
 
   return null;
 }

@@ -26,7 +26,14 @@ import {
 import { KButton } from "@/components/KButton";
 import { axiosClient } from "@/lib/utils/axiosClient";
 
-type DialogMode = "viewTos" | "editTos" | "createTos";
+// Update the type to match what DialogManager expects
+type DialogMode =
+  | "viewTos"
+  | "editTos"
+  | "createTos"
+  | "view"
+  | "edit"
+  | "create";
 
 interface TosSection {
   subtitle: string;
@@ -37,6 +44,7 @@ interface TosData {
   _id: string;
   title: string;
   content: TosSection[];
+  isDefault?: boolean;
 }
 
 interface TosDialogProps {
@@ -60,24 +68,56 @@ export default function TosDialog({
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [sections, setSections] = useState<TosSection[]>([]);
+  const [setAsDefault, setSetAsDefault] = useState(true);
+
+  // Normalize the mode to handle both naming conventions
+  const normalizedMode =
+    mode === "viewTos" || mode === "view"
+      ? "view"
+      : mode === "editTos" || mode === "edit"
+      ? "edit"
+      : "create";
 
   // Load existing or default data
   useEffect(() => {
     if (!open) return;
     setError(null);
-    if (mode === "createTos") {
+
+    if (normalizedMode === "create") {
       setTitle("Terms of Service");
       setSections([
-        { subtitle: "General Terms", text: "These terms govern..." },
-        { subtitle: "Payment", text: "Payment is required..." },
+        {
+          subtitle: "General Terms",
+          text: "These terms govern all commissions accepted by the artist.",
+        },
+        {
+          subtitle: "Payment",
+          text: "Payment is required upfront before work begins. No refunds after work has started.",
+        },
+        {
+          subtitle: "Rights",
+          text: "The artist retains all rights to the artwork unless explicitly stated otherwise.",
+        },
+        {
+          subtitle: "Usage",
+          text: "The client may use the commissioned work for personal use only, unless commercial rights are purchased.",
+        },
+        {
+          subtitle: "Revisions",
+          text: "Each commission includes up to 2 revisions. Additional revisions will be charged at the artist's hourly rate.",
+        },
       ]);
+      setSetAsDefault(true);
       return;
     }
+
     if (initialData) {
       setTitle(initialData.title);
       setSections(initialData.content);
+      setSetAsDefault(initialData.isDefault || false);
       return;
     }
+
     if (tosId) {
       setLoading(true);
       axiosClient
@@ -86,13 +126,14 @@ export default function TosDialog({
           const tos = res.data.tos;
           setTitle(tos.title);
           setSections(tos.content || []);
+          setSetAsDefault(tos.isDefault || false);
         })
         .catch((err) =>
           setError(err.response?.data?.error || "Failed to load TOS")
         )
         .finally(() => setLoading(false));
     }
-  }, [open, mode, tosId, initialData]);
+  }, [open, normalizedMode, tosId, initialData]);
 
   const handleAddSection = () => {
     setSections([...sections, { subtitle: "", text: "" }]);
@@ -117,20 +158,28 @@ export default function TosDialog({
       setError("Title is required");
       return;
     }
+
     if (sections.some((s) => !s.subtitle.trim() || !s.text.trim())) {
       setError("All sections must be filled");
       return;
     }
+
     setLoading(true);
     setError(null);
+
     try {
-      if (mode === "editTos" && tosId) {
+      if (normalizedMode === "edit" && tosId) {
         await axiosClient.patch(`/api/tos/${tosId}`, {
           title,
           content: sections,
+          setAsDefault,
         });
       } else {
-        await axiosClient.post("/api/tos", { title, content: sections });
+        await axiosClient.post("/api/tos", {
+          title,
+          content: sections,
+          setAsDefault,
+        });
       }
       onClose();
     } catch (err: any) {
@@ -157,9 +206,9 @@ export default function TosDialog({
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <DescriptionIcon sx={{ mr: 1, color: "primary.main" }} />
           <Typography variant="h6">
-            {mode === "viewTos"
+            {normalizedMode === "view"
               ? "Terms of Service"
-              : mode === "editTos"
+              : normalizedMode === "edit"
               ? "Edit Terms of Service"
               : "Create Terms of Service"}
           </Typography>
@@ -182,17 +231,27 @@ export default function TosDialog({
         )}
         {!loading && !error && (
           <Box>
-            {mode === "viewTos" ? (
-              sections.map((sec, i) => (
-                <Paper key={i} variant="outlined" sx={{ mb: 2, p: 2 }}>
-                  <Typography variant="h6" color="primary" gutterBottom>
-                    {sec.subtitle}
-                  </Typography>
-                  <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
-                    {sec.text}
-                  </Typography>
-                </Paper>
-              ))
+            {normalizedMode === "view" ? (
+              <>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{ fontWeight: "bold" }}
+                >
+                  {title}
+                </Typography>
+
+                {sections.map((sec, i) => (
+                  <Paper key={i} variant="outlined" sx={{ mb: 2, p: 2 }}>
+                    <Typography variant="h6" color="primary" gutterBottom>
+                      {sec.subtitle}
+                    </Typography>
+                    <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
+                      {sec.text}
+                    </Typography>
+                  </Paper>
+                ))}
+              </>
             ) : (
               <Box>
                 <TextField
@@ -266,7 +325,7 @@ export default function TosDialog({
       </DialogContent>
       <Divider />
       <DialogActions sx={{ px: 3, py: 2 }}>
-        {mode === "viewTos" ? (
+        {normalizedMode === "view" ? (
           <KButton onClick={onClose}>Close</KButton>
         ) : (
           <>

@@ -128,6 +128,7 @@ export default function CommissionFormPage({
   const flow = watch("flow");
 
   const onSubmit: SubmitHandler<CommissionFormValues> = async (values) => {
+    console.log("Form values:", values); // Debugging line
     setLoading(true);
     setError(null);
 
@@ -451,7 +452,7 @@ function getDefaults(
     basePrice: "",
     currency: "IDR",
     slots: -1,
-    type: "custom",
+    type: "template",
     flow: "standard",
     tos: defaultTosId || "",
     samples: [],

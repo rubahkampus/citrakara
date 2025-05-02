@@ -21,15 +21,15 @@ export interface IUser extends Document {
   socials: { label: string; url: string }[];
 
   // Gallery settings
-  galleries: ObjectId[];             // ref => Gallery[]
+  galleries: ObjectId[]; // ref => Gallery[]
 
   // Artist settings
   openForCommissions: boolean;
   defaultCurrency: "IDR" | "USD" | string;
 
   // Linked references
-  tosEntries: ObjectId[];           // reference to all their TOS documents
-  wallet: ObjectId;                 // reference to user's wallet document
+  tosEntries: ObjectId[]; // reference to all their TOS documents
+  wallet: ObjectId; // reference to user's wallet document
 
   // Stats (read-only)
   rating: { avg: number; count: number };

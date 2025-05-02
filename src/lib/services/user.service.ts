@@ -1,5 +1,10 @@
 // lib/services/user.service.ts
-import { findUserByEmail, findUserByUsername, findUserPublicProfileByUsername, updateUserByUsername } from "@/lib/db/repositories/user.repository";
+import {
+  findUserByEmail,
+  findUserByUsername,
+  findUserPublicProfileByUsername,
+  updateUserByUsername,
+} from "@/lib/db/repositories/user.repository";
 import { uploadFileToR2 } from "@/lib/utils/cloudflare";
 
 export async function checkUserAvailability(email?: string, username?: string) {
@@ -29,7 +34,8 @@ export async function updateUserProfile(username: string, formData: FormData) {
   if (bio && typeof bio === "string") updates.bio = bio;
 
   const displayName = formData.get("displayName");
-  if (displayName && typeof displayName === "string") updates.displayName = displayName;
+  if (displayName && typeof displayName === "string")
+    updates.displayName = displayName;
 
   const openForCommissions = formData.get("openForCommissions");
   if (openForCommissions !== null)
@@ -42,7 +48,10 @@ export async function updateUserProfile(username: string, formData: FormData) {
   const tags = formData.get("tags");
   if (tags && typeof tags === "string") {
     // comma-separated: "anime,furry,cute"
-    updates.tags = tags.split(",").map(tag => tag.trim()).filter(Boolean);
+    updates.tags = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
   }
 
   const socials = formData.get("socials");
@@ -61,7 +70,10 @@ export async function updateUserProfile(username: string, formData: FormData) {
 
   const profilePicture = formData.get("profilePicture");
   if (profilePicture instanceof Blob) {
-    const profilePictureUrl = await uploadFileToR2(profilePicture, `profile-pics/${username}`);
+    const profilePictureUrl = await uploadFileToR2(
+      profilePicture,
+      `profile-pics/${username}`
+    );
     updates.profilePicture = profilePictureUrl;
   }
 
@@ -73,4 +85,3 @@ export async function updateUserProfile(username: string, formData: FormData) {
 
   return updateUserByUsername(username, updates);
 }
-

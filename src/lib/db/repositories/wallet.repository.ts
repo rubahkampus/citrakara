@@ -8,7 +8,7 @@ import { ObjectId } from "mongoose";
  */
 export async function createWallet(userId: string | ObjectId) {
   await connectDB();
-  
+
   const wallet = new Wallet({
     user: userId,
     saldoAvailable: 0,

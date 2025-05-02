@@ -1,15 +1,15 @@
 // src/lib/db/repositories/gallery.repository.ts
 import Gallery, { IGallery } from "@/lib/db/models/gallery.model";
-import User              from "@/lib/db/models/user.model";
-import { connectDB }     from "@/lib/db/connection";
-import { ObjectId }      from "mongoose";
+import User from "@/lib/db/models/user.model";
+import { connectDB } from "@/lib/db/connection";
+import { ObjectId } from "mongoose";
 
 /**
  * Create default galleries for a new user
  */
 export async function createDefaultGalleries(userId: string | ObjectId) {
   await connectDB();
-  
+
   // Create the two default galleries: "General" and "Commissions"
   const generalGallery = new Gallery({
     userId,
@@ -99,4 +99,3 @@ export async function softDeleteGallery(
   });
   session.endSession();
 }
-

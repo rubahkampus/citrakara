@@ -4,10 +4,10 @@ import type { ObjectId, ISODate } from "@/types/common";
 
 export interface IGalleryPost extends Document {
   _id: ObjectId;
-  userId:    ObjectId;
+  userId: ObjectId;
   galleryId: ObjectId;
 
-  images: string[];                 // CDN / R2 URL
+  images: string[]; // CDN / R2 URL
   description?: string;
 
   /** Optional cross-links for richer context */
@@ -21,16 +21,19 @@ export interface IGalleryPost extends Document {
 
 const GalleryPostSchema = new Schema<IGalleryPost>(
   {
-    userId:    { type: Schema.Types.ObjectId, ref: "User", required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     galleryId: { type: Schema.Types.ObjectId, ref: "Gallery", required: true },
 
     images: { type: [String], required: true }, // CDN / R2 URL
     description: { type: String, default: "" },
 
-    commissionListingId: { type: Schema.Types.ObjectId, ref: "CommissionListing" },
-    orderId:     { type: Schema.Types.ObjectId, ref: "Order" },
+    commissionListingId: {
+      type: Schema.Types.ObjectId,
+      ref: "CommissionListing",
+    },
+    orderId: { type: Schema.Types.ObjectId, ref: "Order" },
 
-    isDeleted:   { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -38,4 +41,5 @@ const GalleryPostSchema = new Schema<IGalleryPost>(
 GalleryPostSchema.index({ userId: 1, galleryId: 1, isDeleted: 1 });
 GalleryPostSchema.index({ commissionListingId: 1 });
 
-export default models.GalleryPost || model<IGalleryPost>("GalleryPost", GalleryPostSchema);
+export default models.GalleryPost ||
+  model<IGalleryPost>("GalleryPost", GalleryPostSchema);

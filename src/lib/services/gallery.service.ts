@@ -7,9 +7,7 @@ import {
   updateGallery,
   softDeleteGallery,
 } from "@/lib/db/repositories/gallery.repository";
-import {
-  softDeletePostsByGallery,
-} from "@/lib/db/repositories/galleryPost.repository";
+import { softDeletePostsByGallery } from "@/lib/db/repositories/galleryPost.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 
 const DEFAULT_GALLERY_NAMES = ["General", "Commissions"] as const;
@@ -20,7 +18,6 @@ const DEFAULT_GALLERY_NAMES = ["General", "Commissions"] as const;
 export async function getUserGalleries(userId: string) {
   return findGalleriesByUserId(userId);
 }
-
 
 /**
  * Create a new gallery for the user
@@ -46,11 +43,11 @@ export async function renameGallery(
   if (!gallery || gallery.userId.toString() !== userId) {
     throw new Error("Gallery not found");
   }
-  
+
   if (DEFAULT_GALLERY_NAMES.includes(gallery.name as any)) {
     throw new Error("Default galleries cannot be renamed");
   }
-  
+
   return updateGallery(galleryId, { name: name.trim() });
 }
 
@@ -63,11 +60,11 @@ export async function deleteGallery(userId: string, galleryId: string) {
   if (!gallery || gallery.userId.toString() !== userId) {
     throw new Error("Gallery not found");
   }
-  
+
   if (DEFAULT_GALLERY_NAMES.includes(gallery.name as any)) {
     throw new Error("Default galleries cannot be deleted");
   }
-  
+
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {

@@ -4,8 +4,8 @@ import type { ObjectId, ISODate } from "@/types/common";
 
 export interface IGallery extends Document {
   _id: ObjectId;
-  userId: ObjectId;             // owner
-  name: string;                 // "General", "Commissions", etc.
+  userId: ObjectId; // owner
+  name: string; // "General", "Commissions", etc.
   isDeleted: boolean;
   createdAt: ISODate;
   updatedAt: ISODate;
@@ -13,8 +13,8 @@ export interface IGallery extends Document {
 
 const GallerySchema = new Schema<IGallery>(
   {
-    userId:    { type: Schema.Types.ObjectId, ref: "User", required: true },
-    name:      { type: String, required: true, maxlength: 50 },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    name: { type: String, required: true, maxlength: 50 },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

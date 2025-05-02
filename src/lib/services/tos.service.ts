@@ -1,5 +1,9 @@
 // src/lib/services/tos.service.ts
-import { findTosByUserId, findDefaultTosByUserId, updateTos } from "@/lib/db/repositories/tos.repository";
+import {
+  findTosByUserId,
+  findDefaultTosByUserId,
+  updateTos,
+} from "@/lib/db/repositories/tos.repository";
 import { ObjectId } from "mongoose";
 import Tos from "@/lib/db/models/tos.model";
 import { connectDB } from "@/lib/db/connection";
@@ -25,13 +29,13 @@ export async function getUserDefaultTos(userId: string | ObjectId) {
  */
 export async function getTosById(tosId: string, userId: string) {
   await connectDB();
-  
+
   const tos = await Tos.findById(tosId);
-  
+
   if (!tos || tos.user.toString() !== userId || tos.isDeleted) {
     return null;
   }
-  
+
   return tos;
 }
 
@@ -46,11 +50,11 @@ export async function createNewTosEntry(
   setAsDefault: boolean = false
 ) {
   await connectDB();
-  
+
   const session = await Tos.startSession();
   try {
     session.startTransaction();
-    
+
     // Create the new TOS
     const tos = new Tos({
       user: userId,
@@ -58,9 +62,9 @@ export async function createNewTosEntry(
       content,
       isDefault: setAsDefault,
     });
-    
+
     await tos.save({ session });
-    
+
     // If setAsDefault is true, unset any existing default
     if (setAsDefault) {
       await Tos.updateMany(
@@ -69,7 +73,7 @@ export async function createNewTosEntry(
         { session }
       );
     }
-    
+
     await session.commitTransaction();
     return tos;
   } catch (error) {
@@ -92,28 +96,28 @@ export async function updateTosEntry(
   setAsDefault: boolean = false
 ) {
   await connectDB();
-  
+
   const session = await Tos.startSession();
   try {
     session.startTransaction();
-    
+
     // First, check if the TOS belongs to the user
-    const tos = await Tos.findOne({ 
-      _id: tosId, 
-      user: userId 
+    const tos = await Tos.findOne({
+      _id: tosId,
+      user: userId,
     });
-    
+
     if (!tos) {
       throw new Error("TOS entry not found or not owned by user");
     }
-    
+
     // Update the TOS
     const updatedTos = await Tos.findByIdAndUpdate(
       tosId,
       { title, content, isDefault: setAsDefault || tos.isDefault },
       { new: true, session }
     );
-    
+
     // If setAsDefault is true, unset any existing defaults
     if (setAsDefault) {
       await Tos.updateMany(
@@ -122,7 +126,7 @@ export async function updateTosEntry(
         { session }
       );
     }
-    
+
     await session.commitTransaction();
     return updatedTos;
   } catch (error) {

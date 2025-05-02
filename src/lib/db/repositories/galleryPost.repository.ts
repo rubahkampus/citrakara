@@ -5,12 +5,12 @@ import { ObjectId, ClientSession, Types } from "mongoose";
 
 /** ↓ this is the only shape callers must satisfy */
 export type GalleryPostCreateInput = {
-  userId:             Types.ObjectId;
-  galleryId:          Types.ObjectId;
-  images:             string[];
-  description?:       string;
+  userId: Types.ObjectId;
+  galleryId: Types.ObjectId;
+  images: string[];
+  description?: string;
   commissionListingId?: Types.ObjectId;
-  orderId?:             Types.ObjectId;
+  orderId?: Types.ObjectId;
 };
 
 export async function findPostsByGallery(
@@ -20,7 +20,7 @@ export async function findPostsByGallery(
   await connectDB();
   return GalleryPost.find({
     galleryId,
-    ...(includeDeleted ? {} : { isDeleted: false })
+    ...(includeDeleted ? {} : { isDeleted: false }),
   });
 }
 
@@ -31,7 +31,7 @@ export async function findPostsByUser(
   await connectDB();
   return GalleryPost.find({
     userId,
-    ...(includeDeleted ? {} : { isDeleted: false })
+    ...(includeDeleted ? {} : { isDeleted: false }),
   }).sort({ createdAt: -1 });
 }
 
@@ -41,13 +41,13 @@ export async function findPostById(id: string | ObjectId) {
 }
 
 export async function createGalleryPost(
-    payload: GalleryPostCreateInput,
-    session?: ClientSession
-  ) {
-    await connectDB();
-    const post = new GalleryPost({ ...payload, isDeleted: false });
-    return post.save({ session });
-  }
+  payload: GalleryPostCreateInput,
+  session?: ClientSession
+) {
+  await connectDB();
+  const post = new GalleryPost({ ...payload, isDeleted: false });
+  return post.save({ session });
+}
 
 export async function updateGalleryPost(
   postId: string | ObjectId,
@@ -57,7 +57,7 @@ export async function updateGalleryPost(
   await connectDB();
   return GalleryPost.findByIdAndUpdate(postId, updates, {
     new: true,
-    session
+    session,
   });
 }
 

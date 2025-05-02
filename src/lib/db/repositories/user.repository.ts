@@ -53,7 +53,7 @@ export async function createUser(data: {
     isSuspended: false,
     emailVerified: false,
     // Add a temporary ObjectId for validation
-    wallet: new mongoose.Types.ObjectId(), 
+    wallet: new mongoose.Types.ObjectId(),
   });
 
   // Save to get the _id
@@ -65,7 +65,7 @@ export async function createUser(data: {
     const [wallet, tos, galleries] = await Promise.all([
       createWallet(userId),
       createDefaultTos(userId),
-      createDefaultGalleries(userId)
+      createDefaultGalleries(userId),
     ]);
 
     // Update user with real wallet ID
@@ -74,11 +74,11 @@ export async function createUser(data: {
       {
         wallet: wallet._id,
         tosEntries: [tos._id],
-        galleries: galleries.map(gallery => gallery._id)
+        galleries: galleries.map((gallery) => gallery._id),
       },
       { new: true }
     );
-    
+
     return user;
   } catch (error) {
     // If anything fails, clean up the temporary user
@@ -88,7 +88,12 @@ export async function createUser(data: {
 }
 
 /** Update user by username */
-export async function updateUserByUsername(username: string, updates: Record<string, any>) {
+export async function updateUserByUsername(
+  username: string,
+  updates: Record<string, any>
+) {
   await connectDB();
-  return User.findOneAndUpdate({ username }, updates, { new: true }).select("-password");
+  return User.findOneAndUpdate({ username }, updates, { new: true }).select(
+    "-password"
+  );
 }

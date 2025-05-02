@@ -23,18 +23,20 @@ function computePriceRange(input: CommissionListingCreateInput) {
 
   const addPrices = (items?: { price: number }[]) => {
     if (!items?.length) return;
-    const prices = items.map(item => item.price);
+    const prices = items.map((item) => item.price);
     min += Math.min(...prices);
     max += Math.max(...prices);
   };
 
   // Add general options
-  input.generalOptions?.optionGroups?.forEach(group => addPrices(group.selections));
+  input.generalOptions?.optionGroups?.forEach((group) =>
+    addPrices(group.selections)
+  );
   addPrices(input.generalOptions?.addons);
-  
+
   // Add subject options
-  input.subjectOptions?.forEach(subject => {
-    subject.optionGroups?.forEach(group => addPrices(group.selections));
+  input.subjectOptions?.forEach((subject) => {
+    subject.optionGroups?.forEach((group) => addPrices(group.selections));
     addPrices(subject.addons);
   });
 
@@ -46,13 +48,19 @@ function computePriceRange(input: CommissionListingCreateInput) {
  */
 function validateListingPayload(payload: CommissionListingCreateInput) {
   // Check milestone requirements for milestone flow
-  if (payload.flow === "milestone" && (!payload.milestones || !payload.milestones.length)) {
+  if (
+    payload.flow === "milestone" &&
+    (!payload.milestones || !payload.milestones.length)
+  ) {
     throw new Error("Milestone flow requires milestones array");
   }
 
   // Validate milestone percentages sum to 100%
   if (payload.milestones) {
-    const sum = payload.milestones.reduce((acc, milestone) => acc + milestone.percent, 0);
+    const sum = payload.milestones.reduce(
+      (acc, milestone) => acc + milestone.percent,
+      0
+    );
     if (sum !== 100) {
       throw new Error("Milestone percentages must sum to 100%");
     }
@@ -81,7 +89,7 @@ export async function createListing(
 
   // Validate the listing data
   validateListingPayload(listingData);
-  
+
   // Calculate and attach price range
   listingData.price = computePriceRange(listingData);
 
@@ -93,10 +101,7 @@ export async function createListing(
  * Create a commission listing from form data
  * Handles file uploads to R2 and JSON parsing
  */
-export async function createListingFromForm(
-  artistId: string,
-  form: FormData
-) {
+export async function createListingFromForm(artistId: string, form: FormData) {
   // Validate required fields
   const requiredFields = ["title", "tos", "type", "flow"];
   for (const field of requiredFields) {
@@ -156,7 +161,7 @@ export async function createListingFromForm(
 
   // Validate the listing data
   validateListingPayload(listingData);
-  
+
   // Calculate and attach price range
   listingData.price = computePriceRange(listingData);
 

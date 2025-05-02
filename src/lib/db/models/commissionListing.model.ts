@@ -63,7 +63,7 @@ export interface ICommissionListing extends Document {
   };
 
   // ─── Financial guardrails ───────────────────────────────
-  basePrice?: Cents
+  basePrice?: Cents;
   price: { min: Cents; max: Cents }; // calculated from basePrice + options
   cancelationFee: { type: "flat" | "percentage"; amount: number };
   latePenaltyPercent?: number; // hardcode 10%
@@ -72,7 +72,14 @@ export interface ICommissionListing extends Document {
 
   // ─── Client‑side edit toggles ────────────────────────────
   allowContractChange: boolean;
-  changeable?: Array<"deadline" | "generalOptions" | "subjectOptions" | "description" | "generalDescription" | "referenceImages">;
+  changeable?: Array<
+    | "deadline"
+    | "generalOptions"
+    | "subjectOptions"
+    | "description"
+    | "generalDescription"
+    | "referenceImages"
+  >;
 
   // ─── Revision policy snapshot ────────────────────────────
   revisions?: {
@@ -89,14 +96,14 @@ export interface ICommissionListing extends Document {
 
   /* ---------------- OPTION MATRIX ------------------------ */
   /** Meta / off‑canvas add‑ons */
-  // General options 
+  // General options
   generalOptions?: {
     optionGroups?: Array<{
       title: string; // e.g. "Copyright", "Commercial use", "NSFW"
       selections: { label: string; price: Cents }[]; // e.g. "Full rights", "Partial rights", "No rights"
     }>;
     addons?: { label: string; price: Cents }[]; // e.g. "Stream my commission"
-    questions?: string[];             // extra questions not tied to group
+    questions?: string[]; // extra questions not tied to group
   };
 
   /** On‑canvas pricing such as characters, backgrounds … */
@@ -111,7 +118,7 @@ export interface ICommissionListing extends Document {
       selections: { label: string; price: Cents }[]; // e.g. "Full body", "Half body", "Bust"
     }>;
     addons?: Array<{ label: string; price: Cents }>; // e.g. "Add Clothing"
-    questions?: string[];            // extra questions, e.g. "Describe chracter's pose"
+    questions?: string[]; // extra questions, e.g. "Describe chracter's pose"
   }>;
 
   /* ----- Aggregated reviews (read‑only) ------------------ */
@@ -145,7 +152,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
 
     slots: { type: Number, default: -1 },
     slotsUsed: { type: Number, default: 0 },
-    
+
     tos: { type: String, required: true },
 
     type: { type: String, enum: ["template", "custom"], required: true },
@@ -168,7 +175,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       },
     },
 
-    basePrice:{type:Number,required:true}, // If user don't input basePrice, it will be 0
+    basePrice: { type: Number, required: true }, // If user don't input basePrice, it will be 0
 
     price: {
       min: { type: Number, required: true, default: 0 }, // calculated from basePrice + cheapest options

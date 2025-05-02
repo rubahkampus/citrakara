@@ -18,7 +18,11 @@ const WalletTransactionSchema = new Schema<IWalletTransaction>(
     type: { type: String, enum: ["credit", "debit"], required: true },
     amount: { type: Number, required: true },
     target: { type: String, enum: ["available", "escrowed"], required: true },
-    source: { type: String, enum:["commission","refund","payment","manual","release"], required: true },
+    source: {
+      type: String,
+      enum: ["commission", "refund", "payment", "manual", "release"],
+      required: true,
+    },
     note: { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
@@ -26,4 +30,5 @@ const WalletTransactionSchema = new Schema<IWalletTransaction>(
 
 WalletTransactionSchema.index({ wallet: 1, createdAt: -1 });
 
-export default models.WalletTransaction || model<IWalletTransaction>("WalletTransaction", WalletTransactionSchema);
+export default models.WalletTransaction ||
+  model<IWalletTransaction>("WalletTransaction", WalletTransactionSchema);

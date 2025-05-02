@@ -6,7 +6,7 @@ import {
   softDeleteGalleryPost,
   findPostById,
   findPostsByGallery,
-  findPostsByUser
+  findPostsByUser,
 } from "@/lib/db/repositories/galleryPost.repository";
 import { findGalleryById } from "@/lib/db/repositories/gallery.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
@@ -34,7 +34,7 @@ export async function getUserPosts(
   if (!user) {
     throw new Error("User not found");
   }
-  
+
   return findPostsByUser(user._id, { includeDeleted });
 }
 
@@ -50,12 +50,12 @@ export async function addGalleryPostFromForm(
   if (!galleryId || typeof galleryId !== "string") {
     throw new Error("Gallery ID is required");
   }
-  
+
   const gallery = await findGalleryById(galleryId);
   if (!gallery || gallery.userId.toString() !== userId) {
     throw new Error("Gallery not found or access denied");
   }
-  
+
   // Extract and validate image blobs
   const blobs: Blob[] = [];
   formData.forEach((value, key) => {
@@ -63,31 +63,30 @@ export async function addGalleryPostFromForm(
       blobs.push(value);
     }
   });
-  
+
   if (blobs.length === 0) {
     throw new Error("At least one image is required");
   }
-  
+
   // Upload images to Cloudflare R2
   const imageUrls = await uploadGalleryImagesToR2(blobs, userId, galleryId);
-  
+
   // Extract optional metadata
   const description = formData.get("description");
   const commissionListingId = formData.get("commissionListingId");
   const orderId = formData.get("orderId");
-  
+
   // Create post record
   return createGalleryPost({
     userId: toObjectId(userId),
     galleryId: toObjectId(galleryId),
     images: imageUrls,
     description: typeof description === "string" ? description : "",
-    commissionListingId: typeof commissionListingId === "string" 
-      ? toObjectId(commissionListingId) 
-      : undefined,
-    orderId: typeof orderId === "string" 
-      ? toObjectId(orderId) 
-      : undefined,
+    commissionListingId:
+      typeof commissionListingId === "string"
+        ? toObjectId(commissionListingId)
+        : undefined,
+    orderId: typeof orderId === "string" ? toObjectId(orderId) : undefined,
   });
 }
 
@@ -104,7 +103,7 @@ export async function editGalleryPost(
   if (!post || post.userId.toString() !== userId) {
     throw new Error("Post not found or access denied");
   }
-  
+
   return updateGalleryPost(postId, updates);
 }
 
@@ -117,7 +116,7 @@ export async function deleteGalleryPost(userId: string, postId: string) {
   if (!post || post.userId.toString() !== userId) {
     throw new Error("Post not found or access denied");
   }
-  
+
   return softDeleteGalleryPost(postId);
 }
 
@@ -133,12 +132,16 @@ export async function getGalleryPostsPublic(
   if (!user) {
     throw new Error("User not found");
   }
-  
+
   const gallery = await findGalleryById(galleryId);
-  if (!gallery || gallery.userId.toString() !== user._id.toString() || gallery.isDeleted) {
+  if (
+    !gallery ||
+    gallery.userId.toString() !== user._id.toString() ||
+    gallery.isDeleted
+  ) {
     throw new Error("Gallery not found");
   }
-  
+
   return findPostsByGallery(galleryId); // This filters deleted posts by default
 }
 
@@ -153,12 +156,12 @@ export async function getGalleryPostPublic(
 ) {
   // First validate the gallery is accessible
   await getGalleryPostsPublic(username, galleryId);
-  
+
   const post = await findPostById(postId);
   if (!post || post.isDeleted || post.galleryId.toString() !== galleryId) {
     throw new Error("Post not found");
   }
-  
+
   return post;
 }
 
@@ -166,13 +169,11 @@ export async function getGalleryPostPublic(
  * Get a single post by ID for public viewing
  * Validates ownership and accessibility
  */
-export async function getGalleryPostById(
-  postId: string
-) {
+export async function getGalleryPostById(postId: string) {
   const post = await findPostById(postId);
-  if (!post || post.isDeleted ) {
+  if (!post || post.isDeleted) {
     throw new Error("Post not found");
   }
-  
+
   return post;
 }

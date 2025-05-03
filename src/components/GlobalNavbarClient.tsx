@@ -211,63 +211,66 @@ export default function GlobalNavbarClient({ session }: Props) {
             How It Works
           </MenuItem>
           <Divider />
-          {isLoggedIn ? (
-            <>
-              <MenuItem
-                onClick={() => {
-                  router.push(`/${session.username}`);
-                  setMobileMenuOpen(false);
-                }}
-              >
-                <ListItemIcon>
-                  <PersonIcon fontSize="small" />
-                </ListItemIcon>
-                Profile
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  router.push(`/${session.username}/dashboard`);
-                  setMobileMenuOpen(false);
-                }}
-              >
-                <ListItemIcon>
-                  <DashboardIcon fontSize="small" />
-                </ListItemIcon>
-                Dashboard
-              </MenuItem>
-              <MenuItem
-                onClick={async () => {
-                  await axiosClient.post("/api/auth/logout");
-                  router.refresh();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                <ListItemIcon>
-                  <LogoutIcon fontSize="small" />
-                </ListItemIcon>
-                Logout
-              </MenuItem>
-            </>
-          ) : (
-            <>
-              <MenuItem
-                onClick={() => {
-                  openDialog("login");
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Login
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  openDialog("register");
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Register
-              </MenuItem>
-            </>
-          )}
+          {isLoggedIn
+            ? [
+                <MenuItem
+                  key="profile"
+                  onClick={() => {
+                    router.push(`/${session.username}`);
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <ListItemIcon>
+                    <PersonIcon fontSize="small" />
+                  </ListItemIcon>
+                  Profile
+                </MenuItem>,
+                <MenuItem
+                  key="dashboard"
+                  onClick={() => {
+                    router.push(`/${session.username}/dashboard`);
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <ListItemIcon>
+                    <DashboardIcon fontSize="small" />
+                  </ListItemIcon>
+                  Dashboard
+                </MenuItem>,
+                <MenuItem
+                  key="logout"
+                  onClick={async () => {
+                    await axiosClient.post("/api/auth/logout");
+                    router.refresh();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  Logout
+                </MenuItem>,
+              ]
+            : [
+                <MenuItem
+                  key="login"
+                  onClick={() => {
+                    openDialog("login");
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Login
+                </MenuItem>,
+                <MenuItem
+                  key="register"
+                  onClick={() => {
+                    openDialog("register");
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Register
+                </MenuItem>,
+              ]}
         </Menu>
       )}
     </AppBar>

@@ -62,7 +62,6 @@ const RevisionSection: React.FC = () => {
   // Determine which form to show
   const showStandardRevisionForm = revisionType === "standard";
 
-
   return (
     <Box>
       <Grid container spacing={3}>
@@ -71,6 +70,7 @@ const RevisionSection: React.FC = () => {
           <Controller
             control={control}
             name="revisionType"
+            defaultValue="standard"
             render={({ field }) => (
               <FormControl fullWidth>
                 <InputLabel>Revision Type</InputLabel>
@@ -169,6 +169,7 @@ const RevisionSection: React.FC = () => {
                 <Grid item xs={12} sm={4}>
                   <Controller
                     control={control}
+                    defaultValue={2} 
                     name="revFree"
                     render={({ field }) => (
                       <TextField
@@ -192,6 +193,7 @@ const RevisionSection: React.FC = () => {
                   <Controller
                     control={control}
                     name="revExtraAllowed"
+                    defaultValue={true}    
                     render={({ field }) => (
                       <FormControlLabel
                         control={
@@ -201,7 +203,7 @@ const RevisionSection: React.FC = () => {
                             disabled={revLimit === false}
                           />
                         }
-                        label="Allow Paid Revisions"
+                        label="Allow Paid Revisions (Extra Revisions)"
                       />
                     )}
                   />
@@ -211,10 +213,11 @@ const RevisionSection: React.FC = () => {
                   <Controller
                     control={control}
                     name="revFee"
+                    defaultValue={0}  
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="Fee per Revision"
+                        label="Fee Per Revision"
                         type="number"
                         fullWidth
                         InputProps={{

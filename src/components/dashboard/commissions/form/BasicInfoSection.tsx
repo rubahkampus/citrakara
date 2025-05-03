@@ -21,6 +21,11 @@ interface BasicInfoSectionProps {
   mode: "create" | "edit";
 }
 
+export interface ListingSummary {
+  _id: string;
+  title: string;
+}
+
 const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
   const {
     control,
@@ -119,16 +124,23 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
 
       <Grid container spacing={3}>
         <Grid item xs={12}>
-          <TextField
-            label="Title"
-            fullWidth
-            {...register("title", { required: "Title is required" })}
-            error={!!errors.title}
-            helperText={errors.title?.message}
-            onChange={(e) => {
-              register("title").onChange(e);
-              updateDisplayValues();
-            }}
+          <Controller
+            name="title"
+            control={control}
+            rules={{ required: "Title is required" }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Title"
+                fullWidth
+                error={!!errors.title}
+                helperText={errors.title?.message}
+                onChange={(e) => {
+                  field.onChange(e);
+                  updateDisplayValues();
+                }}
+              />
+            )}
           />
         </Grid>
 

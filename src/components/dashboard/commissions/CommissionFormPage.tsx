@@ -29,6 +29,7 @@ import ContractSection from "./form/ContractSection";
 import GeneralOptionsSection from "./form/GeneralOptionsSection";
 import SubjectOptionsSection from "./form/SubjectOptionsSection";
 import TagsSection from "./form/TagsSection";
+import TemplateSection from "./form/TemplateSection";
 
 // Type definitions retained from original codebase
 type SelectionInput = { label: string; price: number };
@@ -276,7 +277,7 @@ export default function CommissionFormPage({
           </Button>
 
           <Typography variant="h5" fontWeight="bold">
-            {mode === "create" ? "New Commission" : "Edit Commission"}+{" "}
+            {mode === "create" ? "New Commission" : "Edit Commission"}
           </Typography>
         </Box>
 
@@ -314,6 +315,14 @@ export default function CommissionFormPage({
             boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
           }}
         >
+          {/* Template Section (only in create mode) */}
+          {mode === "create" && (
+            <>
+              <TemplateSection />
+              <Divider sx={{ my: 4 }} />
+            </>
+          )}
+
           {/* Basic Info Section */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>

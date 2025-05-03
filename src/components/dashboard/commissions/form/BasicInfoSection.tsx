@@ -81,7 +81,8 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
         const res = await axiosClient.get("/api/tos/default");
         if (res.data.tos) {
           setTosName(res.data.tos.title);
-          setValue("tos", res.data.tos._id.toString());
+          // Auto-set the TOS ID
+          setValue("tos", res.data.tos._id);
         }
       } catch (error) {
         console.error("Error fetching default TOS:", error);
@@ -142,7 +143,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                 fullWidth
                 type="number"
                 InputProps={{
-                  startAdornment: <span style={{ marginRight: 4 }}>Rp</span>,
+                  startAdornment: <span style={{ marginRight: 4 }}>IDR</span>,
                 }}
                 // Only allow positive integers
                 onKeyPress={(e) => {
@@ -152,17 +153,9 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                   }
                 }}
                 onChange={(e) => {
-                  // Remove leading zeros and handle empty input
-                  let inputValue = e.target.value;
-
-                  // Remove leading zeros but keep a single zero
-                  if (inputValue.length > 1 && inputValue.startsWith("0")) {
-                    inputValue = inputValue.replace(/^0+/, "");
-                  }
-
                   // Convert to number and handle invalid input
                   const value =
-                    inputValue === "" ? 0 : parseInt(inputValue, 10);
+                    e.target.value === "" ? 0 : parseInt(e.target.value, 10);
                   const sanitizedValue = isNaN(value) ? 0 : Math.max(0, value);
 
                   // Update with sanitized value
@@ -171,15 +164,6 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
 
                   // Update our display state
                   updateDisplayValues();
-                }}
-                // Prevent leading zeros on blur for better UX
-                onBlur={(e) => {
-                  field.onBlur();
-                  const value = field.value;
-                  if (value === 0) {
-                    // Keep field empty or show "0" depending on your preference
-                    field.onChange(0);
-                  }
                 }}
                 error={!!errors.basePrice}
                 helperText="Enter a positive number"

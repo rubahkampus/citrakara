@@ -156,9 +156,11 @@ export default function CommissionFormPage({
           (sum, m) => sum + (m.percent || 0),
           0
         );
-        if (total !== 100) {
+        if (Math.abs(total - 100) > 0.1) {
           setError(
-            `Milestone percentages must add up to 100%. Current total: ${total}%`
+            `Milestone percentages must add up to 100%. Current total: ${total.toFixed(
+              2
+            )}%`
           );
           setLoading(false);
           return;
@@ -239,9 +241,10 @@ export default function CommissionFormPage({
       setSaveSuccess(true);
 
       // Redirect after short delay
-      setTimeout(() => {
+      const redirectTimer = setTimeout(() => {
         router.push(`/${username}/dashboard/commissions`);
       }, 1500);
+      // cleanup if unmounted
     } catch (e: any) {
       setError(
         e.response?.data?.error || "Save operation failed. Please try again."
@@ -267,6 +270,7 @@ export default function CommissionFormPage({
             startIcon={<ArrowBackIcon />}
             variant="outlined"
             onClick={() => router.back()}
+            disabled={loading}
           >
             Back to Listings
           </Button>
@@ -414,7 +418,12 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       flow: data.flow,
       tos: data.tos,
       samples: data.samples || [],
-      thumbnailIdx: 0,
+      thumbnailIdx: (() => {
+        const idx = (data.samples || []).findIndex(
+          (url: string) => url === data.thumbnail
+        );
+        return idx >= 0 ? idx : 0;
+      })(),
       description: data.description || [{ title: "Overview", detail: "" }],
       deadlineMode: data.deadline.mode,
       deadlineMin: data.deadline.min,
@@ -424,10 +433,10 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       cancelKind: data.cancelationFee.kind,
       cancelAmount: data.cancelationFee.amount,
       revisionType: data.revisions?.type || "none",
-      revLimit: data.revisions?.policy?.limit,
-      revFree: data.revisions?.policy?.free,
-      revExtraAllowed: data.revisions?.policy?.extraAllowed,
-      revFee: data.revisions?.policy?.fee,
+      revLimit: data.revisions?.policy?.limit ?? false,
+      revFree: data.revisions?.policy?.free ?? 0,
+      revExtraAllowed: data.revisions?.policy?.extraAllowed ?? false,
+      revFee: data.revisions?.policy?.fee ?? 0,
       milestones: data.milestones || [],
       allowContractChange: data.allowContractChange ?? true,
       changeable: data.changeable || [],

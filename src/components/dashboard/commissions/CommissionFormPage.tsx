@@ -226,14 +226,14 @@ export default function CommissionFormPage({
       console.log("Form Data:", fd); // Debugging line
 
       // Submit the form
-    //   if (mode === "create") {
-    //     await axiosClient.post("/api/commission/listing", fd);
-    //   } else {
-    //     await axiosClient.patch(
-    //       `/api/commission/listing/${initialData._id}`,
-    //       fd
-    //     );
-    //   }
+      //   if (mode === "create") {
+      //     await axiosClient.post("/api/commission/listing", fd);
+      //   } else {
+      //     await axiosClient.patch(
+      //       `/api/commission/listing/${initialData._id}`,
+      //       fd
+      //     );
+      //   }
 
       // Show success message and redirect
       setSaveSuccess(true);
@@ -272,7 +272,7 @@ export default function CommissionFormPage({
           </Button>
 
           <Typography variant="h5" fontWeight="bold">
-            {mode === "create" ? "" : "Edit Commission"}
+            {mode === "create" ? "New Commission" : "Edit Commission"}+{" "}
           </Typography>
         </Box>
 
@@ -403,10 +403,7 @@ export default function CommissionFormPage({
 }
 
 // Helper: default values - retained from original codebase
-function getDefaults(
-  mode: "create" | "edit",
-  data: any,
-): CommissionFormValues {
+function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
   if (mode === "edit" && data) {
     return {
       title: data.title,

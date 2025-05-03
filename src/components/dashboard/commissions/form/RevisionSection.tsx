@@ -62,6 +62,10 @@ const RevisionSection: React.FC = () => {
   // Determine which form to show
   const showStandardRevisionForm = revisionType === "standard";
 
+  // Check if "Paid Revisions Only" mode is active
+  const isPaidOnly =
+    revLimit === true && revFree === 0 && revExtraAllowed === true;
+
   return (
     <Box>
       <Grid container spacing={3}>
@@ -129,20 +133,17 @@ const RevisionSection: React.FC = () => {
                     <FormControlLabel
                       control={
                         <Checkbox
-                          checked={
-                            revLimit === true &&
-                            revFree === 0 &&
-                            revExtraAllowed === true
-                          }
+                          checked={isPaidOnly}
                           onChange={(e) => {
-                            const isPaidOnly = e.target.checked;
-                            if (isPaidOnly) {
+                            const isPaidOnlyChecked = e.target.checked;
+                            if (isPaidOnlyChecked) {
                               setValue("revLimit", true);
                               setValue("revFree", 0);
                               setValue("revExtraAllowed", true);
                               setValue("revFee", 50000);
                             } else {
                               setValue("revFree", 2);
+                              // Keep extraAllowed as true when unchecking paid-only mode
                               setValue("revExtraAllowed", true);
                             }
                           }}
@@ -169,7 +170,7 @@ const RevisionSection: React.FC = () => {
                 <Grid item xs={12} sm={4}>
                   <Controller
                     control={control}
-                    defaultValue={2} 
+                    defaultValue={2}
                     name="revFree"
                     render={({ field }) => (
                       <TextField
@@ -178,12 +179,7 @@ const RevisionSection: React.FC = () => {
                         type="number"
                         fullWidth
                         InputProps={{ inputProps: { min: 0 } }}
-                        disabled={
-                          revLimit === false ||
-                          (revLimit === true &&
-                            revFree === 0 &&
-                            revExtraAllowed === true)
-                        }
+                        disabled={revLimit === false || isPaidOnly}
                       />
                     )}
                   />
@@ -193,14 +189,14 @@ const RevisionSection: React.FC = () => {
                   <Controller
                     control={control}
                     name="revExtraAllowed"
-                    defaultValue={true}    
+                    defaultValue={true}
                     render={({ field }) => (
                       <FormControlLabel
                         control={
                           <Checkbox
                             {...field}
                             checked={field.value === true}
-                            disabled={revLimit === false}
+                            disabled={revLimit === false || isPaidOnly}
                           />
                         }
                         label="Allow Paid Revisions (Extra Revisions)"
@@ -213,7 +209,7 @@ const RevisionSection: React.FC = () => {
                   <Controller
                     control={control}
                     name="revFee"
-                    defaultValue={0}  
+                    defaultValue={0}
                     render={({ field }) => (
                       <TextField
                         {...field}
@@ -228,7 +224,9 @@ const RevisionSection: React.FC = () => {
                         }}
                         disabled={
                           revLimit === false ||
-                          (revLimit === true && revExtraAllowed === false)
+                          (revLimit === true &&
+                            revExtraAllowed === false &&
+                            !isPaidOnly)
                         }
                       />
                     )}

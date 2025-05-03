@@ -31,7 +31,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 const MilestonesSection: React.FC = () => {
-  const { control, setValue, getValues } =
+  const { control, setValue, getValues, watch } =
     useFormContext<CommissionFormValues>();
   const flow = useWatch({ control, name: "flow" });
   const revisionType = useWatch({ control, name: "revisionType" });
@@ -566,26 +566,45 @@ const MilestonesSection: React.FC = () => {
                         )}
                       />
                     </Grid>
-
                     <Grid item xs={12} sm={3}>
                       <Controller
                         control={control}
                         name={`milestones.${index}.policy.extraAllowed`}
-                        render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                {...field}
-                                checked={!!field.value}
-                                disabled={
-                                  !!unlimitedRevisions[index] ||
-                                  !!paidRevisionsOnly[index]
-                                }
-                              />
-                            }
-                            label="Allow Paid Revisions (Extra Revisions)"
-                          />
-                        )}
+                        render={({ field }) => {
+                          // debug value
+                          // console.log(
+                          //   `milestones.${index}.policy.extraAllowed`,
+                          //   field.value
+                          // );
+
+                          return (
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  {...field}
+                                  checked={!!field.value}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    field.onChange(isChecked);
+                                    // if unchecking, reset fee
+                                    if (!isChecked) {
+                                      setValue(
+                                        `milestones.${index}.policy.fee`,
+                                        0
+                                      );
+                                    }
+                                  }}
+                                  onBlur={field.onBlur}
+                                  disabled={
+                                    unlimitedRevisions[index] ||
+                                    paidRevisionsOnly[index]
+                                  }
+                                />
+                              }
+                              label="Allow Paid Revisions (Extra Revisions)"
+                            />
+                          );
+                        }}
                       />
                     </Grid>
 
@@ -593,26 +612,38 @@ const MilestonesSection: React.FC = () => {
                       <Controller
                         control={control}
                         name={`milestones.${index}.policy.fee`}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            type="number"
-                            fullWidth
-                            label="Fee Per Revision"
-                            InputProps={{
-                              inputProps: { min: 0 },
-                              startAdornment: (
-                                <span style={{ marginRight: 4 }}>Rp</span>
-                              ),
-                            }}
-                            disabled={
-                              unlimitedRevisions[index] ||
-                              (!paidRevisionsOnly[index] && !getValues(
-                                `milestones.${index}.policy.extraAllowed`
-                              ))
-                            }
-                          />
-                        )}
+                        render={({ field }) => {
+                          // Get the actual current value directly from form state
+                          const extraAllowed = watch(
+                            `milestones.${index}.policy.extraAllowed`
+                          );
+
+                          // console.log(
+                          //   `milestones.${index}.policy.extraAllowed`,
+                          //   watch(`milestones.${index}.policy.extraAllowed`)
+                          // );
+
+                          return (
+                            <TextField
+                              {...field}
+                              type="number"
+                              fullWidth
+                              label="Fee Per Revision"
+                              InputProps={{
+                                inputProps: { min: 0 },
+                                startAdornment: (
+                                  <span style={{ marginRight: 4 }}>Rp</span>
+                                ),
+                              }}
+                              disabled={
+                                // Disable when unlimited revisions OR
+                                // extra revisions are not allowed (and not in paid-only mode)
+                                !!unlimitedRevisions[index] ||
+                                (!extraAllowed && !paidRevisionsOnly[index])
+                              }
+                            />
+                          );
+                        }}
                       />
                     </Grid>
                   </Grid>

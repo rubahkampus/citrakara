@@ -226,17 +226,24 @@ export default function CommissionFormPage({
 
       fd.append("payload", JSON.stringify(payload));
 
-      console.log("Form Data:", fd); // Debugging line
+      for (var pair of fd.entries()) {
+        console.log(pair[0] + ", " + pair[1]);
+      } // Debugging line
 
       // Submit the form
-      //   if (mode === "create") {
-      //     await axiosClient.post("/api/commission/listing", fd);
-      //   } else {
-      //     await axiosClient.patch(
-      //       `/api/commission/listing/${initialData._id}`,
-      //       fd
-      //     );
-      //   }
+      if (mode === "create") {
+        await axiosClient.post("/api/commission/listing", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        await axiosClient.patch(
+          `/api/commission/listing/${initialData._id}`,
+          fd,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
+      }
 
       // Show success message and redirect
       setSaveSuccess(true);

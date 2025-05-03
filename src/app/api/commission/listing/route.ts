@@ -9,21 +9,26 @@ import {
 } from "@/lib/services/commissionListing.service";
 
 // Create a new commission listing
+// Create a new commission listing
 export async function POST(req: NextRequest) {
   try {
     return withAuth(async (session) => {
       const formData = await req.formData();
+
+      // Create the listing
       const newListing = await createListingFromForm(session.id, formData);
 
+      // Return the newly created listing
       const response = NextResponse.json({
-        message: "Commission listing created successfully",
+        message: "Commission created successfully",
         listing: newListing,
       });
 
+      // Rotate refresh token if needed
       rotateToken(response, session);
       return response;
     });
-  } catch (error) {
+  } catch (error: any) {
     return handleError(error);
   }
 }

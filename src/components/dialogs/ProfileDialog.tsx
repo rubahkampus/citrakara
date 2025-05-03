@@ -241,6 +241,10 @@ export default function ProfileDialog({
       if (profilePicture) formData.append("profilePicture", profilePicture);
       if (banner) formData.append("banner", banner);
 
+      for (var pair of formData.entries()) {
+        console.log(pair[0] + ", " + pair[1]);
+      } // Debugging line
+
       const response = await axiosClient.patch("/api/me/update", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });

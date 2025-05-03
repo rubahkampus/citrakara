@@ -15,9 +15,12 @@ import {
   Paper,
   Alert,
   Stack,
+  CircularProgress,
 } from "@mui/material";
 import { useFormContext } from "react-hook-form";
 import { CommissionFormValues } from "../CommissionFormPage";
+import { useEffect } from "react";
+import { axiosClient } from "@/lib/utils/axiosClient";
 
 // Mock data with proper typing
 const TEMPLATES: TemplateCard[] = [
@@ -221,6 +224,9 @@ interface TemplateCard {
 const TemplateSection: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [userCommissions, setUserCommissions] = useState<TemplateCard[]>([]);
   const { reset } = useFormContext<CommissionFormValues>();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -271,6 +277,62 @@ const TemplateSection: React.FC = () => {
       ...newValues,
     }));
   };
+
+  // Fetch user commissions
+  useEffect(() => {
+    const fetchCommissions = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosClient.get("/api/commission/listing");
+
+        // Transform API response to match TemplateCard interface
+        const transformed: TemplateCard[] = response.data.listings.map(
+          (listing: any) => ({
+            id: listing._id,
+            title: listing.title,
+            type: listing.type,
+            flow: listing.flow,
+            basePrice: listing.basePrice,
+            description: listing.description || [
+              {
+                title: "Overview",
+                detail:
+                  listing.description?.[0]?.detail ||
+                  "No description available",
+              },
+            ],
+            deadlineMode: listing.deadline.mode,
+            deadlineMin: listing.deadline.min,
+            deadlineMax: listing.deadline.max,
+            currency: listing.currency,
+            tags: listing.tags,
+            generalOptions: listing.generalOptions || {
+              optionGroups: [],
+              addons: [],
+              questions: [],
+            },
+            subjectOptions: listing.subjectOptions || [],
+            defaultMilestones: listing.milestones,
+          })
+        );
+
+        setUserCommissions(transformed);
+        setError(null);
+      } catch (err: any) {
+        setError(
+          err.response?.data?.error || "Failed to load your commissions"
+        );
+        console.error("Error fetching commissions:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (selectedTab === 1) {
+      // Only fetch when "Your Commissions" tab is selected
+      fetchCommissions();
+    }
+  }, [selectedTab]);
 
   const renderTemplateCard = (template: TemplateCard) => (
     <Card
@@ -360,8 +422,20 @@ const TemplateSection: React.FC = () => {
             </Grid>
           ) : (
             <Grid container spacing={2}>
-              {EXISTING_COMMISSIONS.length > 0 ? (
-                EXISTING_COMMISSIONS.map((commission) => (
+              {loading ? (
+                <Grid item xs={12}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "center", py: 4 }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                </Grid>
+              ) : error ? (
+                <Grid item xs={12}>
+                  <Alert severity="error">{error}</Alert>
+                </Grid>
+              ) : userCommissions.length > 0 ? (
+                userCommissions.map((commission) => (
                   <Grid item xs={12} md={6} key={commission.id}>
                     {renderTemplateCard(commission)}
                   </Grid>

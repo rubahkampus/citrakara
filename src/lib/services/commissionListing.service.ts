@@ -181,29 +181,45 @@ export async function createListing(
  * Handles file uploads to R2 and JSON parsing
  */
 export async function createListingFromForm(artistId: string, form: FormData) {
-  // Parse JSON payload if provided
-  const jsonPayload = (() => {
+  // 1. Parse & sanitize JSON payload
+  let jsonPayload: any;
+  try {
     const raw = form.get("payload");
-    if (raw && typeof raw === "string") {
-      try {
-        return sanitizePayload(JSON.parse(raw));
-      } catch (error) {
-        throw new HttpError("Invalid JSON payload", 400);
-      }
-    }
-    return {};
-  })();
+    jsonPayload =
+      raw && typeof raw === "string" ? sanitizePayload(JSON.parse(raw)) : {};
+  } catch {
+    throw new HttpError("Invalid JSON payload", 400);
+  }
 
-  // Ensure essential fields are present
-  const requiredFields = ["title", "tos", "type", "flow"];
-  for (const field of requiredFields) {
-    const value = form.get(field);
-    if (!value || typeof value !== "string") {
+  // ── NEW: Normalize any question‐objects into simple strings ──
+  if (jsonPayload.generalOptions?.questions) {
+    jsonPayload.generalOptions.questions = (
+      jsonPayload.generalOptions.questions as any[]
+    ).map((q) => (typeof q === "string" ? q : q.title ?? ""));
+  }
+  if (Array.isArray(jsonPayload.subjectOptions)) {
+    jsonPayload.subjectOptions = (jsonPayload.subjectOptions as any[]).map(
+      (sub) => ({
+        ...sub,
+        questions: Array.isArray(sub.questions)
+          ? sub.questions.map((q: { title: any; }) =>
+              typeof q === "string" ? q : q.title ?? ""
+            )
+          : [],
+      })
+    );
+  }
+  // ────────────────────────────────────────────────────────────────
+
+  // 2. Ensure essential string fields
+  for (const field of ["title", "tos", "type", "flow"] as const) {
+    const v = form.get(field);
+    if (!v || typeof v !== "string") {
       throw new HttpError(`Required field missing: ${field}`, 400);
     }
   }
 
-  // Prepare basic listing data for validation
+  // 3. Build our partial listingData (without thumbnail/samples yet)
   const listingData: Partial<CommissionListingPayload> = {
     ...jsonPayload,
     artistId: toObjectId(artistId),
@@ -215,26 +231,15 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     description: jsonPayload.description ?? [],
   };
 
-  // Handle thumbnail vs thumbnailUrl
-  const thumbBlob = form.get("thumbnail");
-  const thumbUrl = form.get("thumbnailUrl");
-  if (thumbBlob instanceof Blob) {
-    // we’ll upload this blob later → leave listingData.thumbnail blank for now
-  } else if (typeof thumbUrl === "string") {
-    listingData.thumbnail = thumbUrl;
-  } else {
-    throw new HttpError("Thumbnail image is required", 400);
-  }
-
+  // 4. Allow override of currency if provided
   const currencyVal = form.get("currency");
   if (typeof currencyVal === "string") {
     listingData.currency = currencyVal;
   }
 
-  // Validate before file upload
-  validateListingPayload(listingData);
-
-  // Collect sample images
+  // 5. Extract thumbnail blob vs URL & collect sample blobs
+  const thumbBlob = form.get("thumbnail");
+  const thumbUrl = form.get("thumbnailUrl");
   const sampleBlobs: Blob[] = [];
   form.forEach((value, key) => {
     if (key === "samples[]" && value instanceof Blob) {
@@ -242,38 +247,34 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     }
   });
 
-  // Upload all images to R2
-  const [thumbnailUrl, ...sampleUrls] = await uploadGalleryImagesToR2(
-    [thumbBlob as Blob, ...sampleBlobs],
+  // 6. Upload all blobs in one go
+  const toUpload =
+    thumbBlob instanceof Blob ? [thumbBlob, ...sampleBlobs] : sampleBlobs;
+  const uploadedUrls = await uploadGalleryImagesToR2(
+    toUpload,
     artistId,
     "listing"
   );
 
-  // after uploadGalleryImagesToR2:
-  const [uploadedThumbUrl, ...uploadedSampleUrls] =
-    await uploadGalleryImagesToR2(
-      thumbBlob instanceof Blob ? [thumbBlob, ...sampleBlobs] : sampleBlobs,
-      artistId,
-      "listing"
-    );
+  // 7. Assign thumbnail + samples URLs
+  if (thumbBlob instanceof Blob) {
+    listingData.thumbnail = uploadedUrls[0];
+    listingData.samples = uploadedUrls.slice(1);
+  } else if (typeof thumbUrl === "string") {
+    listingData.thumbnail = thumbUrl;
+    listingData.samples = uploadedUrls;
+  } else {
+    throw new HttpError("Thumbnail image is required", 400);
+  }
 
-  listingData.thumbnail =
-    thumbBlob instanceof Blob ? uploadedThumbUrl : listingData.thumbnail!; // keep the original URL if no blob
+  // 8. Validate *after* thumbnail is set (so no more missing‐thumbnail errors)
+  validateListingPayload(listingData);
 
-  const samples =
-    thumbBlob instanceof Blob
-      ? uploadedSampleUrls
-      : uploadedSampleUrls.slice(1); // if thumbnailUrl was string, sampleBlobs didn't include it
-
-  // Calculate price range
-  const priceRange = computePriceRange(listingData);
-
-  // Create the listing with uploaded image URLs and price
+  // 9. Compute price range & persist
+  const price = computePriceRange(listingData);
   return createCommissionListing({
     ...(listingData as CommissionListingPayload),
-    thumbnail: thumbnailUrl,
-    samples: sampleUrls,
-    price: priceRange,
+    price,
   });
 }
 

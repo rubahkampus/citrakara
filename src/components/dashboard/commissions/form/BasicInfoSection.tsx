@@ -32,7 +32,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
 
   // Use React state for tracking form values we want to display
   const [displayValues, setDisplayValues] = useState({
-    basePrice: "",
+    basePrice: 0,
     slots: "",
     type: "",
     flow: "",
@@ -46,7 +46,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
   const updateDisplayValues = () => {
     const values = getValues();
     setDisplayValues({
-      basePrice: values.basePrice || "",
+      basePrice: values.basePrice || 0,
       slots: values.slots?.toString() || "",
       type: values.type || "",
       flow: values.flow || "",
@@ -67,7 +67,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
     // If base price is 0, set uses base price to false
     const initialBasePrice = values.basePrice;
     const shouldUseBasePrice =
-      initialBasePrice !== "0" && initialBasePrice !== null;
+      initialBasePrice !== 0 && initialBasePrice !== null;
     setUsesBasePrice(shouldUseBasePrice);
 
     updateDisplayValues();
@@ -141,7 +141,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                 {...field}
                 label="Base Price"
                 fullWidth
-                type="text"
+                type="number"
                 InputProps={{
                   startAdornment: <span style={{ marginRight: 4 }}>IDR</span>,
                 }}
@@ -153,12 +153,14 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                   }
                 }}
                 onChange={(e) => {
-                  // Remove any non-numeric characters
-                  const sanitized = e.target.value.replace(/[^0-9]/g, "");
+                  // Convert to number and handle invalid input
+                  const value =
+                    e.target.value === "" ? 0 : parseInt(e.target.value, 10);
+                  const sanitizedValue = isNaN(value) ? 0 : Math.max(0, value);
 
                   // Update with sanitized value
-                  field.onChange(sanitized || "0");
-                  console.log("Base price changed to:", sanitized || "0");
+                  field.onChange(sanitizedValue);
+                  console.log("Base price changed to:", sanitizedValue);
 
                   // Update our display state
                   updateDisplayValues();
@@ -182,7 +184,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                     setUsesBasePrice(e.target.checked);
                     // If disabled, set base price to 0
                     if (!e.target.checked) {
-                      setValue("basePrice", "0", {
+                      setValue("basePrice", 0, {
                         shouldValidate: true,
                         shouldDirty: true,
                       });

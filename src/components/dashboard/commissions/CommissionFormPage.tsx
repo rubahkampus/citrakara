@@ -56,7 +56,7 @@ type GeneralOptionsInput = {
 
 export interface CommissionFormValues {
   title: string;
-  basePrice: string;
+  basePrice: number;
   currency: string;
   slots: number;
   type: "template" | "custom";
@@ -170,7 +170,7 @@ export default function CommissionFormPage({
       // Prepare form data
       const fd = new FormData();
       fd.append("title", values.title);
-      fd.append("basePrice", values.basePrice);
+      fd.append("basePrice", values.basePrice.toString());
       fd.append("currency", values.currency);
       fd.append("type", values.type);
       fd.append("flow", values.flow);
@@ -413,7 +413,7 @@ function getDefaults(
   if (mode === "edit" && data) {
     return {
       title: data.title,
-      basePrice: String(data.basePrice ?? 0),
+      basePrice: data.basePrice ?? 0,
       currency: data.currency || "IDR",
       slots: data.slots,
       type: data.type,
@@ -449,7 +449,7 @@ function getDefaults(
 
   return {
     title: "",
-    basePrice: "",
+    basePrice: 0,
     currency: "IDR",
     slots: -1,
     type: "template",

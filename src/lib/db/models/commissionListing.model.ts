@@ -282,7 +282,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       kind: { type: String, enum: ["flat", "percentage"], required: true }, // Changed from 'type' to 'kind'
       amount: { type: Number, required: true },
     },
-    latePenaltyPercent: Number,
+    latePenaltyPercent: { type: Number, default: 10 },
     graceDays: { type: Number, default: 7 },
     currency: { type: String, default: "IDR" },
 

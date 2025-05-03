@@ -46,7 +46,6 @@ export default async function NewCommissionPage({
       <CommissionFormPage
         username={username}
         mode="create"
-        defaultTosId={defaultTosId}
       />
     </Box>
   );

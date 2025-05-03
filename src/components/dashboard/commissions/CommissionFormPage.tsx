@@ -46,12 +46,12 @@ type SubjectGroupInput = {
   discount: number;
   optionGroups: OptionGroupInput[];
   addons: AddonInput[];
-  questions: Array<{ title: string; detail: string }>;
+  questions: string[];
 };
 type GeneralOptionsInput = {
   optionGroups: OptionGroupInput[];
   addons: AddonInput[];
-  questions: Array<{ title: string; detail: string }>;
+  questions: string[];
 };
 
 export interface CommissionFormValues {
@@ -98,14 +98,12 @@ interface CommissionFormProps {
   username: string;
   mode: "create" | "edit";
   initialData?: any;
-  defaultTosId?: string;
 }
 
 export default function CommissionFormPage({
   username,
   mode,
   initialData,
-  defaultTosId,
 }: CommissionFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -114,7 +112,7 @@ export default function CommissionFormPage({
 
   // Form setup
   const methods = useForm<CommissionFormValues>({
-    defaultValues: getDefaults(mode, initialData, defaultTosId),
+    defaultValues: getDefaults(mode, initialData),
     mode: "onChange",
   });
 
@@ -184,7 +182,7 @@ export default function CommissionFormPage({
       // Handle other samples
       values.samples.forEach((s, i) => {
         if (i !== values.thumbnailIdx && s instanceof File)
-          fd.append("samples", s);
+          fd.append("samples[]", s);
       });
 
       // Prepare JSON payload
@@ -408,7 +406,6 @@ export default function CommissionFormPage({
 function getDefaults(
   mode: "create" | "edit",
   data: any,
-  defaultTosId?: string
 ): CommissionFormValues {
   if (mode === "edit" && data) {
     return {
@@ -454,7 +451,7 @@ function getDefaults(
     slots: -1,
     type: "template",
     flow: "standard",
-    tos: defaultTosId || "",
+    tos: "",
     samples: [],
     thumbnailIdx: 0,
     description: [{ title: "Overview", detail: "" }],

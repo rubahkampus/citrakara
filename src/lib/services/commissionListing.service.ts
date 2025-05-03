@@ -203,12 +203,6 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     }
   }
 
-  // Handle thumbnail upload
-  const thumbBlob = form.get("thumbnail");
-  if (!(thumbBlob instanceof Blob)) {
-    throw new HttpError("Thumbnail image is required", 400);
-  }
-
   // Prepare basic listing data for validation
   const listingData: Partial<CommissionListingPayload> = {
     ...jsonPayload,
@@ -220,6 +214,22 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     basePrice: Number(form.get("basePrice") ?? 0),
     description: jsonPayload.description ?? [],
   };
+
+  // Handle thumbnail vs thumbnailUrl
+  const thumbBlob = form.get("thumbnail");
+  const thumbUrl = form.get("thumbnailUrl");
+  if (thumbBlob instanceof Blob) {
+    // we’ll upload this blob later → leave listingData.thumbnail blank for now
+  } else if (typeof thumbUrl === "string") {
+    listingData.thumbnail = thumbUrl;
+  } else {
+    throw new HttpError("Thumbnail image is required", 400);
+  }
+
+  const currencyVal = form.get("currency");
+  if (typeof currencyVal === "string") {
+    listingData.currency = currencyVal;
+  }
 
   // Validate before file upload
   validateListingPayload(listingData);
@@ -234,10 +244,26 @@ export async function createListingFromForm(artistId: string, form: FormData) {
 
   // Upload all images to R2
   const [thumbnailUrl, ...sampleUrls] = await uploadGalleryImagesToR2(
-    [thumbBlob, ...sampleBlobs],
+    [thumbBlob as Blob, ...sampleBlobs],
     artistId,
     "listing"
   );
+
+  // after uploadGalleryImagesToR2:
+  const [uploadedThumbUrl, ...uploadedSampleUrls] =
+    await uploadGalleryImagesToR2(
+      thumbBlob instanceof Blob ? [thumbBlob, ...sampleBlobs] : sampleBlobs,
+      artistId,
+      "listing"
+    );
+
+  listingData.thumbnail =
+    thumbBlob instanceof Blob ? uploadedThumbUrl : listingData.thumbnail!; // keep the original URL if no blob
+
+  const samples =
+    thumbBlob instanceof Blob
+      ? uploadedSampleUrls
+      : uploadedSampleUrls.slice(1); // if thumbnailUrl was string, sampleBlobs didn't include it
 
   // Calculate price range
   const priceRange = computePriceRange(listingData);

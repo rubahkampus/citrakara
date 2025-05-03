@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Grid,
   TextField,
@@ -13,6 +13,9 @@ import {
   Divider,
   Alert,
   Tooltip,
+  Stack,
+  InputAdornment,
+  Chip,
 } from "@mui/material";
 import {
   Controller,
@@ -24,11 +27,22 @@ import { CommissionFormValues } from "../CommissionFormPage";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoIcon from "@mui/icons-material/Info";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 const MilestonesSection: React.FC = () => {
-  const { control } = useFormContext<CommissionFormValues>();
+  const { control, setValue, getValues } =
+    useFormContext<CommissionFormValues>();
   const flow = useWatch({ control, name: "flow" });
   const revisionType = useWatch({ control, name: "revisionType" });
+  const milestones = useWatch({ control, name: "milestones" }) || [];
+
+  // Tracking locked milestones with local state
+  const [lockedMilestones, setLockedMilestones] = useState<
+    Record<number, boolean>
+  >({});
+  // Track if we've already initialized the first milestone
+  const [initialized, setInitialized] = useState(false);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -38,10 +52,200 @@ const MilestonesSection: React.FC = () => {
   const showRevisionFields =
     flow === "milestone" && revisionType === "milestone";
 
-  // Check if total percentage adds up to 100
-  const percentages = fields.map((f) => f.percent || 0);
-  const totalPercent = percentages.reduce((sum, val) => sum + val, 0);
-  const isValid = totalPercent === 100;
+  // Calculate total percentage
+  const totalPercent = milestones.reduce(
+    (sum, m) => sum + (m?.percent || 0),
+    0
+  );
+  const isValid = Math.abs(totalPercent - 100) < 0.1; // Allow for tiny floating-point errors
+
+  // Initialize first milestone to 100% when added
+  useEffect(() => {
+    if (fields.length === 1 && !initialized) {
+      setValue(`milestones.0.percent`, 100);
+      setInitialized(true);
+    }
+  }, [fields.length, setValue, initialized]);
+
+  // Balance percentages when milestones change
+  useEffect(() => {
+    // Skip if no milestones yet
+    if (fields.length === 0) return;
+
+    // Skip if we already have a valid total
+    if (isValid) return;
+
+    // Skip initial render before form is fully initialized
+    if (fields.length === 1 && totalPercent === 0) {
+      setValue(`milestones.0.percent`, 100);
+      return;
+    }
+
+    // Calculate how many milestones need adjustment (not locked)
+    const unlocked = fields.filter((_, idx) => !lockedMilestones[idx]);
+    const unlockedCount = unlocked.length;
+
+    if (unlockedCount === 0) {
+      // If all are locked but we're not at 100%, we need to adjust something
+      if (!isValid && fields.length > 0) {
+        // Force unlock the last milestone
+        const lastIndex = fields.length - 1;
+        setLockedMilestones((prev) => ({
+          ...prev,
+          [lastIndex]: false,
+        }));
+
+        // Recalculate in the next render cycle
+        return;
+      }
+      return; // All milestones are locked and we're at 100%
+    }
+
+    // Calculate how much percent we need to distribute
+    const lockedTotal = fields.reduce(
+      (sum, f, idx) => (lockedMilestones[idx] ? sum + (f.percent || 0) : sum),
+      0
+    );
+
+    const remainingPercent = 100 - lockedTotal;
+
+    if (remainingPercent <= 0 && unlockedCount > 0) {
+      // Edge case: locked milestones already exceed or equal 100%
+      // Set all unlocked milestones to a small positive value
+      unlocked.forEach((_, idx) => {
+        const actualIdx = fields.findIndex((f, i) => f.id === unlocked[idx].id);
+        if (actualIdx >= 0) {
+          setValue(`milestones.${actualIdx}.percent`, 0.1);
+        }
+      });
+      return;
+    }
+
+    // Distribute evenly among unlocked milestones
+    const baseShare = Math.floor((remainingPercent * 10) / unlockedCount) / 10;
+    let remainder = remainingPercent - baseShare * unlockedCount;
+    remainder = Math.round(remainder * 10) / 10; // Round to 1 decimal
+
+    // Update unlocked milestone percentages
+    unlocked.forEach((f, i) => {
+      const actualIdx = fields.findIndex((field) => field.id === f.id);
+      if (actualIdx >= 0) {
+        // Add a little extra to the first few milestones to account for the remainder
+        const extraPoint = i < Math.round(remainder * 10) ? 0.1 : 0;
+        const value = Math.round((baseShare + extraPoint) * 10) / 10; // Round to 1 decimal
+        setValue(`milestones.${actualIdx}.percent`, value);
+      }
+    });
+  }, [fields, lockedMilestones, setValue, isValid, totalPercent]);
+
+  // Handle adding a new milestone
+  const handleAddMilestone = () => {
+    append({
+      title: "",
+      percent: 0, // Will be auto-calculated by the effect
+      policy: { limit: false, free: 2, extraAllowed: true, fee: 0 },
+    });
+  };
+
+  // Toggle lock state for a milestone's percentage
+  const toggleLock = (index: number) => {
+    setLockedMilestones((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
+  // Handle milestone removal
+  const handleRemoveMilestone = (index: number) => {
+    // Store current percentages and locked states before removal
+    const currentPercentages = [...fields.map((f) => f.percent || 0)];
+    const currentLocked = { ...lockedMilestones };
+
+    // Remove the milestone
+    remove(index);
+
+    // Update the locked milestones state (adjust indices)
+    const updatedLocked: Record<number, boolean> = {};
+    Object.keys(currentLocked).forEach((key) => {
+      const idx = parseInt(key);
+      if (idx < index) {
+        updatedLocked[idx] = currentLocked[idx];
+      } else if (idx > index) {
+        updatedLocked[idx - 1] = currentLocked[idx];
+      }
+    });
+
+    setLockedMilestones(updatedLocked);
+
+    // Special case: if removing the last milestone, return early
+    if (fields.length <= 1) {
+      return;
+    }
+
+    // Recalculate percentages in the next render cycle
+    // We rely on the useEffect instead of manual calculation here
+  };
+
+  // Handle percentage change
+  const handlePercentChange = (index: number, newValue: number) => {
+    // Ensure newValue is valid
+    const sanitizedValue = Math.max(0, Math.min(100, newValue));
+
+    // If only one milestone, it must be 100%
+    if (fields.length === 1) {
+      setValue(`milestones.${index}.percent`, 100);
+      return;
+    }
+
+    // If this milestone is locked, just set its value
+    if (lockedMilestones[index]) {
+      setValue(`milestones.${index}.percent`, sanitizedValue);
+      return;
+    }
+
+    // Set the new value
+    setValue(`milestones.${index}.percent`, sanitizedValue);
+
+    // Get current percentages with this update
+    const currentValues = fields.map((f, idx) =>
+      idx === index ? sanitizedValue : f.percent || 0
+    );
+
+    // Calculate how much we need to adjust other milestones
+    const currentTotal = currentValues.reduce((sum, val) => sum + val, 0);
+    const diff = currentTotal - 100;
+
+    if (Math.abs(diff) < 0.1) return; // Already balanced
+
+    // Find unlocked milestones other than the current one
+    const adjustableIndexes = fields
+      .map((_, idx) => idx)
+      .filter((idx) => idx !== index && !lockedMilestones[idx]);
+
+    if (adjustableIndexes.length === 0) {
+      // Can't adjust any other milestones - force this one to be valid
+      const maxAllowed =
+        100 -
+        fields
+          .filter((_, i) => i !== index && lockedMilestones[i])
+          .reduce((sum, f, i) => sum + (f.percent || 0), 0);
+
+      setValue(
+        `milestones.${index}.percent`,
+        Math.max(0, Math.min(100, maxAllowed))
+      );
+      return;
+    }
+
+    // Distribute the difference evenly
+    const adjustPerMilestone = diff / adjustableIndexes.length;
+
+    adjustableIndexes.forEach((idx) => {
+      const currentVal = fields[idx].percent || 0;
+      const newVal = Math.max(0.1, currentVal - adjustPerMilestone); // Ensure at least 0.1%
+      setValue(`milestones.${idx}.percent`, Math.round(newVal * 10) / 10); // Round to 1 decimal
+    });
+  };
 
   if (flow !== "milestone") return null;
 
@@ -62,7 +266,9 @@ const MilestonesSection: React.FC = () => {
         >
           {totalPercent > 100
             ? "Total milestone percentages exceed 100%. Please adjust."
-            : `Total milestone percentages: ${totalPercent}%. Should add up to 100%.`}
+            : `Total milestone percentages: ${totalPercent.toFixed(
+                1
+              )}%. Should add up to 100%.`}
         </Alert>
       )}
 
@@ -76,10 +282,28 @@ const MilestonesSection: React.FC = () => {
         <Paper
           key={milestone.id}
           variant="outlined"
-          sx={{ p: 2, mb: 2, borderRadius: 1 }}
+          sx={{ p: 2, mb: 2, borderRadius: 1, position: "relative" }}
         >
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={showRevisionFields ? 4 : 6}>
+          {/* Delete button - positioned at the top right */}
+          <IconButton
+            color="error"
+            onClick={() => handleRemoveMilestone(index)}
+            size="small"
+            sx={{
+              position: "absolute",
+              top: 25,
+              right: 20,
+              zIndex: 1,
+            }}
+            // Disable delete if this is the only milestone
+            disabled={fields.length <= 1}
+          >
+            <DeleteIcon />
+          </IconButton>
+
+          <Grid container spacing={2}>
+            {/* Title and Payment % row */}
+            <Grid item xs={12} sm={8}>
               <Controller
                 control={control}
                 name={`milestones.${index}.title`}
@@ -94,60 +318,118 @@ const MilestonesSection: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={6} sm={showRevisionFields ? 2 : 4}>
+            <Grid item xs={12} sm={4}>
               <Controller
                 control={control}
                 name={`milestones.${index}.percent`}
                 render={({ field }) => (
                   <TextField
                     {...field}
+                    sx={{ width: "80%" }}
                     type="number"
                     fullWidth
                     label="Payment %"
                     InputProps={{
-                      endAdornment: "%",
-                      inputProps: { min: 0, max: 100 },
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            %
+                            <IconButton
+                              onClick={() => toggleLock(index)}
+                              edge="end"
+                              size="small"
+                              sx={{ ml: 1 }}
+                              // Disable lock toggle if this is the only milestone
+                              disabled={fields.length <= 1}
+                            >
+                              {lockedMilestones[index] ? (
+                                <LockIcon fontSize="small" color="primary" />
+                              ) : (
+                                <LockOpenIcon fontSize="small" color="action" />
+                              )}
+                            </IconButton>
+                          </Box>
+                        </InputAdornment>
+                      ),
+                      inputProps: {
+                        min: 0,
+                        max: 100,
+                        readOnly: lockedMilestones[index] || fields.length <= 1,
+                        step: 0.1,
+                      },
+                    }}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) {
+                        handlePercentChange(index, val);
+                      }
                     }}
                   />
                 )}
               />
             </Grid>
 
+            {lockedMilestones[index] && (
+              <Typography
+                variant="caption"
+                color="primary"
+                sx={{
+                  position: "absolute",
+                  top: 75,
+                  right: 95,
+                  zIndex: 1,
+                }}
+              >
+                This percentage is locked
+              </Typography>
+            )}
+            {fields.length <= 1 && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  position: "absolute",
+                  top: 75,
+                  right: 95,
+                  zIndex: 1,
+                }}
+              >
+                Single milestone is always 100%
+              </Typography>
+            )}
+
+            {/* Revision policy section (now below the title/payment row) */}
             {showRevisionFields && (
-              <Grid item xs={12} sm={5}>
+              <Grid item xs={12}>
                 <Box
                   sx={{
                     border: "1px solid",
                     borderColor: "divider",
-                    p: 1,
+                    p: 2,
                     borderRadius: 1,
+                    mt: 1,
+                    bgcolor: "background.paper",
                   }}
                 >
-                  <Typography variant="caption" display="block" gutterBottom>
+                  <Typography variant="subtitle2" gutterBottom>
                     Revision Policy
                   </Typography>
-                  <Grid container spacing={1} alignItems="center">
-                    <Grid item xs={3}>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={3}>
                       <Controller
                         control={control}
                         name={`milestones.${index}.policy.limit`}
                         render={({ field }) => (
-                          <Tooltip title="Limit the number of revisions">
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  {...field}
-                                  checked={!!field.value}
-                                  size="small"
-                                />
-                              }
-                              label="Limit"
-                            />
-                          </Tooltip>
+                          <FormControlLabel
+                            control={
+                              <Checkbox {...field} checked={!!field.value} />
+                            }
+                            label="Limit Revisions"
+                          />
                         )}
                       />
                     </Grid>
-                    <Grid item xs={3}>
+                    <Grid item xs={12} sm={3}>
                       <Controller
                         control={control}
                         name={`milestones.${index}.policy.free`}
@@ -156,34 +438,27 @@ const MilestonesSection: React.FC = () => {
                             {...field}
                             type="number"
                             fullWidth
-                            size="small"
-                            label="Free"
+                            label="Free Revisions"
                             InputProps={{ inputProps: { min: 0 } }}
                           />
                         )}
                       />
                     </Grid>
-                    <Grid item xs={3}>
+                    <Grid item xs={12} sm={3}>
                       <Controller
                         control={control}
                         name={`milestones.${index}.policy.extraAllowed`}
                         render={({ field }) => (
-                          <Tooltip title="Allow extra paid revisions">
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  {...field}
-                                  checked={!!field.value}
-                                  size="small"
-                                />
-                              }
-                              label="Extra"
-                            />
-                          </Tooltip>
+                          <FormControlLabel
+                            control={
+                              <Checkbox {...field} checked={!!field.value} />
+                            }
+                            label="Allow Extra Paid"
+                          />
                         )}
                       />
                     </Grid>
-                    <Grid item xs={3}>
+                    <Grid item xs={12} sm={3}>
                       <Controller
                         control={control}
                         name={`milestones.${index}.policy.fee`}
@@ -192,8 +467,7 @@ const MilestonesSection: React.FC = () => {
                             {...field}
                             type="number"
                             fullWidth
-                            size="small"
-                            label="Fee"
+                            label="Fee Per Extra Revision"
                             InputProps={{ inputProps: { min: 0 } }}
                           />
                         )}
@@ -203,12 +477,6 @@ const MilestonesSection: React.FC = () => {
                 </Box>
               </Grid>
             )}
-
-            <Grid item xs={6} sm={1}>
-              <IconButton color="error" onClick={() => remove(index)}>
-                <DeleteIcon />
-              </IconButton>
-            </Grid>
           </Grid>
         </Paper>
       ))}
@@ -216,26 +484,27 @@ const MilestonesSection: React.FC = () => {
       <Button
         variant="contained"
         startIcon={<AddIcon />}
-        onClick={() =>
-          append({
-            title: "",
-            percent: 0,
-            policy: { limit: false, free: 2, extraAllowed: true, fee: 0 },
-          })
-        }
+        onClick={handleAddMilestone}
         sx={{ mt: 1 }}
       >
         Add Milestone
       </Button>
 
       {fields.length > 0 && (
-        <Box sx={{ mt: 2, display: "flex", alignItems: "center" }}>
-          <InfoIcon color="info" fontSize="small" sx={{ mr: 1 }} />
+        <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: "center" }}>
+          <InfoIcon color="info" fontSize="small" />
           <Typography variant="body2" color="text.secondary">
-            Milestone percentages should add up to 100%. Current total:{" "}
-            {totalPercent}%
+            Milestone percentages: {totalPercent.toFixed(1)}% of 100%
+            {isValid && (
+              <Chip
+                label="Balanced"
+                color="success"
+                size="small"
+                sx={{ ml: 1, height: 24 }}
+              />
+            )}
           </Typography>
-        </Box>
+        </Stack>
       )}
     </Box>
   );

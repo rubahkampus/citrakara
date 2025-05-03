@@ -38,11 +38,14 @@ const MilestonesSection: React.FC = () => {
   const milestones = useWatch({ control, name: "milestones" }) || [];
 
   // Tracking locked milestones with local state
-  const [lockedMilestones, setLockedMilestones] = useState<
-    Record<number, boolean>
-  >({});
+  const [lockedMilestones, setLockedMilestones] = useState<Record<number, boolean>>({});
+  
   // Track if we've already initialized the first milestone
   const [initialized, setInitialized] = useState(false);
+  
+  // Track unlimited/paid only states for each milestone
+  const [unlimitedRevisions, setUnlimitedRevisions] = useState<Record<number, boolean>>({});
+  const [paidRevisionsOnly, setPaidRevisionsOnly] = useState<Record<number, boolean>>({});
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -66,6 +69,27 @@ const MilestonesSection: React.FC = () => {
       setInitialized(true);
     }
   }, [fields.length, setValue, initialized]);
+
+  // Initialize revision states based on form values
+  useEffect(() => {
+    const newUnlimited: Record<number, boolean> = {};
+    const newPaidOnly: Record<number, boolean> = {};
+    
+    fields.forEach((field, index) => {
+      // Get the current policy
+      const policy = getValues(`milestones.${index}.policy`);
+      if (!policy) return;
+      
+      // Set unlimited based on !limit
+      newUnlimited[index] = !policy.limit;
+      
+      // Set paid only based on: limit is true, free is 0, extraAllowed is true
+      newPaidOnly[index] = !!policy.limit && policy.free === 0 && !!policy.extraAllowed;
+    });
+    
+    setUnlimitedRevisions(newUnlimited);
+    setPaidRevisionsOnly(newPaidOnly);
+  }, [fields, getValues]);
 
   // Balance percentages when milestones change
   useEffect(() => {
@@ -137,6 +161,8 @@ const MilestonesSection: React.FC = () => {
       }
     });
   }, [fields, lockedMilestones, setValue, isValid, totalPercent]);
+
+  
 
   // Handle adding a new milestone
   const handleAddMilestone = () => {
@@ -246,6 +272,59 @@ const MilestonesSection: React.FC = () => {
       setValue(`milestones.${idx}.percent`, Math.round(newVal * 10) / 10); // Round to 1 decimal
     });
   };
+
+  // Handle "Unlimited Revisions" checkbox change
+  const handleUnlimitedChange = (index: number, checked: boolean) => {
+    setUnlimitedRevisions(prev => ({
+      ...prev,
+      [index]: checked
+    }));
+
+    // Update form values
+    setValue(`milestones.${index}.policy.limit`, !checked);
+
+    if (checked) {
+      // Reset other fields for unlimited mode
+      setValue(`milestones.${index}.policy.free`, 0);
+      setValue(`milestones.${index}.policy.extraAllowed`, false);
+      setValue(`milestones.${index}.policy.fee`, 0);
+      
+      // Also reset paid only state
+      setPaidRevisionsOnly(prev => ({
+        ...prev,
+        [index]: false
+      }));
+    } else {
+      // Default values for limited mode
+      setValue(`milestones.${index}.policy.free`, 2);
+      setValue(`milestones.${index}.policy.extraAllowed`, true);
+    }
+  };
+
+  // Handle "Paid Revisions Only" checkbox change
+  const handlePaidOnlyChange = (index: number, checked: boolean) => {
+    setPaidRevisionsOnly(prev => ({
+      ...prev,
+      [index]: checked
+    }));
+
+    if (checked) {
+      // Set values for paid-only mode
+      setValue(`milestones.${index}.policy.free`, 0);
+      setValue(`milestones.${index}.policy.extraAllowed`, true);
+      // Set a default fee if not already set
+      const currentFee = getValues(`milestones.${index}.policy.fee`);
+      if (!currentFee) {
+        setValue(`milestones.${index}.policy.fee`, 50000);
+      }
+    } else {
+      // Set values for regular mode
+      setValue(`milestones.${index}.policy.free`, 2);
+      // Keep extra revisions allowed
+      setValue(`milestones.${index}.policy.extraAllowed`, true);
+    }
+  };
+  
 
   if (flow !== "milestone") return null;
 
@@ -398,37 +477,67 @@ const MilestonesSection: React.FC = () => {
               </Typography>
             )}
 
-            {/* Revision policy section (now below the title/payment row) */}
+            {/* Revision policy section with improved UI */}
             {showRevisionFields && (
               <Grid item xs={12}>
-                <Box
-                  sx={{
-                    border: "1px solid",
-                    borderColor: "divider",
-                    p: 2,
-                    borderRadius: 1,
-                    mt: 1,
-                    bgcolor: "background.paper",
-                  }}
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 3, borderRadius: 2, mt: 1 }}
                 >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Revision Policy
+                  <Typography variant="subtitle2" gutterBottom fontWeight="medium">
+                    Revision Policy for this Milestone
                   </Typography>
-                  <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={3}>
-                      <Controller
-                        control={control}
-                        name={`milestones.${index}.policy.limit`}
-                        render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Checkbox {...field} checked={!!field.value} />
-                            }
-                            label="Limit Revisions"
+                  
+                  {/* First row: checkboxes */}
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={!!unlimitedRevisions[index]}
+                              onChange={(e) => handleUnlimitedChange(index, e.target.checked)}
+                            />
+                          }
+                          label="Unlimited Revisions"
+                        />
+                        <Tooltip title="Allow clients to request unlimited revisions for this milestone">
+                          <InfoIcon
+                            fontSize="small"
+                            color="action"
+                            sx={{ ml: 1 }}
                           />
-                        )}
-                      />
+                        </Tooltip>
+                      </Box>
                     </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={!!paidRevisionsOnly[index]}
+                              onChange={(e) => handlePaidOnlyChange(index, e.target.checked)}
+                              disabled={!!unlimitedRevisions[index]}
+                            />
+                          }
+                          label="Paid Revisions Only"
+                        />
+                        <Tooltip title="All revisions for this milestone will require payment">
+                          <InfoIcon
+                            fontSize="small"
+                            color="action"
+                            sx={{ ml: 1 }}
+                          />
+                        </Tooltip>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  {/* Second row: fields */}
+                  <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} sm={3}>
                       <Controller
                         control={control}
@@ -440,10 +549,12 @@ const MilestonesSection: React.FC = () => {
                             fullWidth
                             label="Free Revisions"
                             InputProps={{ inputProps: { min: 0 } }}
+                            disabled={!!unlimitedRevisions[index] || !!paidRevisionsOnly[index]}
                           />
                         )}
                       />
                     </Grid>
+                    
                     <Grid item xs={12} sm={3}>
                       <Controller
                         control={control}
@@ -451,14 +562,19 @@ const MilestonesSection: React.FC = () => {
                         render={({ field }) => (
                           <FormControlLabel
                             control={
-                              <Checkbox {...field} checked={!!field.value} />
+                              <Checkbox
+                                {...field}
+                                checked={!!field.value}
+                                disabled={!!unlimitedRevisions[index] || !!paidRevisionsOnly[index]}
+                              />
                             }
                             label="Allow Extra Paid"
                           />
                         )}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    
+                    <Grid item xs={12} sm={6}>
                       <Controller
                         control={control}
                         name={`milestones.${index}.policy.fee`}
@@ -468,13 +584,22 @@ const MilestonesSection: React.FC = () => {
                             type="number"
                             fullWidth
                             label="Fee Per Extra Revision"
-                            InputProps={{ inputProps: { min: 0 } }}
+                            InputProps={{ 
+                              inputProps: { min: 0 },
+                              startAdornment: (
+                                <span style={{ marginRight: 4 }}>Rp</span>
+                              ), 
+                            }}
+                            disabled={
+                              !!unlimitedRevisions[index] ||
+                              (!paidRevisionsOnly[index] && !getValues(`milestones.${index}.policy.extraAllowed`))
+                            }
                           />
                         )}
                       />
                     </Grid>
                   </Grid>
-                </Box>
+                </Paper>
               </Grid>
             )}
           </Grid>

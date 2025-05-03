@@ -460,7 +460,7 @@ function getDefaults(
     deadlineMax: 14,
     cancelKind: "percentage",
     cancelAmount: 10,
-    revisionType: "none",
+    revisionType: "standard",
     milestones: [],
     allowContractChange: true,
     changeable: [

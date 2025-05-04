@@ -1,19 +1,29 @@
 // src/lib/services/proposal.service.ts
 import { Types } from "mongoose";
 import { IProposal } from "@/lib/db/models/proposal.model";
-import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 import {
-  proposalRepository,
+  createProposal as repoCreateProposal,
+  getProposalById,
+  updateProposal as repoUpdateProposal,
+  artistResponds,
+  clientRespondsToAdjustment,
+  findProposalsByUser,
+  findProposalsByArtist,
+  findProposalsByClient,
+  finalizeAcceptance,
+  bulkExpirePending,
+  computeDynamicEstimate as repoComputeDynamicEstimate,
   ProposalInput,
+  UpdateProposalInput,
+  FindOpts,
   ArtistAdjustment,
 } from "@/lib/db/repositories/proposal.repository";
 import { findCommissionListingById } from "@/lib/db/repositories/commissionListing.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
-import { IContract } from "@/lib/db/models/contract.model";
-import { IEscrowTransaction } from "@/lib/db/models/escrowTransaction.model";
+import { connectDB } from "@/lib/db/connection";
 import type { Cents } from "@/types/common";
 
-/** Input types for proposals */
+// ========== Service Interfaces ==========
 export interface GeneralOptionsInput {
   optionGroups?: Record<
     string,
@@ -42,11 +52,22 @@ export interface SubjectOptionsInput {
   };
 }
 
-export interface SubmitProposalInput {
+export interface CreateProposalInput {
+  listingId: string;
   earliestDate: Date;
   latestDate: Date;
   deadline: Date;
   generalDescription: string;
+  referenceImages?: string[];
+  generalOptions?: GeneralOptionsInput;
+  subjectOptions?: SubjectOptionsInput;
+}
+
+export interface UpdateProposalInputService {
+  earliestDate?: Date;
+  latestDate?: Date;
+  deadline?: Date;
+  generalDescription?: string;
   referenceImages?: string[];
   generalOptions?: GeneralOptionsInput;
   subjectOptions?: SubjectOptionsInput;
@@ -59,211 +80,44 @@ export interface ArtistDecision {
   reason?: string;
 }
 
-export interface ProposalService {
-  submitProposal(
-    clientId: string,
-    listingId: string,
-    input: SubmitProposalInput
-  ): Promise<IProposal>;
-
-  artistRespond(
-    artistId: string,
-    proposalId: string,
-    decision: ArtistDecision
-  ): Promise<IProposal>;
-
-  clientRespondToAdjustment(
-    clientId: string,
-    proposalId: string,
-    accept: boolean,
-    rejectionReason?: string
-  ): Promise<IProposal>;
-
-  autoExpireProposals(asOf?: Date): Promise<number>;
-
-  finalizeProposal(proposalId: string): Promise<{
-    proposal: IProposal;
-    contract: IContract;
-    escrowTx: IEscrowTransaction;
-  }>;
+export interface ClientDecision {
+  accept: boolean;
+  rejectionReason?: string;
 }
 
-/** Helper function to validate availability window */
-const validateAvailability = (
-  earliestDate: Date,
-  deadline: Date,
-  latestDate: Date
-): void => {
-  if (earliestDate > deadline || deadline > latestDate) {
-    throw new Error(
-      "Invalid availability window: earliest <= deadline <= latest must be satisfied"
-    );
-  }
-  if (earliestDate >= latestDate) {
-    throw new Error(
-      "Invalid availability window: earliest must be before latest"
-    );
-  }
-};
+export interface ProposalFilters {
+  role?: "client" | "artist";
+  status?: string[];
+  beforeExpire?: boolean;
+}
 
-/** Helper function to compute rush fees */
-const computeRush = (
-  earliestDate: Date,
-  deadline: Date,
-  latestDate: Date,
-  rushSettings?: {
-    mode: string;
-    rushFee?: {
-      kind: "flat" | "perDay";
-      amount: number;
-    };
-  }
-): { days: number; paidDays: number; fee: number } | null => {
-  if (!rushSettings?.rushFee || rushSettings.mode !== "withRush") {
-    return null;
-  }
+// ========== Service Implementation ==========
 
-  const rushDays = Math.max(
-    0,
-    Math.ceil(
-      (latestDate.getTime() - deadline.getTime()) / (24 * 60 * 60 * 1000)
-    )
-  );
+// ========== Main CRUD Operations ==========
+export async function createProposal(
+  clientId: string,
+  input: CreateProposalInput
+): Promise<IProposal> {
+  try {
+    await connectDB();
 
-  const paidDays = Math.max(
-    0,
-    Math.ceil(
-      (deadline.getTime() - earliestDate.getTime()) / (24 * 60 * 60 * 1000)
-    )
-  );
-
-  if (paidDays <= 0) return null;
-
-  const rushFee =
-    rushSettings.rushFee.kind === "flat"
-      ? rushSettings.rushFee.amount
-      : paidDays * rushSettings.rushFee.amount;
-
-  return {
-    days: rushDays,
-    paidDays,
-    fee: rushFee,
-  };
-};
-
-/** Helper function to compute price breakdown */
-const computePriceBreakdown = (
-  basePrice: Cents,
-  generalOptions?: GeneralOptionsInput,
-  subjectOptions?: SubjectOptionsInput,
-  rush?: { fee: number } | null,
-  adjustments?: {
-    surcharge?: { amount: number };
-    discount?: { amount: number };
-  }
-) => {
-  let optionGroupsTotal = 0;
-  let addonsTotal = 0;
-
-  // Calculate general options
-  if (generalOptions?.optionGroups) {
-    Object.values(generalOptions.optionGroups).forEach((selection) => {
-      optionGroupsTotal += selection.price;
-    });
-  }
-  if (generalOptions?.addons) {
-    Object.values(generalOptions.addons).forEach((price) => {
-      addonsTotal += price;
-    });
-  }
-
-  // Calculate subject options
-  if (subjectOptions) {
-    Object.values(subjectOptions).forEach((subject) => {
-      subject.instances.forEach((instance) => {
-        if (instance.optionGroups) {
-          Object.values(instance.optionGroups).forEach((selection) => {
-            optionGroupsTotal += selection.price;
-          });
-        }
-        if (instance.addons) {
-          Object.values(instance.addons).forEach((price) => {
-            addonsTotal += price;
-          });
-        }
-      });
-    });
-  }
-
-  const surcharge = adjustments?.surcharge?.amount || 0;
-  const discount = adjustments?.discount?.amount || 0;
-  const rushFee = rush?.fee || 0;
-
-  return {
-    base: basePrice,
-    optionGroups: optionGroupsTotal,
-    addons: addonsTotal,
-    rush: rushFee,
-    discount,
-    surcharge,
-    total:
-      basePrice +
-      optionGroupsTotal +
-      addonsTotal +
-      rushFee +
-      surcharge -
-      discount,
-  };
-};
-
-/** Implementation of the proposal service */
-export const proposalService: ProposalService = {
-  /** Submit a new proposal */
-  async submitProposal(
-    clientId: string,
-    listingId: string,
-    input: SubmitProposalInput
-  ): Promise<IProposal> {
-    // 1. Load & Validate Listing
-    const listing = await findCommissionListingById(listingId, { lean: true });
-
+    // Fetch and validate listing
+    const listing = await findCommissionListingById(input.listingId);
     if (!listing) {
       throw new Error("Listing not found");
     }
 
     if (!listing.isActive || listing.isDeleted) {
-      throw new Error("Listing not accepting orders");
+      throw new Error("Listing is not active");
     }
 
-    // 2. Validate Dates
-    validateAvailability(input.earliestDate, input.deadline, input.latestDate);
-
-    // 3. Compute Dynamic Estimate
-    const availability = proposalRepository.computeDynamicEstimate(listing, {
-      earliestDate: input.earliestDate,
-      latestDate: input.latestDate,
-    });
-
-    // 4. Compute Rush & Pricing
-    const rush = computeRush(
-      input.earliestDate,
-      input.deadline,
-      input.latestDate,
-      listing.deadline
-    );
-
-    const calculatedPrice = computePriceBreakdown(
-      listing.basePrice,
-      input.generalOptions,
-      input.subjectOptions,
-      rush
-    );
-
-    // 5. Create Proposal
+    // Convert form data to repository format
     const proposalInput: ProposalInput = {
       clientId,
-      artistId: listing.artistId,
-      listingId: listing._id,
+      artistId: listing.artistId.toString(),
+      listingId: input.listingId,
+      earliestDate: input.earliestDate,
+      latestDate: input.latestDate,
       deadline: input.deadline,
       generalDescription: input.generalDescription,
       referenceImages: input.referenceImages,
@@ -271,23 +125,71 @@ export const proposalService: ProposalService = {
       subjectOptions: input.subjectOptions,
     };
 
-    const proposal = await proposalRepository.createProposal(proposalInput);
+    return repoCreateProposal(proposalInput);
+  } catch (error) {
+    console.error("Error creating proposal:", error);
+    throw error;
+  }
+}
 
-    // 6. Notify Artist (to be implemented)
-    // NotificationService.notify(listing.artistId.toString(), "New proposal received");
+export async function updateProposal(
+  proposalId: string,
+  userId: string,
+  updates: UpdateProposalInputService
+): Promise<IProposal> {
+  try {
+    await connectDB();
 
-    return proposal;
-  },
+    // First check if proposal exists and user has permission to edit
+    const existing = await getProposalById(proposalId);
+    if (!existing) {
+      throw new Error("Proposal not found");
+    }
 
-  /** Artist responds to proposal */
-  async artistRespond(
-    artistId: string,
-    proposalId: string,
-    decision: ArtistDecision
-  ): Promise<IProposal> {
-    // 1. Fetch & Authorize
-    const proposal = await proposalRepository.getProposalById(proposalId);
+    if (existing.clientId.toString() !== userId) {
+      throw new Error("Not authorized to edit this proposal");
+    }
 
+    if (existing.status !== "pendingArtist") {
+      throw new Error("Can only edit proposals in pendingArtist status");
+    }
+
+    // Convert service input to repository format
+    const repositoryInput: UpdateProposalInput = {
+      earliestDate: updates.earliestDate,
+      latestDate: updates.latestDate,
+      deadline: updates.deadline,
+      generalDescription: updates.generalDescription,
+      referenceImages: updates.referenceImages,
+      generalOptions: updates.generalOptions,
+      subjectOptions: updates.subjectOptions,
+    };
+
+    const updatedProposal = await repoUpdateProposal(
+      proposalId,
+      repositoryInput
+    );
+    if (!updatedProposal) {
+      throw new Error("Failed to update proposal");
+    }
+
+    return updatedProposal;
+  } catch (error) {
+    console.error("Error updating proposal:", error);
+    throw error;
+  }
+}
+
+// ========== Response Operations ==========
+export async function artistRespond(
+  artistId: string,
+  proposalId: string,
+  decision: ArtistDecision
+): Promise<IProposal> {
+  try {
+    await connectDB();
+
+    const proposal = await getProposalById(proposalId);
     if (!proposal) {
       throw new Error("Proposal not found");
     }
@@ -296,7 +198,6 @@ export const proposalService: ProposalService = {
       throw new Error("Not authorized to respond to this proposal");
     }
 
-    // 2. Handle Response
     let adjustment: ArtistAdjustment | undefined;
 
     if (decision.accept && (decision.surcharge || decision.discount)) {
@@ -317,35 +218,27 @@ export const proposalService: ProposalService = {
       }
     }
 
-    const updatedProposal = await proposalRepository.artistResponds(
+    return artistResponds(
       proposalId,
       decision.accept,
       adjustment,
       decision.reason
     );
+  } catch (error) {
+    console.error("Error in artist response:", error);
+    throw error;
+  }
+}
 
-    // 3. Notify Client (to be implemented)
-    if (decision.accept && adjustment) {
-      // NotificationService.notify(proposal.clientId.toString(), "Artist proposed a price adjustment");
-    } else if (!decision.accept) {
-      // NotificationService.notify(proposal.clientId.toString(), "Artist rejected your proposal");
-    } else {
-      // NotificationService.notify(proposal.clientId.toString(), "Artist accepted your proposal");
-    }
+export async function clientRespondToAdjustment(
+  clientId: string,
+  proposalId: string,
+  decision: ClientDecision
+): Promise<IProposal> {
+  try {
+    await connectDB();
 
-    return updatedProposal;
-  },
-
-  /** Client responds to adjustment */
-  async clientRespondToAdjustment(
-    clientId: string,
-    proposalId: string,
-    accept: boolean,
-    rejectionReason?: string
-  ): Promise<IProposal> {
-    // 1. Fetch & Authorize
-    const proposal = await proposalRepository.getProposalById(proposalId);
-
+    const proposal = await getProposalById(proposalId);
     if (!proposal) {
       throw new Error("Proposal not found");
     }
@@ -354,36 +247,153 @@ export const proposalService: ProposalService = {
       throw new Error("Not authorized to respond to this proposal");
     }
 
-    // 2. Handle Response
-    const updatedProposal = await proposalRepository.clientRespondsToAdjustment(
+    return clientRespondsToAdjustment(
       proposalId,
-      accept,
-      rejectionReason
+      decision.accept,
+      decision.rejectionReason
     );
+  } catch (error) {
+    console.error("Error in client response:", error);
+    throw error;
+  }
+}
 
-    // 3. Notify Artist (to be implemented)
-    const message = accept
-      ? "Client accepted your adjustment; ready to invoice"
-      : "Client rejected your adjustment";
-    // NotificationService.notify(proposal.artistId.toString(), message);
+// ========== Query Operations ==========
+export async function getUserProposals(
+  userId: string,
+  role: "client" | "artist",
+  filters?: ProposalFilters
+): Promise<IProposal[]> {
+  try {
+    await connectDB();
 
-    return updatedProposal;
-  },
+    const options: FindOpts = {
+      status: filters?.status,
+      beforeExpire: filters?.beforeExpire,
+    };
 
-  /** Auto-expire proposals */
-  async autoExpireProposals(asOf: Date = new Date()): Promise<number> {
-    return proposalRepository.bulkExpirePending(asOf);
-  },
+    return findProposalsByUser(userId, role, options);
+  } catch (error) {
+    console.error("Error fetching user proposals:", error);
+    throw error;
+  }
+}
 
-  /** Finalize accepted proposal */
-  async finalizeProposal(proposalId: string): Promise<{
-    proposal: IProposal;
-    contract: IContract;
-    escrowTx: IEscrowTransaction;
-  }> {
-    // 1. Fetch & Validate
-    const proposal = await proposalRepository.getProposalById(proposalId);
+export async function getIncomingProposals(
+  artistId: string,
+  filters?: ProposalFilters
+): Promise<IProposal[]> {
+  try {
+    await connectDB();
 
+    const options: FindOpts = {
+      status: filters?.status || ["pendingArtist", "pendingClient"],
+      beforeExpire: filters?.beforeExpire,
+    };
+
+    return findProposalsByArtist(artistId, options);
+  } catch (error) {
+    console.error("Error fetching incoming proposals:", error);
+    throw error;
+  }
+}
+
+export async function getOutgoingProposals(
+  clientId: string,
+  filters?: ProposalFilters
+): Promise<IProposal[]> {
+  try {
+    await connectDB();
+
+    const options: FindOpts = {
+      status: filters?.status,
+    };
+
+    return findProposalsByClient(clientId, options);
+  } catch (error) {
+    console.error("Error fetching outgoing proposals:", error);
+    throw error;
+  }
+}
+
+export async function fetchProposalById(
+  proposalId: string,
+  userId: string
+): Promise<IProposal> {
+  try {
+    await connectDB();
+
+    const proposal = await getProposalById(proposalId);
+    if (!proposal) {
+      throw new Error("Proposal not found");
+    }
+
+    // Check if user has permission to view
+    const isClient = proposal.clientId.toString() === userId;
+    const isArtist = proposal.artistId.toString() === userId;
+
+    if (!isClient && !isArtist) {
+      throw new Error("Not authorized to view this proposal");
+    }
+
+    return proposal;
+  } catch (error) {
+    console.error("Error fetching proposal:", error);
+    throw error;
+  }
+}
+
+// ========== Permission Helpers ==========
+export async function canEditProposal(
+  proposalId: string,
+  userId: string
+): Promise<boolean> {
+  try {
+    const proposal = await getProposalById(proposalId);
+    if (!proposal) return false;
+
+    return (
+      proposal.clientId.toString() === userId &&
+      proposal.status === "pendingArtist"
+    );
+  } catch (error) {
+    console.error("Error checking edit permission:", error);
+    return false;
+  }
+}
+
+export async function canRespondToProposal(
+  proposalId: string,
+  userId: string,
+  role: "client" | "artist"
+): Promise<boolean> {
+  try {
+    const proposal = await getProposalById(proposalId);
+    if (!proposal) return false;
+
+    if (role === "artist") {
+      return (
+        proposal.artistId.toString() === userId &&
+        proposal.status === "pendingArtist"
+      );
+    } else {
+      return (
+        proposal.clientId.toString() === userId &&
+        proposal.status === "pendingClient"
+      );
+    }
+  } catch (error) {
+    console.error("Error checking respond permission:", error);
+    return false;
+  }
+}
+
+// ========== Status Operations ==========
+export async function finalizeProposal(proposalId: string): Promise<IProposal> {
+  try {
+    await connectDB();
+
+    const proposal = await getProposalById(proposalId);
     if (!proposal) {
       throw new Error("Proposal not found");
     }
@@ -392,77 +402,147 @@ export const proposalService: ProposalService = {
       throw new Error("Proposal must be in accepted status to finalize");
     }
 
-    // 2. Hold Escrow (to be implemented)
-    // const escrowTx = await EscrowService.holdFunds(
-    //   proposal.clientId.toString(),
-    //   proposal.calculatedPrice.total
-    // );
+    return finalizeAcceptance(proposalId);
+  } catch (error) {
+    console.error("Error finalizing proposal:", error);
+    throw error;
+  }
+}
 
-    // Create mock escrow transaction for now
-    const escrowTx = {
-      _id: new Types.ObjectId(),
-      contractId: new Types.ObjectId(),
-      type: "hold" as const,
-      from: "client" as const,
-      to: "escrow" as const,
-      amount: proposal.calculatedPrice.total,
-      currency: "IDR" as const,
-      status: "held" as const,
-      createdAt: new Date(),
-      note: "Escrow hold for accepted proposal",
-    } as unknown as IEscrowTransaction;
+export async function expireOldProposals(
+  asOf: Date = new Date()
+): Promise<number> {
+  try {
+    await connectDB();
+    return bulkExpirePending(asOf);
+  } catch (error) {
+    console.error("Error expiring proposals:", error);
+    throw error;
+  }
+}
 
-    // 3. Convert to Contract (to be implemented)
-    // const contract = await ContractService.createFromProposal(proposal);
+// ========== Dashboard Helpers ==========
+export async function getDashboardData(userId: string): Promise<{
+  incoming: IProposal[];
+  outgoing: IProposal[];
+  totalIncoming: number;
+  totalOutgoing: number;
+}> {
+  try {
+    await connectDB();
 
-    // Create mock contract for now
-    const contract = {
-      _id: new Types.ObjectId(),
-      clientId: proposal.clientId,
-      artistId: proposal.artistId,
-      listingId: proposal.listingId,
-      proposalId: proposal._id,
-      contractNumber: `CONTRACT-${Date.now()}`,
-      status: "pending_start",
-      statusHistory: [],
-      events: [],
-      listingSnapshot: proposal.listingSnapshot,
-      proposalSnapshot: proposal,
-      contractVersion: 1,
-      flow: proposal.listingSnapshot.flow || "standard",
-      work: [],
-      revisionTickets: [],
-      cancelTickets: [],
-      contractChangeTickets: [],
-      resolutionTickets: [],
-      finance: proposal.calculatedPrice,
-      payment: {
-        status: "pending",
-      },
-      deadlineAt: proposal.deadline,
-      graceEndsAt: new Date(
-        new Date(proposal.deadline).getTime() + 7 * 24 * 60 * 60 * 1000
-      ),
-      isHidden: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as unknown as IContract;
-
-    // 4. Reduce Slot (to be implemented)
-    // await SlotService.decrement(
-    //   proposal.listingSnapshot.artistId,
-    //   proposal.listingSnapshot.slots
-    // );
-
-    // 5. Finalize Proposal
-    const finalizedProposal = await proposalRepository.finalizeAcceptance(
-      proposalId
-    );
+    const [incoming, outgoing] = await Promise.all([
+      getIncomingProposals(userId, {
+        status: ["pendingArtist", "pendingClient"],
+      }),
+      getOutgoingProposals(userId),
+    ]);
 
     return {
-      proposal: finalizedProposal,
-      contract,
-      escrowTx,
+      incoming,
+      outgoing,
+      totalIncoming: incoming.length,
+      totalOutgoing: outgoing.length,
     };
-  },
-};
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+    throw error;
+  }
+}
+
+// ========== Validation Helpers ==========
+export function validateProposalInput(input: CreateProposalInput): void {
+  // Validate dates
+  if (input.earliestDate >= input.latestDate) {
+    throw new Error("Earliest date must be before latest date");
+  }
+
+  if (
+    input.deadline < input.earliestDate ||
+    input.deadline > input.latestDate
+  ) {
+    throw new Error("Deadline must be between earliest and latest date");
+  }
+
+  // Validate description
+  if (!input.generalDescription.trim()) {
+    throw new Error("Description is required");
+  }
+
+  // Validate reference images
+  if (input.referenceImages && input.referenceImages.length > 5) {
+    throw new Error("Maximum 5 reference images allowed");
+  }
+}
+
+// ========== Helper for Options Processing ==========
+export function calculateTotalPrice(proposal: IProposal): {
+  basePrice: number;
+  optionsTotal: number;
+  rush: number;
+  discount: number;
+  surcharge: number;
+  finalTotal: number;
+} {
+  const { calculatedPrice } = proposal;
+
+  return {
+    basePrice: calculatedPrice.base,
+    optionsTotal: calculatedPrice.optionGroups + calculatedPrice.addons,
+    rush: calculatedPrice.rush,
+    discount: calculatedPrice.discount,
+    surcharge: calculatedPrice.surcharge,
+    finalTotal: calculatedPrice.total,
+  };
+}
+
+// ========== Format Helpers for Frontend ==========
+export function formatProposalForUI(proposal: IProposal) {
+  const priceBreakdown = calculateTotalPrice(proposal);
+
+  return {
+    id: proposal._id.toString(),
+    status: proposal.status,
+    clientId: proposal.clientId.toString(),
+    artistId: proposal.artistId.toString(),
+    listingId: proposal.listingId.toString(),
+    listingTitle: proposal.listingSnapshot.title,
+    deadline: new Date(proposal.deadline),
+    availability: {
+      earliestDate: new Date(proposal.availability.earliestDate),
+      latestDate: new Date(proposal.availability.latestDate),
+    },
+    description: proposal.generalDescription,
+    referenceImages: proposal.referenceImages,
+    expiresAt: proposal.expiresAt ? new Date(proposal.expiresAt) : null,
+    priceBreakdown,
+    adjustments: proposal.artistAdjustments,
+    rejectionReason: proposal.rejectionReason,
+    createdAt: new Date(proposal.createdAt),
+    updatedAt: new Date(proposal.updatedAt),
+  };
+}
+
+// ========== Utility Operations ==========
+export async function getDynamicEstimate(
+  listingId: string
+): Promise<{ earliestDate: Date; latestDate: Date }> {
+  try {
+    await connectDB();
+
+    const listing = await findCommissionListingById(listingId);
+    if (!listing) {
+      throw new Error("Listing not found");
+    }
+
+    // Create basic snapshot for estimate computation
+    const listingSnapshot = {
+      deadline: listing.deadline,
+    };
+
+    return repoComputeDynamicEstimate(listingSnapshot as any);
+  } catch (error) {
+    console.error("Error computing dynamic estimate:", error);
+    throw error;
+  }
+}

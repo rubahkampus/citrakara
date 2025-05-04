@@ -14,21 +14,14 @@ export interface IProposal extends Document {
   /* ---- immutable listing snapshot (audit) ---- */
   listingSnapshot: Omit<ICommissionListing, "_id" | "createdAt" | "updatedAt">;
 
-  /* ---- lifecycle status ----
-     draft        – client still editing (never stored if you skip)
-     pending      – client hit “Submit”; 72 h SLA
-     negotiating  – artist proposed price tweaks
-     accepted     – artist accepted + invoice finalised
-     rejected     – artist clicked reject
-     expired      – client marked no-response after SLA
-  ---------------------------------------------- */
+  /* ---- lifecycle status ---- */
   status:
-    | "draft"
-    | "pending"
-    | "negotiating"
-    | "accepted"
-    | "rejected"
-    | "expired";
+    | "pendingArtist" // client submitted proposal
+    | "pendingClient" // if artist proposed discount or surcharge
+    | "accepted" // artist accepted the proposal
+    | "rejectedArtist" // artist rejected the proposal -> end of lifecycle
+    | "rejectedClient" // if artist proposed discount or surcharge and client rejected -> not end of lifecycle
+    | "expired"; // -> end of lifecycle
   expiresAt?: ISODate; // present in pending / negotiating
 
   /* ---- dynamic availability window ---- */
@@ -50,16 +43,41 @@ export interface IProposal extends Document {
   referenceImages: string[]; // ≤ 5
 
   /* ---- option selections ---- */
+  // General options store client's answers to general questions and selections
   generalOptions?: {
-    toggles?: Record<string, boolean | number>; // simple toggles keyed by id
-    answers?: Record<string, string>; // questionId → answer
+    // groupTitle → selectedLabel and price
+    optionGroups?: Record<
+      string,
+      {
+        selectedLabel: string;
+        price: Cents;
+      }
+    >;
+    // addon label → price
+    addons?: Record<string, Cents>;
+    // question text → client's answer
+    answers?: Record<string, string>;
   };
 
+  // Subject options store client's answers per subject (e.g., Character, Background)
   subjectOptions?: {
-    [subjectGroupId: string]: {
-      selectionIds: string[]; // e.g. pose+finish cells
-      addons?: string[]; // add-ons ids
-      answers?: Record<string, string>;
+    [subjectTitle: string]: {
+      // e.g., "Character", "Background"
+      // For each character / background instance if multiple are allowed
+      instances: Array<{
+        // optionGroup title → selected label and price
+        optionGroups?: Record<
+          string,
+          {
+            selectedLabel: string;
+            price: Cents;
+          }
+        >;
+        // addon label → price
+        addons?: Record<string, Cents>;
+        // question text → client's answer
+        answers?: Record<string, string>;
+      }>;
     };
   };
 
@@ -69,7 +87,7 @@ export interface IProposal extends Document {
     optionGroups: Cents;
     addons: Cents;
     rush: Cents;
-    discount: Cents; // client-side coupons
+    discount: Cents; // client-side coupons + subject-specific discounts
     surcharge: Cents; // artist adjustments
     total: Cents; // final amount due
   };
@@ -89,11 +107,24 @@ export interface IProposal extends Document {
 }
 
 /** ---- Sub-schemas for clearer validation ---- */
+const GeneralOptionsSelectionSchema = new Schema(
+  {
+    selectedLabel: { type: String, required: true },
+    price: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
 const GeneralOptionsSchema = new Schema(
   {
-    toggles: {
+    optionGroups: {
       type: Map,
-      of: Schema.Types.Mixed,
+      of: GeneralOptionsSelectionSchema,
+      default: {},
+    },
+    addons: {
+      type: Map,
+      of: Number, // price in cents
       default: {},
     },
     answers: {
@@ -105,15 +136,30 @@ const GeneralOptionsSchema = new Schema(
   { _id: false }
 );
 
-const SubjectOptionSchema = new Schema(
+const SubjectInstanceSchema = new Schema(
   {
-    selectionIds: { type: [String], required: true },
-    addons: { type: [String], default: [] },
+    optionGroups: {
+      type: Map,
+      of: GeneralOptionsSelectionSchema,
+      default: {},
+    },
+    addons: {
+      type: Map,
+      of: Number, // price in cents
+      default: {},
+    },
     answers: {
       type: Map,
       of: String,
       default: {},
     },
+  },
+  { _id: false }
+);
+
+const SubjectOptionGroupSchema = new Schema(
+  {
+    instances: { type: [SubjectInstanceSchema], required: true },
   },
   { _id: false }
 );
@@ -133,14 +179,14 @@ const ProposalSchema = new Schema<IProposal>(
     status: {
       type: String,
       enum: [
-        "draft",
-        "pending",
-        "negotiating",
+        "pendingArtist",
+        "pendingClient",
         "accepted",
-        "rejected",
+        "rejectedArtist",
+        "rejectedClient",
         "expired",
       ],
-      default: "draft",
+      default: "pendingArtist",
     },
     expiresAt: { type: Date },
 
@@ -176,7 +222,7 @@ const ProposalSchema = new Schema<IProposal>(
     generalOptions: { type: GeneralOptionsSchema, default: {} },
     subjectOptions: {
       type: Map,
-      of: SubjectOptionSchema,
+      of: SubjectOptionGroupSchema,
       default: {},
     },
 
@@ -214,7 +260,7 @@ ProposalSchema.index({ listingId: 1 });
 ProposalSchema.index({ expiresAt: 1 });
 ProposalSchema.index(
   { expiresAt: 1, status: 1 },
-  { partialFilterExpression: { status: { $in: ["pending", "negotiating"] } } }
+  { partialFilterExpression: { status: { $in: ["pendingArtist"] } } }
 );
 
 export default models.Proposal || model<IProposal>("Proposal", ProposalSchema);

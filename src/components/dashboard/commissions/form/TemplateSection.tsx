@@ -50,28 +50,34 @@ const TEMPLATES: TemplateCard[] = [
     generalOptions: {
       optionGroups: [
         {
-          title: "Background",
+          title: "Commercial Use?",
           selections: [
-            { label: "Transparent", price: 0 },
-            { label: "Simple Flat Color", price: 50000 },
-            { label: "Detailed Background", price: 150000 },
+            { label: "No", price: 0 },
+            { label: "Yes", price: 50000 },
+          ],
+        },
+        {
+          title: "Public Posting?",
+          selections: [
+            { label: "No", price: 0 },
+            { label: "Yes", price: 50000 },
           ],
         },
       ],
       addons: [
-        { label: "Extra Character", price: 100000 },
-        { label: "Rush Order (per day)", price: 75000 },
+        { label: "Sream on Twitch", price: 100000 },
       ],
       questions: [
-        "What is the character's species and do you have reference images?",
-        "Any preferred pose or expression?",
+        "What is your mood for this commission?",
+        "Do you have any specific color palette in mind?",
+        "What is the vibe of the commission?",
       ],
     },
     subjectOptions: [
       {
-        title: "Character View",
-        limit: 1,
-        discount: 0,
+        title: "Character",
+        limit: 3,
+        discount: 50,
         optionGroups: [
           {
             title: "View Type",
@@ -81,9 +87,40 @@ const TEMPLATES: TemplateCard[] = [
               { label: "Full-body", price: 200000 },
             ],
           },
+          {
+            title: "Clothing?",
+            selections: [
+              { label: "No", price: 20000 },
+              { label: "Yes", price: 50000 },
+            ],
+          },
+        ],
+        addons: [{
+          label: "NSFW Anatomy (For Half-body and Full-body only)",
+          price: 50000,
+        }],
+        questions: [
+          "What is the character's species and do you have reference images?",
+          "Any preferred pose or expression?",
+        ],
+      },
+      {
+        title: "Background",
+        limit: 1,
+        discount: 0,
+        optionGroups: [
+          {
+            title: "Detail Level",
+            selections: [
+              { label: "Simple Flat Color", price: 0 },
+              { label: "Detailed Background", price: 150000 },
+            ],
+          },
         ],
         addons: [],
-        questions: [],
+        questions: [
+          "What kind of background do you have in mind?",   
+        ],
       },
     ],
     defaultMilestones: [

@@ -130,14 +130,16 @@ export interface ProposalRepository {
 }
 
 /** Helper function to convert string to ObjectId */
-function toObjectId(id: string | mongoose.Types.ObjectId | mongoose.Schema.Types.ObjectId): mongoose.Types.ObjectId {
-    if (typeof id === "string") {
-        return new mongoose.Types.ObjectId(id);
-    }
-    if (id instanceof mongoose.Schema.Types.ObjectId) {
-        return new mongoose.Types.ObjectId(id.toString());
-    }
-    return id;
+function toObjectId(
+  id: string | mongoose.Types.ObjectId | mongoose.Schema.Types.ObjectId
+): mongoose.Types.ObjectId {
+  if (typeof id === "string") {
+    return new mongoose.Types.ObjectId(id);
+  }
+  if (id instanceof mongoose.Schema.Types.ObjectId) {
+    return new mongoose.Types.ObjectId(id.toString());
+  }
+  return id;
 }
 
 /** Helper function to validate duration constraints */
@@ -184,7 +186,10 @@ const calculateRush = (
     )
   );
 
-  if (paidDays <= 0) return null;
+  if (paidDays <= 0) {
+    // normalize to zero so downstream code never sees null/undefined
+    return { days: 0, paidDays: 0, fee: 0 };
+  }
 
   const rushFee =
     listingSnapshot.deadline.rushFee.kind === "flat"

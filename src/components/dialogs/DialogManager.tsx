@@ -40,23 +40,13 @@ export default function DialogManager() {
   }
 
   // Commission dialogs
-  if (
-    type === "viewCommission" ||
-    type === "editCommission" ||
-    type === "createCommission"
-  ) {
+  if (type === "viewCommission") {
     return (
       <CommissionDialog
         open={true}
         onClose={close}
         commissionId={entityId}
-        mode={
-          type === "createCommission"
-            ? "create"
-            : type === "editCommission"
-            ? "edit"
-            : "view"
-        }
+        mode={"view"}
         isOwner={isOwner || false}
         initialData={data}
       />

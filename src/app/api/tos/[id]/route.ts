@@ -13,16 +13,16 @@ export async function GET(
   try {
     const tosId = params.id;
     
-    const session = await getAuthSession();
+    // const session = await getAuthSession();
     
-    if (!session || typeof session === "string" || !session.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    // if (!session || typeof session === "string" || !session.id) {
+    //   return NextResponse.json(
+    //     { error: "Unauthorized" },
+    //     { status: 401 }
+    //   );
+    // }
     
-    const tos = await getTosById(tosId, session.id);
+    const tos = await getTosById(tosId);
     
     if (!tos) {
       return NextResponse.json(
@@ -33,13 +33,13 @@ export async function GET(
     
     const response = NextResponse.json({ tos });
     
-    // If token was refreshed, set the new access token
-    if ("_refreshedAccessToken" in session) {
-      response.cookies.set("accessToken", session._refreshedAccessToken!, {
-        ...cookieOptions,
-        maxAge: 60 * 15,
-      });
-    }
+    // // If token was refreshed, set the new access token
+    // if ("_refreshedAccessToken" in session) {
+    //   response.cookies.set("accessToken", session._refreshedAccessToken!, {
+    //     ...cookieOptions,
+    //     maxAge: 60 * 15,
+    //   });
+    // }
     
     return response;
   } catch (error) {

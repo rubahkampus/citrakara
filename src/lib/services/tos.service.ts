@@ -27,14 +27,10 @@ export async function getUserDefaultTos(userId: string | ObjectId) {
  * Get a specific TOS by ID
  * Validates that the TOS belongs to the specified user
  */
-export async function getTosById(tosId: string, userId: string) {
+export async function getTosById(tosId: string) {
   await connectDB();
 
   const tos = await Tos.findById(tosId);
-
-  if (!tos || tos.user.toString() !== userId ) {
-    return null;
-  }
 
   return tos;
 }

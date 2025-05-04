@@ -127,6 +127,7 @@ export interface ProposalRepository {
   ): Estimate;
   snapshotListing(listingId: string | ObjectId): Promise<ListingSnapshot>;
   recalculateRushAndPrice(proposal: IProposal): IProposal;
+  
 }
 
 /** Helper function to convert string to ObjectId */

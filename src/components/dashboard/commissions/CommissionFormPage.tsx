@@ -180,10 +180,29 @@ export default function CommissionFormPage({
       fd.append("thumbnailIdx", values.thumbnailIdx.toString());
 
       // Handle other samples
-      values.samples.forEach((s) => {
-        if (s instanceof File)
-          fd.append("samples[]", s);
-      });
+      if (mode === "create") {
+        values.samples.forEach((s) => {
+          if (s instanceof File) fd.append("samples[]", s);
+        });
+      } else {
+        // new:
+        const existingSampleUrls = values.samples.filter(
+          (s) => typeof s === "string"
+        ) as string[];
+        const newSampleFiles = values.samples.filter(
+          (s) => s instanceof File
+        ) as File[];
+
+        // first, tell the server exactly which URLs to keep:
+        existingSampleUrls.forEach((url) => {
+          fd.append("existingSamples[]", url);
+        });
+
+        // then, append only the fresh File uploads:
+        newSampleFiles.forEach((file) => {
+          fd.append("samples[]", file);
+        });
+      }
 
       // Prepare JSON payload
       const payload = {

@@ -7,7 +7,7 @@ import { useDialogStore } from "@/lib/stores";
 import { KButton } from "@/components/KButton";
 import CommissionCard from "./CommissionCard";
 import { axiosClient } from "@/lib/utils/axiosClient";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
 interface CommissionSectionProps {

@@ -58,6 +58,7 @@ function computePriceRange(input: Partial<CommissionListingPayload>) {
  * Validates a commission listing payload before creation
  */
 function validateListingPayload(payload: Partial<CommissionListingPayload>) {
+  console.log("Validating payload...");
   // Check required fields
   const requiredFields = [
     "title",
@@ -72,8 +73,12 @@ function validateListingPayload(payload: Partial<CommissionListingPayload>) {
     "cancelationFee",
   ];
 
+  console.log("Validating payload:", payload);
+
   for (const field of requiredFields) {
-    if (!payload[field as keyof typeof payload]) {
+    const value = payload[field as keyof CommissionListingPayload];
+    console.log("Checking field:", field, value);
+    if (value === undefined || value === null) {
       throw new HttpError(`Required field missing: ${field}`);
     }
   }
@@ -351,48 +356,38 @@ export async function updateListingFromForm(
     listingData.currency = currencyVal;
   }
 
-  // 6. Handle sample images - collect new blobs
-  const sampleBlobs: Blob[] = [];
-  form.forEach((value, key) => {
-    if (key === "samples[]" && value instanceof Blob) {
-      sampleBlobs.push(value);
-    }
-  });
+  // Step 6: pull existing URLs and new blobs out of FormData
+  const existingSamples = form
+    .getAll("existingSamples[]")
+    .map((v) => v.toString());
 
-  // 7. Determine if we need to upload new images
-  if (sampleBlobs.length > 0) {
-    // Upload new images
-    const uploadedUrls = await uploadGalleryImagesToR2(
-      sampleBlobs,
-      artistId,
-      "listing"
-    );
+  const sampleBlobs = form
+    .getAll("samples[]")
+    .filter((v) => v instanceof Blob) as Blob[];
 
-    // Keep any existing images if specified
-    const keepExistingSamples = form.get("keepExistingSamples") === "true";
-
-    if (keepExistingSamples && existingData.samples) {
-      listingData.samples = [...existingData.samples, ...uploadedUrls];
-    } else {
-      listingData.samples = uploadedUrls;
+  // Step 7: if either URLs or blobs were submitted, rebuild the array
+  if (existingSamples.length > 0 || sampleBlobs.length > 0) {
+    // upload new files (if any)
+    let uploadedUrls: string[] = [];
+    if (sampleBlobs.length > 0) {
+      uploadedUrls = await uploadGalleryImagesToR2(
+        sampleBlobs,
+        artistId,
+        "listing"
+      );
     }
 
-    console.log("Uploaded new samples:", listingData.samples);
-    console.log("thumbnailIdx:", form.get("thumbnailIdx"));
+    // combine exactly in the order the client specified:
+    listingData.samples = [...existingSamples, ...uploadedUrls];
 
-    // Update thumbnail index
+    // now update thumbnailIdx safely
     const thumbnailIdx = Number(form.get("thumbnailIdx") ?? 0);
-    if (
-      typeof thumbnailIdx !== "number" ||
-      thumbnailIdx < 0 ||
-      thumbnailIdx >= listingData.samples.length
-    ) {
+    if (thumbnailIdx < 0 || thumbnailIdx >= listingData.samples.length) {
       throw new HttpError("Invalid thumbnail index", 400);
-    } else {
-      listingData.thumbnailIdx = thumbnailIdx;
     }
+    listingData.thumbnailIdx = thumbnailIdx;
   } else {
-    // Keep existing samples and thumbnail if no new ones
+    // no change → keep everything as-is
     listingData.samples = existingData.samples;
     listingData.thumbnailIdx = existingData.thumbnailIdx;
   }

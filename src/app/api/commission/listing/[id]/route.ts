@@ -8,6 +8,7 @@ import {
   deleteListing,
   updateListing,
   getListingPublic,
+  updateListingFromForm,
 } from "@/lib/services/commissionListing.service";
 
 // Get a specific commission listing
@@ -31,31 +32,62 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Grab the raw content-type to decide how to parse
+    const listingId = params.id;
     const contentType = req.headers.get("content-type") || "";
 
-    let received: any;
-    if (contentType.includes("application/json")) {
-      received = await req.json();
-    } else if (contentType.includes("multipart/form-data")) {
-      const formData = await req.formData();
-      // Turn FormData into a plain object
-      received = Object.fromEntries(formData.entries());
-    } else {
-      // Fallback to raw text
-      received = await req.text();
-    }
+    return withAuth(async (session) => {
+      let updatedListing;
 
-    // Echo back what we got, plus the listing ID and content-type
-    return NextResponse.json(
-      {
-        listingId: params.id,
-        contentType,
-        received,
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
+      // Handle form data updates (with possible file uploads)
+      if (contentType.includes("multipart/form-data")) {
+        const formData = await req.formData();
+        updatedListing = await updateListingFromForm(
+          session.id,
+          listingId,
+          formData
+        );
+      }
+      // Handle active status updates or regular JSON updates
+      else if (contentType.includes("application/json")) {
+        const body = await req.json();
+
+        // If 'active' is present, it's an active status update
+        if ("active" in body && typeof body.active === "boolean") {
+          updatedListing = await setListingActiveState(
+            session.id,
+            listingId,
+            body.active
+          );
+
+          const response = NextResponse.json({
+            message: `Listing ${
+              body.active ? "activated" : "deactivated"
+            } successfully`,
+            listing: updatedListing,
+          });
+
+          rotateToken(response, session);
+          return response;
+        }
+
+        // Otherwise, it's a regular JSON content update
+        updatedListing = await updateListing(session.id, listingId, body);
+      } else {
+        return NextResponse.json(
+          { error: "Unsupported content type" },
+          { status: 415 }
+        );
+      }
+
+      const response = NextResponse.json({
+        message: "Listing updated successfully",
+        listing: updatedListing,
+      });
+
+      rotateToken(response, session);
+      return response;
+    });
+  } catch (error) {
     return handleError(error);
   }
 }

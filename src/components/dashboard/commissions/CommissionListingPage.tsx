@@ -1,4 +1,3 @@
-// src/components/dashboard/commissions/CommissionListingPage.tsx
 "use client";
 
 import { useState } from "react";
@@ -37,6 +36,11 @@ interface CommissionListingPageProps {
   error: string | null;
 }
 
+interface ListItemIconProps {
+  children: React.ReactNode;
+  sx?: any;
+}
+
 export default function CommissionListingPage({
   username,
   listings,
@@ -47,12 +51,9 @@ export default function CommissionListingPage({
   const [error, setError] = useState<string | null>(initialError);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-
-  // Menu state
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [activeListingId, setActiveListingId] = useState<string | null>(null);
 
-  // Handlers
   const handleCreateNew = () => {
     router.push(`/${username}/dashboard/commissions/new`);
   };
@@ -88,12 +89,10 @@ export default function CommissionListingPage({
 
     try {
       const newStatus = !listing.isActive;
-      const response = await axiosClient.patch(
-        `/api/commission/listing/${activeListingId}`,
-        { active: newStatus }
-      );
+      await axiosClient.patch(`/api/commission/listing/${activeListingId}`, {
+        active: newStatus,
+      });
 
-      // Update the local state
       setLocalListings((prev) =>
         prev.map((l) =>
           l._id === activeListingId ? { ...l, isActive: newStatus } : l
@@ -118,7 +117,6 @@ export default function CommissionListingPage({
   const handleDeleteCommission = async () => {
     if (!activeListingId) return;
 
-    // Confirm deletion
     if (
       !window.confirm(
         "Are you sure you want to delete this commission? This action cannot be undone."
@@ -132,10 +130,7 @@ export default function CommissionListingPage({
 
     try {
       await axiosClient.delete(`/api/commission/listing/${activeListingId}`);
-
-      // Update the local state
       setLocalListings((prev) => prev.filter((l) => l._id !== activeListingId));
-
       setSuccess("Commission deleted successfully");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
@@ -147,16 +142,30 @@ export default function CommissionListingPage({
     handleMenuClose();
   };
 
+  function ListItemIcon({ children, sx }: ListItemIconProps) {
+    return (
+      <Box
+        sx={{ mr: 2, display: "inline-flex", justifyContent: "center", ...sx }}
+      >
+        {children}
+      </Box>
+    );
+  }
+
+  const activeListing = activeListingId
+    ? localListings.find((l) => l._id === activeListingId)
+    : null;
+
   return (
     <Box>
-      {/* Action button */}
+      {/* Header with action button */}
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 3 }}>
         <KButton startIcon={<AddIcon />} onClick={handleCreateNew}>
           Create New Commission
         </KButton>
       </Box>
 
-      {/* Error and success messages */}
+      {/* Notifications */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
@@ -173,7 +182,7 @@ export default function CommissionListingPage({
         </Alert>
       )}
 
-      {/* Commission listing grid */}
+      {/* Commission listings */}
       {localListings.length === 0 ? (
         <Paper
           sx={{
@@ -206,17 +215,19 @@ export default function CommissionListingPage({
                   height: "100%",
                   display: "flex",
                   flexDirection: "column",
-                  borderRadius: 2,
+                  borderRadius: 3,
                   position: "relative",
-                  transition:
-                    "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
                   "&:hover": {
-                    transform: "translateY(-4px)",
-                    boxShadow: 3,
+                    transform: "translateY(-6px)",
+                    boxShadow: "0 12px 20px rgba(0, 0, 0, 0.1)",
                   },
-                  opacity: listing.isActive ? 1 : 0.7,
+                  overflow: "hidden",
+                  bgcolor: "background.paper",
+                  opacity: listing.isActive ? 1 : 0.85,
                 }}
               >
+                {/* Status indicator */}
                 {!listing.isActive && (
                   <Chip
                     label="Inactive"
@@ -224,64 +235,149 @@ export default function CommissionListingPage({
                     size="small"
                     sx={{
                       position: "absolute",
-                      top: 12,
-                      left: 12,
-                      zIndex: 1,
+                      top: 16,
+                      left: 16,
+                      zIndex: 2,
+                      bgcolor: "rgba(100, 100, 100, 0.9)",
+                      color: "#fff",
+                      fontWeight: 500,
+                      borderRadius: "16px",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                     }}
                   />
                 )}
 
+                {/* Menu button */}
                 <IconButton
+                  size="small"
                   sx={{
                     position: "absolute",
-                    top: 8,
-                    right: 8,
-                    bgcolor: "rgba(255,255,255,0.7)",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.9)" },
+                    top: 12,
+                    right: 12,
+                    zIndex: 2,
+                    bgcolor: "rgba(255, 255, 255, 0.85)",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 1)",
+                      transform: "scale(1.05)",
+                    },
+                    transition: "all 0.2s ease",
                   }}
                   onClick={(e) => handleMenuOpen(e, listing._id)}
                 >
-                  <MoreVertIcon />
+                  <MoreVertIcon fontSize="small" />
                 </IconButton>
 
-                <CardMedia
-                  component="img"
-                  height="180"
-                  image={listing.samples[listing.thumbnailIdx]}
-                  alt={listing.title}
-                  sx={{ objectFit: "cover" }}
-                />
+                {/* Card image with gradient overlay */}
+                <Box sx={{ position: "relative" }}>
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={listing.samples[listing.thumbnailIdx]}
+                    alt={listing.title}
+                    sx={{
+                      objectFit: "cover",
+                      transition: "transform 0.5s ease",
+                      "&:hover": {
+                        transform: "scale(1.03)",
+                      },
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: "40px",
+                      background:
+                        "linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0))",
+                    }}
+                  />
+                </Box>
 
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6" component="div" gutterBottom noWrap>
+                {/* Card content */}
+                <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                  <Typography
+                    variant="h6"
+                    component="div"
+                    gutterBottom
+                    noWrap
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "1.1rem",
+                      mb: 1,
+                    }}
+                  >
                     {listing.title}
                   </Typography>
 
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    gutterBottom
+                    sx={{
+                      color: "text.secondary",
+                      mb: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                    }}
                   >
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-block",
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        bgcolor:
+                          listing.flow === "standard"
+                            ? "success.main"
+                            : "info.main",
+                        mr: 0.5,
+                      }}
+                    />
                     {listing.flow === "standard"
                       ? "Standard Flow"
                       : "Milestone Flow"}
                   </Typography>
 
-                  <Typography variant="h6" color="primary" gutterBottom>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      color: "primary.main",
+                      fontWeight: 700,
+                      mb: 2,
+                    }}
+                  >
                     {listing.currency} {listing.price.min.toLocaleString()}
                     {listing.price.min !== listing.price.max &&
                       ` - ${listing.price.max.toLocaleString()}`}
                   </Typography>
 
+                  {/* Tags */}
                   <Box
-                    sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 1 }}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 0.8,
+                      mt: 0.5,
+                    }}
                   >
                     {listing.tags.slice(0, 3).map((tag: string) => (
                       <Chip
                         key={tag}
                         label={tag}
                         size="small"
-                        sx={{ fontSize: "0.7rem" }}
+                        sx={{
+                          fontSize: "0.7rem",
+                          fontWeight: 500,
+                          borderRadius: "12px",
+                          bgcolor: "rgba(0, 0, 0, 0.04)",
+                          transition: "all 0.2s ease",
+                          "&:hover": {
+                            bgcolor: "rgba(0, 0, 0, 0.08)",
+                          },
+                        }}
                       />
                     ))}
                     {listing.tags.length > 3 && (
@@ -289,40 +385,87 @@ export default function CommissionListingPage({
                         label={`+${listing.tags.length - 3}`}
                         size="small"
                         variant="outlined"
-                        sx={{ fontSize: "0.7rem" }}
+                        sx={{
+                          fontSize: "0.7rem",
+                          borderRadius: "12px",
+                        }}
                       />
                     )}
                   </Box>
                 </CardContent>
 
-                <Divider />
-
-                <CardActions sx={{ justifyContent: "space-between" }}>
-                  <Button
-                    size="small"
-                    onClick={() =>
-                      router.push(
-                        `/${username}/dashboard/commissions/${listing._id}`
-                      )
-                    }
+                {/* Card actions with subtle divider */}
+                <Box sx={{ mt: "auto" }}>
+                  <Divider sx={{ opacity: 0.6 }} />
+                  <CardActions
+                    sx={{ justifyContent: "space-between", px: 2, py: 1.2 }}
                   >
-                    Edit
-                  </Button>
-                  <Typography variant="caption" color="text.secondary">
-                    {listing.slots === -1
-                      ? "Unlimited slots"
-                      : `${listing.slots - listing.slotsUsed}/${
-                          listing.slots
-                        } slots available`}
-                  </Typography>
-                </CardActions>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disableElevation
+                      sx={{
+                        borderRadius: 6,
+                        px: 2,
+                        textTransform: "none",
+                        fontWeight: 600,
+                        boxShadow: "none",
+                        "&:hover": {
+                          boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                        },
+                      }}
+                      onClick={() =>
+                        router.push(
+                          `/${username}/dashboard/commissions/${listing._id}`
+                        )
+                      }
+                    >
+                      Edit
+                    </Button>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                      }}
+                    >
+                      {listing.slots !== -1 && (
+                        <Box
+                          component="span"
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            bgcolor:
+                              listing.slots - listing.slotsUsed > 0
+                                ? "success.main"
+                                : "warning.main",
+                            display: "inline-block",
+                            mr: 0.5,
+                          }}
+                        />
+                      )}
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontWeight: 500 }}
+                      >
+                        {listing.slots === -1
+                          ? "Unlimited slots"
+                          : `${listing.slots - listing.slotsUsed}/${
+                              listing.slots
+                            } slots available`}
+                      </Typography>
+                    </Box>
+                  </CardActions>
+                </Box>
               </Card>
             </Grid>
           ))}
         </Grid>
       )}
 
-      {/* Action menu */}
+      {/* Context menu */}
       <Menu
         anchorEl={menuAnchorEl}
         open={Boolean(menuAnchorEl)}
@@ -335,19 +478,16 @@ export default function CommissionListingPage({
           Edit Commission
         </MenuItem>
 
-        {activeListingId && (
+        {activeListing && (
           <MenuItem onClick={handleToggleActive}>
             <ListItemIcon>
-              {localListings.find((l) => l._id === activeListingId)
-                ?.isActive ? (
+              {activeListing.isActive ? (
                 <VisibilityOffIcon fontSize="small" />
               ) : (
                 <VisibilityIcon fontSize="small" />
               )}
             </ListItemIcon>
-            {localListings.find((l) => l._id === activeListingId)?.isActive
-              ? "Deactivate"
-              : "Activate"}
+            {activeListing.isActive ? "Deactivate" : "Activate"}
           </MenuItem>
         )}
 
@@ -358,26 +498,6 @@ export default function CommissionListingPage({
           Delete
         </MenuItem>
       </Menu>
-    </Box>
-  );
-}
-
-interface ListItemIconProps {
-  children: React.ReactNode;
-  sx?: any;
-}
-
-function ListItemIcon({ children, sx }: ListItemIconProps) {
-  return (
-    <Box
-      sx={{
-        mr: 2,
-        display: "inline-flex",
-        justifyContent: "center",
-        ...sx,
-      }}
-    >
-      {children}
     </Box>
   );
 }

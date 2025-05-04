@@ -268,7 +268,7 @@ export async function createListingFromForm(artistId: string, form: FormData) {
   ) {
     throw new HttpError("Invalid thumbnail index", 400);
   } else {
-    listingData.thumbnailIdx = thumbnailIdx;  
+    listingData.thumbnailIdx = thumbnailIdx;
   }
 
   console.log("Listing data (after upload):", listingData);
@@ -284,6 +284,136 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     ...(listingData as CommissionListingPayload),
     price,
   });
+}
+
+/**
+ * Update a commission listing from form data
+ * Handles file uploads to R2 and JSON parsing
+ */
+export async function updateListingFromForm(
+  artistId: string,
+  listingId: string,
+  form: FormData
+) {
+  // 1. Fetch & auth the existing listing
+  const existing = await findCommissionListingById(listingId);
+  if (!existing) throw new HttpError("Listing not found", 404);
+  if (existing.artistId.toString() !== artistId) {
+    throw new HttpError("Not authorized to update this listing", 403);
+  }
+
+  const existingData = existing.toObject();
+
+  // 2. Parse & sanitize JSON payload
+  let jsonPayload: any;
+  try {
+    const raw = form.get("payload");
+    jsonPayload =
+      raw && typeof raw === "string" ? sanitizePayload(JSON.parse(raw)) : {};
+  } catch {
+    throw new HttpError("Invalid JSON payload", 400);
+  }
+
+  // 3. Normalize any question-objects into simple strings
+  if (jsonPayload.generalOptions?.questions) {
+    jsonPayload.generalOptions.questions = (
+      jsonPayload.generalOptions.questions as any[]
+    ).map((q) => (typeof q === "string" ? q : q.title ?? ""));
+  }
+  if (Array.isArray(jsonPayload.subjectOptions)) {
+    jsonPayload.subjectOptions = (jsonPayload.subjectOptions as any[]).map(
+      (sub) => ({
+        ...sub,
+        questions: Array.isArray(sub.questions)
+          ? sub.questions.map((q: { title: any }) =>
+              typeof q === "string" ? q : q.title ?? ""
+            )
+          : [],
+      })
+    );
+  }
+
+  // 4. Build partial listingData from form fields or fall back to existing values
+  const listingData: Partial<CommissionListingPayload> = {
+    ...jsonPayload,
+    artistId: toObjectId(artistId),
+    title: (form.get("title") || existingData.title)!.toString(),
+    tos: (form.get("tos") || existingData.tos)!.toString(),
+    type: (form.get("type") as "template" | "custom") || existingData.type,
+    flow: (form.get("flow") as "standard" | "milestone") || existingData.flow,
+    basePrice: Number(form.get("basePrice") ?? existingData.basePrice),
+    description: jsonPayload.description ?? existingData.description ?? [],
+  };
+
+  // 5. Handle currency if provided
+  const currencyVal = form.get("currency");
+  if (typeof currencyVal === "string") {
+    listingData.currency = currencyVal;
+  }
+
+  // 6. Handle sample images - collect new blobs
+  const sampleBlobs: Blob[] = [];
+  form.forEach((value, key) => {
+    if (key === "samples[]" && value instanceof Blob) {
+      sampleBlobs.push(value);
+    }
+  });
+
+  // 7. Determine if we need to upload new images
+  if (sampleBlobs.length > 0) {
+    // Upload new images
+    const uploadedUrls = await uploadGalleryImagesToR2(
+      sampleBlobs,
+      artistId,
+      "listing"
+    );
+
+    // Keep any existing images if specified
+    const keepExistingSamples = form.get("keepExistingSamples") === "true";
+
+    if (keepExistingSamples && existingData.samples) {
+      listingData.samples = [...existingData.samples, ...uploadedUrls];
+    } else {
+      listingData.samples = uploadedUrls;
+    }
+
+    console.log("Uploaded new samples:", listingData.samples);
+    console.log("thumbnailIdx:", form.get("thumbnailIdx"));
+
+    // Update thumbnail index
+    const thumbnailIdx = Number(form.get("thumbnailIdx") ?? 0);
+    if (
+      typeof thumbnailIdx !== "number" ||
+      thumbnailIdx < 0 ||
+      thumbnailIdx >= listingData.samples.length
+    ) {
+      throw new HttpError("Invalid thumbnail index", 400);
+    } else {
+      listingData.thumbnailIdx = thumbnailIdx;
+    }
+  } else {
+    // Keep existing samples and thumbnail if no new ones
+    listingData.samples = existingData.samples;
+    listingData.thumbnailIdx = existingData.thumbnailIdx;
+  }
+
+  console.log("Update listing data:", listingData);
+
+  // 8. Merge with existing data for validation
+  const merged: Partial<CommissionListingPayload> = {
+    ...existingData,
+    ...listingData,
+  };
+
+  // 9. Validate the merged data
+  validateListingPayload(merged);
+
+  // 10. Compute price range
+  const price = computePriceRange(merged);
+  listingData.price = price;
+
+  // 11. Update listing with all processed fields
+  return updateCommissionListing(listingId, listingData);
 }
 
 /**
@@ -356,58 +486,38 @@ export async function browseListings(options: {
 }
 
 /**
- * Update a commission listing
+ * Update a commission listing with JSON data
  */
 export async function updateListing(
   artistId: string,
   listingId: string,
   updates: Partial<CommissionListingPayload>
 ) {
-  // First fetch the existing listing
+  // 1. Fetch & auth
   const existing = await findCommissionListingById(listingId);
-
-  if (!existing) {
-    throw new HttpError("Listing not found", 404);
-  }
-
+  if (!existing) throw new HttpError("Listing not found", 404);
   if (existing.artistId.toString() !== artistId) {
     throw new HttpError("Not authorized to update this listing", 403);
   }
 
-  // Sanitize and merge updates
-  const sanitizedUpdates = sanitizePayload(updates);
+  // 2. Sanitize incoming fields
+  const sanitized = sanitizePayload(updates);
 
-  // Only certain fields can be updated
-  const allowedUpdates = [
-    "title",
-    "description",
-    "tags",
-    "slots",
-    "isActive",
-    "currency",
-    "latePenaltyPercent",
-    "graceDays",
-  ];
+  // 3. Merge with existing data for a "full payload"
+  const merged: Partial<CommissionListingPayload> = {
+    ...existing.toObject(),
+    ...sanitized,
+  };
 
-  const filteredUpdates: any = {};
-  for (const field of allowedUpdates) {
-    if (field in sanitizedUpdates) {
-      filteredUpdates[field] =
-        sanitizedUpdates[field as keyof typeof sanitizedUpdates];
-    }
-  }
+  // 4. Validate the full payload just like on create
+  validateListingPayload(merged);
 
-  // If any pricing fields changed, recalculate price
-  const pricingFields = ["basePrice", "generalOptions", "subjectOptions"];
-  const needsPriceUpdate = pricingFields.some(
-    (field) => field in filteredUpdates
-  );
+  // 5. Recompute price range
+  const price = computePriceRange(merged);
+  sanitized.price = price;
 
-  if (needsPriceUpdate) {
-    const merged = { ...existing.toObject(), ...filteredUpdates };
-    filteredUpdates.price = computePriceRange(merged);
-  }
+  console.log("Sanitized listing data:", sanitized);
 
-  // Save via repository
-  return updateCommissionListing(listingId, filteredUpdates);
+  // 6. Persist all sanitized fields (including price!)
+  return updateCommissionListing(listingId, sanitized);
 }

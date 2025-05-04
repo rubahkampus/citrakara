@@ -1,122 +1,59 @@
-// src/app/api/proposals/route.ts
+/* ------------------------------------------------------------------
+   src/app/api/proposal/route.ts
+   POST   → create proposal   (multipart FormData)
+   GET    → list proposals    (?role=client|artist&status=pendingArtist,…)
+------------------------------------------------------------------ */
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api/withAuth";
 import { rotateToken } from "@/lib/api/rotateToken";
 import { handleError } from "@/lib/utils/errorHandler";
-import { proposalService } from "@/lib/services/proposal.service";
-import { proposalRepository } from "@/lib/db/repositories/proposal.repository";
+import {
+  createProposalFromForm,
+  getUserProposals,
+  formatProposalForUI,
+} from "@/lib/services/proposal.service";
 
-// POST /api/proposals - Submit a new proposal
+// ────────── POST /api/proposal ──────────
 export async function POST(req: NextRequest) {
   try {
     return withAuth(async (session) => {
-      const body = await req.json();
+      const formData = await req.formData();
+      const proposal = await createProposalFromForm(session.id, formData);
 
-      const {
-        listingId,
-        earliestDate,
-        latestDate,
-        deadline,
-        generalDescription,
-        referenceImages,
-        generalOptions,
-        subjectOptions,
-      } = body;
-
-      // Validate required fields
-      if (
-        !listingId ||
-        !earliestDate ||
-        !latestDate ||
-        !deadline ||
-        !generalDescription
-      ) {
-        return NextResponse.json(
-          { error: "Missing required fields" },
-          { status: 400 }
-        );
-      }
-
-      // Convert string dates to Date objects
-      const proposal = await proposalService.submitProposal(
-        session.id,
-        listingId,
-        {
-          earliestDate: new Date(earliestDate),
-          latestDate: new Date(latestDate),
-          deadline: new Date(deadline),
-          generalDescription,
-          referenceImages,
-          generalOptions,
-          subjectOptions,
-        }
-      );
-
-      const response = NextResponse.json({
-        message: "Proposal submitted successfully",
-        proposal,
+      const res = NextResponse.json({
+        message: "Proposal created successfully",
+        proposal: formatProposalForUI(proposal),
       });
-
-      rotateToken(response, session);
-      return response;
+      rotateToken(res, session);
+      return res;
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }
 
-// GET /api/proposals - Get proposals with filters
+// ────────── GET /api/proposal ──────────
+// Query params: role=client|artist, status=csv, beforeExpire=true
 export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const role = (searchParams.get("role") || "client") as "client" | "artist";
+    const status = searchParams.get("status")?.split(",") || undefined;
+    const beforeExpire = searchParams.get("beforeExpire") === "true";
+
     return withAuth(async (session) => {
-      const { searchParams } = new URL(req.url);
-      const role = searchParams.get("role");
-      const status = searchParams.get("status");
-      const listingId = searchParams.get("listingId");
-      const beforeExpire = searchParams.get("beforeExpire") === "true";
+      const proposals = await getUserProposals(session.id, role, {
+        status,
+        beforeExpire,
+      });
 
-      let proposals;
-
-      // Parse status filter
-      const statusFilter = status?.split(",");
-
-      if (role === "client") {
-        proposals = await proposalRepository.findProposalsByClient(session.id, {
-          status: statusFilter,
-        });
-      } else if (role === "artist") {
-        proposals = await proposalRepository.findProposalsByArtist(session.id, {
-          status: statusFilter,
-          beforeExpire,
-        });
-      } else if (listingId) {
-        // Validate artist owns the listing
-        const listingProposals =
-          await proposalRepository.findProposalsByListing(listingId);
-        // Filter to only proposals for listings owned by this artist
-        proposals = listingProposals.filter(
-          (p) => p.artistId.toString() === session.id
-        );
-      } else {
-        // Default: get both client and artist proposals
-        const [clientProposals, artistProposals] = await Promise.all([
-          proposalRepository.findProposalsByClient(session.id, {
-            status: statusFilter,
-          }),
-          proposalRepository.findProposalsByArtist(session.id, {
-            status: statusFilter,
-            beforeExpire,
-          }),
-        ]);
-        proposals = [...clientProposals, ...artistProposals];
-      }
-
-      const response = NextResponse.json({ proposals });
-
-      rotateToken(response, session);
-      return response;
+      const res = NextResponse.json({
+        proposals: proposals.map(formatProposalForUI),
+      });
+      rotateToken(res, session);
+      return res;
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
   }
 }

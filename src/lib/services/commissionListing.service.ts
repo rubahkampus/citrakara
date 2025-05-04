@@ -14,7 +14,7 @@ import {
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 
 // Custom error class for HTTP status mapping
-class HttpError extends Error {
+export class HttpError extends Error {
   status: number;
 
   constructor(message: string, status: number = 400) {

@@ -21,7 +21,9 @@ import {
 import { findCommissionListingById } from "@/lib/db/repositories/commissionListing.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 import { connectDB } from "@/lib/db/connection";
+import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
 import type { Cents } from "@/types/common";
+import { HttpError } from "./commissionListing.service";
 
 // ========== Service Interfaces ==========
 export interface GeneralOptionsInput {
@@ -58,7 +60,6 @@ export interface CreateProposalInput {
   latestDate: Date;
   deadline: Date;
   generalDescription: string;
-  referenceImages?: string[];
   generalOptions?: GeneralOptionsInput;
   subjectOptions?: SubjectOptionsInput;
 }
@@ -68,7 +69,6 @@ export interface UpdateProposalInputService {
   latestDate?: Date;
   deadline?: Date;
   generalDescription?: string;
-  referenceImages?: string[];
   generalOptions?: GeneralOptionsInput;
   subjectOptions?: SubjectOptionsInput;
 }
@@ -94,36 +94,87 @@ export interface ProposalFilters {
 // ========== Service Implementation ==========
 
 // ========== Main CRUD Operations ==========
-export async function createProposal(
+export async function createProposalFromForm(
   clientId: string,
-  input: CreateProposalInput
+  form: FormData
 ): Promise<IProposal> {
   try {
     await connectDB();
 
+    // Parse JSON payload for proposal data
+    let jsonPayload: any;
+    try {
+      const raw = form.get("payload");
+      jsonPayload = raw && typeof raw === "string" ? JSON.parse(raw) : {};
+    } catch {
+      throw new HttpError("Invalid JSON payload", 400);
+    }
+
+    // Validate required fields
+    const listingId = form.get("listingId");
+    if (!listingId || typeof listingId !== "string") {
+      throw new HttpError("Required field missing: listingId", 400);
+    }
+
     // Fetch and validate listing
-    const listing = await findCommissionListingById(input.listingId);
+    const listing = await findCommissionListingById(listingId);
     if (!listing) {
-      throw new Error("Listing not found");
+      throw new HttpError("Listing not found", 404);
     }
 
     if (!listing.isActive || listing.isDeleted) {
-      throw new Error("Listing is not active");
+      throw new HttpError("Listing is not active", 400);
     }
 
-    // Convert form data to repository format
+    // Extract form date fields
+    const earliestDate = form.get("earliestDate");
+    const latestDate = form.get("latestDate");
+    const deadline = form.get("deadline");
+    const generalDescription = form.get("generalDescription");
+
+    if (
+      !earliestDate ||
+      !latestDate ||
+      !deadline ||
+      !generalDescription ||
+      typeof generalDescription !== "string"
+    ) {
+      throw new HttpError("Missing required proposal fields", 400);
+    }
+
+    // Process reference image uploads
+    const referenceBlobs: Blob[] = [];
+    form.forEach((value, key) => {
+      if (key === "referenceImages[]" && value instanceof Blob) {
+        referenceBlobs.push(value);
+      }
+    });
+
+    // Upload reference images to R2
+    const referenceImages = await uploadGalleryImagesToR2(
+      referenceBlobs,
+      clientId,
+      "proposal"
+    );
+
+    // Extract options from JSON payload
+    const { generalOptions, subjectOptions } = jsonPayload;
+
+    // Create proposal input for repository
     const proposalInput: ProposalInput = {
       clientId,
       artistId: listing.artistId.toString(),
-      listingId: input.listingId,
-      earliestDate: input.earliestDate,
-      latestDate: input.latestDate,
-      deadline: input.deadline,
-      generalDescription: input.generalDescription,
-      referenceImages: input.referenceImages,
-      generalOptions: input.generalOptions,
-      subjectOptions: input.subjectOptions,
+      listingId,
+      earliestDate: new Date(earliestDate.toString()),
+      latestDate: new Date(latestDate.toString()),
+      deadline: new Date(deadline.toString()),
+      generalDescription: generalDescription.toString(),
+      referenceImages,
+      generalOptions,
+      subjectOptions,
     };
+
+    validateProposalInput(proposalInput); // Validate input before creating
 
     return repoCreateProposal(proposalInput);
   } catch (error) {
@@ -132,10 +183,10 @@ export async function createProposal(
   }
 }
 
-export async function updateProposal(
+export async function updateProposalFromForm(
   proposalId: string,
   userId: string,
-  updates: UpdateProposalInputService
+  form: FormData
 ): Promise<IProposal> {
   try {
     await connectDB();
@@ -143,34 +194,87 @@ export async function updateProposal(
     // First check if proposal exists and user has permission to edit
     const existing = await getProposalById(proposalId);
     if (!existing) {
-      throw new Error("Proposal not found");
+      throw new HttpError("Proposal not found", 404);
     }
 
     if (existing.clientId.toString() !== userId) {
-      throw new Error("Not authorized to edit this proposal");
+      throw new HttpError("Not authorized to edit this proposal", 403);
     }
 
     if (existing.status !== "pendingArtist") {
-      throw new Error("Can only edit proposals in pendingArtist status");
+      throw new HttpError("Can only edit proposals in pendingArtist status", 400);
     }
 
-    // Convert service input to repository format
-    const repositoryInput: UpdateProposalInput = {
-      earliestDate: updates.earliestDate,
-      latestDate: updates.latestDate,
-      deadline: updates.deadline,
-      generalDescription: updates.generalDescription,
-      referenceImages: updates.referenceImages,
-      generalOptions: updates.generalOptions,
-      subjectOptions: updates.subjectOptions,
-    };
+    // Parse JSON payload
+    let jsonPayload: any;
+    try {
+      const raw = form.get("payload");
+      jsonPayload = raw && typeof raw === "string" ? JSON.parse(raw) : {};
+    } catch {
+      throw new HttpError("Invalid JSON payload", 400);
+    }
 
-    const updatedProposal = await repoUpdateProposal(
-      proposalId,
-      repositoryInput
-    );
+    // Extract form fields
+    const updates: UpdateProposalInput = {};
+    
+    // Handle date fields if provided
+    const earliestDate = form.get("earliestDate");
+    if (earliestDate) {
+      updates.earliestDate = new Date(earliestDate.toString());
+    }
+    
+    const latestDate = form.get("latestDate");
+    if (latestDate) {
+      updates.latestDate = new Date(latestDate.toString());
+    }
+    
+    const deadline = form.get("deadline");
+    if (deadline) {
+      updates.deadline = new Date(deadline.toString());
+    }
+    
+    const generalDescription = form.get("generalDescription");
+    if (generalDescription && typeof generalDescription === "string") {
+      updates.generalDescription = generalDescription;
+    }
+
+    // Extract options from JSON payload
+    if (jsonPayload.generalOptions) {
+      updates.generalOptions = jsonPayload.generalOptions;
+    }
+    
+    if (jsonPayload.subjectOptions) {
+      updates.subjectOptions = jsonPayload.subjectOptions;
+    }
+
+    // Handle reference images: combine existing kept images with new uploads
+    const existingReferences = form
+      .getAll("existingReferences[]")
+      .map(v => v.toString());
+
+    const referenceBlobs = form
+      .getAll("referenceImages[]")
+      .filter(v => v instanceof Blob) as Blob[];
+
+    // Only process images if either existing or new files were submitted
+    if (existingReferences.length > 0 || referenceBlobs.length > 0) {
+      // Upload new reference images (if any)
+      let uploadedUrls: string[] = [];
+      if (referenceBlobs.length > 0) {
+        uploadedUrls = await uploadGalleryImagesToR2(
+          referenceBlobs,
+          userId,
+          "proposal"
+        );
+      }
+
+      // Combine existing and new references
+      updates.referenceImages = [...existingReferences, ...uploadedUrls];
+    }
+
+    const updatedProposal = await repoUpdateProposal(proposalId, updates);
     if (!updatedProposal) {
-      throw new Error("Failed to update proposal");
+      throw new HttpError("Failed to update proposal", 500);
     }
 
     return updatedProposal;
@@ -451,7 +555,7 @@ export async function getDashboardData(userId: string): Promise<{
 }
 
 // ========== Validation Helpers ==========
-export function validateProposalInput(input: CreateProposalInput): void {
+export function validateProposalInput(input: any): void {
   // Validate dates
   if (input.earliestDate >= input.latestDate) {
     throw new Error("Earliest date must be before latest date");

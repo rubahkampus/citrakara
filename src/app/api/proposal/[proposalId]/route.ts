@@ -1,45 +1,86 @@
-// src/app/api/proposals/[proposalId]/route.ts
+/* ------------------------------------------------------------------
+   src/app/api/proposal/[proposalId]/route.ts
+   GET    → fetch single
+   PATCH  → edit (multipart FormData)
+   DELETE → hard‑delete (optional, mainly for admin use)
+------------------------------------------------------------------ */
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api/withAuth";
 import { rotateToken } from "@/lib/api/rotateToken";
 import { handleError } from "@/lib/utils/errorHandler";
-import { proposalRepository } from "@/lib/db/repositories/proposal.repository";
+import {
+  fetchProposalById,
+  updateProposalFromForm,
+  canEditProposal,
+  formatProposalForUI,
+} from "@/lib/services/proposal.service";
+import { deleteProposal } from "@/lib/db/repositories/proposal.repository";
 
-// GET /api/proposals/:proposalId - Get a specific proposal
+// ────────── GET /api/proposal/[id] ──────────
 export async function GET(
+  _req: NextRequest,
+  { params }: { params: { proposalId: string } }
+) {
+  try {
+    return withAuth(async (session) => {
+      const proposal = await fetchProposalById(params.proposalId, session.id);
+      const res = NextResponse.json({
+        proposal: formatProposalForUI(proposal),
+      });
+      rotateToken(res, session);
+      return res;
+    });
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+// ────────── PATCH /api/proposal/[id] ──────────
+export async function PATCH(
   req: NextRequest,
   { params }: { params: { proposalId: string } }
 ) {
   try {
-    const { proposalId } = params;
-
     return withAuth(async (session) => {
-      const proposal = await proposalRepository.getProposalById(proposalId);
+      const allowed = await canEditProposal(params.proposalId, session.id);
+      if (!allowed) throw new Error("Not authorized to edit proposal");
 
-      if (!proposal) {
-        return NextResponse.json(
-          { error: "Proposal not found" },
-          { status: 404 }
-        );
-      }
+      const formData = await req.formData();
+      const updated = await updateProposalFromForm(
+        params.proposalId,
+        session.id,
+        formData
+      );
 
-      // Check ownership
-      const isClient = proposal.clientId.toString() === session.id;
-      const isArtist = proposal.artistId.toString() === session.id;
-
-      if (!isClient && !isArtist) {
-        return NextResponse.json(
-          { error: "Not authorized to view this proposal" },
-          { status: 403 }
-        );
-      }
-
-      const response = NextResponse.json({ proposal });
-
-      rotateToken(response, session);
-      return response;
+      const res = NextResponse.json({
+        message: "Proposal updated",
+        proposal: formatProposalForUI(updated),
+      });
+      rotateToken(res, session);
+      return res;
     });
-  } catch (error) {
-    return handleError(error);
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+// ────────── DELETE /api/proposal/[id] ──────────
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { proposalId: string } }
+) {
+  try {
+    return withAuth(async (session) => {
+      // Optional: allow only client owner or admin
+      const allowed = await canEditProposal(params.proposalId, session.id);
+      if (!allowed) throw new Error("Not authorized to delete proposal");
+
+      await deleteProposal(params.proposalId);
+      const res = NextResponse.json({ message: "Proposal deleted" });
+      rotateToken(res, session);
+      return res;
+    });
+  } catch (err) {
+    return handleError(err);
   }
 }

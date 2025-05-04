@@ -1,3 +1,4 @@
+// src/app/[username]/dashboard/proposals/page.tsx
 import { Suspense } from "react";
 import { Box, Typography, Alert } from "@mui/material";
 import ProposalListingPage from "@/components/dashboard/proposals/ProposalListingPage";

@@ -1,8 +1,12 @@
+// src/app/[username]/dashboard/proposals/[proposalId]/edit/page.tsx
 import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession } from "@/lib/utils/session";
 import { notFound } from "next/navigation";
 import ProposalFormPage from "@/components/dashboard/proposals/ProposalFormPage";
-import { fetchProposalById } from "@/lib/services/proposal.service";
+import {
+  fetchProposalById,
+  formatProposalForUI,
+} from "@/lib/services/proposal.service";
 
 interface EditProposalPageProps {
   params: { username: string; proposalId: string };
@@ -36,7 +40,13 @@ export default async function EditProposalPage({
       );
     }
 
-    const serialized = JSON.parse(JSON.stringify(proposal));
+    // Format proposal for UI and serialize both the proposal data and listing snapshot
+    const formattedProposal = formatProposalForUI(proposal);
+    const serializedProposal = JSON.parse(JSON.stringify(formattedProposal));
+    const listingSnapshot = JSON.parse(
+      JSON.stringify(proposal.listingSnapshot)
+    );
+
     return (
       <Box>
         <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
@@ -46,7 +56,8 @@ export default async function EditProposalPage({
         <ProposalFormPage
           username={username}
           mode="edit"
-          initialData={serialized}
+          initialData={serializedProposal}
+          listing={JSON.stringify(listingSnapshot)}
         />
       </Box>
     );

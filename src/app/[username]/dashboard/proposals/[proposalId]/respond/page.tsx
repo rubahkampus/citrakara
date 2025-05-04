@@ -1,8 +1,12 @@
+// src/app/[username]/dashboard/proposals/[proposalId]/respond/page.tsx
 import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession } from "@/lib/utils/session";
 import { notFound } from "next/navigation";
 import RespondFormPage from "@/components/dashboard/proposals/RespondFormPage";
-import { fetchProposalById } from "@/lib/services/proposal.service";
+import {
+  fetchProposalById,
+  formatProposalForUI,
+} from "@/lib/services/proposal.service";
 
 interface RespondProposalPageProps {
   params: { username: string; proposalId: string };
@@ -34,7 +38,8 @@ export default async function RespondProposalPage({
     }
 
     const role = isClient ? "client" : "artist";
-    const serialized = JSON.parse(JSON.stringify(proposal));
+    const formattedProposal = formatProposalForUI(proposal);
+    const serializedProposal = JSON.parse(JSON.stringify(formattedProposal));
 
     return (
       <Box>
@@ -45,7 +50,7 @@ export default async function RespondProposalPage({
         <RespondFormPage
           username={username}
           role={role}
-          proposal={serialized}
+          proposal={serializedProposal}
         />
       </Box>
     );

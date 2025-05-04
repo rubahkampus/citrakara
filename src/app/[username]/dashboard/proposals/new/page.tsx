@@ -2,7 +2,7 @@
 import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession } from "@/lib/utils/session";
 import ProposalFormPage from "@/components/dashboard/proposals/ProposalFormPage";
-import { findCommissionListingById } from "@/lib/services/commissionListing.service";
+import { findCommissionListingById } from "@/lib/db/repositories/commissionListing.repository";
 import { notFound } from "next/navigation";
 
 interface NewProposalPageProps {
@@ -16,7 +16,11 @@ export default async function NewProposalPage({
 }: NewProposalPageProps) {
   // 1. Auth guard
   const session = await getAuthSession();
-  if (!session || typeof session === "string" || session.username !== username) {
+  if (
+    !session ||
+    typeof session === "string" ||
+    session.username !== username
+  ) {
     return <Alert severity="error">Access denied</Alert>;
   }
 

@@ -247,7 +247,7 @@ export default function CommissionListingPage({
                 <CardMedia
                   component="img"
                   height="180"
-                  image={listing.thumbnail}
+                  image={listing.samples[listing.thumbnailIdx]}
                   alt={listing.title}
                   sx={{ objectFit: "cover" }}
                 />

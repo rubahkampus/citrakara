@@ -5,26 +5,7 @@ import { getAuthSession } from "@/lib/utils/session";
 import { getArtistListings } from "@/lib/services/commissionListing.service";
 import CommissionListingPage from "@/components/dashboard/commissions/CommissionListingPage";
 import CommissionListingSkeleton from "@/components/dashboard/commissions/CommissionListingSkeleton";
-
-// Define an interface for the simplified listing objects we'll receive
-interface CommissionListingData {
-  _id: string;
-  artistId: string;
-  title: string;
-  description: Array<{ title: string; detail: string }>;
-  tags: string[];
-  thumbnail: string;
-  isActive: boolean;
-  isDeleted: boolean;
-  slots: number;
-  slotsUsed: number;
-  type: "template" | "custom";
-  flow: "standard" | "milestone";
-  basePrice: number;
-  price: { min: number; max: number };
-  currency: string;
-  [key: string]: any; // Allow for other properties that might be needed
-}
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
 interface CommissionsPageProps {
   params: { username: string };
@@ -47,12 +28,12 @@ export default async function CommissionsPage({
   }
 
   // Fetch the user's commission listings
-  let listings: CommissionListingData[] = [];
+  let listings: ICommissionListing[] = [];
   let error: string | null = null;
 
   try {
     const result = await getArtistListings(session.id);
-    listings = result as unknown as CommissionListingData[];
+    listings = result as unknown as ICommissionListing[];
   } catch (err) {
     console.error("Error fetching listings:", err);
     error = "Failed to load your commission listings";

@@ -128,6 +128,7 @@ export default function CommissionFormPage({
 
   const onSubmit: SubmitHandler<CommissionFormValues> = async (values) => {
     console.log("Form values:", values); // Debugging line
+    console.log("initialData:", initialData); // Debugging line
     setLoading(true);
     setError(null);
 
@@ -176,15 +177,11 @@ export default function CommissionFormPage({
       fd.append("type", values.type);
       fd.append("flow", values.flow);
       fd.append("tos", values.tos);
-
-      // Handle thumbnail
-      const thumb = values.samples[values.thumbnailIdx];
-      if (thumb instanceof File) fd.append("thumbnail", thumb);
-      else fd.append("thumbnailUrl", thumb);
+      fd.append("thumbnailIdx", values.thumbnailIdx.toString());
 
       // Handle other samples
-      values.samples.forEach((s, i) => {
-        if (i !== values.thumbnailIdx && s instanceof File)
+      values.samples.forEach((s) => {
+        if (s instanceof File)
           fd.append("samples[]", s);
       });
 
@@ -434,12 +431,10 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       flow: data.flow,
       tos: data.tos,
       samples: data.samples || [],
-      thumbnailIdx: (() => {
-        const idx = (data.samples || []).findIndex(
-          (url: string) => url === data.thumbnail
-        );
-        return idx >= 0 ? idx : 0;
-      })(),
+      thumbnailIdx:
+        typeof data.thumbnailIdx === "number" && data.thumbnailIdx >= 0
+          ? data.thumbnailIdx
+          : 0,
       description: data.description || [{ title: "Overview", detail: "" }],
       deadlineMode: data.deadline.mode,
       deadlineMin: data.deadline.min,

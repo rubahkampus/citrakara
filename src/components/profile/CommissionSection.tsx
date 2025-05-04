@@ -6,8 +6,9 @@ import { Box, Typography, Grid, Skeleton } from "@mui/material";
 import { useDialogStore } from "@/lib/stores";
 import { KButton } from "@/components/KButton";
 import CommissionCard from "./CommissionCard";
-import { CommissionData } from "@/lib/stores";
 import { axiosClient } from "@/lib/utils/axiosClient";
+import { useRouter } from "next/router";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
 interface CommissionSectionProps {
   username: string;
@@ -19,8 +20,10 @@ export default function CommissionSection({
   isOwner,
 }: CommissionSectionProps) {
   const openDialog = useDialogStore((state) => state.open);
-  const [commissions, setCommissions] = useState<CommissionData[]>([]);
+  const [commissions, setCommissions] = useState<ICommissionListing[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
 
   useEffect(() => {
     // Replace with real API when ready
@@ -36,15 +39,23 @@ export default function CommissionSection({
   }, [username]);
 
   const handleCreate = () => {
-    openDialog("createCommission", undefined, undefined, isOwner);
+    // Fixed route path
+    router.push(`/${username}/dashboard/commissions/new`);
+    // Log for debugging purposes
+    console.log("Navigating to create commission page");
   };
 
   const handleManage = () => {
     openDialog("viewCommission", undefined, undefined, isOwner);
   };
 
-  const handleClick = (commission: CommissionData) => {
-    openDialog("viewCommission", commission._id, commission, isOwner);
+  const handleClick = (commission: ICommissionListing) => {
+    openDialog(
+      "viewCommission",
+      commission._id.toString(),
+      commission,
+      isOwner
+    );
   };
 
   return (
@@ -95,7 +106,7 @@ export default function CommissionSection({
       ) : (
         <Grid container spacing={0}>
           {commissions.map((c) => (
-            <Grid item xs={12} key={c._id}>
+            <Grid item xs={12} key={c._id.toString()}>
               <CommissionCard commission={c} isOwner={isOwner} />
             </Grid>
           ))}

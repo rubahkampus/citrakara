@@ -3,12 +3,12 @@
 
 import { Box, Typography, Grid, useTheme, Avatar } from "@mui/material";
 import Image from "next/image";
-import { CommissionData } from "@/lib/stores";
 import { useDialogStore } from "@/lib/stores";
 import { KButton } from "@/components/KButton";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
 interface CommissionCardProps {
-  commission: CommissionData;
+  commission: ICommissionListing;
   isOwner: boolean;
 }
 
@@ -33,11 +33,11 @@ export default function CommissionCard({
       : "");
 
   const handleView = () => {
-    openDialog("viewCommission", commission._id, commission, isOwner);
+    openDialog("viewCommission", commission._id.toString(), commission, isOwner);
   };
 
   const handleChat = () => {
-    openDialog("viewCommission", commission._id, commission, isOwner);
+    openDialog("viewCommission", commission._id.toString(), commission, isOwner);
   };
 
   return (
@@ -64,9 +64,9 @@ export default function CommissionCard({
               overflow: "hidden",
             }}
           >
-            {commission.thumbnail ? (
+            {commission.samples ? (
               <Image
-                src={commission.thumbnail}
+                src={commission.samples[commission.thumbnailIdx]}
                 alt={commission.title}
                 layout="fill"
                 objectFit="cover"
@@ -108,7 +108,11 @@ export default function CommissionCard({
                 overflow: "hidden",
               }}
             >
-              {commission.description}
+              {commission.description.map((desc, index) => (
+                <Typography key={index} variant="body2" color="text.secondary">
+                  {desc.title}: {desc.detail}
+                </Typography>
+              ))}
             </Typography>
 
             <Box

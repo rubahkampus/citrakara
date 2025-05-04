@@ -21,6 +21,7 @@ import {
   Dashboard as DashboardIcon,
 } from "@mui/icons-material";
 import TosCard from "./TosCard";
+import { useRouter } from "next/navigation";
 
 interface Props {
   profile: {
@@ -45,6 +46,8 @@ export default function DashboardProfileRenderer({
   const openDialog = useDialogStore((state) => state.open);
   const [mounted, setMounted] = useState(false);
 
+  const router = useRouter();
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -56,7 +59,10 @@ export default function DashboardProfileRenderer({
   };
 
   const handleCreateCommission = () => {
-    openDialog("createCommission", undefined, undefined, isOwner);
+    // Fixed route path
+    router.push(`/${profile.username}/dashboard/commissions/new`);
+    // Log for debugging purposes
+    console.log("Navigating to create commission page");
   };
 
   const handleUploadArtwork = () => {
@@ -215,6 +221,7 @@ export default function DashboardProfileRenderer({
                 size="small"
                 startIcon={<DashboardIcon fontSize="small" />}
                 sx={{ alignSelf: "flex-end", textTransform: "none" }}
+                onClick={() => router.push("/dashboard/commissions")}
               >
                 View Dashboard
               </Button>

@@ -65,7 +65,8 @@ function validateListingPayload(payload: Partial<CommissionListingPayload>) {
     "type",
     "flow",
     "artistId",
-    "thumbnail",
+    "thumbnailIdx",
+    "samples",
     "deadline",
     "basePrice",
     "cancelationFee",
@@ -202,7 +203,7 @@ export async function createListingFromForm(artistId: string, form: FormData) {
       (sub) => ({
         ...sub,
         questions: Array.isArray(sub.questions)
-          ? sub.questions.map((q: { title: any; }) =>
+          ? sub.questions.map((q: { title: any }) =>
               typeof q === "string" ? q : q.title ?? ""
             )
           : [],
@@ -218,6 +219,9 @@ export async function createListingFromForm(artistId: string, form: FormData) {
       throw new HttpError(`Required field missing: ${field}`, 400);
     }
   }
+
+  // console.log("Form data:", form.get("payload"));
+  console.log("Form data (raw):", form);
 
   // 3. Build our partial listingData (without thumbnail/samples yet)
   const listingData: Partial<CommissionListingPayload> = {
@@ -238,8 +242,6 @@ export async function createListingFromForm(artistId: string, form: FormData) {
   }
 
   // 5. Extract thumbnail blob vs URL & collect sample blobs
-  const thumbBlob = form.get("thumbnail");
-  const thumbUrl = form.get("thumbnailUrl");
   const sampleBlobs: Blob[] = [];
   form.forEach((value, key) => {
     if (key === "samples[]" && value instanceof Blob) {
@@ -248,27 +250,33 @@ export async function createListingFromForm(artistId: string, form: FormData) {
   });
 
   // 6. Upload all blobs in one go
-  const toUpload =
-    thumbBlob instanceof Blob ? [thumbBlob, ...sampleBlobs] : sampleBlobs;
+  const toUpload = sampleBlobs;
   const uploadedUrls = await uploadGalleryImagesToR2(
     toUpload,
     artistId,
     "listing"
   );
+  listingData.samples = uploadedUrls;
 
-  // 7. Assign thumbnail + samples URLs
-  if (thumbBlob instanceof Blob) {
-    listingData.thumbnail = uploadedUrls[0];
-    listingData.samples = uploadedUrls.slice(1);
-  } else if (typeof thumbUrl === "string") {
-    listingData.thumbnail = thumbUrl;
-    listingData.samples = uploadedUrls;
+  // 7. Assign samples and calculate thumbnailIdx
+  const thumbnailIdx = Number(form.get("thumbnailIdx") ?? 0);
+
+  if (
+    typeof thumbnailIdx !== "number" ||
+    thumbnailIdx < 0 ||
+    thumbnailIdx >= listingData.samples.length
+  ) {
+    throw new HttpError("Invalid thumbnail index", 400);
   } else {
-    throw new HttpError("Thumbnail image is required", 400);
+    listingData.thumbnailIdx = thumbnailIdx;  
   }
+
+  console.log("Listing data (after upload):", listingData);
 
   // 8. Validate *after* thumbnail is set (so no more missing‐thumbnail errors)
   validateListingPayload(listingData);
+
+  console.log("Listing data (validated):", listingData);
 
   // 9. Compute price range & persist
   const price = computePriceRange(listingData);

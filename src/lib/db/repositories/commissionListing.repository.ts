@@ -16,7 +16,7 @@ export interface CommissionListingPayload {
   title: string;
   description: { title: string; detail: string }[];
   tags: string[];
-  thumbnail: string;
+  thumbnailIdx: number;
   samples: string[];
   slots: number;
   tos: string;
@@ -94,6 +94,7 @@ export async function createCommissionListing(
   session?: ClientSession
 ) {
   await connectDB();
+  console.log("Creating commission listing", payload);
   const doc = new CommissionListing({
     ...payload,
     isActive: true,

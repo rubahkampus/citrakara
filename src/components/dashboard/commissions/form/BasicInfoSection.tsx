@@ -179,7 +179,8 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                 }}
                 error={!!errors.basePrice}
                 helperText="Enter a positive number"
-                disabled={mode === "edit" || !usesBasePrice}
+                disabled={!usesBasePrice}
+                // disabled={mode === "edit" || !usesBasePrice}
               />
             )}
           />
@@ -292,7 +293,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                 <Select
                   {...field}
                   label="Type"
-                  disabled={mode === "edit"}
+                  // disabled={mode === "edit"}
                   onChange={(e) => {
                     field.onChange(e);
                     console.log("Type changed to:", e.target.value);
@@ -321,7 +322,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                 <Select
                   {...field}
                   label="Flow"
-                  disabled={mode === "edit"}
+                  // disabled={mode === "edit"}
                   onChange={(e) => {
                     field.onChange(e);
                     console.log("Flow changed to:", e.target.value);

@@ -1,4 +1,3 @@
-// src/components/dialogs/CommissionDialog.tsx
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -24,47 +23,37 @@ import { KButton } from "@/components/KButton";
 import { useDialogStore } from "@/lib/stores";
 import { useRouter } from "next/navigation";
 import { axiosClient } from "@/lib/utils/axiosClient";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
-// Interface for commission data
-interface CommissionData {
-  id: string;
-  title: string;
-  description: string;
-  price: { min: number; max: number };
-  currency: string;
-  thumbnail: string;
-  isActive: boolean;
-  slots: number;
-  slotsUsed: number;
-}
 
-// Mock data for commission details (can be replaced later)
-const mockCommissionDetails: Record<string, CommissionData> = {
-  c1: {
-    id: "c1",
-    title: "A Very, Very, Long Text for Reference Furry Commission 1",
-    description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nThis commission includes:\n- Full color illustration\n- High resolution file\n- Commercial rights for personal use\n- Up to 2 characters\n\nThe expected delivery time is 2-3 weeks depending on complexity.",
-    price: { min: 999999999, max: 999999999 },
-    currency: "Rp",
-    thumbnail: "/placeholders/comm1.jpg",
-    isActive: true,
-    slots: 5,
-    slotsUsed: 2,
-  },
-  c2: {
-    id: "c2",
-    title: "A Very, Very, Long Text for Reference Furry Commission 2",
-    description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nDetails:\n- Black and white illustration\n- Single character\n- Simple background\n- 2 free revisions included\n\nPlease note that additional characters or complex backgrounds will incur extra charges.",
-    price: { min: 999999999, max: 999999999 },
-    currency: "Rp",
-    thumbnail: "/placeholders/comm2.jpg",
-    isActive: true,
-    slots: 3,
-    slotsUsed: 3,
-  },
-};
+// const mockCommissionDetails: Record<string, ICommissionListing> = {
+//   c1: {
+//     id: "c1",
+//     title: "A Very, Very, Long Text for Reference Furry Commission 1",
+//     // description:
+//     //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nThis commission includes:\n- Full color illustration\n- High resolution file\n- Commercial rights for personal use\n- Up to 2 characters\n\nThe expected delivery time is 2-3 weeks depending on complexity.",
+//     price: { min: 999999999, max: 999999999 },
+//     currency: "Rp",
+//     samples: ["/placeholders/comm1.jpg"],
+//     thumbnailIdx: 0,
+//     isActive: true,
+//     slots: 5,
+//     slotsUsed: 2,
+//   },
+//   c2: {
+//     id: "c2",
+//     title: "A Very, Very, Long Text for Reference Furry Commission 2",
+//     // description:
+//     //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nDetails:\n- Black and white illustration\n- Single character\n- Simple background\n- 2 free revisions included\n\nPlease note that additional characters or complex backgrounds will incur extra charges.",
+//     price: { min: 999999999, max: 999999999 },
+//     currency: "Rp",
+//     samples: ["/placeholders/comm1.jpg"],
+//     thumbnailIdx: 0,
+//     isActive: true,
+//     slots: 3,
+//     slotsUsed: 3,
+//   },
+// };
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & { children: React.ReactElement },
@@ -77,70 +66,40 @@ interface CommissionDialogProps {
   open: boolean;
   onClose: () => void;
   commissionId?: string;
-  mode?: "view" | "edit" | "create";
   isOwner?: boolean;
-  initialData?: any;
 }
 
 export default function CommissionDialog({
   open,
   onClose,
   commissionId,
-  mode = "view",
   isOwner = false,
-  initialData = null,
 }: CommissionDialogProps) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const router = useRouter();
   const { open: openDialog } = useDialogStore();
-  const [commission, setCommission] = useState<CommissionData | null>(null);
+  const [commission, setCommission] = useState<ICommissionListing | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // For real data, uncomment this and comment out the useEffect below
-  /*
-  useEffect(() => {
-    if (!commissionId || !open) return;
-    
-    const fetchCommissionDetails = async () => {
-      try {
-        setLoading(true);
-        const response = await axiosClient.get(`/api/commission/listing/${commissionId}`);
-        setCommission(response.data.listing);
-      } catch (error) {
-        console.error('Error fetching commission details:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchCommissionDetails();
-  }, [commissionId, open]);
-  */
+  // useEffect(() => {
+  //   if (!commissionId || !open) return;
 
-  // Mock data loading
-  useEffect(() => {
-    if (!commissionId || !open) return;
-
-    setLoading(true);
-    // Simulate API request
-    setTimeout(() => {
-      setCommission(mockCommissionDetails[commissionId] || null);
-      setLoading(false);
-    }, 500);
-  }, [commissionId, open]);
+  //   setLoading(true);
+  //   setTimeout(() => {
+  //     setCommission(mockCommissionDetails[commissionId] || null);
+  //     setLoading(false);
+  //   }, 500);
+  // }, [commissionId, open]);
 
   const handleChatClick = () => {
-    // For owners, go to chat dashboard
     if (isOwner) {
       router.push("/dashboard/chat");
       onClose();
       return;
     }
 
-    // For visitors, check login status first (mock for now)
-    const isLoggedIn = true; // Replace with actual auth check
-
+    const isLoggedIn = true;
     if (isLoggedIn) {
       router.push("/dashboard/chat");
       onClose();
@@ -150,30 +109,23 @@ export default function CommissionDialog({
   };
 
   const handleSendRequest = () => {
-    // TODO: Implement request submission
     console.log("Sending request for commission:", commissionId);
     onClose();
   };
 
-  // Format price range
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("id-ID").format(price);
-  };
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("id-ID").format(price);
 
-  if (!commission && mode !== "create") return null;
+  if (!commission) return null;
 
-  const priceDisplay = commission
-    ? `${commission.currency}${formatPrice(commission.price.min)}${
-        commission.price.min !== commission.price.max
-          ? ` - ${formatPrice(commission.price.max)}`
-          : ""
-      }`
-    : "";
+  const priceDisplay =
+    `${commission.currency}${formatPrice(commission.price.min)}` +
+    (commission.price.min !== commission.price.max
+      ? ` - ${formatPrice(commission.price.max)}`
+      : "");
 
-  // Check if slots are available
-  const slotsAvailable = commission
-    ? commission.slots === -1 || commission.slotsUsed < commission.slots
-    : true;
+  const slotsAvailable =
+    commission.slots === -1 || commission.slotsUsed < commission.slots;
 
   return (
     <Dialog
@@ -184,13 +136,9 @@ export default function CommissionDialog({
       fullWidth
       TransitionComponent={Transition}
       PaperProps={{
-        sx: {
-          borderRadius: fullScreen ? 0 : 3,
-          overflow: "hidden",
-        },
+        sx: { borderRadius: fullScreen ? 0 : 3, overflow: "hidden" },
       }}
     >
-      {/* Header */}
       <Box
         sx={{
           p: 3,
@@ -200,11 +148,7 @@ export default function CommissionDialog({
         }}
       >
         <Typography variant="h6" fontWeight="bold">
-          {mode === "create"
-            ? "Create Commission"
-            : mode === "edit"
-            ? "Edit Commission"
-            : "Commission Details"}
+          Commission Details
         </Typography>
         <IconButton onClick={onClose} edge="end">
           <CloseIcon />
@@ -213,124 +157,110 @@ export default function CommissionDialog({
       <Divider />
 
       <DialogContent sx={{ p: 0 }}>
-        {mode === "create" ? (
-          <Box sx={{ p: 3 }}>
-            <Typography>Create commission form will go here</Typography>
-          </Box>
-        ) : mode === "edit" ? (
-          <Box sx={{ p: 3 }}>
-            <Typography>Edit commission form will go here</Typography>
-          </Box>
-        ) : (
-          commission && (
-            <Grid container>
-              {/* Image section */}
-              <Grid item xs={12} md={5}>
+        <Grid container>
+          <Grid item xs={12} md={5}>
+            <Box
+              sx={{
+                position: "relative",
+                height: { xs: 250, md: "100%" },
+                minHeight: { md: 400 },
+                bgcolor: "background.default",
+              }}
+            >
+              {commission.samples.length > 0 && commission.thumbnailIdx && (commission.samples.length >= commission.thumbnailIdx) ? (
+                <Image
+                  src={commission.samples[commission.thumbnailIdx]}
+                  alt={commission.title}
+                  layout="fill"
+                  objectFit="cover"
+                  unoptimized
+                />
+              ) : (
                 <Box
                   sx={{
-                    position: "relative",
-                    height: { xs: 250, md: "100%" },
-                    minHeight: { md: 400 },
-                    bgcolor: "background.default",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    bgcolor: theme.palette.divider,
                   }}
                 >
-                  {commission.thumbnail ? (
-                    <Image
-                      src={commission.thumbnail}
-                      alt={commission.title}
-                      layout="fill"
-                      objectFit="cover"
-                      unoptimized={true}
-                    />
-                  ) : (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: "100%",
-                        bgcolor: theme.palette.divider,
-                      }}
-                    >
-                      <Typography variant="body1" color="text.secondary">
-                        No Image
+                  <Typography variant="body1" color="text.secondary">
+                    No Image
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} md={7}>
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h5" fontWeight="bold" gutterBottom>
+                {commission.title}
+              </Typography>
+
+              <Box sx={{ display: "flex", alignItems: "center", mt: 1, mb: 3 }}>
+                <Typography variant="h6" fontWeight="bold" color="primary.main">
+                  {priceDisplay}
+                </Typography>
+                {!slotsAvailable && (
+                  <Chip
+                    label="Slot Unavailable"
+                    size="small"
+                    color="default"
+                    sx={{ ml: 2 }}
+                  />
+                )}
+              </Box>
+
+              <Typography variant="body1" fontWeight="medium" gutterBottom>
+                Description
+              </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ whiteSpace: "pre-line", mb: 3 }}
+              >
+                {Array.isArray(commission.description) ? (
+                  commission.description.map((item, index) => (
+                    <Box key={index} sx={{ mb: 1 }}>
+                      <Typography variant="body2" fontWeight="bold">
+                        {item.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {item.detail}
                       </Typography>
                     </Box>
-                  )}
-                </Box>
-              </Grid>
-
-              {/* Details section */}
-              <Grid item xs={12} md={7}>
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="h5" fontWeight="bold" gutterBottom>
-                    {commission.title}
-                  </Typography>
-
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", mt: 1, mb: 3 }}
-                  >
-                    <Typography
-                      variant="h6"
-                      fontWeight="bold"
-                      color="primary.main"
-                    >
-                      {priceDisplay}
-                    </Typography>
-
-                    {!slotsAvailable && (
-                      <Chip
-                        label="Slot Unavailable"
-                        size="small"
-                        color="default"
-                        sx={{ ml: 2 }}
-                      />
-                    )}
-                  </Box>
-
-                  <Typography variant="body1" fontWeight="medium" gutterBottom>
-                    Description
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      whiteSpace: "pre-line",
-                      mb: 3,
-                    }}
-                  >
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
                     {commission.description}
                   </Typography>
+                )}
+              </Typography>
 
-                  {/* Slot information */}
-                  <Paper
-                    variant="outlined"
-                    sx={{ p: 2, mb: 3, borderRadius: 2 }}
-                  >
-                    <Typography variant="body2" fontWeight="medium">
-                      Availability
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {commission.slots === -1
-                        ? "Unlimited slots available"
-                        : `${commission.slots - commission.slotsUsed} out of ${
-                            commission.slots
-                          } slots available`}
-                    </Typography>
-                  </Paper>
-                </Box>
-              </Grid>
-            </Grid>
-          )
-        )}
+              <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+                <Typography variant="body2" fontWeight="medium">
+                  Availability
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {commission.slots === -1
+                    ? "Unlimited slots available"
+                    : `${commission.slots - commission.slotsUsed} out of ${
+                        commission.slots
+                      } slots available`}
+                </Typography>
+              </Paper>
+            </Box>
+          </Grid>
+        </Grid>
       </DialogContent>
 
       <Divider />
 
-      {/* Actions */}
       <DialogActions sx={{ p: 3 }}>
-        {mode === "view" && !isOwner && (
+        {!isOwner ? (
           <>
             <Tooltip title="Message about this commission">
               <KButton
@@ -341,25 +271,11 @@ export default function CommissionDialog({
                 Message
               </KButton>
             </Tooltip>
-
             <KButton onClick={handleSendRequest} disabled={!slotsAvailable}>
               {slotsAvailable ? "Send Request" : "Unavailable"}
             </KButton>
           </>
-        )}
-
-        {(mode === "create" || mode === "edit") && (
-          <>
-            <KButton variantType="ghost" onClick={onClose}>
-              Cancel
-            </KButton>
-            <KButton>
-              {mode === "create" ? "Create Commission" : "Save Changes"}
-            </KButton>
-          </>
-        )}
-
-        {mode === "view" && isOwner && (
+        ) : (
           <KButton onClick={onClose}>Close</KButton>
         )}
       </DialogActions>

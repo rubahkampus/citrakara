@@ -43,10 +43,14 @@ const SamplesSection: React.FC = () => {
       typeof s === "string" ? s : URL.createObjectURL(s)
     );
     setPreviews(urls);
+
     return () => {
-      urls
-        .filter((u) => u.startsWith("blob:"))
-        .forEach((u) => URL.revokeObjectURL(u));
+      // Revoke any blob URLs we created
+      urls.forEach((url, i) => {
+        if (typeof samples[i] !== "string" && url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
     };
   }, [samples]);
 

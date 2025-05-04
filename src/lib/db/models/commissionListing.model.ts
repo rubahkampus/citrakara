@@ -125,7 +125,7 @@ export interface ICommissionListing extends Document {
   title: string;
   description: { title: string; detail: string }[];
   tags: string[];
-  thumbnail: string;
+  thumbnailIdx: number;
   samples: string[];
 
   // ─── Admin / state flags ─────────────────────────────────
@@ -232,7 +232,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       },
     ],
     tags: { type: [String], default: [] },
-    thumbnail: { type: String, required: true },
+    thumbnailIdx: { type: Number, required: true },
     samples: { type: [String], default: [] },
 
     isActive: { type: Boolean, default: true },

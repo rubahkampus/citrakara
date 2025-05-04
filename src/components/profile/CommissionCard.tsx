@@ -33,11 +33,12 @@ export default function CommissionCard({
       : "");
 
   const handleView = () => {
-    openDialog("viewCommission", commission._id.toString(), commission, isOwner);
-  };
-
-  const handleChat = () => {
-    openDialog("viewCommission", commission._id.toString(), commission, isOwner);
+    openDialog(
+      "viewCommission",
+      commission._id.toString(),
+      commission,
+      isOwner
+    );
   };
 
   return (
@@ -64,7 +65,10 @@ export default function CommissionCard({
               overflow: "hidden",
             }}
           >
-            {commission.samples ? (
+            {commission.samples &&
+            commission.samples.length > 0 &&
+            commission.thumbnailIdx != null &&
+            commission.samples[commission.thumbnailIdx] ? (
               <Image
                 src={commission.samples[commission.thumbnailIdx]}
                 alt={commission.title}
@@ -108,11 +112,13 @@ export default function CommissionCard({
                 overflow: "hidden",
               }}
             >
-              {commission.description.map((desc, index) => (
-                <Typography key={index} variant="body2" color="text.secondary">
-                  {desc.title}: {desc.detail}
-                </Typography>
-              ))}
+              {commission.description && commission.description.length > 0
+                ? commission.description.map((desc, index) => (
+                    <Box key={index} component="span">
+                      {desc.title}: {desc.detail}
+                    </Box>
+                  ))
+                : "No description available"}
             </Typography>
 
             <Box
@@ -127,32 +133,26 @@ export default function CommissionCard({
                 {priceDisplay}
               </Typography>
 
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                {!isOwner && (
-                  <Avatar
-                    sx={{ width: 32, height: 32 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleChat();
-                    }}
-                  />
-                )}
-
-                {!isOwner && (
-                  <KButton
-                    size="small"
-                    variant="contained"
-                    disabled={!slotsAvailable}
-                    sx={{ minWidth: 110, fontSize: "0.875rem" }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleChat();
-                    }}
-                  >
-                    {slotsAvailable ? "Send Request" : "Slot Unavailable"}
-                  </KButton>
-                )}
-              </Box>
+              {!isOwner && (
+                <KButton
+                  size="small"
+                  variant="contained"
+                  disabled={!slotsAvailable}
+                  sx={{ minWidth: 110, fontSize: "0.875rem" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Use the same view dialog for now, can be changed to request dialog later
+                    openDialog(
+                      "viewCommission",
+                      commission._id.toString(),
+                      commission,
+                      isOwner
+                    );
+                  }}
+                >
+                  {slotsAvailable ? "Send Request" : "Slot Unavailable"}
+                </KButton>
+              )}
             </Box>
           </Box>
         </Grid>

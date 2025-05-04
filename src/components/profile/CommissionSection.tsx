@@ -22,40 +22,38 @@ export default function CommissionSection({
   const openDialog = useDialogStore((state) => state.open);
   const [commissions, setCommissions] = useState<ICommissionListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
 
   useEffect(() => {
-    // Replace with real API when ready
-    setLoading(true);
-    axiosClient
-      .get(`/api/commission/user/${username}`)
-      .then((res) => setCommissions(res.data.listings))
-      .catch(() => {
-        // fallback to mock or empty
+    const fetchCommissions = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await axiosClient.get(
+          `/api/commission/user/${username}`
+        );
+        setCommissions(response.data.listings || []);
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to load commissions");
         setCommissions([]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCommissions();
   }, [username]);
 
   const handleCreate = () => {
-    // Fixed route path
     router.push(`/${username}/dashboard/commissions/new`);
-    // Log for debugging purposes
-    console.log("Navigating to create commission page");
   };
 
   const handleManage = () => {
-    openDialog("viewCommission", undefined, undefined, isOwner);
-  };
-
-  const handleClick = (commission: ICommissionListing) => {
-    openDialog(
-      "viewCommission",
-      commission._id.toString(),
-      commission,
-      isOwner
-    );
+    // Navigate to commissions dashboard page
+    router.push(`/${username}/dashboard/commissions`);
   };
 
   return (
@@ -85,6 +83,22 @@ export default function CommissionSection({
               sx={{ mb: 2, borderRadius: 1 }}
             />
           ))}
+        </Box>
+      ) : error ? (
+        <Box
+          sx={{
+            height: 150,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "error.light",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "error.main",
+            color: "error.contrastText",
+          }}
+        >
+          <Typography>{error}</Typography>
         </Box>
       ) : commissions.length === 0 ? (
         <Box

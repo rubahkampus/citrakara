@@ -1,3 +1,4 @@
+// src/components/dialogs/CommissionDialog.tsx
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import {
   Paper,
   Tooltip,
   Chip,
+  CircularProgress,
 } from "@mui/material";
 import { Close as CloseIcon, Chat as ChatIcon } from "@mui/icons-material";
 import { TransitionProps } from "@mui/material/transitions";
@@ -25,35 +27,14 @@ import { useRouter } from "next/navigation";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
-
-// const mockCommissionDetails: Record<string, ICommissionListing> = {
-//   c1: {
-//     id: "c1",
-//     title: "A Very, Very, Long Text for Reference Furry Commission 1",
-//     // description:
-//     //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nThis commission includes:\n- Full color illustration\n- High resolution file\n- Commercial rights for personal use\n- Up to 2 characters\n\nThe expected delivery time is 2-3 weeks depending on complexity.",
-//     price: { min: 999999999, max: 999999999 },
-//     currency: "Rp",
-//     samples: ["/placeholders/comm1.jpg"],
-//     thumbnailIdx: 0,
-//     isActive: true,
-//     slots: 5,
-//     slotsUsed: 2,
-//   },
-//   c2: {
-//     id: "c2",
-//     title: "A Very, Very, Long Text for Reference Furry Commission 2",
-//     // description:
-//     //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus blandit nisi arcu, nec fringilla odio molestie tincidunt. Pellentesque id rutrum velit, non fermentum urna.\n\nDetails:\n- Black and white illustration\n- Single character\n- Simple background\n- 2 free revisions included\n\nPlease note that additional characters or complex backgrounds will incur extra charges.",
-//     price: { min: 999999999, max: 999999999 },
-//     currency: "Rp",
-//     samples: ["/placeholders/comm1.jpg"],
-//     thumbnailIdx: 0,
-//     isActive: true,
-//     slots: 3,
-//     slotsUsed: 3,
-//   },
-// };
+interface CommissionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  commissionId?: string;
+  mode?: "view" | "edit" | "create";
+  isOwner?: boolean;
+  initialData?: ICommissionListing;
+}
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & { children: React.ReactElement },
@@ -62,35 +43,47 @@ const Transition = React.forwardRef(function Transition(
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-interface CommissionDialogProps {
-  open: boolean;
-  onClose: () => void;
-  commissionId?: string;
-  isOwner?: boolean;
-}
-
 export default function CommissionDialog({
   open,
   onClose,
   commissionId,
+  mode = "view",
   isOwner = false,
+  initialData,
 }: CommissionDialogProps) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const router = useRouter();
   const { open: openDialog } = useDialogStore();
-  const [commission, setCommission] = useState<ICommissionListing | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [commission, setCommission] = useState<ICommissionListing | null>(
+    initialData || null
+  );
+  const [loading, setLoading] = useState(!initialData);
+  const [error, setError] = useState<string | null>(null);
 
-  // useEffect(() => {
-  //   if (!commissionId || !open) return;
+  useEffect(() => {
+    if (!commissionId || !open || initialData) return;
 
-  //   setLoading(true);
-  //   setTimeout(() => {
-  //     setCommission(mockCommissionDetails[commissionId] || null);
-  //     setLoading(false);
-  //   }, 500);
-  // }, [commissionId, open]);
+    setLoading(true);
+    setError(null);
+
+    const fetchCommission = async () => {
+      try {
+        const response = await axiosClient.get(
+          `/api/commission/listing/${commissionId}`
+        );
+        setCommission(response.data.listing);
+      } catch (err: any) {
+        setError(
+          err.response?.data?.error || "Failed to load commission details"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCommission();
+  }, [commissionId, open, initialData]);
 
   const handleChatClick = () => {
     if (isOwner) {
@@ -99,7 +92,7 @@ export default function CommissionDialog({
       return;
     }
 
-    const isLoggedIn = true;
+    const isLoggedIn = true; // Replace with actual auth check
     if (isLoggedIn) {
       router.push("/dashboard/chat");
       onClose();
@@ -115,6 +108,43 @@ export default function CommissionDialog({
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("id-ID").format(price);
+
+  if (loading) {
+    return (
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullScreen={fullScreen}
+        maxWidth="md"
+        fullWidth
+        TransitionComponent={Transition}
+      >
+        <Box sx={{ p: 4, display: "flex", justifyContent: "center" }}>
+          <CircularProgress />
+        </Box>
+      </Dialog>
+    );
+  }
+
+  if (error) {
+    return (
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullScreen={fullScreen}
+        maxWidth="md"
+        fullWidth
+        TransitionComponent={Transition}
+      >
+        <Box sx={{ p: 4, textAlign: "center" }}>
+          <Typography color="error">{error}</Typography>
+          <KButton onClick={onClose} sx={{ mt: 2 }}>
+            Close
+          </KButton>
+        </Box>
+      </Dialog>
+    );
+  }
 
   if (!commission) return null;
 
@@ -167,7 +197,10 @@ export default function CommissionDialog({
                 bgcolor: "background.default",
               }}
             >
-              {commission.samples.length > 0 && commission.thumbnailIdx && (commission.samples.length >= commission.thumbnailIdx) ? (
+              {commission.samples &&
+              commission.samples.length > 0 &&
+              commission.thumbnailIdx != null &&
+              commission.samples[commission.thumbnailIdx] ? (
                 <Image
                   src={commission.samples[commission.thumbnailIdx]}
                   alt={commission.title}
@@ -222,7 +255,8 @@ export default function CommissionDialog({
                 color="text.secondary"
                 sx={{ whiteSpace: "pre-line", mb: 3 }}
               >
-                {Array.isArray(commission.description) ? (
+                {Array.isArray(commission.description) &&
+                commission.description.length > 0 ? (
                   commission.description.map((item, index) => (
                     <Box key={index} sx={{ mb: 1 }}>
                       <Typography variant="body2" fontWeight="bold">
@@ -235,7 +269,7 @@ export default function CommissionDialog({
                   ))
                 ) : (
                   <Typography variant="body2" color="text.secondary">
-                    {commission.description}
+                    No description available
                   </Typography>
                 )}
               </Typography>

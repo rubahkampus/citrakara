@@ -38,7 +38,7 @@ import {
   Gavel,
   AssignmentOutlined,
   Description,
-  Inventory, // NEW  ➜ icon for slots
+  Inventory,
 } from "@mui/icons-material";
 import { TransitionProps } from "@mui/material/transitions";
 import Image from "next/image";
@@ -49,6 +49,11 @@ import { axiosClient } from "@/lib/utils/axiosClient";
 import type { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
 const TosDialog = dynamic(() => import("./TosDialog"));
+
+interface AuthResponse {
+  username: string;
+  email: string;
+}
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & { children: React.ReactElement },
@@ -88,25 +93,59 @@ export default function CommissionDialog({
   const [tosAccepted, setTosAccepted] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [ownUsername, setOwnUsername] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
+  // Separate useEffect for authentication status that runs when the dialog opens
   useEffect(() => {
-    // Check login status
-    axiosClient
-      .get("/api/auth/me")
-      .then(() => setIsLoggedIn(true))
-      .catch(() => setIsLoggedIn(false));
-  }, []);
+    if (!open) return;
 
+    // Set loading state
+    setAuthLoading(true);
+
+    // Check authentication status
+    axiosClient
+      .get<AuthResponse>("/api/auth/me")
+      .then((res) => {
+        console.log("Auth success:", res.data); // Debug logging
+
+        // Check if response and user object exist before accessing properties
+        if (res?.data?.username) {
+          setIsLoggedIn(true);
+          setOwnUsername(res.data.username);
+        } else {
+          console.warn("Auth response missing expected user data structure");
+          setIsLoggedIn(false);
+          setOwnUsername(null);
+        }
+      })
+      .catch((err) => {
+        console.error("Auth check failed:", err); // Debug logging
+        setIsLoggedIn(false);
+        setOwnUsername(null);
+      })
+      .finally(() => {
+        setAuthLoading(false);
+      });
+  }, [open]);
+
+  // Separate useEffect for fetching commission data
   useEffect(() => {
     if (!commissionId || !open || initialData) return;
+
     setLoading(true);
     setError(null);
+
     axiosClient
       .get(`/api/commission/listing/${commissionId}`)
-      .then((res) => setCommission(res.data.listing))
-      .catch((err) =>
-        setError(err.response?.data?.error || "Failed to load commission")
-      )
+      .then((res) => {
+        console.log("Commission data loaded:", res.data.listing); // Debug logging
+        setCommission(res.data.listing);
+      })
+      .catch((err) => {
+        console.error("Failed to load commission:", err); // Debug logging
+        setError(err.response?.data?.error || "Failed to load commission");
+      })
       .finally(() => setLoading(false));
   }, [commissionId, open, initialData]);
 
@@ -123,22 +162,24 @@ export default function CommissionDialog({
 
   const handleRequest = () => {
     if (!commission) return;
-    axiosClient
-      .post("/api/commission/request", { listingId: commission._id })
-      .then(() => {
-        onClose();
-        router.push("/dashboard/commissions/sent");
-      })
-      .catch((err) => {
-        if (err.response?.status === 401) {
-          onClose();
-          openDialog("login");
-        } else if (err.response?.data?.code === "TOS_NOT_ACCEPTED") {
-          setTosOpen(true);
-        } else {
-          setError(err.response?.data?.error || "Failed to send request");
-        }
-      });
+
+    // Check if ToS is accepted
+    if (!tosAccepted) {
+      setTosOpen(true);
+      return;
+    }
+
+    // Check if user is logged in
+    if (!isLoggedIn || !ownUsername) {
+      console.error("User not logged in or username not available");
+      // Here you could show a login dialog or redirect to login
+      return;
+    }
+
+    // Navigate to proposal creation page using the current user's username
+    router.push(
+      `/${ownUsername}/dashboard/proposals/new?listingId=${commission._id}`
+    );
   };
 
   const handleNavigateImage = (direction: "prev" | "next") => {
@@ -220,7 +261,7 @@ export default function CommissionDialog({
   const slotsAvailable = slots === -1 || slotsUsed < slots;
 
   const slotsRemaining =
-    slots === -1 ? "Unlimited" : `${Math.max(slots - slotsUsed, 0)} / ${slots}`;
+    slots === -1 ? "Unlimited" : `${Math.max(slots - slotsUsed, 0)} / ${slots}`;
 
   return (
     <Dialog
@@ -684,6 +725,27 @@ export default function CommissionDialog({
               </Stack>
             </Box>
 
+            {/* Authentication status indicator (for debugging)
+            {process.env.NODE_ENV !== "production" && (
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: "background.paper",
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  Auth Status:{" "}
+                  {authLoading
+                    ? "Loading..."
+                    : isLoggedIn
+                    ? `Logged in as ${ownUsername}`
+                    : "Not logged in"}
+                </Typography>
+              </Box>
+            )} */}
+
             {/* Action Buttons - Floating */}
             {!isOwner && (
               <Stack
@@ -697,21 +759,33 @@ export default function CommissionDialog({
                 }}
               >
                 <Tooltip
-                  title={!isLoggedIn ? "Login required" : "Chat with artist"}
+                  title={
+                    authLoading
+                      ? "Checking login status..."
+                      : !isLoggedIn
+                      ? "Login required"
+                      : "Chat with artist"
+                  }
                 >
                   <span>
                     <Fab
                       color="primary"
-                      disabled={!isLoggedIn}
+                      disabled={authLoading || !isLoggedIn}
                       onClick={handleChat}
                     >
-                      <Chat />
+                      {authLoading ? (
+                        <CircularProgress size={24} color="inherit" />
+                      ) : (
+                        <Chat />
+                      )}
                     </Fab>
                   </span>
                 </Tooltip>
                 <Tooltip
                   title={
-                    !isLoggedIn
+                    authLoading
+                      ? "Checking login status..."
+                      : !isLoggedIn
                       ? "Login required"
                       : !tosAccepted
                       ? "Accept terms first"
@@ -724,12 +798,27 @@ export default function CommissionDialog({
                     <Fab
                       variant="extended"
                       color="primary"
-                      disabled={!isLoggedIn || !tosAccepted || !slotsAvailable}
+                      disabled={
+                        authLoading ||
+                        !isLoggedIn ||
+                        !tosAccepted ||
+                        !slotsAvailable
+                      }
                       onClick={handleRequest}
                       sx={{ minWidth: 140 }}
                     >
-                      <Send sx={{ mr: 1 }} />
-                      {!slotsAvailable
+                      {authLoading ? (
+                        <CircularProgress
+                          size={24}
+                          color="inherit"
+                          sx={{ mr: 1 }}
+                        />
+                      ) : (
+                        <Send sx={{ mr: 1 }} />
+                      )}
+                      {authLoading
+                        ? "Checking..."
+                        : !slotsAvailable
                         ? "No Empty Slot"
                         : !tosAccepted
                         ? "Accept Artist's TOS"

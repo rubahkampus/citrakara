@@ -1,4 +1,6 @@
+'use client'
 // src/components/dashboard/proposals/ProposalFormPage.tsx
+
 /**
  * ProposalFormPage
  * ----------------
@@ -25,7 +27,7 @@
  *       files → fd.append("referenceImages[]", file)
  *   • POST to /api/proposal  or PATCH to /api/proposal/[id]
  */
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { axiosClient } from "@/lib/utils/axiosClient";
@@ -54,15 +56,35 @@ export default function ProposalFormPage({
   const router = useRouter();
   const listingObj: any = JSON.parse(listing);
 
+  // Store the listing in sessionStorage for child components
+  useEffect(() => {
+    sessionStorage.setItem("currentListing", listing);
+    return () => {
+      sessionStorage.removeItem("currentListing");
+    };
+  }, [listing]);
+
   // Initialize RHF with optional existing data
   const methods = useForm<ProposalFormValues>({
-    defaultValues: initialData || {
-      deadline: "", // user will fill
-      generalDescription: "",
-      referenceImages: [],
-      generalOptions: {},
-      subjectOptions: {},
-    },
+    defaultValues: initialData
+      ? {
+          ...initialData,
+          deadline: initialData.deadline instanceof Date
+            ? initialData.deadline.toISOString()
+            : initialData.deadline,
+        }
+      : {
+          listingId: listingObj._id, // Add this for form data
+          deadline: "", // user will fill
+          generalDescription: "",
+          referenceImages: [],
+          generalOptions: {
+            optionGroups: {},
+            addons: {},
+            answers: {},
+          },
+          subjectOptions: {},
+        },
   });
   const { handleSubmit, watch } = methods;
 
@@ -82,6 +104,22 @@ export default function ProposalFormPage({
     fd.append("deadline", values.deadline);
     fd.append("generalDescription", values.generalDescription);
 
+    // Calculate dynamic dates based on the deadline
+    if (values.deadline) {
+      const deadlineDate = new Date(values.deadline);
+      const now = new Date();
+
+      // Calculate earliest and latest dates based on listing rules
+      const minDate = new Date(now);
+      minDate.setDate(minDate.getDate() + listingObj.deadline.min);
+
+      const maxDate = new Date(now);
+      maxDate.setDate(maxDate.getDate() + listingObj.deadline.max);
+
+      fd.append("earliestDate", minDate.toISOString());
+      fd.append("latestDate", maxDate.toISOString());
+    }
+
     // Payload: only nested options
     fd.append(
       "payload",
@@ -92,9 +130,9 @@ export default function ProposalFormPage({
     );
 
     // Files
-    values.referenceImages?.forEach((file) =>
-      fd.append("referenceImages[]", file)
-    );
+    values.referenceImages?.forEach((file) => {
+      fd.append("referenceImages[]", file);
+    });
 
     try {
       let res;
@@ -104,7 +142,7 @@ export default function ProposalFormPage({
         });
       } else {
         // edit: initialData.id must exist
-        res = await axiosClient.patch(`/api/proposal/${initialData!._id}`, fd, {
+        res = await axiosClient.patch(`/api/proposal/${initialData!.id}`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }

@@ -12,7 +12,7 @@
  */
 import React from "react";
 import { useFormContext } from "react-hook-form";
-import { TextField } from "@mui/material";
+import { TextField, Typography, Paper } from "@mui/material";
 import { ProposalFormValues } from "@/types/proposal";
 
 export default function DescriptionSection() {
@@ -22,18 +22,24 @@ export default function DescriptionSection() {
   } = useFormContext<ProposalFormValues>();
 
   return (
-    <TextField
-      {...register("generalDescription", {
-        required: "Description is required",
-        maxLength: { value: 500, message: "Max 500 characters" },
-      })}
-      label="Project Description"
-      multiline
-      rows={4}
-      fullWidth
-      error={!!errors.generalDescription}
-      helperText={errors.generalDescription?.message}
-      sx={{ mb: 3 }}
-    />
+    <Paper sx={{ p: 3, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Project Description
+      </Typography>
+      <TextField
+        {...register("generalDescription", {
+          required: "Description is required",
+          maxLength: { value: 500, message: "Max 500 characters" },
+        })}
+        label="Describe your project"
+        multiline
+        rows={4}
+        fullWidth
+        placeholder="Provide details about your commission request. Be specific about what you want and any special requirements."
+        error={!!errors.generalDescription}
+        helperText={errors.generalDescription?.message}
+        sx={{ mb: 3 }}
+      />
+    </Paper>
   );
 }

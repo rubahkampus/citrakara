@@ -17,51 +17,115 @@
  *   - Sub-forms call onSubmit callback passed as prop
  *   - onSubmit dispatches PATCH to /api/proposal/[id]/respond
  *     with JSON body { role, accept, ...fields }
- *
- * Example API body (artist):
- *   {
- *     role: "artist",
- *     accept: true,
- *     surcharge: 500,
- *     discount: 0,
- *     reason: "Additional complexity"
- *   }
- *
- * Example API body (client):
- *   {
- *     role: "client",
- *     accept: false,
- *     rejectionReason: "Timeline too long"
- *   }
  */
-import React from 'react';
-import ArtistRespondForm from './ArtistRespondForm';
-import ClientRespondForm from './ClientRespondForm';
-import { ProposalUI } from '@/types/proposal';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Box, Alert, Snackbar } from "@mui/material";
+import { axiosClient } from "@/lib/utils/axiosClient";
+import ArtistRespondForm from "./ArtistRespondForm";
+import ClientRespondForm from "./ClientRespondForm";
+import { ProposalUI } from "@/types/proposal";
 
 interface RespondFormPageProps {
   username: string;
-  role: 'artist' | 'client';
+  role: "artist" | "client";
   proposal: ProposalUI;
 }
 
-export default function RespondFormPage({ username, role, proposal }: RespondFormPageProps) {
-  // TODO: Implement form submission handler
-  const handleArtistSubmit = async (decision: any) => {
-    // placeholder for calling PATCH /api/proposal/[id]/respond
+export default function RespondFormPage({
+  username,
+  role,
+  proposal,
+}: RespondFormPageProps) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleArtistSubmit = async (decision: {
+    accept: boolean;
+    surcharge?: number;
+    discount?: number;
+    reason?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await axiosClient.patch(`/api/proposal/${proposal.id}/respond`, {
+        role: "artist",
+        accept: decision.accept,
+        surcharge: decision.surcharge,
+        discount: decision.discount,
+        reason: decision.reason,
+      });
+
+      setSuccess(true);
+      // Redirect after showing success message
+      setTimeout(() => {
+        router.push(`/${username}/dashboard/proposals`);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to submit response");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleClientSubmit = async (decision: any) => {
-    // placeholder for calling PATCH /api/proposal/[id]/respond
+  const handleClientSubmit = async (decision: {
+    accept: boolean;
+    rejectionReason?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await axiosClient.patch(`/api/proposal/${proposal.id}/respond`, {
+        role: "client",
+        accept: decision.accept,
+        rejectionReason: decision.rejectionReason,
+      });
+
+      setSuccess(true);
+      // Redirect after showing success message
+      setTimeout(() => {
+        router.push(`/${username}/dashboard/proposals`);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to submit response");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div>
-      {role === 'artist' ? (
-        <ArtistRespondForm proposal={proposal} onSubmit={handleArtistSubmit} />
-      ) : (
-        <ClientRespondForm proposal={proposal} onSubmit={handleClientSubmit} />
+    <Box>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
       )}
-    </div>
+
+      {role === "artist" ? (
+        <ArtistRespondForm
+          proposal={proposal}
+          onSubmit={handleArtistSubmit}
+          loading={loading}
+        />
+      ) : (
+        <ClientRespondForm
+          proposal={proposal}
+          onSubmit={handleClientSubmit}
+          loading={loading}
+        />
+      )}
+
+      <Snackbar
+        open={success}
+        message="Response submitted successfully!"
+        autoHideDuration={2000}
+        onClose={() => setSuccess(false)}
+      />
+    </Box>
   );
 }

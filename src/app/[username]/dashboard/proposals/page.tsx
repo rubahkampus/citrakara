@@ -49,7 +49,7 @@ export default async function ProposalsPage({
           username={username}
           incoming={serializedIncoming}
           outgoing={serializedOutgoing}
-          error={error}
+          error={error ?? undefined}
         />
       </Suspense>
     </Box>

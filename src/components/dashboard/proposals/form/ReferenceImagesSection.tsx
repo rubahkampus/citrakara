@@ -14,8 +14,18 @@
  */
 import React, { useEffect, useState } from "react";
 import { useFormContext, useController } from "react-hook-form";
-import { Grid, Card, CardMedia, IconButton, Button, Typography } from "@mui/material";
+import {
+  Grid,
+  Card,
+  CardMedia,
+  IconButton,
+  Button,
+  Typography,
+  Paper,
+  Box,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { ProposalFormValues } from "@/types/proposal";
 
 const MAX_FILES = 5;
@@ -24,7 +34,11 @@ export default function ReferenceImagesSection() {
   const { control } = useFormContext<ProposalFormValues>();
   const {
     field: { value: samples = [], onChange: setSamples },
-  } = useController({ name: "referenceImages", control, defaultValue: [] as File[] });
+  } = useController({
+    name: "referenceImages",
+    control,
+    defaultValue: [] as File[],
+  });
 
   const [previews, setPreviews] = useState<string[]>([]);
 
@@ -34,9 +48,11 @@ export default function ReferenceImagesSection() {
       typeof f === "string" ? f : URL.createObjectURL(f)
     );
     setPreviews(urls);
+
+    // Cleanup URLs on unmount or when samples change
     return () => {
       urls.forEach((u, i) => {
-        if (!samples[i] || typeof samples[i] !== "string") {
+        if (typeof samples[i] !== "string" && u.startsWith("blob:")) {
           URL.revokeObjectURL(u);
         }
       });
@@ -46,41 +62,99 @@ export default function ReferenceImagesSection() {
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    const combined = [...samples, ...imgs].slice(0, MAX_FILES);
-    setSamples(combined as any);
+
+    const imgs = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, MAX_FILES - samples.length);
+
+    if (imgs.length === 0) return;
+
+    const combined = [...samples, ...imgs];
+    setSamples(combined as File[]);
+
+    // Reset file input
+    e.target.value = "";
   };
 
   const removeAt = (idx: number) => {
     const next = samples.filter((_, i) => i !== idx);
-    setSamples(next as any);
+    setSamples(next as File[]);
   };
 
   return (
-    <div>
-      <Typography variant="subtitle1" sx={{ mb: 1 }}>
-        Reference Images (up to {MAX_FILES})
+    <Paper sx={{ p: 3, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Reference Images
       </Typography>
-      <Button variant="outlined" component="label" sx={{ mb: 2 }}>
-        Upload Images
-        <input type="file" hidden multiple accept="image/*" onChange={handleFiles} />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Upload up to {MAX_FILES} reference images to help illustrate your
+        commission
+      </Typography>
+
+      <Button
+        variant="outlined"
+        component="label"
+        startIcon={<CloudUploadIcon />}
+        fullWidth
+        disabled={samples.length >= MAX_FILES}
+        sx={{ mb: 3 }}
+      >
+        {samples.length === 0 ? "Upload Images" : "Upload More Images"}(
+        {samples.length}/{MAX_FILES})
+        <input
+          type="file"
+          hidden
+          multiple
+          accept="image/*"
+          onChange={handleFiles}
+        />
       </Button>
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {previews.map((src, i) => (
-          <Grid item xs={4} sm={2} key={i}>
-            <Card>
-              <CardMedia component="img" height="100" image={src} />
-              <IconButton
-                size="small"
-                onClick={() => removeAt(i)}
-                sx={{ position: "absolute", top: 4, right: 4, bgcolor: "#fff" }}
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </div>
+
+      {samples.length > 0 ? (
+        <Grid container spacing={2}>
+          {previews.map((src, i) => (
+            <Grid item xs={6} sm={4} md={3} key={i}>
+              <Card sx={{ position: "relative" }}>
+                <CardMedia
+                  component="img"
+                  height={140}
+                  image={src}
+                  alt={`Reference ${i + 1}`}
+                  sx={{ objectFit: "cover" }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => removeAt(i)}
+                  sx={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    bgcolor: "rgba(255, 255, 255, 0.9)",
+                    "&:hover": { bgcolor: "rgba(255, 255, 255, 1)" },
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Box
+          sx={{
+            p: 3,
+            border: "2px dashed",
+            borderColor: "divider",
+            borderRadius: 1,
+            textAlign: "center",
+            bgcolor: "background.default",
+          }}
+        >
+          <Typography color="text.secondary">
+            No reference images uploaded yet
+          </Typography>
+        </Box>
+      )}
+    </Paper>
   );
 }

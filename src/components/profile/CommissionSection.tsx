@@ -118,10 +118,14 @@ export default function CommissionSection({
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={0}>
+        <Grid container spacing={2}>
           {commissions.map((c) => (
             <Grid item xs={12} key={c._id.toString()}>
-              <CommissionCard commission={c} isOwner={isOwner} username={username} />
+              <CommissionCard
+                commission={c}
+                isOwner={isOwner}
+                username={username}
+              />
             </Grid>
           ))}
         </Grid>

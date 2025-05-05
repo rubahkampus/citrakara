@@ -11,9 +11,14 @@ interface NewProposalPageProps {
 }
 
 export default async function NewProposalPage({
-  params: { username },
+  params,
   searchParams,
 }: NewProposalPageProps) {
+  
+  const param = await params
+  const searchParam = await searchParams
+  const username = param.username;
+  
   // 1. Auth guard
   const session = await getAuthSession();
   if (
@@ -25,7 +30,7 @@ export default async function NewProposalPage({
   }
 
   // 2. Must have listingId
-  const listingId = searchParams.listingId;
+  const listingId = searchParam.listingId;
   if (!listingId) {
     return <Alert severity="error">Missing listingId parameter</Alert>;
   }

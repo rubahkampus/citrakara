@@ -1,4 +1,4 @@
-'use client'
+"use client";
 // src/components/dashboard/proposals/ProposalFormPage.tsx
 
 /**
@@ -27,7 +27,7 @@
  *       files → fd.append("referenceImages[]", file)
  *   • POST to /api/proposal  or PATCH to /api/proposal/[id]
  */
-import React, { useEffect } from "react";
+import React from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { axiosClient } from "@/lib/utils/axiosClient";
@@ -38,7 +38,7 @@ import ReferenceImagesSection from "./form/ReferenceImagesSection";
 import GeneralOptionsSection from "./form/GeneralOptionsSection";
 import SubjectOptionsSection from "./form/SubjectOptionsSection";
 import PriceBreakdownSection from "./form/PriceBreakdownSection";
-import { Button, Box, Alert, Snackbar } from "@mui/material";
+import { Button, Box, Alert, Snackbar, Paper } from "@mui/material";
 
 interface ProposalFormPageProps {
   username: string;
@@ -56,26 +56,20 @@ export default function ProposalFormPage({
   const router = useRouter();
   const listingObj: any = JSON.parse(listing);
 
-  // Store the listing in sessionStorage for child components
-  useEffect(() => {
-    sessionStorage.setItem("currentListing", listing);
-    return () => {
-      sessionStorage.removeItem("currentListing");
-    };
-  }, [listing]);
-
   // Initialize RHF with optional existing data
   const methods = useForm<ProposalFormValues>({
     defaultValues: initialData
       ? {
           ...initialData,
-          deadline: initialData.deadline instanceof Date
-            ? initialData.deadline.toISOString()
-            : initialData.deadline,
+          id: initialData?.id || undefined, // for edit mode only
+          deadline:
+            initialData.deadline instanceof Date
+              ? initialData.deadline.toISOString()
+              : initialData.deadline,
         }
       : {
           listingId: listingObj._id, // Add this for form data
-          deadline: "", // user will fill
+          deadline: "", // user will fill or API will set for standard mode
           generalDescription: "",
           referenceImages: [],
           generalOptions: {
@@ -86,7 +80,7 @@ export default function ProposalFormPage({
           subjectOptions: {},
         },
   });
-  const { handleSubmit, watch } = methods;
+  const { handleSubmit } = methods;
 
   // UI feedback
   const [error, setError] = React.useState<string | null>(null);
@@ -104,22 +98,6 @@ export default function ProposalFormPage({
     fd.append("deadline", values.deadline);
     fd.append("generalDescription", values.generalDescription);
 
-    // Calculate dynamic dates based on the deadline
-    if (values.deadline) {
-      const deadlineDate = new Date(values.deadline);
-      const now = new Date();
-
-      // Calculate earliest and latest dates based on listing rules
-      const minDate = new Date(now);
-      minDate.setDate(minDate.getDate() + listingObj.deadline.min);
-
-      const maxDate = new Date(now);
-      maxDate.setDate(maxDate.getDate() + listingObj.deadline.max);
-
-      fd.append("earliestDate", minDate.toISOString());
-      fd.append("latestDate", maxDate.toISOString());
-    }
-
     // Payload: only nested options
     fd.append(
       "payload",
@@ -133,6 +111,14 @@ export default function ProposalFormPage({
     values.referenceImages?.forEach((file) => {
       fd.append("referenceImages[]", file);
     });
+
+    // For edit mode, include existing images
+    if (mode === "edit" && initialData) {
+      // Use the referenceImages from initialData instead of existingReferences
+      initialData.referenceImages.forEach((url) => {
+        fd.append("existingReferences[]", url);
+      });
+    }
 
     try {
       let res;
@@ -171,51 +157,62 @@ export default function ProposalFormPage({
           </Alert>
         )}
 
-        {/* 1. Deadline (uses listing.deadline config) */}
-        <DeadlineSection listingDeadline={listingObj.deadline} />
+        <Paper
+          component="form"
+          sx={{
+            p: 4,
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 2,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+          }}
+        >
+          {/* 1. Deadline (pass listingObj directly) */}
+          <DeadlineSection listing={listingObj} />
 
-        {/* 2. Description */}
-        <DescriptionSection />
+          {/* 2. Description */}
+          <DescriptionSection />
 
-        {/* 3. Reference Images */}
-        <ReferenceImagesSection />
+          {/* 3. Reference Images */}
+          <ReferenceImagesSection />
 
-        {/* 4. General Options */}
-        <GeneralOptionsSection />
+          {/* 4. General Options (pass listingObj) */}
+          <GeneralOptionsSection listing={listingObj} />
 
-        {/* 5. Subject Options */}
-        <SubjectOptionsSection />
+          {/* 5. Subject Options (pass listingObj) */}
+          <SubjectOptionsSection listing={listingObj} />
 
-        {/* 6. Live Price Breakdown */}
-        <PriceBreakdownSection />
+          {/* 6. Live Price Breakdown (pass listingObj) */}
+          <PriceBreakdownSection listing={listingObj} />
 
-        {/* Form Controls */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
-          <Button
-            variant="outlined"
-            onClick={() => router.back()}
-            disabled={loadingRef.current}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loadingRef.current}
-          >
-            {mode === "create" ? "Create Proposal" : "Save Changes"}
-          </Button>
-        </Box>
+          {/* Form Controls */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
+            <Button
+              variant="outlined"
+              onClick={() => router.back()}
+              disabled={loadingRef.current}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loadingRef.current}
+            >
+              {mode === "create" ? "Create Proposal" : "Save Changes"}
+            </Button>
+          </Box>
 
-        {/* Success Snackbar */}
-        <Snackbar
-          open={success}
-          message={
-            mode === "create" ? "Proposal created!" : "Proposal updated!"
-          }
-          autoHideDuration={2000}
-          onClose={() => setSuccess(false)}
-        />
+          {/* Success Snackbar */}
+          <Snackbar
+            open={success}
+            message={
+              mode === "create" ? "Proposal created!" : "Proposal updated!"
+            }
+            autoHideDuration={2000}
+            onClose={() => setSuccess(false)}
+          />
+        </Paper>
       </Box>
     </FormProvider>
   );

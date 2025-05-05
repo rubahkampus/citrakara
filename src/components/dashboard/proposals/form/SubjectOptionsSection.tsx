@@ -33,10 +33,16 @@ import {
   Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { ProposalFormValues } from "@/types/proposal";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
-export default function SubjectOptionsSection() {
+interface SubjectOptionsSectionProps {
+  listing: ICommissionListing;
+}
+
+export default function SubjectOptionsSection({
+  listing,
+}: SubjectOptionsSectionProps) {
   const { control, watch, setValue } = useFormContext<ProposalFormValues>();
-  const listing = JSON.parse(sessionStorage.getItem("currentListing") || "{}");
   const subjectOptions = listing.subjectOptions || [];
 
   const watchedSubjectOptions = watch("subjectOptions") || {};

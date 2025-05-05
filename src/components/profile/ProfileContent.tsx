@@ -156,24 +156,35 @@ export default function ProfileContent({
                   @{profile.username}
                 </Typography>
                 {profile.openForCommissions && (
-                  <Box
+                  <Typography
+                    component="span"
+                    variant="body2"
                     sx={{
                       display: "inline-flex",
                       alignItems: "center",
                       px: 1.5,
                       py: 0.75,
-                      bgcolor: "success.light",
-                      color: "white",
+                      bgcolor: profile.openForCommissions
+                        ? "success.light"
+                        : "grey.300",
+                      color: profile.openForCommissions
+                        ? "white"
+                        : "text.primary",
                       borderRadius: "12px",
-                      fontSize: "0.8rem",
                       fontWeight: 600,
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
+                      boxShadow: profile.openForCommissions
+                        ? "0 2px 4px rgba(0,0,0,0.08)"
+                        : "none",
                       transition: "0.2s",
-                      "&:hover": { bgcolor: "success.main", cursor: "pointer" },
+                      "&:hover": profile.openForCommissions
+                        ? { bgcolor: "success.main", cursor: "pointer" }
+                        : {},
                     }}
                   >
-                    Open for Commissions
-                  </Box>
+                    {profile.openForCommissions
+                      ? "Open for commissions"
+                      : "Not open for commissions"}
+                  </Typography>
                 )}
               </Box>
             </Stack>

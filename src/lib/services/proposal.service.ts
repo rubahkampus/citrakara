@@ -24,6 +24,7 @@ import { connectDB } from "@/lib/db/connection";
 import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
 import type { Cents, ObjectId } from "@/types/common";
 import { HttpError } from "./commissionListing.service";
+import { ICommissionListing } from "../db/models/commissionListing.model";
 
 // ========== Service Interfaces ==========
 export interface GeneralOptionsInput {
@@ -126,20 +127,27 @@ export async function createProposalFromForm(
       throw new HttpError("Listing is not active", 400);
     }
 
-    // Extract form date fields
-    const earliestDate = form.get("earliestDate");
-    const latestDate = form.get("latestDate");
-    const deadline = form.get("deadline");
-    const generalDescription = form.get("generalDescription");
+    // Get dynamic availability window to tackle race conditions
+    const { earliestDate, latestDate } = await repoComputeDynamicEstimate(
+      listing,
+      (await getLatestActiveContractDeadline(listing.artistId)) || new Date()
+    );
 
-    if (
-      !earliestDate ||
-      !latestDate ||
-      !deadline ||
-      !generalDescription ||
-      typeof generalDescription !== "string"
-    ) {
-      throw new HttpError("Missing required proposal fields", 400);
+    // Extract deadline from form
+    const deadlineFromForm = form.get("deadline");
+    if (!deadlineFromForm) {
+      throw new HttpError("Missing required deadline field", 400);
+    }
+
+    const deadline = new Date(deadlineFromForm.toString());
+
+    // Validate deadline based on listing deadline policy
+    validateDeadline(listing, deadline, earliestDate, latestDate);
+
+    // Extract general description
+    const generalDescription = form.get("generalDescription");
+    if (!generalDescription || typeof generalDescription !== "string") {
+      throw new HttpError("Missing required general description", 400);
     }
 
     // Process reference image uploads
@@ -165,9 +173,9 @@ export async function createProposalFromForm(
       clientId,
       artistId: listing.artistId.toString(),
       listingId,
-      earliestDate: new Date(earliestDate.toString()),
-      latestDate: new Date(latestDate.toString()),
-      deadline: new Date(deadline.toString()),
+      earliestDate,
+      latestDate,
+      deadline,
       generalDescription: generalDescription.toString(),
       referenceImages,
       generalOptions,
@@ -217,25 +225,38 @@ export async function updateProposalFromForm(
       throw new HttpError("Invalid JSON payload", 400);
     }
 
-    // Extract form fields
-    const updates: UpdateProposalInput = {};
-
-    // Handle date fields if provided
-    const earliestDate = form.get("earliestDate");
-    if (earliestDate) {
-      updates.earliestDate = new Date(earliestDate.toString());
+    // Fetch the listing to validate deadline against policy
+    const listing = await findCommissionListingById(
+      existing.listingId.toString()
+    );
+    if (!listing) {
+      throw new HttpError("Associated listing not found", 404);
     }
 
-    const latestDate = form.get("latestDate");
-    if (latestDate) {
-      updates.latestDate = new Date(latestDate.toString());
+    // Get dynamic availability window
+    const { earliestDate, latestDate } = await repoComputeDynamicEstimate(
+      listing,
+      (await getLatestActiveContractDeadline(listing.artistId)) || new Date()
+    );
+
+    // Initialize updates object
+    const updates: UpdateProposalInput = {
+      earliestDate,
+      latestDate,
+    };
+
+    // Handle deadline update if provided
+    const deadlineFromForm = form.get("deadline");
+    if (deadlineFromForm) {
+      const deadline = new Date(deadlineFromForm.toString());
+
+      // Validate deadline based on listing deadline policy
+      validateDeadline(listing, deadline, earliestDate, latestDate);
+
+      updates.deadline = deadline;
     }
 
-    const deadline = form.get("deadline");
-    if (deadline) {
-      updates.deadline = new Date(deadline.toString());
-    }
-
+    // Handle general description if provided
     const generalDescription = form.get("generalDescription");
     if (generalDescription && typeof generalDescription === "string") {
       updates.generalDescription = generalDescription;
@@ -284,6 +305,40 @@ export async function updateProposalFromForm(
   } catch (error) {
     console.error("Error updating proposal:", error);
     throw error;
+  }
+}
+
+// Helper function to validate deadline based on listing policy
+function validateDeadline(
+  listing: ICommissionListing,
+  deadline: Date,
+  earliestDate: Date,
+  latestDate: Date
+): void {
+  switch (listing.deadline.mode) {
+    case "standard":
+      // For standard mode, deadline is always system-determined as 2 weeks + latestDate
+      // Client-provided deadline is ignored
+      break;
+
+    case "withDeadline":
+      // For withDeadline mode, client-provided deadline must fall on or after earliestDate
+      if (deadline < earliestDate) {
+        throw new HttpError(
+          `Deadline cannot be earlier than ${
+            earliestDate.toISOString().split("T")[0]
+          }`,
+          400
+        );
+      }
+      break;
+
+    case "withRush":
+      // For withRush mode, any deadline is valid, but rush fees may apply
+      break;
+
+    default:
+      throw new HttpError("Invalid deadline mode in listing", 500);
   }
 }
 
@@ -562,13 +617,6 @@ export function validateProposalInput(input: any): void {
   // Validate dates
   if (input.earliestDate >= input.latestDate) {
     throw new Error("Earliest date must be before latest date");
-  }
-
-  if (
-    input.deadline < input.earliestDate ||
-    input.deadline > input.latestDate
-  ) {
-    throw new Error("Deadline must be between earliest and latest date");
   }
 
   // Validate description

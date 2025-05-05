@@ -12,10 +12,16 @@ import React, { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { Box, Typography, Paper, Divider } from "@mui/material";
 import { ProposalFormValues } from "@/types/proposal";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
-export default function PriceBreakdownSection() {
+interface PriceBreakdownSectionProps {
+  listing: ICommissionListing;
+}
+
+export default function PriceBreakdownSection({
+  listing,
+}: PriceBreakdownSectionProps) {
   const { watch } = useFormContext<ProposalFormValues>();
-  const listing = JSON.parse(sessionStorage.getItem("currentListing") || "{}");
   const watched = watch();
 
   const priceBreakdown = useMemo(() => {

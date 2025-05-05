@@ -4,9 +4,12 @@
  * ReferenceImagesSection
  * ----------------------
  * Let users upload up to 5 reference images.
- *
+ * 
  * Implementation:
  *  - Use a controlled field array or local state to manage `referenceImages`
+ *  - Support both edit and create modes
+ *    - Edit: Show existing images + newly added ones (up to MAX_FILES total)
+ *    - Create: Just show newly added images
  *  - On file selection: filter to images, limit to 5 total
  *  - Create previews via `URL.createObjectURL`
  *  - Allow removal of any image
@@ -26,60 +29,107 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { ProposalFormValues } from "@/types/proposal";
+import { ProposalFormValues, ProposalUI } from "@/types/proposal";
 
 const MAX_FILES = 5;
 
 export default function ReferenceImagesSection() {
-  const { control } = useFormContext<ProposalFormValues>();
+  const { control, getValues, formState } = useFormContext<ProposalFormValues>();
   const {
-    field: { value: samples = [], onChange: setSamples },
+    field: { value: newFiles = [], onChange: setNewFiles },
   } = useController({
     name: "referenceImages",
     control,
     defaultValue: [] as File[],
   });
 
-  const [previews, setPreviews] = useState<string[]>([]);
+  // Local state for tracking existing reference images (for edit mode)
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<{ url: string; isExisting: boolean }[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
 
-  // Generate previews whenever samples change
+  // On component mount, check if we're in edit mode by detecting initialData
   useEffect(() => {
-    const urls = samples.map((f) =>
-      typeof f === "string" ? f : URL.createObjectURL(f)
-    );
-    setPreviews(urls);
+    const formValues = getValues();
+    
+    // Check if we have a proposal ID, indicating edit mode
+    if (formValues.id) {
+      setIsEditMode(true);
+      
+      // Check if referenceImages is an array of strings (existing URLs)
+      const initialData = formValues as unknown as ProposalUI;
+      if (initialData.referenceImages && Array.isArray(initialData.referenceImages)) {
+        const existingUrls = initialData.referenceImages.filter(
+          (url): url is string => typeof url === 'string'
+        );
+        setExistingImages(existingUrls);
+      }
+    }
+  }, [getValues]);
 
-    // Cleanup URLs on unmount or when samples change
+  // Generate previews whenever files or existing images change
+  useEffect(() => {
+    // Create previews for both existing images and new files
+    const existingPreviews = existingImages.map(url => ({ 
+      url, 
+      isExisting: true 
+    }));
+    
+    const newFilePreviews = newFiles.map(file => ({
+      url: typeof file === 'string' ? file : URL.createObjectURL(file),
+      isExisting: false
+    }));
+    
+    const allPreviews = [...existingPreviews, ...newFilePreviews];
+    setPreviews(allPreviews);
+
+    // Cleanup blob URLs on unmount or when samples change
     return () => {
-      urls.forEach((u, i) => {
-        if (typeof samples[i] !== "string" && u.startsWith("blob:")) {
-          URL.revokeObjectURL(u);
+      newFilePreviews.forEach((preview) => {
+        if (!preview.isExisting && preview.url.startsWith("blob:")) {
+          URL.revokeObjectURL(preview.url);
         }
       });
     };
-  }, [samples]);
+  }, [newFiles, existingImages]);
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
+    // Calculate how many more files we can add
+    const totalCurrentFiles = existingImages.length + newFiles.length;
+    const remainingSlots = MAX_FILES - totalCurrentFiles;
+    
+    if (remainingSlots <= 0) return;
+
     const imgs = Array.from(files)
       .filter((f) => f.type.startsWith("image/"))
-      .slice(0, MAX_FILES - samples.length);
+      .slice(0, remainingSlots);
 
     if (imgs.length === 0) return;
 
-    const combined = [...samples, ...imgs];
-    setSamples(combined as File[]);
+    const combined = [...newFiles, ...imgs];
+    setNewFiles(combined as File[]);
 
     // Reset file input
     e.target.value = "";
   };
 
-  const removeAt = (idx: number) => {
-    const next = samples.filter((_, i) => i !== idx);
-    setSamples(next as File[]);
+  const removeImage = (idx: number) => {
+    if (idx < existingImages.length) {
+      // Remove an existing image
+      const updatedExisting = existingImages.filter((_, i) => i !== idx);
+      setExistingImages(updatedExisting);
+    } else {
+      // Remove a new file
+      const newFileIdx = idx - existingImages.length;
+      const updatedNewFiles = newFiles.filter((_, i) => i !== newFileIdx);
+      setNewFiles(updatedNewFiles as File[]);
+    }
   };
+
+  const totalCount = existingImages.length + newFiles.length;
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
@@ -96,11 +146,11 @@ export default function ReferenceImagesSection() {
         component="label"
         startIcon={<CloudUploadIcon />}
         fullWidth
-        disabled={samples.length >= MAX_FILES}
+        disabled={totalCount >= MAX_FILES}
         sx={{ mb: 3 }}
       >
-        {samples.length === 0 ? "Upload Images" : "Upload More Images"}(
-        {samples.length}/{MAX_FILES})
+        {totalCount === 0 ? "Upload Images" : "Upload More Images"}(
+        {totalCount}/{MAX_FILES})
         <input
           type="file"
           hidden
@@ -110,21 +160,21 @@ export default function ReferenceImagesSection() {
         />
       </Button>
 
-      {samples.length > 0 ? (
+      {previews.length > 0 ? (
         <Grid container spacing={2}>
-          {previews.map((src, i) => (
+          {previews.map((preview, i) => (
             <Grid item xs={6} sm={4} md={3} key={i}>
               <Card sx={{ position: "relative" }}>
                 <CardMedia
                   component="img"
                   height={140}
-                  image={src}
+                  image={preview.url}
                   alt={`Reference ${i + 1}`}
                   sx={{ objectFit: "cover" }}
                 />
                 <IconButton
                   size="small"
-                  onClick={() => removeAt(i)}
+                  onClick={() => removeImage(i)}
                   sx={{
                     position: "absolute",
                     top: 8,
@@ -135,6 +185,23 @@ export default function ReferenceImagesSection() {
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
+                {preview.isExisting && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      bgcolor: "rgba(0, 0, 0, 0.6)",
+                      color: "white",
+                      fontSize: "0.75rem",
+                      padding: "2px 8px",
+                      textAlign: "center"
+                    }}
+                  >
+                    Existing
+                  </Box>
+                )}
               </Card>
             </Grid>
           ))}

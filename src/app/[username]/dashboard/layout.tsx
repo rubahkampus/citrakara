@@ -15,8 +15,11 @@ interface Props {
 
 export default async function DashboardLayout({
   children,
-  params: { username },
+  params,
 }: Props) {
+  const param = await params;
+  const { username } = param;
+  
   const session = await getAuthSession();
   const profile = await getUserPublicProfile(username);
 

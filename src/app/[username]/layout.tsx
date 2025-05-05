@@ -11,8 +11,11 @@ interface Props {
 
 export default async function ProfileLayout({
   children,
-  params: { username },
+  params
 }: Props) {
+  const param = await params;
+  const { username } = param;
+  
   const session = await getAuthSession();
   const rawProfile = await getUserPublicProfile(username);
   if (!rawProfile) notFound();

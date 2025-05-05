@@ -13,7 +13,11 @@ interface Props {
   params: { username: string };
 }
 
-export default async function ProfilePage({ params: { username } }: Props) {
+export default async function ProfilePage({ params }: Props) {
+  const param = await params
+  const { username } = param;
+
+  
   const [rawSession, rawProfile] = await Promise.all([
     getAuthSession(),
     getUserPublicProfile(username)

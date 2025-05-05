@@ -74,6 +74,7 @@ export interface PriceBreakdown {
   }
   
   export interface ProposalFormValues {
+    id?: string; // for edit only
     listingId: string;
     earliestDate: string; // date string (YYYY-MM-DD)
     latestDate: string;

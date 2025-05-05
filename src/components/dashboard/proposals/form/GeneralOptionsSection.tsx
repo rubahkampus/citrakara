@@ -26,10 +26,16 @@ import {
   Divider,
 } from "@mui/material";
 import { ProposalFormValues } from "@/types/proposal";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
-export default function GeneralOptionsSection() {
+interface GeneralOptionsSectionProps {
+  listing: ICommissionListing;
+}
+
+export default function GeneralOptionsSection({
+  listing
+}: GeneralOptionsSectionProps) {
   const { control, watch, setValue } = useFormContext<ProposalFormValues>();
-  const listing = JSON.parse(sessionStorage.getItem("currentListing") || "{}");
   const generalOptions = listing.generalOptions || {};
 
   const watchedOptions = watch("generalOptions") || {};
@@ -87,7 +93,7 @@ export default function GeneralOptionsSection() {
       </Typography>
 
       {/* Option Groups */}
-      {generalOptions.optionGroups?.length > 0 && (
+      {generalOptions.optionGroups && generalOptions.optionGroups.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" sx={{ mb: 2 }}>
             Select Options
@@ -121,12 +127,12 @@ export default function GeneralOptionsSection() {
       )}
 
       {/* Addons */}
-      {generalOptions.addons?.length > 0 && (
+      {(generalOptions.addons ?? []).length > 0 && (
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle1" sx={{ mb: 2 }}>
             Additional Services
           </Typography>
-          {generalOptions.addons.map((addon: any) => (
+          {(generalOptions.addons ?? []).map((addon: any) => (
             <FormControlLabel
               key={addon.label}
               control={
@@ -147,13 +153,13 @@ export default function GeneralOptionsSection() {
       )}
 
       {/* Questions */}
-      {generalOptions.questions?.length > 0 && (
+      {(generalOptions.questions ?? []).length > 0 && (
         <Box>
           <Typography variant="subtitle1" sx={{ mb: 2 }}>
             Additional Information
           </Typography>
           <Divider sx={{ mb: 2 }} />
-          {generalOptions.questions.map((question: string, index: number) => (
+          {(generalOptions.questions ?? []).map((question: string, index: number) => (
             <TextField
               key={index}
               label={question}

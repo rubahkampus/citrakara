@@ -64,9 +64,7 @@ const TEMPLATES: TemplateCard[] = [
           ],
         },
       ],
-      addons: [
-        { label: "Sream on Twitch", price: 100000 },
-      ],
+      addons: [{ label: "Sream on Twitch", price: 100000 }],
       questions: [
         "What is your mood for this commission?",
         "Do you have any specific color palette in mind?",
@@ -95,10 +93,12 @@ const TEMPLATES: TemplateCard[] = [
             ],
           },
         ],
-        addons: [{
-          label: "NSFW Anatomy (For Half-body and Full-body only)",
-          price: 50000,
-        }],
+        addons: [
+          {
+            label: "NSFW Anatomy (For Half-body and Full-body only)",
+            price: 50000,
+          },
+        ],
         questions: [
           "What is the character's species and do you have reference images?",
           "Any preferred pose or expression?",
@@ -118,9 +118,7 @@ const TEMPLATES: TemplateCard[] = [
           },
         ],
         addons: [],
-        questions: [
-          "What kind of background do you have in mind?",   
-        ],
+        questions: ["What kind of background do you have in mind?"],
       },
     ],
     defaultMilestones: [
@@ -145,73 +143,6 @@ const TEMPLATES: TemplateCard[] = [
         policy: { limit: false, free: 2, extraAllowed: true, fee: 0 },
       },
     ],
-  },
-  {
-    id: "anime_standard",
-    title: "Anime Style Portrait",
-    type: "template",
-    flow: "standard",
-    basePrice: 150000,
-    description: [
-      {
-        title: "Overview",
-        detail:
-          "Clean anime-style portrait focusing on facial expression and mood.",
-      },
-    ],
-    deadlineMode: "standard",
-    deadlineMin: 5,
-    deadlineMax: 10,
-    currency: "IDR",
-    tags: ["anime", "portrait", "standard"],
-    generalOptions: {
-      optionGroups: [
-        {
-          title: "Background Style",
-          selections: [
-            { label: "Solid Color", price: 0 },
-            { label: "Gradient", price: 30000 },
-            { label: "Simple Scenery", price: 80000 },
-          ],
-        },
-      ],
-      addons: [
-        { label: "Additional Expression Variant", price: 50000 },
-        { label: "Extra Highlights/Shading", price: 30000 },
-      ],
-      questions: [
-        "Preferred hair and eye colors?",
-        "Please share any mood boards or reference images.",
-      ],
-    },
-    subjectOptions: [],
-  },
-];
-
-const EXISTING_COMMISSIONS: TemplateCard[] = [
-  {
-    id: "c1",
-    title: "Chibi Character Art",
-    type: "template" as const,
-    flow: "standard" as const,
-    basePrice: 150000,
-    description: [
-      {
-        title: "Overview",
-        detail: "Cute chibi-style character illustrations",
-      },
-    ],
-    deadlineMode: "standard" as const,
-    deadlineMin: 5,
-    deadlineMax: 10,
-    currency: "IDR",
-    tags: ["chibi", "cute", "character"],
-    generalOptions: {
-      optionGroups: [],
-      addons: [],
-      questions: [],
-    },
-    subjectOptions: [],
   },
 ];
 
@@ -274,6 +205,60 @@ const TemplateSection: React.FC = () => {
   const handleTemplateSelect = (template: TemplateCard) => {
     setSelectedTemplate(template.id);
 
+    // Format general options questions to match expected structure
+    const formattedGeneralOptions = {
+      ...template.generalOptions,
+      // Convert simple string questions to objects with 'text' property
+      questions: template.generalOptions.questions.map((q: string | { title: string }) => {
+        if (typeof q === "string") {
+          return q;
+        } else if (typeof q === "object" && q.title) {
+          return q.title;
+        } else {
+          return String(q);
+        }
+      }),
+      optionGroups: template.generalOptions.optionGroups.map((group) => ({
+        ...group,
+        selections: group.selections.map((selection) => ({
+          ...selection,
+          // Ensure numeric values for prices
+          price: Number(selection.price),
+        })),
+      })),
+      addons: template.generalOptions.addons.map((addon) => ({
+        ...addon,
+        // Ensure numeric values for prices
+        price: Number(addon.price),
+      })),
+    };
+
+    // Format subject options similarly
+    const formattedSubjectOptions = template.subjectOptions.map((subject) => ({
+      ...subject,
+      // Convert subject question strings to objects with 'text' property
+      questions: subject.questions.map((q: string | { title: string }) => {
+        if (typeof q === "string") {
+          return q;
+        } else if (typeof q === "object" && q.title) {
+          return q.title;
+        } else {
+          return String(q);
+        }
+      }),
+      optionGroups: subject.optionGroups.map((group) => ({
+        ...group,
+        selections: group.selections.map((selection) => ({
+          ...selection,
+          price: Number(selection.price),
+        })),
+      })),
+      addons: subject.addons.map((addon) => ({
+        ...addon,
+        price: Number(addon.price),
+      })),
+    }));
+
     // Create a properly typed partial form values object
     const newValues: Partial<CommissionFormValues> = {
       title: template.title,
@@ -304,8 +289,8 @@ const TemplateSection: React.FC = () => {
         "description",
         "referenceImages",
       ],
-      generalOptions: template.generalOptions,
-      subjectOptions: template.subjectOptions,
+      generalOptions: formattedGeneralOptions,
+      subjectOptions: formattedSubjectOptions,
     };
 
     // Reset form with merged values

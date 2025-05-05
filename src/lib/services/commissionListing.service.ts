@@ -197,7 +197,7 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     throw new HttpError("Invalid JSON payload", 400);
   }
 
-  // ── NEW: Normalize any question‐objects into simple strings ──
+  /// ── FIXED: Normalize any question‐objects into simple strings ──
   if (jsonPayload.generalOptions?.questions) {
     jsonPayload.generalOptions.questions = (
       jsonPayload.generalOptions.questions as any[]
@@ -208,8 +208,8 @@ export async function createListingFromForm(artistId: string, form: FormData) {
       (sub) => ({
         ...sub,
         questions: Array.isArray(sub.questions)
-          ? sub.questions.map((q: { title: any }) =>
-              typeof q === "string" ? q : q.title ?? ""
+          ? sub.questions.map((q: any) =>
+              typeof q === "string" ? q : ""
             )
           : [],
       })

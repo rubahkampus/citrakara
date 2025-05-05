@@ -209,6 +209,61 @@ const AddonList: React.FC<{
 /**
  * Component for questions list
  */
+// const QuestionList: React.FC<{
+//   control: any;
+//   path: string;
+// }> = ({ control, path }) => {
+//   const { fields, append, remove } = useFieldArray({ control, name: path });
+
+//   return (
+//     <Box>
+//       {fields.length === 0 && (
+//         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+//           No questions added yet
+//         </Typography>
+//       )}
+
+//       {fields.map((field, index) => (
+//         <Grid
+//           container
+//           spacing={1}
+//           key={field.id}
+//           alignItems="center"
+//           sx={{ mb: 1 }}
+//         >
+//           <Grid item xs={10}>
+//             <TextField
+//               label="Question"
+//               fullWidth
+//               size="small"
+//               {...control.register(`${path}.${index}.title`)}
+//             />
+//           </Grid>
+//           <Grid item xs={2}>
+//             <IconButton
+//               size="small"
+//               color="error"
+//               onClick={() => remove(index)}
+//             >
+//               <DeleteIcon fontSize="small" />
+//             </IconButton>
+//           </Grid>
+//         </Grid>
+//       ))}
+
+//       <Button
+//         variant="outlined"
+//         startIcon={<AddIcon />}
+//         onClick={() => append({ title: "", detail: "" })}
+//         size="small"
+//         sx={{ mt: 1 }}
+//       >
+//         Add Question
+//       </Button>
+//     </Box>
+//   );
+// };
+
 const QuestionList: React.FC<{
   control: any;
   path: string;
@@ -236,7 +291,7 @@ const QuestionList: React.FC<{
               label="Question"
               fullWidth
               size="small"
-              {...control.register(`${path}.${index}.title`)}
+              {...control.register(`${path}.${index}`)}
             />
           </Grid>
           <Grid item xs={2}>
@@ -254,7 +309,7 @@ const QuestionList: React.FC<{
       <Button
         variant="outlined"
         startIcon={<AddIcon />}
-        onClick={() => append({ title: "", detail: "" })}
+        onClick={() => append("")}
         size="small"
         sx={{ mt: 1 }}
       >

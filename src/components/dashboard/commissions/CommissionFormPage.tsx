@@ -247,23 +247,23 @@ export default function CommissionFormPage({
         console.log(pair[0] + ", " + pair[1]);
       } // Debugging line
 
-      // Submit the form
-      if (mode === "create") {
-        await axiosClient.post("/api/commission/listing", fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      } else {
-        await axiosClient.patch(
-          `/api/commission/listing/${initialData._id}`,
-          fd,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
-      }
+      // // Submit the form
+      // if (mode === "create") {
+      //   await axiosClient.post("/api/commission/listing", fd, {
+      //     headers: { "Content-Type": "multipart/form-data" },
+      //   });
+      // } else {
+      //   await axiosClient.patch(
+      //     `/api/commission/listing/${initialData._id}`,
+      //     fd,
+      //     {
+      //       headers: { "Content-Type": "multipart/form-data" },
+      //     }
+      //   );
+      // }
 
       // Show success message and redirect
-      setSaveSuccess(true);
+      // setSaveSuccess(true);
 
       // Redirect after short delay
       const redirectTimer = setTimeout(() => {
@@ -440,29 +440,62 @@ export default function CommissionFormPage({
 }
 
 // Helper: default values - retained from original codebase
+// Helper: default values for the form
+// Helper: default values for the form
 function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
   if (mode === "edit" && data) {
+    // Make sure subjectOptions.questions is in the right format
+    if (data.subjectOptions && Array.isArray(data.subjectOptions)) {
+      data.subjectOptions = data.subjectOptions.map((subject: any) => {
+        if (subject.questions) {
+          if (Array.isArray(subject.questions)) {
+            subject.questions = subject.questions.map((q: any) => {
+              if (typeof q === "object" && q !== null) {
+                return q;
+              }
+              return q; // Keep as string
+            });
+          }
+        }
+        return subject;
+      });
+    }
+
+    // Check and format generalOptions.questions too if they exist
+    if (data.generalOptions && data.generalOptions.questions) {
+      if (Array.isArray(data.generalOptions.questions)) {
+        data.generalOptions.questions = data.generalOptions.questions.map(
+          (q: any) => {
+            if (typeof q === "object" && q !== null) {
+              return q;
+            }
+            return q; // Keep as string
+          }
+        );
+      }
+    }
+
     return {
-      title: data.title,
+      title: data.title || "",
       basePrice: data.basePrice ?? 0,
       currency: data.currency || "IDR",
-      slots: data.slots,
-      type: data.type,
-      flow: data.flow,
-      tos: data.tos,
+      slots: data.slots ?? -1,
+      type: data.type || "template",
+      flow: data.flow || "standard",
+      tos: data.tos || "",
       samples: data.samples || [],
       thumbnailIdx:
         typeof data.thumbnailIdx === "number" && data.thumbnailIdx >= 0
           ? data.thumbnailIdx
           : 0,
       description: data.description || [{ title: "Overview", detail: "" }],
-      deadlineMode: data.deadline.mode,
-      deadlineMin: data.deadline.min,
-      deadlineMax: data.deadline.max,
-      rushKind: data.deadline.rushFee?.kind,
-      rushAmount: data.deadline.rushFee?.amount,
-      cancelKind: data.cancelationFee.kind,
-      cancelAmount: data.cancelationFee.amount,
+      deadlineMode: data.deadline?.mode || "standard",
+      deadlineMin: data.deadline?.min ?? 7,
+      deadlineMax: data.deadline?.max ?? 14,
+      rushKind: data.deadline?.rushFee?.kind,
+      rushAmount: data.deadline?.rushFee?.amount,
+      cancelKind: data.cancelationFee?.kind || "percentage",
+      cancelAmount: data.cancelationFee?.amount ?? 10,
       revisionType: data.revisions?.type || "none",
       revLimit: data.revisions?.policy?.limit ?? false,
       revFree: data.revisions?.policy?.free ?? 0,
@@ -470,7 +503,13 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       revFee: data.revisions?.policy?.fee ?? 0,
       milestones: data.milestones || [],
       allowContractChange: data.allowContractChange ?? true,
-      changeable: data.changeable || [],
+      changeable: data.changeable || [
+        "deadline",
+        "generalOptions",
+        "subjectOptions",
+        "description",
+        "referenceImages",
+      ],
       generalOptions: data.generalOptions || {
         optionGroups: [],
         addons: [],
@@ -481,6 +520,7 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
     } as CommissionFormValues;
   }
 
+  // Default values for create mode
   return {
     title: "",
     basePrice: 0,
@@ -498,6 +538,10 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
     cancelKind: "percentage",
     cancelAmount: 10,
     revisionType: "standard",
+    revLimit: false,
+    revFree: 2,
+    revExtraAllowed: true,
+    revFee: 10,
     milestones: [],
     allowContractChange: true,
     changeable: [
@@ -507,7 +551,11 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       "description",
       "referenceImages",
     ],
-    generalOptions: { optionGroups: [], addons: [], questions: [] },
+    generalOptions: {
+      optionGroups: [],
+      addons: [],
+      questions: [],
+    },
     subjectOptions: [],
     tags: [],
   } as CommissionFormValues;

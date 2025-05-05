@@ -238,6 +238,9 @@ const SubjectAddonList: React.FC<{
 /**
  * Component for questions within a subject
  */
+/**
+ * Component for questions within a subject
+ */
 const SubjectQuestionList: React.FC<{
   control: any;
   subjectIndex: number;
@@ -268,9 +271,8 @@ const SubjectQuestionList: React.FC<{
               label="Question"
               fullWidth
               size="small"
-              {...control.register(
-                `subjectOptions.${subjectIndex}.questions.${index}.text`
-              )}
+              // This is the key change - check if the field has a text property
+              {...control.register(`subjectOptions.${subjectIndex}.questions.${index}`)}
             />
           </Grid>
           <Grid item xs={2}>

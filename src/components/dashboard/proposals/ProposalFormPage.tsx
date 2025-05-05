@@ -158,7 +158,7 @@ export default function ProposalFormPage({
         )}
 
         <Paper
-          component="form"
+          component="div"
           sx={{
             p: 4,
             border: 1,

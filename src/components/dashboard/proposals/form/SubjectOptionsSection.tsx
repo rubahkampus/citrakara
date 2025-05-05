@@ -8,7 +8,11 @@
  * Use nested useFieldArray calls for dynamic depth.
  */
 import React from "react";
-import { useFormContext, useFieldArray } from "react-hook-form";
+import {
+  useFormContext,
+  useFieldArray,
+  UseFormSetValue,
+} from "react-hook-form";
 import {
   Box,
   Typography,
@@ -98,6 +102,14 @@ function SubjectSection({
   listing,
   watchedSubjectOptions,
   errors,
+}: {
+  subject: any;
+  control: any;
+  watch: any;
+  setValue: UseFormSetValue<ProposalFormValues>;
+  listing: ICommissionListing;
+  watchedSubjectOptions: any;
+  errors: any;
 }) {
   const instancesFieldArrayName = `subjectOptions.${subject.title}.instances`;
   const { fields, append, remove } = useFieldArray({
@@ -124,11 +136,11 @@ function SubjectSection({
     });
   };
 
-  // Calculate remaining slots
+  // Calculate remaining slots - Fix 3 part 1: Use fields.length instead of instances.length
   const remainingSlots =
     subject.limit === -1
       ? "Unlimited"
-      : `${subject.limit - instances.length} remaining`;
+      : `${subject.limit - fields.length} remaining`;
 
   return (
     <Box sx={{ mb: 4 }}>
@@ -168,13 +180,14 @@ function SubjectSection({
             {remainingSlots}
           </Typography>
 
+          {/* Fix 3 part 2: Use fields.length instead of instances.length for the disabled condition */}
           <Button
             startIcon={<AddIcon />}
             size="small"
             onClick={addInstance}
             variant="contained"
             color="primary"
-            disabled={subject.limit !== -1 && instances.length >= subject.limit}
+            disabled={subject.limit !== -1 && fields.length >= subject.limit}
           >
             Add {subject.title}
           </Button>
@@ -197,7 +210,8 @@ function SubjectSection({
         />
       ))}
 
-      {instances.length === 0 && (
+      {/* Fix 2: Use fields.length instead of instances.length */}
+      {fields.length === 0 && (
         <Card
           variant="outlined"
           sx={{ borderStyle: "dashed", backgroundColor: "background.default" }}
@@ -233,6 +247,17 @@ function InstanceCard({
   instancesFieldArrayName,
   errors,
   totalInstances,
+}: {
+  instanceIndex: number;
+  subject: any; // Replace 'any' with the appropriate type if available
+  onRemove: () => void;
+  control: any; // Replace 'any' with the appropriate type if available
+  watch: any; // Replace 'any' with the appropriate type if available
+  setValue: any; // Replace 'any' with the appropriate type if available
+  listing: ICommissionListing;
+  instancesFieldArrayName: string;
+  errors: any; // Replace 'any' with the appropriate type if available
+  totalInstances: number;
 }) {
   const watchedInstance =
     watch(`${instancesFieldArrayName}.${instanceIndex}`) || {};
@@ -244,14 +269,18 @@ function InstanceCard({
     groupTitle: string,
     selectedLabel: string
   ) => {
-    const group = subject.optionGroups?.find((g: {
-      title: string; // e.g. "Copyright", "Commercial use", "NSFW"
-      selections: { label: string; price: Cents }[]; // e.g. "Full rights", "Partial rights", "No rights"
-    }) => g.title === groupTitle);
+    const group = subject.optionGroups?.find(
+      (g: {
+        title: string; // e.g. "Copyright", "Commercial use", "NSFW"
+        selections: { label: string; price: Cents }[]; // e.g. "Full rights", "Partial rights", "No rights"
+      }) => g.title === groupTitle
+    );
 
     if (!group) return;
 
-    const selection = group.selections.find((s: { label: string; price: Cents }) => s.label === selectedLabel);
+    const selection = group.selections.find(
+      (s: { label: string; price: Cents }) => s.label === selectedLabel
+    );
 
     if (selection) {
       setValue(
@@ -275,7 +304,9 @@ function InstanceCard({
   };
 
   const handleAddonToggle = (addonLabel: string, checked: boolean) => {
-    const addon = subject.addons?.find((a: { label: string; price: Cents }) => a.label === addonLabel);
+    const addon = subject.addons?.find(
+      (a: { label: string; price: Cents }) => a.label === addonLabel
+    );
     const currentAddons = watchedInstance?.addons || {};
 
     if (checked && addon) {
@@ -375,56 +406,61 @@ function InstanceCard({
               Select Options
             </Typography>
             <Grid container spacing={2}>
-              {subject.optionGroups.map((group: {
-      title: string; // e.g. "Cropping"
-      selections: { label: string; price: Cents }[]; // e.g. "Full body", "Half body", "Bust"
-    }) => (
-                <Grid item xs={12} md={6} key={group.title}>
-                  <FormControl
-                    fullWidth
-                    error={
-                      !!errors?.subjectOptions?.[subject.title]?.instances?.[
-                        instanceIndex
-                      ]?.optionGroups?.[group.title]
-                    }
-                  >
-                    <InputLabel
-                      id={`subject-option-${subject.title}-${instanceIndex}-${group.title}-label`}
-                    >
-                      {group.title}
-                    </InputLabel>
-                    <Select
-                      labelId={`subject-option-${subject.title}-${instanceIndex}-${group.title}-label`}
-                      id={`subject-option-${subject.title}-${instanceIndex}-${group.title}`}
-                      value={
-                        watchedInstance?.optionGroups?.[group.title]
-                          ?.selectedLabel || ""
-                      }
-                      label={group.title}
-                      onChange={(e) =>
-                        handleOptionGroupChange(group.title, e.target.value)
+              {subject.optionGroups.map(
+                (group: {
+                  title: string; // e.g. "Cropping"
+                  selections: { label: string; price: Cents }[]; // e.g. "Full body", "Half body", "Bust"
+                }) => (
+                  <Grid item xs={12} md={6} key={group.title}>
+                    <FormControl
+                      fullWidth
+                      error={
+                        !!errors?.subjectOptions?.[subject.title]?.instances?.[
+                          instanceIndex
+                        ]?.optionGroups?.[group.title]
                       }
                     >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {group.selections.map((selection) => (
-                        <MenuItem key={selection.label} value={selection.label}>
-                          {selection.label} - {listing.currency}{" "}
-                          {selection.price.toLocaleString()}
+                      <InputLabel
+                        id={`subject-option-${subject.title}-${instanceIndex}-${group.title}-label`}
+                      >
+                        {group.title}
+                      </InputLabel>
+                      <Select
+                        labelId={`subject-option-${subject.title}-${instanceIndex}-${group.title}-label`}
+                        id={`subject-option-${subject.title}-${instanceIndex}-${group.title}`}
+                        value={
+                          watchedInstance?.optionGroups?.[group.title]
+                            ?.selectedLabel || ""
+                        }
+                        label={group.title}
+                        onChange={(e) =>
+                          handleOptionGroupChange(group.title, e.target.value)
+                        }
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
                         </MenuItem>
-                      ))}
-                    </Select>
-                    {errors?.subjectOptions?.[subject.title]?.instances?.[
-                      instanceIndex
-                    ]?.optionGroups?.[group.title] && (
-                      <FormHelperText error>
-                        This field is required
-                      </FormHelperText>
-                    )}
-                  </FormControl>
-                </Grid>
-              ))}
+                        {group.selections.map((selection) => (
+                          <MenuItem
+                            key={selection.label}
+                            value={selection.label}
+                          >
+                            {selection.label} - {listing.currency}{" "}
+                            {selection.price.toLocaleString()}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {errors?.subjectOptions?.[subject.title]?.instances?.[
+                        instanceIndex
+                      ]?.optionGroups?.[group.title] && (
+                        <FormHelperText error>
+                          This field is required
+                        </FormHelperText>
+                      )}
+                    </FormControl>
+                  </Grid>
+                )
+              )}
             </Grid>
           </Box>
         )}
@@ -438,36 +474,39 @@ function InstanceCard({
             <Card variant="outlined">
               <CardContent>
                 <Grid container spacing={2}>
-                  {subject.addons.map((addon: { label: string; price: Cents }) => (
-                    <Grid item xs={12} md={6} key={addon.label}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={!!watchedInstance?.addons?.[addon.label]}
-                            onChange={(e) =>
-                              handleAddonToggle(addon.label, e.target.checked)
-                            }
-                            color="primary"
-                          />
-                        }
-                        label={
-                          <Box>
-                            <Typography component="span" fontWeight="medium">
-                              {addon.label}
-                            </Typography>
-                            <Typography
-                              component="span"
-                              color="text.secondary"
-                              ml={1}
-                            >
-                              {listing.currency} {addon.price.toLocaleString()}
-                            </Typography>
-                          </Box>
-                        }
-                        sx={{ display: "block", mb: 1 }}
-                      />
-                    </Grid>
-                  ))}
+                  {subject.addons.map(
+                    (addon: { label: string; price: Cents }) => (
+                      <Grid item xs={12} md={6} key={addon.label}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={!!watchedInstance?.addons?.[addon.label]}
+                              onChange={(e) =>
+                                handleAddonToggle(addon.label, e.target.checked)
+                              }
+                              color="primary"
+                            />
+                          }
+                          label={
+                            <Box>
+                              <Typography component="span" fontWeight="medium">
+                                {addon.label}
+                              </Typography>
+                              <Typography
+                                component="span"
+                                color="text.secondary"
+                                ml={1}
+                              >
+                                {listing.currency}{" "}
+                                {addon.price.toLocaleString()}
+                              </Typography>
+                            </Box>
+                          }
+                          sx={{ display: "block", mb: 1 }}
+                        />
+                      </Grid>
+                    )
+                  )}
                 </Grid>
               </CardContent>
             </Card>

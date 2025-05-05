@@ -46,6 +46,8 @@ export default function GeneralOptionsSection({
   } = useFormContext<ProposalFormValues>();
   const generalOptions = listing.generalOptions || {};
 
+  console.log("listing", listing);
+
   const watchedOptions = watch("generalOptions") || {
     optionGroups: {},
     addons: {},

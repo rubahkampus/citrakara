@@ -12,7 +12,7 @@ export interface IProposal extends Document {
   listingId: ObjectId;
 
   /* ---- immutable listing snapshot (audit) ---- */
-  listingSnapshot: Omit<ICommissionListing, "_id" | "createdAt" | "updatedAt">;
+  listingSnapshot: ICommissionListing
 
   /* ---- lifecycle status ---- */
   status:

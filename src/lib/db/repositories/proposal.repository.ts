@@ -527,35 +527,16 @@ export async function finalizeAcceptance(
   return proposal;
 }
 
+const DAY = 24 * 60 * 60 * 1000; // Number of milliseconds in a day
+
 export function computeDynamicEstimate(
   listing: ListingSnapshot,
-  availability?: Estimate
+  baseDate: Date = new Date() // default: now
 ): Estimate {
-  const now = new Date();
-
-  if (availability) {
-    return availability;
-  }
-
-  let earliestDate: Date;
-  let latestDate: Date;
-
-  // Calculate based on deadline mode
-  switch (listing.deadline.mode) {
-    case "standard":
-    case "withDeadline":
-    case "withRush":
-      earliestDate = new Date(
-        now.getTime() + listing.deadline.min * 24 * 60 * 60 * 1000
-      );
-      latestDate = new Date(
-        now.getTime() + listing.deadline.max * 24 * 60 * 60 * 1000
-      );
-      break;
-    default:
-      throw new Error("Invalid deadline mode");
-  }
-
+  const earliestDate = new Date(
+    baseDate.getTime() + listing.deadline.min * DAY
+  );
+  const latestDate = new Date(baseDate.getTime() + listing.deadline.max * DAY);
   return { earliestDate, latestDate };
 }
 

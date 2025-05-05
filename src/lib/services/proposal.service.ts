@@ -22,7 +22,7 @@ import { findCommissionListingById } from "@/lib/db/repositories/commissionListi
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 import { connectDB } from "@/lib/db/connection";
 import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
-import type { Cents } from "@/types/common";
+import type { Cents, ObjectId } from "@/types/common";
 import { HttpError } from "./commissionListing.service";
 
 // ========== Service Interfaces ==========
@@ -202,7 +202,10 @@ export async function updateProposalFromForm(
     }
 
     if (existing.status !== "pendingArtist") {
-      throw new HttpError("Can only edit proposals in pendingArtist status", 400);
+      throw new HttpError(
+        "Can only edit proposals in pendingArtist status",
+        400
+      );
     }
 
     // Parse JSON payload
@@ -216,23 +219,23 @@ export async function updateProposalFromForm(
 
     // Extract form fields
     const updates: UpdateProposalInput = {};
-    
+
     // Handle date fields if provided
     const earliestDate = form.get("earliestDate");
     if (earliestDate) {
       updates.earliestDate = new Date(earliestDate.toString());
     }
-    
+
     const latestDate = form.get("latestDate");
     if (latestDate) {
       updates.latestDate = new Date(latestDate.toString());
     }
-    
+
     const deadline = form.get("deadline");
     if (deadline) {
       updates.deadline = new Date(deadline.toString());
     }
-    
+
     const generalDescription = form.get("generalDescription");
     if (generalDescription && typeof generalDescription === "string") {
       updates.generalDescription = generalDescription;
@@ -242,7 +245,7 @@ export async function updateProposalFromForm(
     if (jsonPayload.generalOptions) {
       updates.generalOptions = jsonPayload.generalOptions;
     }
-    
+
     if (jsonPayload.subjectOptions) {
       updates.subjectOptions = jsonPayload.subjectOptions;
     }
@@ -250,11 +253,11 @@ export async function updateProposalFromForm(
     // Handle reference images: combine existing kept images with new uploads
     const existingReferences = form
       .getAll("existingReferences[]")
-      .map(v => v.toString());
+      .map((v) => v.toString());
 
     const referenceBlobs = form
       .getAll("referenceImages[]")
-      .filter(v => v instanceof Blob) as Blob[];
+      .filter((v) => v instanceof Blob) as Blob[];
 
     // Only process images if either existing or new files were submitted
     if (existingReferences.length > 0 || referenceBlobs.length > 0) {
@@ -628,25 +631,24 @@ export function formatProposalForUI(proposal: IProposal) {
 }
 
 // ========== Utility Operations ==========
-export async function getDynamicEstimate(
-  listingId: string
-): Promise<{ earliestDate: Date; latestDate: Date }> {
-  try {
-    await connectDB();
+export async function getDynamicEstimate(listingId: string) {
+  await connectDB();
+  const listing = await findCommissionListingById(listingId);
+  if (!listing) throw new Error("Listing not found");
 
-    const listing = await findCommissionListingById(listingId);
-    if (!listing) {
-      throw new Error("Listing not found");
-    }
+  // ── NEW: peek at the artist’s latest active contract
+  const latestDeadline = await getLatestActiveContractDeadline(
+    listing.artistId
+  );
 
-    // Create basic snapshot for estimate computation
-    const listingSnapshot = {
-      deadline: listing.deadline,
-    };
+  const baseDate = latestDeadline ?? new Date(); // now if none
+  return repoComputeDynamicEstimate(listing, baseDate);
+}
 
-    return repoComputeDynamicEstimate(listingSnapshot as any);
-  } catch (error) {
-    console.error("Error computing dynamic estimate:", error);
-    throw error;
-  }
+// TODO: replace stub with real query once contract.repository is ready
+// TODO: once Contract model is wired, return the most recent active one.
+export async function getLatestActiveContractDeadline(
+  artistId: ObjectId
+): Promise<Date | null> {
+  return null; // for now, always “no active contract”
 }

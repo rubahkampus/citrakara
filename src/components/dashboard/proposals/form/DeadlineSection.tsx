@@ -17,8 +17,8 @@
  * Behavior:
  *   - Fetches dynamic date estimates from /api/proposal/estimate/[listingId]
  *   - mode === "standard": no input; display info text with dynamic dates
- *   - mode === "withDeadline": enforce dynamicEarliest ≤ deadline
- *   - mode === "withRush": enforce deadline ≤ dynamicLatest; if < dynamicEarliest, rush fees apply
+ *   - mode === "withDeadline": enforce dynamicEarliest ≤ deadline (no rush fee); can be after dynamicLatest
+ *   - mode === "withRush": same as withDeadline for deadline > dynamicEarliest (no rush fee); ; if < dynamicEarliest, rush fees apply
  */
 import React, { useEffect, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";

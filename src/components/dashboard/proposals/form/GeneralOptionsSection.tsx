@@ -138,10 +138,11 @@ export default function GeneralOptionsSection({
             <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
               Select Options
             </Typography>
-            <Grid container spacing={2}>
-              {generalOptions.optionGroups.map((group) => (
-                <Grid item xs={12} md={6} key={group.title}>
-                  <Card variant="outlined" sx={{ height: "100%" }}>
+
+            <Card variant="outlined" sx={{ height: "100%", pb: 2, pr: 2 }}>
+              <Grid container spacing={-2}>
+                {generalOptions.optionGroups.map((group) => (
+                  <Grid item xs={12} md={12} key={group.title}>
                     <CardContent>
                       <FormControl
                         fullWidth
@@ -186,53 +187,106 @@ export default function GeneralOptionsSection({
                         )}
                       </FormControl>
                     </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                  </Grid>
+                ))}
+              </Grid>
+            </Card>
           </Box>
         )}
 
       {/* Addons */}
       {(generalOptions.addons ?? []).length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
+        <Box sx={{ mb: 5 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              mb: 2.5,
+              fontWeight: 600,
+              position: "relative",
+              paddingBottom: 1,
+            }}
+          >
             Additional Services
           </Typography>
-          <Card variant="outlined">
-            <CardContent>
-              <Grid container spacing={2}>
+
+          <Card
+            variant="outlined"
+            sx={{
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              },
+            }}
+          >
+            <CardContent sx={{ py: 2.5 }}>
+              <Box sx={{ display: "flex", flexDirection: "column" }}>
                 {(generalOptions.addons ?? []).map((addon) => (
-                  <Grid item xs={12} md={6} key={addon.label}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={!!watchedOptions?.addons?.[addon.label]}
-                          onChange={(e) =>
-                            handleAddonToggle(addon.label, e.target.checked)
-                          }
-                          color="primary"
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography component="span" fontWeight="medium">
-                            {addon.label}
-                          </Typography>
-                          <Typography
-                            component="span"
-                            color="text.secondary"
-                            ml={1}
-                          >
-                            {listing.currency} {addon.price.toLocaleString()}
-                          </Typography>
-                        </Box>
-                      }
-                      sx={{ display: "block", mb: 1 }}
-                    />
-                  </Grid>
+                  <FormControlLabel
+                    key={`${addon.label}-${addon.price}`}
+                    control={
+                      <Checkbox
+                        checked={!!watchedOptions?.addons?.[addon.label]}
+                        onChange={(e) =>
+                          handleAddonToggle(addon.label, e.target.checked)
+                        }
+                        color="primary"
+                        sx={{
+                          "&.Mui-checked": {
+                            color: "primary.main",
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          width: "100%",
+                          flexWrap: { xs: "wrap", sm: "nowrap" },
+                          paddingTop: { xs: 0.5, sm: 0.75 },
+                        }}
+                      >
+                        <Typography fontWeight={500} sx={{ mr: 1, ml: 2 }}>
+                          {addon.label}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: "text.secondary",
+                            fontWeight: 500,
+                            backgroundColor: "action.hover",
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 1,
+                            fontSize: "0.875rem",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            ml: "auto",
+                            mt: { xs: 0.5, sm: 0 },
+                          }}
+                        >
+                          {listing.currency} {addon.price.toLocaleString()}
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{
+                      display: "flex",
+                      py: 1.5,
+                      alignItems: "flex-start",
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      width: "100%",
+                      margin: 0,
+                      "&:last-child": {
+                        borderBottom: "none",
+                      },
+                    }}
+                  />
                 ))}
-              </Grid>
+              </Box>
             </CardContent>
           </Card>
         </Box>
@@ -251,10 +305,13 @@ export default function GeneralOptionsSection({
                   key={index}
                   label={question}
                   multiline
-                  rows={3}
+                  rows={1}
                   fullWidth
                   sx={{
-                    mb: index < (generalOptions.questions ?? []).length - 1 ? 3 : 0,
+                    mb:
+                      index < (generalOptions.questions ?? []).length - 1
+                        ? 3
+                        : 0,
                   }}
                   value={watchedOptions?.answers?.[question] || ""}
                   onChange={(e) =>

@@ -6,6 +6,8 @@
  * Renders for each subjectTitle:
  *   - instances[] with nested optionGroups/addons/answers per instance
  * Use nested useFieldArray calls for dynamic depth.
+ *
+ * Fixed multi-discount logic to not apply to the first subject
  */
 import React from "react";
 import {
@@ -136,7 +138,7 @@ function SubjectSection({
     });
   };
 
-  // Calculate remaining slots - Fix 3 part 1: Use fields.length instead of instances.length
+  // Calculate remaining slots using fields.length
   const remainingSlots =
     subject.limit === -1
       ? "Unlimited"
@@ -162,7 +164,7 @@ function SubjectSection({
             <Tooltip
               title={`Get ${
                 subject.discount
-              }% discount when adding multiple ${subject.title.toLowerCase()}s`}
+              }% discount on additional ${subject.title.toLowerCase()}s (starting from the second one)`}
             >
               <Chip
                 icon={<InfoIcon />}
@@ -180,7 +182,6 @@ function SubjectSection({
             {remainingSlots}
           </Typography>
 
-          {/* Fix 3 part 2: Use fields.length instead of instances.length for the disabled condition */}
           <Button
             startIcon={<AddIcon />}
             size="small"
@@ -207,10 +208,11 @@ function SubjectSection({
           instancesFieldArrayName={instancesFieldArrayName}
           errors={errors}
           totalInstances={fields.length}
+          // Pass this flag to indicate if discount should apply
+          isDiscountApplicable={instanceIndex > 0}
         />
       ))}
 
-      {/* Fix 2: Use fields.length instead of instances.length */}
       {fields.length === 0 && (
         <Card
           variant="outlined"
@@ -247,17 +249,19 @@ function InstanceCard({
   instancesFieldArrayName,
   errors,
   totalInstances,
+  isDiscountApplicable, // New prop to check if discount should apply
 }: {
   instanceIndex: number;
-  subject: any; // Replace 'any' with the appropriate type if available
+  subject: any;
   onRemove: () => void;
-  control: any; // Replace 'any' with the appropriate type if available
-  watch: any; // Replace 'any' with the appropriate type if available
-  setValue: any; // Replace 'any' with the appropriate type if available
+  control: any;
+  watch: any;
+  setValue: any;
   listing: ICommissionListing;
   instancesFieldArrayName: string;
-  errors: any; // Replace 'any' with the appropriate type if available
+  errors: any;
   totalInstances: number;
+  isDiscountApplicable: boolean; // New prop
 }) {
   const watchedInstance =
     watch(`${instancesFieldArrayName}.${instanceIndex}`) || {};
@@ -265,15 +269,56 @@ function InstanceCard({
   const hasErrors =
     !!errors?.subjectOptions?.[subject.title]?.instances?.[instanceIndex];
 
+  // Calculate the discount factor (1.0 = no discount, 0.8 = 20% discount)
+  const discountFactor =
+    isDiscountApplicable && subject.discount > 0
+      ? (100 - subject.discount) / 100
+      : 1.0;
+
+  // Function to format price with or without discount
+  const formatPrice = (basePrice: Cents) => {
+    const finalPrice =
+      isDiscountApplicable && subject.discount > 0
+        ? Math.round(basePrice * discountFactor)
+        : basePrice;
+
+    return `${listing.currency} ${finalPrice.toLocaleString()}`;
+  };
+
+  // Function to show original and discounted price when discount applies
+  const displayPrice = (basePrice: Cents) => {
+    if (isDiscountApplicable && subject.discount > 0) {
+      const discountedPrice = Math.round(basePrice * discountFactor);
+      return (
+        <>
+          <Typography
+            component="span"
+            sx={{
+              textDecoration: "line-through",
+              color: "text.secondary",
+              fontSize: "0.85em",
+              mr: 1,
+            }}
+          >
+            {listing.currency} {basePrice.toLocaleString()}
+          </Typography>
+          <Typography component="span" color="secondary.main">
+            {listing.currency} {discountedPrice.toLocaleString()}
+          </Typography>
+        </>
+      );
+    }
+
+    return `${listing.currency} ${basePrice.toLocaleString()}`;
+  };
+
   const handleOptionGroupChange = (
     groupTitle: string,
     selectedLabel: string
   ) => {
     const group = subject.optionGroups?.find(
-      (g: {
-        title: string; // e.g. "Copyright", "Commercial use", "NSFW"
-        selections: { label: string; price: Cents }[]; // e.g. "Full rights", "Partial rights", "No rights"
-      }) => g.title === groupTitle
+      (g: { title: string; selections: { label: string; price: Cents }[] }) =>
+        g.title === groupTitle
     );
 
     if (!group) return;
@@ -283,11 +328,18 @@ function InstanceCard({
     );
 
     if (selection) {
+      // Apply discount if applicable
+      const finalPrice =
+        isDiscountApplicable && subject.discount > 0
+          ? Math.round(selection.price * discountFactor)
+          : selection.price;
+
       setValue(
         `${instancesFieldArrayName}.${instanceIndex}.optionGroups.${groupTitle}`,
         {
           selectedLabel,
-          price: selection.price,
+          price: finalPrice,
+          originalPrice: selection.price, // Store original price for reference
         },
         { shouldValidate: true }
       );
@@ -310,11 +362,20 @@ function InstanceCard({
     const currentAddons = watchedInstance?.addons || {};
 
     if (checked && addon) {
+      // Apply discount if applicable
+      const finalPrice =
+        isDiscountApplicable && subject.discount > 0
+          ? Math.round(addon.price * discountFactor)
+          : addon.price;
+
       setValue(
         `${instancesFieldArrayName}.${instanceIndex}.addons`,
         {
           ...currentAddons,
-          [addonLabel]: addon.price,
+          [addonLabel]: {
+            price: finalPrice,
+            originalPrice: addon.price, // Store original price for reference
+          },
         },
         { shouldValidate: true }
       );
@@ -373,6 +434,14 @@ function InstanceCard({
           </Badge>
           <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
             {subject.title} #{instanceIndex + 1}
+            {isDiscountApplicable && subject.discount > 0 && (
+              <Chip
+                label={`${subject.discount}% off`}
+                color="secondary"
+                size="small"
+                sx={{ ml: 1 }}
+              />
+            )}
             {hasErrors && (
               <Typography
                 component="span"
@@ -408,10 +477,10 @@ function InstanceCard({
             <Grid container spacing={2}>
               {subject.optionGroups.map(
                 (group: {
-                  title: string; // e.g. "Cropping"
-                  selections: { label: string; price: Cents }[]; // e.g. "Full body", "Half body", "Bust"
+                  title: string;
+                  selections: { label: string; price: Cents }[];
                 }) => (
-                  <Grid item xs={12} md={6} key={group.title}>
+                  <Grid item xs={12} md={12} key={group.title}>
                     <FormControl
                       fullWidth
                       error={
@@ -445,8 +514,12 @@ function InstanceCard({
                             key={selection.label}
                             value={selection.label}
                           >
-                            {selection.label} - {listing.currency}{" "}
-                            {selection.price.toLocaleString()}
+                            {selection.label} -{" "}
+                            {isDiscountApplicable && subject.discount > 0
+                              ? displayPrice(selection.price)
+                              : `${
+                                  listing.currency
+                                } ${selection.price.toLocaleString()}`}
                           </MenuItem>
                         ))}
                       </Select>
@@ -471,45 +544,86 @@ function InstanceCard({
             <Typography variant="subtitle2" sx={{ mb: 2 }} fontWeight="medium">
               Additional Services
             </Typography>
-            <Card variant="outlined">
-              <CardContent>
-                <Grid container spacing={2}>
-                  {subject.addons.map(
-                    (addon: { label: string; price: Cents }) => (
-                      <Grid item xs={12} md={6} key={addon.label}>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={!!watchedInstance?.addons?.[addon.label]}
-                              onChange={(e) =>
-                                handleAddonToggle(addon.label, e.target.checked)
-                              }
-                              color="primary"
-                            />
-                          }
-                          label={
-                            <Box>
-                              <Typography component="span" fontWeight="medium">
-                                {addon.label}
-                              </Typography>
-                              <Typography
-                                component="span"
-                                color="text.secondary"
-                                ml={1}
-                              >
-                                {listing.currency}{" "}
-                                {addon.price.toLocaleString()}
-                              </Typography>
-                            </Box>
-                          }
-                          sx={{ display: "block", mb: 1 }}
-                        />
-                      </Grid>
-                    )
-                  )}
-                </Grid>
-              </CardContent>
-            </Card>
+
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                border: "1px solid",
+                borderColor: "grey.300",
+                borderRadius: 2,
+                padding: 1,
+              }}
+            >
+              {subject.addons.map((addon: { label: string; price: Cents }) => (
+                <FormControlLabel
+                  key={addon.label}
+                  control={
+                    <Checkbox
+                      checked={!!watchedInstance?.addons?.[addon.label]}
+                      onChange={(e) =>
+                        handleAddonToggle(addon.label, e.target.checked)
+                      }
+                      color="primary"
+                      sx={{
+                        "&.Mui-checked": {
+                          color: "primary.main",
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                        flexWrap: { xs: "wrap", sm: "nowrap" },
+                        paddingTop: { xs: 0.5, sm: 0.75 },
+                      }}
+                    >
+                      <Typography fontWeight={500} sx={{ mr: 1, ml: 2 }}>
+                        {addon.label}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          color: "text.secondary",
+                          fontWeight: 500,
+                          backgroundColor: "action.hover",
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: 1,
+                          fontSize: "0.875rem",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          ml: "auto",
+                          mt: { xs: 0.5, sm: 0 },
+                        }}
+                      >
+                        {isDiscountApplicable && subject.discount > 0
+                          ? displayPrice(addon.price)
+                          : `${
+                              listing.currency
+                            } ${addon.price.toLocaleString()}`}
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    display: "flex",
+                    py: 1.5,
+                    alignItems: "flex-start",
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                    width: "100%",
+                    margin: 0,
+                    "&:last-child": {
+                      borderBottom: "none",
+                    },
+                  }}
+                />
+              ))}
+            </Box>
           </Box>
         )}
 
@@ -526,7 +640,7 @@ function InstanceCard({
                     key={index}
                     label={question}
                     multiline
-                    rows={3}
+                    rows={1}
                     fullWidth
                     sx={{ mb: index < subject.questions.length - 1 ? 3 : 0 }}
                     value={watchedInstance?.answers?.[question] || ""}

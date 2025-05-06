@@ -7,6 +7,8 @@
  *   base, optionGroups, addons, rush, discount, surcharge, total
  * Use useFormContext(watch) to read calculated fields.
  * No input elements.
+ *
+ * Fixed to handle multi-subject discounts that don't apply to the first subject.
  */
 import React, { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
@@ -36,6 +38,14 @@ interface PriceBreakdownSectionProps {
   listing: ICommissionListing;
 }
 
+interface DiscountDetail {
+  subjectTitle: string;
+  discountPercentage: number;
+  originalAmount: number;
+  discountAmount: number;
+  count: number;
+}
+
 export default function PriceBreakdownSection({
   listing,
 }: PriceBreakdownSectionProps) {
@@ -53,6 +63,7 @@ export default function PriceBreakdownSection({
     // Initialize arrays to track what contributes to each category
     const optionGroupDetails: { name: string; price: number }[] = [];
     const addonDetails: { name: string; price: number }[] = [];
+    const discountDetails: DiscountDetail[] = [];
     let rushDetails = { days: 0, fee: 0 };
 
     // Calculate option groups total
@@ -86,19 +97,46 @@ export default function PriceBreakdownSection({
     if (watched.subjectOptions) {
       Object.entries(watched.subjectOptions).forEach(
         ([subjectTitle, subject]: [string, any]) => {
-          subject?.instances?.forEach((instance: any, index: number) => {
+          const subjectInstances = subject?.instances || [];
+          const subjectDiscount =
+            listing.subjectOptions?.find((s) => s.title === subjectTitle)
+              ?.discount || 0;
+
+          // Calculate instance prices for all instances
+          const instancePrices: number[] = [];
+
+          subjectInstances.forEach((instance: any, index: number) => {
+            let instanceTotal = 0;
+            const isDiscountApplicable = index > 0;
+
             // Instance option groups
             if (instance?.optionGroups) {
               Object.entries(instance.optionGroups).forEach(
                 ([groupName, option]: [string, any]) => {
                   if (option?.price) {
-                    optionGroups += option.price;
+                    // Price already has discount applied from the form
+                    const price = option.price;
+                    optionGroups += price;
+
+                    // Store the display price in the details
                     optionGroupDetails.push({
                       name: `${subjectTitle} #${index + 1} - ${groupName}: ${
                         option.selectedLabel
+                      }${
+                        isDiscountApplicable && subjectDiscount > 0
+                          ? " (discounted)"
+                          : ""
                       }`,
-                      price: option.price,
+                      price: price,
                     });
+
+                    instanceTotal += price;
+
+                    // Track original price for discount calculation
+                    if (option.originalPrice && isDiscountApplicable) {
+                      const appliedDiscount = option.originalPrice - price;
+                      discount += appliedDiscount;
+                    }
                   }
                 }
               );
@@ -107,18 +145,72 @@ export default function PriceBreakdownSection({
             // Instance addons
             if (instance?.addons) {
               Object.entries(instance.addons).forEach(
-                ([addonName, addonPrice]: [string, any]) => {
-                  if (typeof addonPrice === "number") {
-                    addons += addonPrice;
+                ([addonName, addonData]: [string, any]) => {
+                  if (addonData) {
+                    let price: number;
+                    let originalPrice: number | undefined;
+
+                    // Handle both new and old format
+                    if (typeof addonData === "number") {
+                      price = addonData;
+                    } else if (addonData.price) {
+                      price = addonData.price;
+                      originalPrice = addonData.originalPrice;
+                    } else {
+                      return; // Skip if we can't determine the price
+                    }
+
+                    addons += price;
                     addonDetails.push({
-                      name: `${subjectTitle} #${index + 1} - ${addonName}`,
-                      price: addonPrice,
+                      name: `${subjectTitle} #${index + 1} - ${addonName}${
+                        isDiscountApplicable && subjectDiscount > 0
+                          ? " (discounted)"
+                          : ""
+                      }`,
+                      price: price,
                     });
+
+                    instanceTotal += price;
+
+                    // Track original price for discount calculation
+                    if (originalPrice && isDiscountApplicable) {
+                      const appliedDiscount = originalPrice - price;
+                      discount += appliedDiscount;
+                    }
                   }
                 }
               );
             }
+
+            instancePrices.push(instanceTotal);
           });
+
+          // If there are multiple instances and a discount is applicable
+          if (subjectInstances.length > 1 && subjectDiscount > 0) {
+            // Calculate total price for all instances except the first one
+            const discountedInstancesTotal = instancePrices
+              .slice(1)
+              .reduce((total, price) => total + price, 0);
+
+            // Calculate what those instances would cost without discount
+            const discountFactor = (100 - subjectDiscount) / 100;
+            const originalAmount = Math.round(
+              discountedInstancesTotal / discountFactor
+            );
+            const discountAmount = originalAmount - discountedInstancesTotal;
+
+            // We don't add the discount amount here because we've already
+            // accounted for it in the individual price calculations above
+
+            // Store discount details for display
+            discountDetails.push({
+              subjectTitle,
+              discountPercentage: subjectDiscount,
+              originalAmount,
+              discountAmount,
+              count: subjectInstances.length - 1, // Count of discounted instances
+            });
+          }
         }
       );
     }
@@ -146,47 +238,6 @@ export default function PriceBreakdownSection({
       }
     }
 
-    // TODO: Implement multi-subject discounts
-    // Apply discounts based on subject option counts (if configured in listing)
-    if (watched.subjectOptions && listing.subjectOptions) {
-      listing.subjectOptions.forEach((subjectOpt) => {
-        if (subjectOpt.discount && subjectOpt.discount > 0) {
-          const instances =
-            watched.subjectOptions?.[subjectOpt.title]?.instances || [];
-          if (instances.length > 1) {
-            // Calculate discount for multiple instances
-            // This is a simplified approach - can be customized based on requirements
-            const subjectTotal = instances.reduce((total, instance) => {
-              let instanceTotal = 0;
-
-              // Add option groups prices
-              if (instance?.optionGroups) {
-                Object.values(instance.optionGroups).forEach((option: any) => {
-                  if (option?.price) instanceTotal += option.price;
-                });
-              }
-
-              // Add addons prices
-              if (instance?.addons) {
-                Object.values(instance.addons).forEach((addonPrice: any) => {
-                  if (typeof addonPrice === "number")
-                    instanceTotal += addonPrice;
-                });
-              }
-
-              return total + instanceTotal;
-            }, 0);
-
-            // Apply discount to total cost of all instances after the first one
-            const discountAmount = Math.round(
-              (subjectTotal * subjectOpt.discount) / 100
-            );
-            discount += discountAmount;
-          }
-        }
-      });
-    }
-
     const total = base + optionGroups + addons + rush - discount + surcharge;
 
     return {
@@ -198,6 +249,7 @@ export default function PriceBreakdownSection({
       rush,
       rushDetails,
       discount,
+      discountDetails,
       surcharge,
       total,
     };
@@ -413,8 +465,30 @@ export default function PriceBreakdownSection({
                     fontSize="small"
                     sx={{ mr: 1 }}
                   />
-                  <Typography color="success.main">Discount</Typography>
-                  <Tooltip title="Multi-subject discount applied" arrow>
+                  <Typography color="success.main">
+                    Multi-item Discount
+                  </Typography>
+                  <Tooltip
+                    title={
+                      <Box>
+                        {priceBreakdown.discountDetails.map((detail, i) => (
+                          <Box key={i} sx={{ mb: 0.5 }}>
+                            <Typography variant="body2">
+                              {detail.subjectTitle}: {detail.discountPercentage}
+                              % off for {detail.count} additional item(s)
+                            </Typography>
+                          </Box>
+                        ))}
+                        <Typography
+                          variant="body2"
+                          sx={{ mt: 1, fontStyle: "italic" }}
+                        >
+                          Discount applies to all items after the first one
+                        </Typography>
+                      </Box>
+                    }
+                    arrow
+                  >
                     <InfoIcon
                       fontSize="small"
                       sx={{ ml: 1, color: "success.main", cursor: "pointer" }}

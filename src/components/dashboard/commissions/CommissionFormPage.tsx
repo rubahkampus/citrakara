@@ -247,23 +247,23 @@ export default function CommissionFormPage({
         console.log(pair[0] + ", " + pair[1]);
       } // Debugging line
 
-      // // Submit the form
-      // if (mode === "create") {
-      //   await axiosClient.post("/api/commission/listing", fd, {
-      //     headers: { "Content-Type": "multipart/form-data" },
-      //   });
-      // } else {
-      //   await axiosClient.patch(
-      //     `/api/commission/listing/${initialData._id}`,
-      //     fd,
-      //     {
-      //       headers: { "Content-Type": "multipart/form-data" },
-      //     }
-      //   );
-      // }
+      // Submit the form
+      if (mode === "create") {
+        await axiosClient.post("/api/commission/listing", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        await axiosClient.patch(
+          `/api/commission/listing/${initialData._id}`,
+          fd,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
+      }
 
       // Show success message and redirect
-      // setSaveSuccess(true);
+      setSaveSuccess(true);
 
       // Redirect after short delay
       const redirectTimer = setTimeout(() => {

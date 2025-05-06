@@ -184,7 +184,9 @@ export async function createProposalFromForm(
 
     validateProposalInput(proposalInput); // Validate input before creating
 
-    return repoCreateProposal(proposalInput);
+    const baseDate = await getLatestActiveContractDeadline(listing.artistId);
+
+    return repoCreateProposal(proposalInput, baseDate || new Date());
   } catch (error) {
     console.error("Error creating proposal:", error);
     throw error;
@@ -296,7 +298,9 @@ export async function updateProposalFromForm(
       updates.referenceImages = [...existingReferences, ...uploadedUrls];
     }
 
-    const updatedProposal = await repoUpdateProposal(proposalId, updates);
+    const baseDate = await getLatestActiveContractDeadline(listing.artistId);
+
+    const updatedProposal = await repoUpdateProposal(proposalId, updates, baseDate || new Date());
     if (!updatedProposal) {
       throw new HttpError("Failed to update proposal", 500);
     }

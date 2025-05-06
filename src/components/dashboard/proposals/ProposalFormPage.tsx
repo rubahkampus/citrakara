@@ -122,36 +122,36 @@ export default function ProposalFormPage({
       console.log(pair[0] + ", " + pair[1]);
     }
 
-    // try {
-    //   let res;
-    //   console.log("About to make API call...");
-    //   if (mode === "create") {
-    //     res = await axiosClient.post("/api/proposal", fd, {
-    //       headers: { "Content-Type": "multipart/form-data" },
-    //     });
-    //   } else {
-    //     // edit: initialData.id must exist
-    //     res = await axiosClient.patch(`/api/proposal/${initialData!.id}`, fd, {
-    //       headers: { "Content-Type": "multipart/form-data" },
-    //     });
-    //   }
-    //   console.log("API response:", res);
-    //   setSuccess(true);
-    //   setTimeout(() => {
-    //     router.push(`/${username}/dashboard/proposals`);
-    //   }, 1500);
-    // } catch (e: any) {
-    //   console.error("Proposal form submit error:", e);
-    //   setError(e.response?.data?.error || "Failed to save proposal");
-    // } finally {
-    //   setLoading(false);
-    // }
+    try {
+      let res;
+      console.log("About to make API call...");
+      if (mode === "create") {
+        res = await axiosClient.post("/api/proposal", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        // edit: initialData.id must exist
+        res = await axiosClient.patch(`/api/proposal/${initialData!.id}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+      console.log("API response:", res);
+      setSuccess(true);
+      setTimeout(() => {
+        router.push(`/${username}/dashboard/proposals`);
+      }, 1500);
+    } catch (e: any) {
+      console.error("Proposal form submit error:", e);
+      setError(e.response?.data?.error || "Failed to save proposal");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Function to display validation errors in user-friendly format
   const getMissingFieldsMessage = () => {
     if (Object.keys(errors).length === 0) return null;
-    
+
     const fieldNames: Record<string, string> = {
       deadline: "Deadline",
       generalDescription: "Description",
@@ -159,13 +159,13 @@ export default function ProposalFormPage({
       "generalOptions.optionGroups": "General Options",
       "generalOptions.addons": "Addons",
       "generalOptions.answers": "Option Answers",
-      subjectOptions: "Subject Options"
+      subjectOptions: "Subject Options",
     };
-    
+
     const missingFields = Object.keys(errors)
-      .map(key => fieldNames[key] || key)
+      .map((key) => fieldNames[key] || key)
       .join(", ");
-    
+
     return `Please complete the following required fields: ${missingFields}`;
   };
 
@@ -179,7 +179,9 @@ export default function ProposalFormPage({
             onSubmit(values);
           },
           (errors) => {
-            setError(getMissingFieldsMessage() || "Please check all required fields.");
+            setError(
+              getMissingFieldsMessage() || "Please check all required fields."
+            );
           }
         )}
         sx={{ maxWidth: 800, mx: "auto" }}

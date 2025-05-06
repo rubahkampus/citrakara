@@ -1,7 +1,7 @@
 // src/components/dashboard/proposals/form/GeneralOptionsSection.tsx
 
 import React, { useEffect } from "react";
-import { useFormContext } from "react-hook-form";
+import { Control, useController, useFormContext } from "react-hook-form";
 import {
   Box,
   Typography,
@@ -323,45 +323,49 @@ export default function GeneralOptionsSection({
       )}
 
       {/* Questions */}
-      {(generalOptions.questions ?? []).length > 0 && (
-        <Box>
-          <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
-            Additional Information
-          </Typography>
-          <Card variant="outlined">
-            <CardContent>
-              {(generalOptions.questions ?? []).map((question, index) => (
-                <TextField
-                  key={index}
-                  label={question}
-                  multiline
-                  rows={1}
-                  fullWidth
-                  sx={{
-                    mb:
-                      index < (generalOptions.questions ?? []).length - 1
-                        ? 3
-                        : 0,
-                  }}
-                  value={watchedOptions?.answers?.[question] || ""}
-                  onChange={(e) => {
-                    // Use local state for immediate feedback
-                    const newValue = e.target.value;
-
-                    // Update the form with debounced changes
-                    debouncedQuestionChange(question, newValue);
-                  }}
-                  error={!!errors?.generalOptions?.answers?.[question]}
-                  helperText={
-                    errors?.generalOptions?.answers?.[question]?.message
-                  }
-                  placeholder="Your answer..."
-                />
-              ))}
-            </CardContent>
-          </Card>
-        </Box>
-      )}
+      {(generalOptions.questions ?? []).map((question) => (
+        <QuestionField
+          key={question}
+          question={question}
+          control={control}
+          error={errors?.generalOptions?.answers?.[question]}
+        />
+      ))}
     </Paper>
   );
 }
+
+/**
+ * A memoized single‐question component that only
+ * re‐renders when its own value or error changes.
+ */
+const QuestionField = React.memo(function QuestionField({
+  question,
+  control,
+  error,
+}: {
+  question: string;
+  control: Control<ProposalFormValues>;
+  error?: { message?: string };
+}) {
+  // subscribe only to this one field
+  const { field } = useController({
+    name: `generalOptions.answers.${question}`,
+    control,
+    defaultValue: "",
+  });
+
+  return (
+    <TextField
+      {...field}
+      label={question}
+      multiline
+      rows={1}
+      fullWidth
+      sx={{ mb: 3 }}
+      error={!!error}
+      helperText={error?.message}
+      placeholder="Your answer…"
+    />
+  );
+});

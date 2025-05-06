@@ -122,14 +122,41 @@ function toObjectId(
 function validateDuration(
   earliestDate: Date,
   deadline: Date,
-  latestDate: Date
+  latestDate: Date,
+  deadlineMode: "standard" | "withDeadline" | "withRush",
+  baseDate: Date
 ): boolean {
+  // Ensure no date is before or equal to the baseDate
+  if (
+    earliestDate <= baseDate ||
+    deadline <= baseDate ||
+    latestDate <= baseDate
+  ) {
+    throw new Error("All dates must be after the base date");
+  }
+
+  // Ensure earliestDate is before latestDate
   if (earliestDate >= latestDate) {
     throw new Error("earliestDate must be before latestDate");
   }
 
-  if (deadline < earliestDate || deadline > latestDate) {
-    throw new Error("deadline must be between earliestDate and latestDate");
+  // Different validation based on deadline mode
+  switch (deadlineMode) {
+    case "standard":
+      // No deadline input in standard mode, nothing to validate
+      break;
+    case "withDeadline":
+      // For withDeadline mode, deadline must be at least after earliestDate
+      // Can be after latestDate (unlike the original validation)
+      if (deadline < earliestDate) {
+        throw new Error("deadline must be after earliestDate");
+      }
+      break;
+    case "withRush":
+      // For withRush mode, any deadline after earliestDate is valid (no rush fee)
+      // Deadlines before earliestDate are valid but incur rush fees
+      // Still must be after baseDate (already checked above)
+      break;
   }
 
   return true;
@@ -207,9 +234,13 @@ function calculateSelectedPrice(
           });
         }
         if (instance.addons) {
-          Object.values(instance.addons).forEach((price) => {
-            addonsTotal += price;
-          });
+          for (const addon of Object.values(instance.addons)) {
+            const p =
+              typeof addon === "object" && (addon as any).price != null
+                ? (addon as any).price
+                : Number(addon);
+            addonsTotal += p;
+          }
         }
       });
     });
@@ -219,7 +250,10 @@ function calculateSelectedPrice(
 }
 
 // ========== Repository Functions ==========
-export async function createProposal(input: ProposalInput): Promise<IProposal> {
+export async function createProposal(
+  input: ProposalInput,
+  baseDate: Date
+): Promise<IProposal> {
   await connectDB();
 
   const clientId = toObjectId(input.clientId);
@@ -246,11 +280,37 @@ export async function createProposal(input: ProposalInput): Promise<IProposal> {
     flow: listing.flow,
   };
 
+  // ── 1) Sanitize subjectOptions so addons are numbers only
+  const sanitizedSubjectOptions: Record<string, any> = {};
+  if (input.subjectOptions) {
+    for (const [subjectKey, subjectVal] of Object.entries(
+      input.subjectOptions
+    )) {
+      sanitizedSubjectOptions[subjectKey] = {
+        instances: subjectVal.instances.map((instance) => ({
+          optionGroups: instance.optionGroups,
+          // strip out only the numeric price from each addon
+          addons: Object.fromEntries(
+            Object.entries(instance.addons || {}).map(([label, addon]) => [
+              label,
+              typeof addon === "object" && (addon as any).price != null
+                ? (addon as any).price
+                : Number(addon),
+            ])
+          ),
+          answers: instance.answers,
+        })),
+      };
+    }
+  }
+
   // Validate dates
   validateDuration(
     new Date(input.earliestDate),
     new Date(input.deadline),
-    new Date(input.latestDate)
+    new Date(input.latestDate),
+    listing.deadline.mode,
+    baseDate
   );
 
   // Calculate rush and pricing
@@ -262,7 +322,7 @@ export async function createProposal(input: ProposalInput): Promise<IProposal> {
   );
 
   const { optionGroups: optionGroupsPrice, addons: addonsPrice } =
-    calculateSelectedPrice(input.generalOptions, input.subjectOptions);
+    calculateSelectedPrice(input.generalOptions, sanitizedSubjectOptions);
 
   const calculatedPrice = {
     base: listingSnapshot.basePrice,
@@ -294,7 +354,7 @@ export async function createProposal(input: ProposalInput): Promise<IProposal> {
     generalDescription: input.generalDescription,
     referenceImages: input.referenceImages || [],
     generalOptions: input.generalOptions || {},
-    subjectOptions: input.subjectOptions || {},
+    subjectOptions: sanitizedSubjectOptions,
     calculatedPrice,
   });
 
@@ -310,24 +370,74 @@ export async function getProposalById(
 
 export async function updateProposal(
   id: string | ObjectId,
-  updates: UpdateProposalInput
+  updates: UpdateProposalInput,
+  newBaseDate: Date
 ): Promise<IProposal | null> {
   await connectDB();
 
   const proposal = await Proposal.findById(toObjectId(id));
   if (!proposal) return null;
 
-  // Update fields
-  if (updates.earliestDate)
-    proposal.availability.earliestDate = updates.earliestDate;
-  if (updates.latestDate) proposal.availability.latestDate = updates.latestDate;
-  if (updates.deadline) proposal.deadline = updates.deadline;
-  if (updates.generalDescription)
-    proposal.generalDescription = updates.generalDescription;
-  if (updates.referenceImages)
-    proposal.referenceImages = updates.referenceImages;
-  if (updates.generalOptions) proposal.generalOptions = updates.generalOptions;
-  if (updates.subjectOptions) proposal.subjectOptions = updates.subjectOptions;
+  // Validate dates
+  // Validate dates - collect values to validate, handling both existing and updated values
+  const earliestDate = new Date(
+    updates.earliestDate || proposal.availability.earliestDate
+  );
+  const deadline = new Date(updates.deadline || proposal.deadline);
+  const latestDate = new Date(
+    updates.latestDate || proposal.availability.latestDate
+  );
+
+  try {
+    // Validate dates with updated function signature
+    validateDuration(
+      earliestDate,
+      deadline,
+      latestDate,
+      proposal.ListingSnapshot.deadline.mode,
+      newBaseDate
+    );
+
+    // Update fields - only proceed if validation passes
+    if (updates.earliestDate)
+      proposal.availability.earliestDate = updates.earliestDate;
+    if (updates.latestDate)
+      proposal.availability.latestDate = updates.latestDate;
+    if (updates.deadline) proposal.deadline = updates.deadline;
+    if (updates.generalDescription)
+      proposal.generalDescription = updates.generalDescription;
+    if (updates.referenceImages)
+      proposal.referenceImages = updates.referenceImages;
+    if (updates.generalOptions)
+      proposal.generalOptions = updates.generalOptions;
+    if (updates.subjectOptions) {
+      const sanitized: Record<string, any> = {};
+      for (const [key, val] of Object.entries(updates.subjectOptions)) {
+        sanitized[key] = {
+          instances: val.instances.map((inst) => ({
+            optionGroups: inst.optionGroups,
+            addons: Object.fromEntries(
+              Object.entries(inst.addons || {}).map(([label, addon]) => [
+                label,
+                typeof addon === "object" && (addon as any).price != null
+                  ? (addon as any).price
+                  : Number(addon),
+              ])
+            ),
+            answers: inst.answers,
+          })),
+        };
+      }
+      proposal.subjectOptions = sanitized;
+    }
+  } catch (error) {
+    // Handle validation errors
+    if (error instanceof Error) {
+      throw new Error(`Date validation failed: ${error.message}`);
+    } else {
+      throw new Error("Date validation failed: Unknown error");
+    }
+  }
 
   // Recalculate if dates or options changed
   if (

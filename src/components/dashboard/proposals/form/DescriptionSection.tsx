@@ -1,25 +1,23 @@
-// src/components/dashboard/proposals/form/DescriptionSection.tsx
-
-/**
- * DescriptionSection
- * ------------------
- * Renders `generalDescription` as a multiline text area.
- *
- * Implementation:
- *  - Use RHF `register` to bind to `generalDescription`
- *  - Validate: required, max length e.g. 500 chars
- *  - Render MUI `<TextField multiline>` with error/helperText
- */
+// /src/components/dashboard/proposals/form/DescriptionSection.tsx
 import React from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useController } from "react-hook-form";
 import { TextField, Typography, Paper } from "@mui/material";
 import { ProposalFormValues } from "@/types/proposal";
 
-export default function DescriptionSection() {
+const DescriptionSection = React.memo(function DescriptionSection() {
+  const { control } = useFormContext<ProposalFormValues>();
   const {
-    register,
-    formState: { errors },
-  } = useFormContext<ProposalFormValues>();
+    field,
+    fieldState: { error },
+  } = useController({
+    name: "generalDescription",
+    control,
+    defaultValue: "",
+    rules: {
+      required: "Description is required",
+      maxLength: { value: 500, message: "Max 500 characters" },
+    },
+  });
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
@@ -27,19 +25,18 @@ export default function DescriptionSection() {
         Project Description
       </Typography>
       <TextField
-        {...register("generalDescription", {
-          required: "Description is required",
-          maxLength: { value: 500, message: "Max 500 characters" },
-        })}
+        {...field}
         label="Describe your project"
         multiline
         rows={4}
         fullWidth
         placeholder="Provide details about your commission request. Be specific about what you want and any special requirements."
-        error={!!errors.generalDescription}
-        helperText={errors.generalDescription?.message}
+        error={!!error}
+        helperText={error?.message}
         sx={{ mb: 3 }}
       />
     </Paper>
   );
-}
+});
+
+export default DescriptionSection;

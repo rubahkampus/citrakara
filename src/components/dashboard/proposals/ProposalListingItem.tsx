@@ -108,12 +108,6 @@ export default function ProposalListingItem({
             </Typography>
             <Stack spacing={1}>
               <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography variant="body2">Base Price:</Typography>
-                <Typography variant="body2">
-                  {formatCurrency(proposal.priceBreakdown.basePrice)}
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Typography variant="body2">Options:</Typography>
                 <Typography variant="body2">
                   {formatCurrency(proposal.priceBreakdown.optionsTotal)}

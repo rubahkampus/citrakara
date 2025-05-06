@@ -21,7 +21,8 @@ export interface IProposal extends Document {
     | "accepted" // artist accepted the proposal
     | "rejectedArtist" // artist rejected the proposal -> end of lifecycle
     | "rejectedClient" // if artist proposed discount or surcharge and client rejected -> not end of lifecycle, functionally the same as "pendingArtist" but it tells the artist that the client rejected the proposed price
-    | "expired"; // -> end of lifecycle, functionally we're never going to use this status, but it's here for completeness, since we have expiredAt field and we don't have cron jobs to clean up expired proposals
+    | "expired" // -> end of lifecycle, functionally we're never going to use this status, but it's here for completeness, since we have expiredAt field and we don't have cron jobs to clean up expired proposals
+    | "paid"; // -> end of lifecycle, functionally we're never going to use this status, but it's here for completeness, since we have paidAt field and we don't have cron jobs to clean up paid proposals
   expiresAt?: ISODate; // present in pending / negotiating
 
   /* ---- dynamic availability window ---- */
@@ -94,8 +95,12 @@ export interface IProposal extends Document {
 
   /* ---- artist adjustments (before accept) ---- */
   artistAdjustments?: {
-    surcharge?: { amount: Cents; reason: string };
-    discount?: { amount: Cents; reason: string };
+    proposedSurcharge?: Cents;
+    proposedDiscount?: Cents;
+    proposedDate?: ISODate;
+    acceptedDate?: ISODate;
+    surcharge?: Cents;
+    discount?: Cents;
   };
 
   /* ---- rejection meta ---- */

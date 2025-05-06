@@ -8,16 +8,18 @@ import { rotateToken } from "@/lib/api/rotateToken";
 import { handleError } from "@/lib/utils/errorHandler";
 import {
   artistRespond,
-  clientRespondToAdjustment,
+  clientRespond,
+  ArtistDecision,
+  ClientDecision,
 } from "@/lib/services/proposal.service";
 
 // Body shapes:
 //
 // Artist:
-// { role:"artist", accept:true|false, surcharge?:number, discount?:number, reason?:string }
+// { role:"artist", acceptProposal:true|false, surcharge?:number, discount?:number, rejectionReason?:string }
 //
 // Client:
-// { role:"client", accept:true|false, rejectionReason?:string }
+// { role:"client", acceptAdjustments?:true|false, cancel?:boolean }
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { proposalId: string } }
@@ -30,20 +32,28 @@ export async function PATCH(
       let proposal;
 
       if (role === "artist") {
-        proposal = await artistRespond(session.id, params.proposalId, {
-          accept: body.accept,
+        const artistDecision: ArtistDecision = {
+          acceptProposal: body.acceptProposal,
           surcharge: body.surcharge,
           discount: body.discount,
-          reason: body.reason,
-        });
-      } else if (role === "client") {
-        proposal = await clientRespondToAdjustment(
+          rejectionReason: body.rejectionReason,
+        };
+
+        proposal = await artistRespond(
           session.id,
           params.proposalId,
-          {
-            accept: body.accept,
-            rejectionReason: body.rejectionReason,
-          }
+          artistDecision
+        );
+      } else if (role === "client") {
+        const clientDecision: ClientDecision = {
+          acceptAdjustments: body.acceptAdjustments,
+          cancel: body.cancel,
+        };
+
+        proposal = await clientRespond(
+          session.id,
+          params.proposalId,
+          clientDecision
         );
       } else {
         throw new Error("Invalid role");

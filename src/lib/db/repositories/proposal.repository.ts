@@ -66,14 +66,8 @@ export interface FindOpts {
 }
 
 export interface ArtistAdjustment {
-  surcharge?: {
-    amount: number;
-    reason: string;
-  };
-  discount?: {
-    amount: number;
-    reason: string;
-  };
+  proposedSurcharge?: number;
+  proposedDiscount?: number;
 }
 
 export interface Estimate {
@@ -456,6 +450,11 @@ export async function updateProposal(
     Object.assign(proposal, recalculated);
   }
 
+  proposal.status = "pendingArtist"; // Reset status to pendingArtist on update
+  if (proposal.artistAdjustments) {
+    proposal.artistAdjustments = undefined; // Clear artist adjustments on update
+  }
+
   return proposal.save();
 }
 
@@ -538,19 +537,17 @@ export async function artistResponds(
 ): Promise<IProposal> {
   await connectDB();
 
-  const proposal = await Proposal.findById(toObjectId(id));
+  const proposal = await Proposal.findById(toObjectId(id)) as IProposal;
   if (!proposal) {
     throw new Error("Proposal not found");
   }
 
-  if (proposal.status !== "pendingArtist") {
-    throw new Error("Proposal is not in pendingArtist status");
-  }
-
   if (proposal.expiresAt && proposal.expiresAt < new Date()) {
+    proposal.status = "expired";
     throw new Error("Proposal has expired");
   }
 
+  // Artist can reject at any status
   if (!accepts) {
     if (!rejectionReason) {
       throw new Error("Rejection reason is required when rejecting");
@@ -558,16 +555,34 @@ export async function artistResponds(
 
     proposal.status = "rejectedArtist";
     proposal.rejectionReason = rejectionReason;
-    proposal.expiresAt = undefined;
+    proposal.expiresAt = new Date; // Set expiration to now 
     return proposal.save();
   }
 
-  // Accept with optional adjustment
-  if (adjustment?.surcharge || adjustment?.discount) {
-    const surchargeAmount = adjustment.surcharge?.amount || 0;
-    const discountAmount = adjustment.discount?.amount || 0;
+  // For acceptance, the proposal needs to be in pendingArtist state
+  if (
+    proposal.status !== "pendingArtist" &&
+    proposal.status !== "rejectedClient"
+  ) {
+    throw new Error("Proposal is not in a state that can be accepted");
+  }
 
-    proposal.artistAdjustments = adjustment;
+  // Accept with optional adjustment
+  if (adjustment?.proposedSurcharge || adjustment?.proposedDiscount) {
+    // Format adjustments to match schema
+    proposal.artistAdjustments = {};
+
+    if (adjustment.proposedSurcharge) {
+      proposal.artistAdjustments.proposedSurcharge = adjustment.proposedSurcharge
+    }
+
+    if (adjustment.proposedDiscount) {
+      proposal.artistAdjustments.discount = adjustment.proposedDiscount
+    }
+
+    const surchargeAmount = adjustment?.proposedSurcharge || 0;
+    const discountAmount = adjustment?.proposedDiscount || 0;
+
     proposal.calculatedPrice.surcharge = surchargeAmount;
     proposal.calculatedPrice.discount = discountAmount;
     proposal.calculatedPrice.total =
@@ -579,10 +594,12 @@ export async function artistResponds(
       discountAmount;
 
     proposal.status = "pendingClient";
-    proposal.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    proposal.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 3 days expiration
+    proposal.artistAdjustments.proposedDate = new Date(); // Set proposed date to now
   } else {
+    // Simple acceptance without adjustments
     proposal.status = "accepted";
-    proposal.expiresAt = undefined;
+    proposal.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 3 days expiration;
   }
 
   return proposal.save();
@@ -590,8 +607,62 @@ export async function artistResponds(
 
 export async function clientRespondsToAdjustment(
   id: string | ObjectId,
-  accepts: boolean,
-  rejectionReason?: string
+  acceptsAdjustment?: boolean,
+  cancel?: boolean
+): Promise<IProposal> {
+  await connectDB();
+
+  const proposal = await Proposal.findById(toObjectId(id)) as IProposal;
+  if (!proposal) {
+    throw new Error("Proposal not found");
+  }
+
+  if (proposal.expiresAt && proposal.expiresAt < new Date()) {
+    proposal.status = "expired";
+    throw new Error("Proposal has expired");
+  }
+
+  // Handle cancellation first (can happen at any status)
+  if (cancel) {
+    proposal.status = "expired";
+    proposal.expiresAt = new Date(); // Set expiration to now
+    return proposal.save();
+  }
+
+  // Main response flow
+  if (proposal.status !== "pendingClient") {
+    throw new Error("Proposal is not in pendingClient status");
+  }
+
+  if (proposal.expiresAt && proposal.expiresAt < new Date()) {
+    throw new Error("Proposal has expired");
+  }
+
+  if (acceptsAdjustment) {
+    proposal.artistAdjustments = proposal.artistAdjustments || {};
+
+    proposal.artistAdjustments.acceptedDate = new Date(); // Set accepted date to now
+    proposal.artistAdjustments.surcharge =
+      proposal.artistAdjustments.proposedSurcharge || 0;
+    proposal.artistAdjustments.discount =
+      proposal.artistAdjustments.discount || 0;
+    proposal.artistAdjustments.proposedSurcharge = undefined; // Clear proposed surcharge
+    proposal.artistAdjustments.proposedDiscount = undefined; // Clear proposed discount
+
+    const recalculated = recalculateRushAndPrice(proposal);
+    Object.assign(proposal, recalculated);
+
+    proposal.status = "pendingArtist";
+  } else {
+    proposal.status = "rejectedClient";
+  }
+
+  return proposal.save();
+}
+
+export async function cancelProposal(
+  id: string | ObjectId,
+  clientId: string | ObjectId
 ): Promise<IProposal> {
   await connectDB();
 
@@ -600,20 +671,18 @@ export async function clientRespondsToAdjustment(
     throw new Error("Proposal not found");
   }
 
-  if (proposal.status !== "pendingClient") {
-    throw new Error("Proposal is not in pendingClient status");
+  if (proposal.expiresAt && proposal.expiresAt < new Date()) {
+    proposal.status = "expired";
+    throw new Error("Proposal has expired");
   }
 
-  if (accepts) {
-    proposal.status = "accepted";
-    proposal.expiresAt = undefined;
-  } else {
-    proposal.status = "rejectedClient";
-    if (rejectionReason) {
-      proposal.rejectionReason = rejectionReason;
-    }
-    proposal.expiresAt = undefined;
+  // Verify client ownership
+  if (proposal.clientId.toString() !== clientId.toString()) {
+    throw new Error("Not authorized to cancel this proposal");
   }
+
+  proposal.status = "expired";
+  proposal.expiresAt = new Date(); // Set expiration to now
 
   return proposal.save();
 }
@@ -640,7 +709,9 @@ export async function finalizeAcceptance(
     throw new Error("Proposal is not in accepted status");
   }
 
-  return proposal;
+  proposal.status = "paid";
+
+  return proposal.save();
 }
 
 const DAY = 24 * 60 * 60 * 1000; // Number of milliseconds in a day
@@ -661,7 +732,7 @@ export function recalculateRushAndPrice(proposal: IProposal): IProposal {
 
   if (!availability) return proposal;
 
-  const proposalSnapshot = JSON.parse(JSON.stringify(proposal)) as IProposal
+  const proposalSnapshot = JSON.parse(JSON.stringify(proposal)) as IProposal;
 
   // Recalculate rush
   const rush = calculateRush(
@@ -673,10 +744,13 @@ export function recalculateRushAndPrice(proposal: IProposal): IProposal {
 
   // Recalculate price
   const { optionGroups: optionGroupsPrice, addons: addonsPrice } =
-    calculateSelectedPrice(proposalSnapshot.generalOptions, proposalSnapshot.subjectOptions);
+    calculateSelectedPrice(
+      proposalSnapshot.generalOptions,
+      proposalSnapshot.subjectOptions
+    );
 
-  const surchargeAmount = proposal.artistAdjustments?.surcharge?.amount || 0;
-  const discountAmount = proposal.artistAdjustments?.discount?.amount || 0;
+  const surchargeAmount = proposal.artistAdjustments?.surcharge || 0;
+  const discountAmount = proposal.artistAdjustments?.discount || 0;
 
   proposal.rush = rush || undefined;
   proposal.calculatedPrice = {

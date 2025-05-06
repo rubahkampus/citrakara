@@ -1,19 +1,16 @@
-// src/app/[username]/dashboard/proposals/[proposalId]/respond/page.tsx
 import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession } from "@/lib/utils/session";
 import { notFound } from "next/navigation";
-import RespondFormPage from "@/components/dashboard/proposals/RespondFormPage";
-import {
-  fetchProposalById,
-} from "@/lib/services/proposal.service";
+import ViewRespondFormPage from "@/components/dashboard/proposals/ViewRespondFormPage";
+import { fetchProposalById } from "@/lib/services/proposal.service";
 
-interface RespondProposalPageProps {
+interface ViewRespondProposalPageProps {
   params: { username: string; proposalId: string };
 }
 
-export default async function RespondProposalPage({
+export default async function ViewRespondProposalPage({
   params: { username, proposalId },
-}: RespondProposalPageProps) {
+}: ViewRespondProposalPageProps) {
   const session = await getAuthSession();
   if (
     !session ||
@@ -32,21 +29,22 @@ export default async function RespondProposalPage({
 
     if (!isClient && !isArtist) {
       return (
-        <Alert severity="error">You do not have permission to respond</Alert>
+        <Alert severity="error">
+          You do not have permission to view or respond
+        </Alert>
       );
     }
 
     const role = isClient ? "client" : "artist";
-    const formattedProposal = proposal;
-    const serializedProposal = JSON.parse(JSON.stringify(formattedProposal));
+    const serializedProposal = JSON.parse(JSON.stringify(proposal));
 
     return (
       <Box>
         <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-          Respond to Proposal
+          Proposal: {proposal.listingSnapshot.title}
         </Typography>
 
-        <RespondFormPage
+        <ViewRespondFormPage
           username={username}
           role={role}
           proposal={serializedProposal}
@@ -54,7 +52,7 @@ export default async function RespondProposalPage({
       </Box>
     );
   } catch (err) {
-    console.error("Error loading proposal for response:", err);
+    console.error("Error loading proposal for viewing/response:", err);
     return <Alert severity="error">Failed to load proposal details</Alert>;
   }
 }

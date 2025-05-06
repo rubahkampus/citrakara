@@ -1,237 +1,295 @@
-// // src/components/dashboard/proposals/ArtistRespondForm.tsx
-// /**
-//  * ArtistRespondForm
-//  * ------------------
-//  * Renders UI for artist to accept or reject a proposal.
-//  *
-//  * Props:
-//  *   - proposal: ProposalUI
-//  *   - onSubmit: (decision: { accept: boolean; surcharge?: number; discount?: number; reason?: string }) => void
-//  *   - loading?: boolean
-//  *
-//  * UI Elements:
-//  *   - Number inputs for surcharge and discount (in cents)
-//  *   - Text input for reason
-//  *   - Buttons: Accept, Reject
-//  */
-// import React, { useState } from "react";
-// import {
-//   Box,
-//   Card,
-//   CardContent,
-//   Typography,
-//   TextField,
-//   Button,
-//   Grid,
-//   Divider,
-//   Stack,
-//   InputAdornment,
-// } from "@mui/material";
-// import CheckIcon from "@mui/icons-material/Check";
-// import CloseIcon from "@mui/icons-material/Close";
-// import { IProposal } from "@/lib/db/models/proposal.model";
+"use client";
 
-// interface ArtistRespondFormProps {
-//   proposal: IProposal;
-//   loading?: boolean;
-//   onSubmit: (decision: {
-//     accept: boolean;
-//     surcharge?: number;
-//     discount?: number;
-//     reason?: string;
-//   }) => void;
-// }
+import React, { useState } from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  TextField,
+  Button,
+  Grid,
+  Stack,
+  InputAdornment,
+  Divider,
+} from "@mui/material";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import { IProposal } from "@/lib/db/models/proposal.model";
 
-// export default function ArtistRespondForm({
-//   proposal,
-//   onSubmit,
-//   loading = false,
-// }: ArtistRespondFormProps) {
-//   const [surcharge, setSurcharge] = useState<number>(0);
-//   const [discount, setDiscount] = useState<number>(0);
-//   const [reason, setReason] = useState("");
+interface ArtistRespondFormProps {
+  proposal: IProposal;
+  loading?: boolean;
+  onSubmit: (decision: {
+    acceptProposal: boolean;
+    surcharge?: number;
+    discount?: number;
+    rejectionReason?: string;
+  }) => void;
+}
 
-//   const handleAccept = () => {
-//     onSubmit({
-//       accept: true,
-//       surcharge: surcharge || undefined,
-//       discount: discount || undefined,
-//       reason: reason || undefined,
-//     });
-//   };
+export default function ArtistRespondForm({
+  proposal,
+  onSubmit,
+  loading = false,
+}: ArtistRespondFormProps) {
+  const [surcharge, setSurcharge] = useState<number>(0);
+  const [discount, setDiscount] = useState<number>(0);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [showAdjustmentForm, setShowAdjustmentForm] = useState(false);
 
-//   const handleReject = () => {
-//     onSubmit({
-//       accept: false,
-//       reason: reason || "Artist declined the proposal",
-//     });
-//   };
+  // Simple acceptance without any adjustments
+  const handleAccept = () => {
+    onSubmit({
+      acceptProposal: true,
+    });
+  };
 
-//   // Calculate new total with adjustments
-//   const calculateTotal = () => {
-//     return (
-//       proposal.priceBreakdown.finalTotal + (surcharge || 0) - (discount || 0)
-//     );
-//   };
+  // Show the adjustment form
+  const handleShowAdjustment = () => {
+    setShowAdjustmentForm(true);
+  };
 
-//   return (
-//     <Box sx={{ maxWidth: 800, mx: "auto" }}>
-//       {/* Proposal Details */}
-//       <Card sx={{ mb: 3 }}>
-//         <CardContent>
-//           <Typography variant="h6" gutterBottom>
-//             Commission Proposal - {proposal.listingTitle}
-//           </Typography>
+  // Submit with adjustments
+  const handleSubmitAdjustment = () => {
+    onSubmit({
+      acceptProposal: true,
+      surcharge: surcharge > 0 ? surcharge : undefined,
+      discount: discount > 0 ? discount : undefined,
+    });
+  };
 
-//           <Grid container spacing={2} sx={{ mb: 3 }}>
-//             <Grid item xs={12} sm={6}>
-//               <Typography variant="body2" color="text.secondary">
-//                 Deadline
-//               </Typography>
-//               <Typography variant="body1">
-//                 {new Date(proposal.deadline).toLocaleDateString()}
-//               </Typography>
-//             </Grid>
-//             <Grid item xs={12} sm={6}>
-//               <Typography variant="body2" color="text.secondary">
-//                 Current Price
-//               </Typography>
-//               <Typography variant="body1">
-//                 IDR {proposal.priceBreakdown.finalTotal.toLocaleString()}
-//               </Typography>
-//             </Grid>
-//           </Grid>
+  // Cancel adjustments and return to main options
+  const handleCancelAdjustment = () => {
+    setShowAdjustmentForm(false);
+    setSurcharge(0);
+    setDiscount(0);
+  };
 
-//           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-//             Project Description
-//           </Typography>
-//           <Typography
-//             variant="body1"
-//             sx={{
-//               backgroundColor: "action.hover",
-//               p: 2,
-//               borderRadius: 1,
-//               mb: 2,
-//             }}
-//           >
-//             {proposal.generalDescription}
-//           </Typography>
+  const handleRejectClick = () => {
+    setShowRejectForm(true);
+  };
 
-//           {proposal.referenceImages?.length > 0 && (
-//             <Box>
-//               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-//                 Reference Images ({proposal.referenceImages.length})
-//               </Typography>
-//               <Typography variant="body2" color="text.primary">
-//                 {proposal.referenceImages.length} image
-//                 {proposal.referenceImages.length > 1 ? "s" : ""} attached
-//               </Typography>
-//             </Box>
-//           )}
-//         </CardContent>
-//       </Card>
+  const handleConfirmReject = () => {
+    onSubmit({
+      acceptProposal: false,
+      rejectionReason: rejectionReason || "Artist declined the proposal",
+    });
+  };
 
-//       {/* Adjustment Form */}
-//       <Card sx={{ mb: 3 }}>
-//         <CardContent>
-//           <Typography variant="h6" gutterBottom>
-//             Adjust Price (Optional)
-//           </Typography>
+  const handleCancelReject = () => {
+    setShowRejectForm(false);
+    setRejectionReason("");
+  };
 
-//           <Grid container spacing={3}>
-//             <Grid item xs={12} sm={6}>
-//               <TextField
-//                 label="Add surcharge"
-//                 type="number"
-//                 fullWidth
-//                 value={surcharge || ""}
-//                 onChange={(e) => setSurcharge(Number(e.target.value))}
-//                 InputProps={{
-//                   startAdornment: (
-//                     <InputAdornment position="start">IDR</InputAdornment>
-//                   ),
-//                 }}
-//                 helperText="Add extra charge for additional complexity"
-//               />
-//             </Grid>
-//             <Grid item xs={12} sm={6}>
-//               <TextField
-//                 label="Or offer discount"
-//                 type="number"
-//                 fullWidth
-//                 value={discount || ""}
-//                 onChange={(e) => setDiscount(Number(e.target.value))}
-//                 InputProps={{
-//                   startAdornment: (
-//                     <InputAdornment position="start">IDR</InputAdornment>
-//                   ),
-//                 }}
-//                 helperText="Offer a discount to secure the commission"
-//               />
-//             </Grid>
-//             <Grid item xs={12}>
-//               <TextField
-//                 label="Reason for adjustment (optional)"
-//                 multiline
-//                 rows={3}
-//                 fullWidth
-//                 value={reason}
-//                 onChange={(e) => setReason(e.target.value)}
-//                 placeholder="Explain why you're adding a surcharge or discount"
-//               />
-//             </Grid>
-//           </Grid>
+  // Calculate new total with adjustments
+  const calculateTotal = () => {
+    return proposal.calculatedPrice.total + (surcharge || 0) - (discount || 0);
+  };
 
-//           {(surcharge > 0 || discount > 0) && (
-//             <Box
-//               sx={{
-//                 mt: 3,
-//                 p: 2,
-//                 backgroundColor: "action.hover",
-//                 borderRadius: 1,
-//               }}
-//             >
-//               <Typography variant="body1" sx={{ mb: 1 }}>
-//                 New Total:{" "}
-//                 <strong>IDR {calculateTotal().toLocaleString()}</strong>
-//               </Typography>
-//               <Typography variant="body2" color="text.secondary">
-//                 Original: IDR{" "}
-//                 {proposal.priceBreakdown.finalTotal.toLocaleString()}
-//                 {surcharge > 0 &&
-//                   ` + ${surcharge.toLocaleString()} (surcharge)`}
-//                 {discount > 0 && ` - ${discount.toLocaleString()} (discount)`}
-//               </Typography>
-//             </Box>
-//           )}
-//         </CardContent>
-//       </Card>
+  return (
+    <Box>
+      {showRejectForm ? (
+        /* Rejection Form */
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Reject Proposal
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Please provide a reason for rejecting this proposal.
+            </Typography>
 
-//       {/* Action Buttons */}
-//       <Stack direction="row" spacing={2} sx={{ justifyContent: "center" }}>
-//         <Button
-//           variant="outlined"
-//           color="error"
-//           size="large"
-//           startIcon={<CloseIcon />}
-//           onClick={handleReject}
-//           disabled={loading}
-//           sx={{ minWidth: 200 }}
-//         >
-//           Reject Proposal
-//         </Button>
-//         <Button
-//           variant="contained"
-//           color="primary"
-//           size="large"
-//           startIcon={<CheckIcon />}
-//           onClick={handleAccept}
-//           disabled={loading}
-//           sx={{ minWidth: 200 }}
-//         >
-//           Accept Proposal
-//         </Button>
-//       </Stack>
-//     </Box>
-//   );
-// }
+            <TextField
+              label="Rejection reason"
+              multiline
+              rows={4}
+              fullWidth
+              required
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Explain why you're rejecting this proposal"
+              sx={{ mb: 3 }}
+              error={!rejectionReason}
+              helperText={
+                !rejectionReason ? "Rejection reason is required" : ""
+              }
+            />
+
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ justifyContent: "center" }}
+            >
+              <Button
+                variant="outlined"
+                onClick={handleCancelReject}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleConfirmReject}
+                disabled={loading || !rejectionReason}
+              >
+                Confirm Rejection
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : showAdjustmentForm ? (
+        /* Adjustment Form */
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Price Adjustment
+            </Typography>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Add surcharge"
+                  type="number"
+                  fullWidth
+                  value={surcharge || ""}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setSurcharge(value);
+                    // Clear discount if surcharge is entered
+                    if (value > 0) setDiscount(0);
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">IDR</InputAdornment>
+                    ),
+                  }}
+                  helperText="Add extra charge for additional complexity"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Or offer discount"
+                  type="number"
+                  fullWidth
+                  value={discount || ""}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setDiscount(value);
+                    // Clear surcharge if discount is entered
+                    if (value > 0) setSurcharge(0);
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">IDR</InputAdornment>
+                    ),
+                  }}
+                  helperText="Offer a discount to secure the commission"
+                />
+              </Grid>
+            </Grid>
+
+            {(surcharge > 0 || discount > 0) && (
+              <Box
+                sx={{
+                  mt: 3,
+                  p: 2,
+                  backgroundColor: "action.hover",
+                  borderRadius: 1,
+                }}
+              >
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  New Total:{" "}
+                  <strong>IDR {calculateTotal().toLocaleString()}</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Original: IDR{" "}
+                  {proposal.calculatedPrice.total.toLocaleString()}
+                  {surcharge > 0 &&
+                    ` + ${surcharge.toLocaleString()} (surcharge)`}
+                  {discount > 0 && ` - ${discount.toLocaleString()} (discount)`}
+                </Typography>
+              </Box>
+            )}
+
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ justifyContent: "center", mt: 3 }}
+            >
+              <Button
+                variant="outlined"
+                onClick={handleCancelAdjustment}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmitAdjustment}
+                disabled={loading || (surcharge === 0 && discount === 0)}
+              >
+                Submit Adjustment
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : (
+        /* Main Options */
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Your Response
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              You can accept the proposal as is, adjust the price, or reject the
+              proposal.
+            </Typography>
+
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ justifyContent: "center", mb: 3 }}
+            >
+              <Button
+                variant="outlined"
+                color="error"
+                size="large"
+                startIcon={<CloseIcon />}
+                onClick={handleRejectClick}
+                disabled={loading}
+                sx={{ minWidth: 160 }}
+              >
+                Reject
+              </Button>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="large"
+                onClick={handleShowAdjustment}
+                disabled={loading}
+                sx={{ minWidth: 160 }}
+              >
+                Adjust Price
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                startIcon={<CheckIcon />}
+                onClick={handleAccept}
+                disabled={loading}
+                sx={{ minWidth: 160 }}
+              >
+                Accept As Is
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+    </Box>
+  );
+}

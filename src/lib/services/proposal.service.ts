@@ -17,6 +17,7 @@ import {
   UpdateProposalInput,
   FindOpts,
   ArtistAdjustment,
+  cancelProposal,
 } from "@/lib/db/repositories/proposal.repository";
 import { findCommissionListingById } from "@/lib/db/repositories/commissionListing.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
@@ -75,15 +76,15 @@ export interface UpdateProposalInputService {
 }
 
 export interface ArtistDecision {
-  accept: boolean;
+  acceptProposal: boolean;
   surcharge?: number;
   discount?: number;
-  reason?: string;
+  rejectionReason?: string;
 }
 
 export interface ClientDecision {
-  accept: boolean;
-  rejectionReason?: string;
+  cancel?: boolean;
+  acceptAdjustments?: boolean;
 }
 
 export interface ProposalFilters {
@@ -300,7 +301,11 @@ export async function updateProposalFromForm(
 
     const baseDate = await getLatestActiveContractDeadline(listing.artistId);
 
-    const updatedProposal = await repoUpdateProposal(proposalId, updates, baseDate || new Date());
+    const updatedProposal = await repoUpdateProposal(
+      proposalId,
+      updates,
+      baseDate || new Date()
+    );
     if (!updatedProposal) {
       throw new HttpError("Failed to update proposal", 500);
     }
@@ -364,39 +369,48 @@ export async function artistRespond(
       throw new Error("Not authorized to respond to this proposal");
     }
 
-    let adjustment: ArtistAdjustment | undefined;
-
-    if (decision.accept && (decision.surcharge || decision.discount)) {
-      adjustment = {};
-
-      if (decision.surcharge) {
-        adjustment.surcharge = {
-          amount: decision.surcharge,
-          reason: decision.reason || "Artist adjustment",
-        };
+    // Artist is rejecting the proposal
+    if (!decision.acceptProposal) {
+      if (!decision.rejectionReason) {
+        throw new Error("Rejection reason is required");
       }
-
-      if (decision.discount) {
-        adjustment.discount = {
-          amount: decision.discount,
-          reason: decision.reason || "Artist adjustment",
-        };
-      }
+      return artistResponds(
+        proposalId,
+        false,
+        undefined,
+        decision.rejectionReason
+      );
     }
 
-    return artistResponds(
-      proposalId,
-      decision.accept,
-      adjustment,
-      decision.reason
-    );
+    if (
+      proposal.status !== "pendingArtist" &&
+      proposal.status !== "rejectedClient"
+    ) {
+      // Artist is accepting, check if there are adjustments
+      let adjustment: ArtistAdjustment | undefined;
+      if (decision.surcharge || decision.discount) {
+        adjustment = {};
+
+        if (decision.surcharge) {
+          adjustment.proposedSurcharge = decision.surcharge;
+        }
+
+        if (decision.discount) {
+          adjustment.proposedDiscount = decision.discount;
+        }
+      }
+
+      return artistResponds(proposalId, true, adjustment, undefined);
+    } else {
+      throw new Error("Proposal is not awaiting artist response");
+    }
   } catch (error) {
     console.error("Error in artist response:", error);
     throw error;
   }
 }
 
-export async function clientRespondToAdjustment(
+export async function clientRespond(
   clientId: string,
   proposalId: string,
   decision: ClientDecision
@@ -413,17 +427,26 @@ export async function clientRespondToAdjustment(
       throw new Error("Not authorized to respond to this proposal");
     }
 
+    // Handle cancellation (can happen at any status)
+    if (decision.cancel) {
+      return cancelProposal(proposalId, clientId);
+    }
+
+    // Regular client response to adjustment
+    if (proposal.status !== "pendingClient") {
+      throw new Error("Proposal is not awaiting client response");
+    }
+
     return clientRespondsToAdjustment(
       proposalId,
-      decision.accept,
-      decision.rejectionReason
+      decision.acceptAdjustments,
+      false // Not canceling
     );
   } catch (error) {
     console.error("Error in client response:", error);
     throw error;
   }
 }
-
 // ========== Query Operations ==========
 export async function getUserProposals(
   userId: string,

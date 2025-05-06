@@ -31,8 +31,8 @@ const statusColors = {
   rejectedArtist: "error",
   rejectedClient: "error",
   expired: "default",
+  paid: "info",
 } as const;
-
 const statusLabels = {
   pendingArtist: "Awaiting Artist",
   pendingClient: "Awaiting Client",
@@ -40,6 +40,7 @@ const statusLabels = {
   rejectedArtist: "Rejected by Artist",
   rejectedClient: "Rejected by Client",
   expired: "Expired",
+  paid: "Paid",
 } as const;
 
 export default function ProposalListingItem({

@@ -10,7 +10,6 @@ import { handleError } from "@/lib/utils/errorHandler";
 import {
   createProposalFromForm,
   getUserProposals,
-  formatProposalForUI,
 } from "@/lib/services/proposal.service";
 
 // ────────── POST /api/proposal ──────────
@@ -22,7 +21,7 @@ export async function POST(req: NextRequest) {
 
       const res = NextResponse.json({
         message: "Proposal created successfully",
-        proposal: formatProposalForUI(proposal),
+        proposal: proposal,
       });
       rotateToken(res, session);
       return res;
@@ -48,7 +47,7 @@ export async function GET(req: NextRequest) {
       });
 
       const res = NextResponse.json({
-        proposals: proposals.map(formatProposalForUI),
+        proposals: proposals,
       });
       rotateToken(res, session);
       return res;

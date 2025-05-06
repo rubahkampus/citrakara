@@ -163,24 +163,34 @@ function validateDuration(
 }
 
 function calculateRush(
-  listingSnapshot: ListingSnapshot,
+  listingSnapshot: ICommissionListing,
   deadline: Date,
   earliestDate: Date,
   latestDate: Date
 ) {
-  if (
-    listingSnapshot.deadline.mode !== "withRush" ||
-    !listingSnapshot.deadline.rushFee
-  ) {
-    return null;
+  if (listingSnapshot.deadline.mode == "standard") {
+    return {
+      days: -14,
+      paidDays: 0,
+      fee: 0,
+    };
   }
 
-  const rushDays = Math.max(
-    0,
-    Math.ceil(
-      (latestDate.getTime() - deadline.getTime()) / (24 * 60 * 60 * 1000)
-    )
+  // Calculate days from deadline to latestDate (negative if deadline is after latestDate)
+  const rushDays = Math.ceil(
+    (latestDate.getTime() - deadline.getTime()) / (24 * 60 * 60 * 1000)
   );
+
+  // For modes without rush fee, return rush days info without fee
+  if (listingSnapshot.deadline.mode == "withDeadline") {
+    return {
+      days: rushDays,
+      paidDays: 0,
+      fee: 0,
+    };
+  }
+
+  // Calculate days from earliestDate to deadline (for paid days calculation)
   const paidDays = Math.max(
     0,
     Math.ceil(
@@ -188,14 +198,20 @@ function calculateRush(
     )
   );
 
+  // If there are no paid days, return without fee
   if (paidDays <= 0) {
-    return { days: 0, paidDays: 0, fee: 0 };
+    return {
+      days: rushDays,
+      paidDays: 0,
+      fee: 0,
+    };
   }
 
+  // Calculate rush fee based on the fee type (flat or per day)
   const rushFee =
-    listingSnapshot.deadline.rushFee.kind === "flat"
-      ? listingSnapshot.deadline.rushFee.amount
-      : paidDays * listingSnapshot.deadline.rushFee.amount;
+    listingSnapshot.deadline.rushFee?.kind === "flat"
+      ? listingSnapshot.deadline.rushFee?.amount || 0
+      : paidDays * (listingSnapshot.deadline.rushFee?.amount || 0);
 
   return {
     days: rushDays,
@@ -210,6 +226,9 @@ function calculateSelectedPrice(
 ): { optionGroups: Cents; addons: Cents } {
   let optionGroupsTotal = 0;
   let addonsTotal = 0;
+
+  console.log(generalOptions)
+  console.log(JSON.stringify(subjectOptions))
 
   // Sum general options
   if (generalOptions?.optionGroups) {
@@ -267,18 +286,7 @@ export async function createProposal(
   }
 
   // Create listing snapshot
-  const listingSnapshot: ListingSnapshot = {
-    title: listing.title,
-    basePrice: listing.basePrice,
-    slots: listing.slots,
-    generalOptions: listing.generalOptions,
-    subjectOptions: listing.subjectOptions,
-    cancelationFee: listing.cancelationFee,
-    deadline: listing.deadline,
-    revisions: listing.revisions,
-    milestones: listing.milestones,
-    flow: listing.flow,
-  };
+  const listingSnapshot: ICommissionListing = listing;
 
   // ── 1) Sanitize subjectOptions so addons are numbers only
   const sanitizedSubjectOptions: Record<string, any> = {};
@@ -323,6 +331,20 @@ export async function createProposal(
 
   const { optionGroups: optionGroupsPrice, addons: addonsPrice } =
     calculateSelectedPrice(input.generalOptions, sanitizedSubjectOptions);
+
+  console.log({
+    base: listingSnapshot.basePrice,
+    optionGroups: optionGroupsPrice,
+    addons: addonsPrice,
+    rush: rush?.fee,
+    discount: 0,
+    surcharge: 0,
+    total:
+      listingSnapshot.basePrice +
+      optionGroupsPrice +
+      addonsPrice +
+      (rush?.fee || 0),
+  });
 
   const calculatedPrice = {
     base: listingSnapshot.basePrice,
@@ -394,7 +416,7 @@ export async function updateProposal(
       earliestDate,
       deadline,
       latestDate,
-      proposal.ListingSnapshot.deadline.mode,
+      proposal.listingSnapshot.deadline.mode,
       newBaseDate
     );
 
@@ -641,7 +663,7 @@ export async function finalizeAcceptance(
 const DAY = 24 * 60 * 60 * 1000; // Number of milliseconds in a day
 
 export function computeDynamicEstimate(
-  listing: ListingSnapshot,
+  listing: ICommissionListing,
   baseDate: Date = new Date() // default: now
 ): Estimate {
   const earliestDate = new Date(

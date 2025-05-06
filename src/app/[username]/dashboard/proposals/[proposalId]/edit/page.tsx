@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import ProposalFormPage from "@/components/dashboard/proposals/ProposalFormPage";
 import {
   fetchProposalById,
-  formatProposalForUI,
 } from "@/lib/services/proposal.service";
 
 interface EditProposalPageProps {
@@ -41,8 +40,7 @@ export default async function EditProposalPage({
     }
 
     // Format proposal for UI and serialize both the proposal data and listing snapshot
-    const formattedProposal = formatProposalForUI(proposal);
-    const serializedProposal = JSON.parse(JSON.stringify(formattedProposal));
+    const serializedProposal = JSON.parse(JSON.stringify(proposal));
     const listingSnapshot = JSON.parse(
       JSON.stringify(proposal.listingSnapshot)
     );

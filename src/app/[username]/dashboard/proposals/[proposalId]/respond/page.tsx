@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import RespondFormPage from "@/components/dashboard/proposals/RespondFormPage";
 import {
   fetchProposalById,
-  formatProposalForUI,
 } from "@/lib/services/proposal.service";
 
 interface RespondProposalPageProps {
@@ -38,7 +37,7 @@ export default async function RespondProposalPage({
     }
 
     const role = isClient ? "client" : "artist";
-    const formattedProposal = formatProposalForUI(proposal);
+    const formattedProposal = proposal;
     const serializedProposal = JSON.parse(JSON.stringify(formattedProposal));
 
     return (

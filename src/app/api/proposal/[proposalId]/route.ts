@@ -12,7 +12,6 @@ import {
   fetchProposalById,
   updateProposalFromForm,
   canEditProposal,
-  formatProposalForUI,
 } from "@/lib/services/proposal.service";
 import { deleteProposal } from "@/lib/db/repositories/proposal.repository";
 
@@ -25,7 +24,7 @@ export async function GET(
     return withAuth(async (session) => {
       const proposal = await fetchProposalById(params.proposalId, session.id);
       const res = NextResponse.json({
-        proposal: formatProposalForUI(proposal),
+        proposal: proposal,
       });
       rotateToken(res, session);
       return res;
@@ -54,7 +53,7 @@ export async function PATCH(
 
       const res = NextResponse.json({
         message: "Proposal updated",
-        proposal: formatProposalForUI(updated),
+        proposal: updated,
       });
       rotateToken(res, session);
       return res;

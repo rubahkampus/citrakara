@@ -9,7 +9,6 @@ import { handleError } from "@/lib/utils/errorHandler";
 import {
   artistRespond,
   clientRespondToAdjustment,
-  formatProposalForUI,
 } from "@/lib/services/proposal.service";
 
 // Body shapes:
@@ -52,7 +51,7 @@ export async function PATCH(
 
       const res = NextResponse.json({
         message: "Proposal updated",
-        proposal: formatProposalForUI(proposal),
+        proposal: proposal,
       });
       rotateToken(res, session);
       return res;

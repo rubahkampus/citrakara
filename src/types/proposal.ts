@@ -1,7 +1,6 @@
 // src/types/proposal.ts
 /**
- * ProposalUI: frontend-safe representation of a proposal
- * Derived from IProposal via formatProposalForUI
+ * Derived from IProposal
  */
 export interface PriceBreakdown {
     basePrice: number;
@@ -24,28 +23,6 @@ export interface PriceBreakdown {
     | 'rejectedArtist'
     | 'rejectedClient'
     | 'expired';
-  
-  export interface ProposalUI {
-    id: string;
-    clientId: string;
-    artistId: string;
-    listingId: string;
-    listingTitle: string;
-    status: ProposalStatus;
-    availability: Availability;
-    deadline: Date;
-    expiresAt: Date | null;
-    generalDescription: string;
-    referenceImages: string[];
-    priceBreakdown: PriceBreakdown;
-    adjustments?: {
-      surcharge?: { amount: number; reason: string };
-      discount?: { amount: number; reason: string };
-    };
-    rejectionReason?: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }
   
   /**
    * ProposalFormValues: values used in the create/edit form

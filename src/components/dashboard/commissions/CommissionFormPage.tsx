@@ -128,8 +128,6 @@ export default function CommissionFormPage({
   const flow = watch("flow");
 
   const onSubmit: SubmitHandler<CommissionFormValues> = async (values) => {
-    console.log("Form values:", values); // Debugging line
-    console.log("initialData:", initialData); // Debugging line
     setLoading(true);
     setError(null);
 

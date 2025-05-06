@@ -29,7 +29,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { ProposalFormValues, ProposalUI } from "@/types/proposal";
+import { ProposalFormValues } from "@/types/proposal";
+import { IProposal } from "@/lib/db/models/proposal.model";
 
 const MAX_FILES = 5;
 
@@ -57,7 +58,7 @@ export default function ReferenceImagesSection() {
       setIsEditMode(true);
       
       // Check if referenceImages is an array of strings (existing URLs)
-      const initialData = formValues as unknown as ProposalUI;
+      const initialData = formValues as unknown as IProposal;
       if (initialData.referenceImages && Array.isArray(initialData.referenceImages)) {
         const existingUrls = initialData.referenceImages.filter(
           (url): url is string => typeof url === 'string'

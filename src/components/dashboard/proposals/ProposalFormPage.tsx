@@ -13,13 +13,13 @@
  *   - username: string
  *   - mode: "create" | "edit"
  *   - listing: string           ← JSON.stringified commission listing
- *   - initialData?: ProposalUI  ← only for edit
+ *   - initialData?: IProposal   ← only for edit
  */
 import React from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { axiosClient } from "@/lib/utils/axiosClient";
-import { ProposalFormValues, ProposalUI } from "@/types/proposal";
+import { ProposalFormValues } from "@/types/proposal";
 import DeadlineSection from "./form/DeadlineSection";
 import DescriptionSection from "./form/DescriptionSection";
 import ReferenceImagesSection from "./form/ReferenceImagesSection";
@@ -27,12 +27,13 @@ import GeneralOptionsSection from "./form/GeneralOptionsSection";
 import SubjectOptionsSection from "./form/SubjectOptionsSection";
 import PriceBreakdownSection from "./form/PriceBreakdownSection";
 import { Button, Box, Alert, Snackbar, Paper } from "@mui/material";
+import { IProposal } from "@/lib/db/models/proposal.model";
 
 interface ProposalFormPageProps {
   username: string;
   mode: "create" | "edit";
   listing: string; // JSON.stringified listing
-  initialData?: ProposalUI; // for edit only
+  initialData?: IProposal; // for edit only
 }
 
 export default function ProposalFormPage({
@@ -44,16 +45,27 @@ export default function ProposalFormPage({
   const router = useRouter();
   const listingObj: any = JSON.parse(listing);
 
+  console.log("initialData", initialData);
+
   // Initialize RHF with optional existing data
   const methods = useForm<ProposalFormValues>({
     defaultValues: initialData
       ? {
           ...initialData,
-          id: initialData?.id || undefined, // for edit mode only
+          id: initialData?._id?.toString() || undefined, // Convert ObjectId to string for edit mode
+          listingId: initialData.listingId.toString(),
           deadline:
             initialData.deadline instanceof Date
               ? initialData.deadline.toISOString()
               : initialData.deadline,
+          generalDescription: initialData.generalDescription || "",
+          referenceImages: initialData.referenceImages || [],
+          generalOptions: initialData.generalOptions || {
+            optionGroups: {},
+            addons: {},
+            answers: {},
+          },
+          subjectOptions: initialData.subjectOptions || {},
         }
       : {
           listingId: listingObj._id, // Add this for form data
@@ -110,7 +122,7 @@ export default function ProposalFormPage({
 
     // For edit mode, include existing images
     if (mode === "edit" && initialData) {
-      // Use the referenceImages from initialData instead of existingReferences
+      // Use the referenceImages from initialData
       initialData.referenceImages.forEach((url) => {
         fd.append("existingReferences[]", url);
       });
@@ -130,8 +142,8 @@ export default function ProposalFormPage({
           headers: { "Content-Type": "multipart/form-data" },
         });
       } else {
-        // edit: initialData.id must exist
-        res = await axiosClient.patch(`/api/proposal/${initialData!.id}`, fd, {
+        // edit: initialData._id must exist
+        res = await axiosClient.patch(`/api/proposal/${initialData!._id}`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }

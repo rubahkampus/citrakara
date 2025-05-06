@@ -1,4 +1,3 @@
-// src/components/dashboard/proposals/ProposalListingItem.tsx
 "use client";
 
 import React from "react";
@@ -11,11 +10,16 @@ import {
   Button,
   Stack,
   Divider,
+  Tooltip,
+  CardHeader,
+  Avatar,
 } from "@mui/material";
-import { ProposalUI } from "@/types/proposal";
+import { IProposal } from "@/lib/db/models/proposal.model";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import PriceCheckIcon from "@mui/icons-material/PriceCheck";
 
 interface ProposalListingItemProps {
-  proposal: ProposalUI;
+  proposal: IProposal;
   onEdit?: (id: string) => void;
   onRespond?: (id: string) => void;
 }
@@ -43,8 +47,8 @@ export default function ProposalListingItem({
   onEdit,
   onRespond,
 }: ProposalListingItemProps) {
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("en-US", {
+  const formatDate = (dateString: string | Date) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -58,33 +62,60 @@ export default function ProposalListingItem({
     }).format(amount);
   };
 
+  const isExpiringSoon = () => {
+    if (!proposal.expiresAt) return false;
+
+    const now = new Date();
+    const expiresAt = new Date(proposal.expiresAt);
+    const hoursLeft = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    return hoursLeft < 24;
+  };
+
   return (
-    <Card>
-      <CardContent>
-        <Stack spacing={2}>
-          {/* Header with title and status */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "start",
-            }}
-          >
-            <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
-              {proposal.listingTitle}
-            </Typography>
+    <Card
+      elevation={3}
+      sx={{
+        transition: "transform 0.2s",
+        "&:hover": { transform: "translateY(-4px)" },
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <CardHeader
+        title={
+          <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+            {proposal.listingSnapshot.title}
+          </Typography>
+        }
+        action={
+          <Tooltip title={statusLabels[proposal.status]}>
             <Chip
               label={statusLabels[proposal.status]}
               color={statusColors[proposal.status]}
               size="small"
+              sx={{ fontWeight: 500 }}
             />
-          </Box>
+          </Tooltip>
+        }
+      />
 
+      <CardContent
+        sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}
+      >
+        <Stack spacing={2} sx={{ height: "100%" }}>
           {/* Dates */}
           <Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Availability Window
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+              <AccessTimeIcon
+                fontSize="small"
+                sx={{ mr: 1, color: "text.secondary" }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                Availability Window
+              </Typography>
+            </Box>
             <Typography variant="body2">
               {formatDate(proposal.availability.earliestDate)} →
               <Box component="span" sx={{ fontWeight: 600, mx: 1 }}>
@@ -93,7 +124,17 @@ export default function ProposalListingItem({
               → {formatDate(proposal.availability.latestDate)}
             </Typography>
             {proposal.expiresAt && (
-              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+              <Typography
+                variant="body2"
+                color="error"
+                sx={{
+                  mt: 1,
+                  fontWeight: isExpiringSoon() ? 600 : 400,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {isExpiringSoon() && "⚠️ "}
                 Expires: {new Date(proposal.expiresAt).toLocaleString()}
               </Typography>
             )}
@@ -102,44 +143,64 @@ export default function ProposalListingItem({
           <Divider />
 
           {/* Price breakdown */}
-          <Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Price Breakdown
-            </Typography>
+          <Box sx={{ flexGrow: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+              <PriceCheckIcon
+                fontSize="small"
+                sx={{ mr: 1, color: "text.secondary" }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                Price Breakdown
+              </Typography>
+            </Box>
             <Stack spacing={1}>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography variant="body2">Base Price:</Typography>
+                <Typography variant="body2">
+                  {formatCurrency(proposal.calculatedPrice.base)}
+                </Typography>
+              </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Typography variant="body2">Options:</Typography>
                 <Typography variant="body2">
-                  {formatCurrency(proposal.priceBreakdown.optionsTotal)}
+                  {formatCurrency(proposal.calculatedPrice.optionGroups)}
                 </Typography>
               </Box>
-              {proposal.priceBreakdown.rush > 0 && (
+              {proposal.calculatedPrice.addons > 0 && (
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2">Add-ons:</Typography>
+                  <Typography variant="body2">
+                    {formatCurrency(proposal.calculatedPrice.addons)}
+                  </Typography>
+                </Box>
+              )}
+              {proposal.calculatedPrice.rush > 0 && (
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography variant="body2" color="warning.main">
                     Rush Fee:
                   </Typography>
                   <Typography variant="body2" color="warning.main">
-                    {formatCurrency(proposal.priceBreakdown.rush)}
+                    {formatCurrency(proposal.calculatedPrice.rush)}
                   </Typography>
                 </Box>
               )}
-              {proposal.priceBreakdown.discount > 0 && (
+              {proposal.calculatedPrice.discount > 0 && (
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography variant="body2" color="success.main">
                     Discount:
                   </Typography>
                   <Typography variant="body2" color="success.main">
-                    -{formatCurrency(proposal.priceBreakdown.discount)}
+                    -{formatCurrency(proposal.calculatedPrice.discount)}
                   </Typography>
                 </Box>
               )}
-              {proposal.priceBreakdown.surcharge > 0 && (
+              {proposal.calculatedPrice.surcharge > 0 && (
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography variant="body2" color="error.main">
                     Surcharge:
                   </Typography>
                   <Typography variant="body2" color="error.main">
-                    +{formatCurrency(proposal.priceBreakdown.surcharge)}
+                    +{formatCurrency(proposal.calculatedPrice.surcharge)}
                   </Typography>
                 </Box>
               )}
@@ -149,19 +210,19 @@ export default function ProposalListingItem({
                   Total:
                 </Typography>
                 <Typography variant="subtitle1" fontWeight="bold">
-                  {formatCurrency(proposal.priceBreakdown.finalTotal)}
+                  {formatCurrency(proposal.calculatedPrice.total)}
                 </Typography>
               </Box>
             </Stack>
           </Box>
 
           {/* Actions */}
-          <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+          <Box sx={{ display: "flex", gap: 1, mt: "auto", pt: 2 }}>
             {onEdit && (
               <Button
                 variant="outlined"
                 color="primary"
-                onClick={() => onEdit(proposal.id)}
+                onClick={() => onEdit(proposal._id.toString())}
                 fullWidth
               >
                 Edit
@@ -171,7 +232,7 @@ export default function ProposalListingItem({
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => onRespond(proposal.id)}
+                onClick={() => onRespond(proposal._id.toString())}
                 fullWidth
               >
                 Respond

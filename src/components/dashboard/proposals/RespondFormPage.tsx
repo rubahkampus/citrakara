@@ -7,7 +7,7 @@
  * Props:
  *   - username: string
  *   - role: "artist" | "client"
- *   - proposal: ProposalUI  // serialized via formatProposalForUI
+ *   - proposal: IProposal
  *
  * Behavior:
  *   - If role === "artist": render <ArtistRespondForm />
@@ -22,14 +22,14 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Box, Alert, Snackbar } from "@mui/material";
 import { axiosClient } from "@/lib/utils/axiosClient";
-import ArtistRespondForm from "./ArtistRespondForm";
-import ClientRespondForm from "./ClientRespondForm";
-import { ProposalUI } from "@/types/proposal";
+import { IProposal } from "@/lib/db/models/proposal.model";
+// import ArtistRespondForm from "./ArtistRespondForm";
+// import ClientRespondForm from "./ClientRespondForm";
 
 interface RespondFormPageProps {
   username: string;
   role: "artist" | "client";
-  proposal: ProposalUI;
+  proposal: IProposal;
 }
 
 export default function RespondFormPage({
@@ -106,7 +106,7 @@ export default function RespondFormPage({
         </Alert>
       )}
 
-      {role === "artist" ? (
+      {/* {role === "artist" ? (
         <ArtistRespondForm
           proposal={proposal}
           onSubmit={handleArtistSubmit}
@@ -118,7 +118,7 @@ export default function RespondFormPage({
           onSubmit={handleClientSubmit}
           loading={loading}
         />
-      )}
+      )} */}
 
       <Snackbar
         open={success}

@@ -452,12 +452,7 @@ export async function getIncomingProposals(
   try {
     await connectDB();
 
-    const options: FindOpts = {
-      status: filters?.status || ["pendingArtist", "pendingClient"],
-      beforeExpire: filters?.beforeExpire,
-    };
-
-    return findProposalsByArtist(artistId, options);
+    return findProposalsByArtist(artistId);
   } catch (error) {
     console.error("Error fetching incoming proposals:", error);
     throw error;
@@ -598,9 +593,7 @@ export async function getDashboardData(userId: string): Promise<{
     await connectDB();
 
     const [incoming, outgoing] = await Promise.all([
-      getIncomingProposals(userId, {
-        status: ["pendingArtist", "pendingClient"],
-      }),
+      getIncomingProposals(userId),
       getOutgoingProposals(userId),
     ]);
 
@@ -632,54 +625,6 @@ export function validateProposalInput(input: any): void {
   if (input.referenceImages && input.referenceImages.length > 5) {
     throw new Error("Maximum 5 reference images allowed");
   }
-}
-
-// ========== Helper for Options Processing ==========
-export function calculateTotalPrice(proposal: IProposal): {
-  basePrice: number;
-  optionsTotal: number;
-  rush: number;
-  discount: number;
-  surcharge: number;
-  finalTotal: number;
-} {
-  const { calculatedPrice } = proposal;
-
-  return {
-    basePrice: calculatedPrice.base,
-    optionsTotal: calculatedPrice.optionGroups + calculatedPrice.addons,
-    rush: calculatedPrice.rush,
-    discount: calculatedPrice.discount,
-    surcharge: calculatedPrice.surcharge,
-    finalTotal: calculatedPrice.total,
-  };
-}
-
-// ========== Format Helpers for Frontend ==========
-export function formatProposalForUI(proposal: IProposal) {
-  const priceBreakdown = calculateTotalPrice(proposal);
-
-  return {
-    id: proposal._id.toString(),
-    status: proposal.status,
-    clientId: proposal.clientId.toString(),
-    artistId: proposal.artistId.toString(),
-    listingId: proposal.listingId.toString(),
-    listingTitle: proposal.listingSnapshot.title,
-    deadline: new Date(proposal.deadline),
-    availability: {
-      earliestDate: new Date(proposal.availability.earliestDate),
-      latestDate: new Date(proposal.availability.latestDate),
-    },
-    description: proposal.generalDescription,
-    referenceImages: proposal.referenceImages,
-    expiresAt: proposal.expiresAt ? new Date(proposal.expiresAt) : null,
-    priceBreakdown,
-    adjustments: proposal.artistAdjustments,
-    rejectionReason: proposal.rejectionReason,
-    createdAt: new Date(proposal.createdAt),
-    updatedAt: new Date(proposal.updatedAt),
-  };
 }
 
 // ========== Utility Operations ==========

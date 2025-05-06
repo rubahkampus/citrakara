@@ -16,12 +16,12 @@ export interface IProposal extends Document {
 
   /* ---- lifecycle status ---- */
   status:
-    | "pendingArtist" // client submitted proposal
-    | "pendingClient" // if artist proposed discount or surcharge
+    | "pendingArtist" // client submitted proposal, artist needs to accept/reject
+    | "pendingClient" // if artist proposed discount or surcharge, client needs to accept/reject
     | "accepted" // artist accepted the proposal
     | "rejectedArtist" // artist rejected the proposal -> end of lifecycle
-    | "rejectedClient" // if artist proposed discount or surcharge and client rejected -> not end of lifecycle
-    | "expired"; // -> end of lifecycle
+    | "rejectedClient" // if artist proposed discount or surcharge and client rejected -> not end of lifecycle, functionally the same as "pendingArtist" but it tells the artist that the client rejected the proposed price
+    | "expired"; // -> end of lifecycle, functionally we're never going to use this status, but it's here for completeness, since we have expiredAt field and we don't have cron jobs to clean up expired proposals
   expiresAt?: ISODate; // present in pending / negotiating
 
   /* ---- dynamic availability window ---- */
@@ -33,8 +33,8 @@ export interface IProposal extends Document {
 
   /* ---- rush details (auto-computed) ---- */
   rush?: {
-    days: number; // latestDate - deadline
-    paidDays?: number; // earliestDate - deadline (negative)
+    days: number; // number of rushed days from latestDate, latestDate - deadline, negatve if deadline in the future (e.g. standard always be two weeks, then days = -14)
+    paidDays?: number; // number of rushed days from earliest date, earliestDate - deadline
     fee?: Cents; // added to price
   };
 

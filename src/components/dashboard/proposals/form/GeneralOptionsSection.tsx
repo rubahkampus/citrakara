@@ -158,16 +158,16 @@ export default function GeneralOptionsSection({
                           id={`general-option-${group.title}`}
                           value={
                             watchedOptions?.optionGroups?.[group.title]
-                              ?.selectedLabel || ""
+                              ?.selectedLabel ||
+                            (group.selections.length > 0
+                              ? group.selections[0].label
+                              : "")
                           }
                           label={group.title}
                           onChange={(e) =>
                             handleOptionGroupChange(group.title, e.target.value)
                           }
                         >
-                          <MenuItem value="">
-                            <em>None</em>
-                          </MenuItem>
                           {group.selections.map((selection) => (
                             <MenuItem
                               key={selection.label}
@@ -193,7 +193,6 @@ export default function GeneralOptionsSection({
             </Card>
           </Box>
         )}
-
       {/* Addons */}
       {(generalOptions.addons ?? []).length > 0 && (
         <Box sx={{ mb: 5 }}>

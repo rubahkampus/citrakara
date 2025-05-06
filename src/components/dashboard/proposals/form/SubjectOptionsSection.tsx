@@ -119,6 +119,17 @@ function SubjectSection({
     name: instancesFieldArrayName,
   });
 
+  // Add this effect to automatically append one instance if none exists
+  React.useEffect(() => {
+    if (fields.length === 0) {
+      append({
+        optionGroups: {},
+        addons: {},
+        answers: {},
+      });
+    }
+  }, [fields.length, append]);
+
   const watchedSubject = watchedSubjectOptions[subject.title] || {};
   const instances = watchedSubject.instances || [];
 
@@ -400,6 +411,7 @@ function InstanceCard({
       defaultExpanded={instanceIndex === 0 || totalInstances <= 2}
       sx={{
         mb: 2,
+        position: "relative", // Add this line
         boxShadow: hasErrors ? "0 0 0 2px #f44336" : "none",
         border: "1px solid",
         borderColor: hasErrors ? "error.main" : "divider",
@@ -453,20 +465,22 @@ function InstanceCard({
               </Typography>
             )}
           </Typography>
-          <Tooltip title="Remove this item">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              sx={{ color: "error.main" }}
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
         </Box>
       </AccordionSummary>
+      <Box sx={{ position: "absolute", top: "12px", right: "40px", zIndex: 1 }}>
+        <Tooltip title="Remove this item">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            sx={{ color: "error.main" }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <AccordionDetails sx={{ p: 3 }}>
         {/* Option Groups */}
         {subject.optionGroups?.length > 0 && (
@@ -499,16 +513,16 @@ function InstanceCard({
                         id={`subject-option-${subject.title}-${instanceIndex}-${group.title}`}
                         value={
                           watchedInstance?.optionGroups?.[group.title]
-                            ?.selectedLabel || ""
+                            ?.selectedLabel ||
+                          (group.selections.length > 0
+                            ? group.selections[0].label
+                            : "")
                         }
                         label={group.title}
                         onChange={(e) =>
                           handleOptionGroupChange(group.title, e.target.value)
                         }
                       >
-                        <MenuItem value="">
-                          <em>None</em>
-                        </MenuItem>
                         {group.selections.map((selection) => (
                           <MenuItem
                             key={selection.label}

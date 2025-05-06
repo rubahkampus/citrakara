@@ -120,28 +120,28 @@ export default function ProposalFormPage({
       });
     }
 
-    try {
-      let res;
-      if (mode === "create") {
-        res = await axiosClient.post("/api/proposal", fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      } else {
-        // edit: initialData.id must exist
-        res = await axiosClient.patch(`/api/proposal/${initialData!.id}`, fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      }
-      setSuccess(true);
-      setTimeout(() => {
-        router.push(`/${username}/dashboard/proposals`);
-      }, 1500);
-    } catch (e: any) {
-      console.error("Proposal form submit error:", e);
-      setError(e.response?.data?.error || "Failed to save proposal");
-    } finally {
-      loadingRef.current = false;
-    }
+    // try {
+    //   let res;
+    //   if (mode === "create") {
+    //     res = await axiosClient.post("/api/proposal", fd, {
+    //       headers: { "Content-Type": "multipart/form-data" },
+    //     });
+    //   } else {
+    //     // edit: initialData.id must exist
+    //     res = await axiosClient.patch(`/api/proposal/${initialData!.id}`, fd, {
+    //       headers: { "Content-Type": "multipart/form-data" },
+    //     });
+    //   }
+    //   setSuccess(true);
+    //   setTimeout(() => {
+    //     router.push(`/${username}/dashboard/proposals`);
+    //   }, 1500);
+    // } catch (e: any) {
+    //   console.error("Proposal form submit error:", e);
+    //   setError(e.response?.data?.error || "Failed to save proposal");
+    // } finally {
+    //   loadingRef.current = false;
+    // }
   };
 
   return (

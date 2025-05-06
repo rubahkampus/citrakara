@@ -77,6 +77,7 @@ export interface ArtistAdjustment {
 }
 
 export interface Estimate {
+  baseDate: Date;
   earliestDate: Date;
   latestDate: Date;
 }
@@ -537,7 +538,7 @@ export function computeDynamicEstimate(
     baseDate.getTime() + listing.deadline.min * DAY
   );
   const latestDate = new Date(baseDate.getTime() + listing.deadline.max * DAY);
-  return { earliestDate, latestDate };
+  return { baseDate, earliestDate, latestDate };
 }
 
 export function recalculateRushAndPrice(proposal: IProposal): IProposal {

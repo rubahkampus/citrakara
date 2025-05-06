@@ -308,6 +308,19 @@ function AuthenticatedControls({ session }: { session: any }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
+  const [avatarUrl, setAvatarUrl] = useState<string>("/default-profile.png");
+
+  useEffect(() => {
+    axiosClient
+      .get<{ url: string | null }>(`/api/user/${session.username}/avatar`)
+      .then((res) => {
+        setAvatarUrl(res.data.url ?? "/default-profile.png");
+      })
+      .catch(() => {
+        setAvatarUrl("/default-profile.png");
+      });
+  }, [session?.username]);
+
   const handleMenu = (e: React.MouseEvent<HTMLElement>) =>
     setAnchorEl(e.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -321,7 +334,11 @@ function AuthenticatedControls({ session }: { session: any }) {
     <>
       <Tooltip title="Account menu">
         <IconButton onClick={handleMenu} size="small">
-          <Avatar src="/default-profile.png" sx={{ width: 32, height: 32 }} />
+          <Avatar
+            src={avatarUrl}
+            sx={{ width: 32, height: 32 }}
+            alt={`${session.username}'s avatar`}
+          />
         </IconButton>
       </Tooltip>
       <Menu

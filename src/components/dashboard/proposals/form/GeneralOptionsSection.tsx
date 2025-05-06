@@ -9,8 +9,8 @@
  *   formValues.generalOptions.addons: { [label]: price }
  *   formValues.generalOptions.answers: { [question]: answer }
  */
-import React from "react";
-import { useFormContext } from "react-hook-form";
+import React, { useCallback, useEffect, useMemo } from "react";
+import { useFormContext, Controller } from "react-hook-form";
 import {
   Box,
   Typography,
@@ -30,10 +30,187 @@ import {
 } from "@mui/material";
 import { ProposalFormValues } from "@/types/proposal";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
+import { Cents } from "@/types/common";
 
 interface GeneralOptionsSectionProps {
   listing: ICommissionListing;
 }
+
+// Separate components to prevent full component re-renders
+const OptionGroupItem = React.memo(
+  ({
+    group,
+    value,
+    currency,
+    onChange,
+    error,
+  }: {
+    group: any;
+    value: string;
+    currency: string;
+    onChange: (title: string, value: string) => void;
+    error?: any;
+  }) => {
+    const handleChange = useCallback(
+      (e: { target: { value: string } }) => {
+        onChange(group.title, e.target.value);
+      },
+      [group.title, onChange]
+    );
+
+    return (
+      <Grid item xs={12} md={12} key={group.title}>
+        <CardContent>
+          <FormControl fullWidth error={!!error}>
+            <InputLabel id={`general-option-${group.title}-label`}>
+              {group.title}
+            </InputLabel>
+            <Select
+              labelId={`general-option-${group.title}-label`}
+              id={`general-option-${group.title}`}
+              value={value}
+              label={group.title}
+              onChange={handleChange}
+            >
+              {group.selections.map(
+                (selection: { label: string; price: Cents }) => (
+                  <MenuItem key={selection.label} value={selection.label}>
+                    {selection.label} - {currency}{" "}
+                    {selection.price.toLocaleString()}
+                  </MenuItem>
+                )
+              )}
+            </Select>
+            {error && (
+              <FormHelperText error>This field is required</FormHelperText>
+            )}
+          </FormControl>
+        </CardContent>
+      </Grid>
+    );
+  }
+);
+
+const AddonItem = React.memo(
+  ({
+    addon,
+    checked,
+    currency,
+    onToggle,
+  }: {
+    addon: any;
+    checked: boolean;
+    currency: string;
+    onToggle: (label: string, checked: boolean) => void;
+  }) => {
+    const handleChange = useCallback(
+      (e: { target: { checked: boolean } }) => {
+        onToggle(addon.label, e.target.checked);
+      },
+      [addon.label, onToggle]
+    );
+
+    return (
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={checked}
+            onChange={handleChange}
+            color="primary"
+            sx={{
+              "&.Mui-checked": {
+                color: "primary.main",
+              },
+            }}
+          />
+        }
+        label={
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              flexWrap: { xs: "wrap", sm: "nowrap" },
+              paddingTop: { xs: 0.5, sm: 0.75 },
+            }}
+          >
+            <Typography fontWeight={500} sx={{ mr: 1, ml: 2 }}>
+              {addon.label}
+            </Typography>
+            <Typography
+              sx={{
+                color: "text.secondary",
+                fontWeight: 500,
+                backgroundColor: "action.hover",
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 1,
+                fontSize: "0.875rem",
+                display: "inline-flex",
+                alignItems: "center",
+                ml: "auto",
+                mt: { xs: 0.5, sm: 0 },
+              }}
+            >
+              {currency} {addon.price.toLocaleString()}
+            </Typography>
+          </Box>
+        }
+        sx={{
+          display: "flex",
+          py: 1.5,
+          alignItems: "flex-start",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          width: "100%",
+          margin: 0,
+          "&:last-child": {
+            borderBottom: "none",
+          },
+        }}
+      />
+    );
+  }
+);
+
+const QuestionItem = React.memo(
+  ({
+    question,
+    value,
+    onChange,
+    error,
+    isLast,
+  }: {
+    question: string;
+    value: string;
+    onChange: (question: string, value: string) => void;
+    error?: any;
+    isLast: boolean;
+  }) => {
+    const handleChange = useCallback(
+      (e: { target: { value: string } }) => {
+        onChange(question, e.target.value);
+      },
+      [question, onChange]
+    );
+
+    return (
+      <TextField
+        label={question}
+        multiline
+        rows={1}
+        fullWidth
+        sx={{ mb: isLast ? 0 : 3 }}
+        value={value || ""}
+        onChange={handleChange}
+        error={!!error}
+        helperText={error?.message}
+        placeholder="Your answer..."
+      />
+    );
+  }
+);
 
 export default function GeneralOptionsSection({
   listing,
@@ -44,10 +221,12 @@ export default function GeneralOptionsSection({
     setValue,
     formState: { errors },
   } = useFormContext<ProposalFormValues>();
-  const generalOptions = listing.generalOptions || {};
 
-  console.log("listing", listing);
-
+  // Memoize generalOptions to prevent unnecessary recalculations
+  const generalOptions = useMemo(
+    () => listing.generalOptions || {},
+    [listing.generalOptions]
+  );
   const watchedOptions = watch("generalOptions") || {
     optionGroups: {},
     addons: {},
@@ -63,67 +242,213 @@ export default function GeneralOptionsSection({
     return null;
   }
 
-  // Handle option group selection
-  const handleOptionGroupChange = (
-    groupTitle: string,
-    selectedLabel: string
-  ) => {
-    // Find the selected option group
-    const group = generalOptions.optionGroups?.find(
-      (g) => g.title === groupTitle
-    );
+  useEffect(() => {
+    const optionGroupDefaults: Record<string, { selectedLabel: string; price: Cents }> = {};
+  
+    generalOptions.optionGroups?.forEach((group) => {
+      const defaultSelection = group.selections[0];
+      if (defaultSelection) {
+        optionGroupDefaults[group.title] = {
+          selectedLabel: defaultSelection.label,
+          price: defaultSelection.price,
+        };
+      }
+    });
+  
+    setValue("generalOptions.optionGroups", {
+      ...optionGroupDefaults,
+      ...watchedOptions.optionGroups, // preserve any user-modified selections
+    }, { shouldValidate: false });
+  }, [generalOptions.optionGroups, setValue]);
+  
 
-    if (!group) return;
-
-    // Find the selected option within the group
-    const selection = group.selections.find((s) => s.label === selectedLabel);
-
-    if (selection) {
-      setValue(
-        `generalOptions.optionGroups.${groupTitle}`,
-        {
-          selectedLabel,
-          price: selection.price,
-        },
-        { shouldValidate: true }
+  // Handle option group selection - memoized callback
+  const handleOptionGroupChange = useCallback(
+    (groupTitle: string, selectedLabel: string) => {
+      // Find the selected option group
+      const group = generalOptions.optionGroups?.find(
+        (g) => g.title === groupTitle
       );
-    } else if (selectedLabel === "") {
-      // Handle clearing the selection
-      const currentOptionGroups = { ...watchedOptions.optionGroups };
-      delete currentOptionGroups[groupTitle];
-      setValue("generalOptions.optionGroups", currentOptionGroups, {
+
+      if (!group) return;
+
+      // Find the selected option within the group
+      const selection = group.selections.find((s) => s.label === selectedLabel);
+
+      if (selection) {
+        setValue(
+          `generalOptions.optionGroups.${groupTitle}`,
+          {
+            selectedLabel,
+            price: selection.price,
+          },
+          { shouldValidate: true }
+        );
+      } else if (selectedLabel === "") {
+        // Handle clearing the selection
+        const currentOptionGroups = { ...watchedOptions.optionGroups };
+        delete currentOptionGroups[groupTitle];
+        setValue("generalOptions.optionGroups", currentOptionGroups, {
+          shouldValidate: true,
+        });
+      }
+    },
+    [generalOptions.optionGroups, setValue, watchedOptions.optionGroups]
+  );
+
+  // Handle addon toggle - memoized callback
+  const handleAddonToggle = useCallback(
+    (addonLabel: string, checked: boolean) => {
+      const addon = generalOptions.addons?.find((a) => a.label === addonLabel);
+      const currentAddons = watchedOptions?.addons || {};
+
+      if (checked && addon) {
+        setValue(
+          "generalOptions.addons",
+          {
+            ...currentAddons,
+            [addonLabel]: addon.price,
+          },
+          { shouldValidate: true }
+        );
+      } else {
+        const { [addonLabel]: removed, ...rest } = currentAddons;
+        setValue("generalOptions.addons", rest, { shouldValidate: true });
+      }
+    },
+    [generalOptions.addons, setValue, watchedOptions?.addons]
+  );
+
+  // Handle question answers - memoized callback
+  const handleQuestionChange = useCallback(
+    (question: string, answer: string) => {
+      setValue(`generalOptions.answers.${question}`, answer, {
         shouldValidate: true,
       });
-    }
-  };
+    },
+    [setValue]
+  );
 
-  // Handle addon toggle
-  const handleAddonToggle = (addonLabel: string, checked: boolean) => {
-    const addon = generalOptions.addons?.find((a) => a.label === addonLabel);
-    const currentAddons = watchedOptions?.addons || {};
+  // Memoize rendering sections to prevent unnecessary re-renders
+  const optionGroupsSection = useMemo(() => {
+    if (!generalOptions.optionGroups?.length) return null;
 
-    if (checked && addon) {
-      setValue(
-        "generalOptions.addons",
-        {
-          ...currentAddons,
-          [addonLabel]: addon.price,
-        },
-        { shouldValidate: true }
-      );
-    } else {
-      const { [addonLabel]: removed, ...rest } = currentAddons;
-      setValue("generalOptions.addons", rest, { shouldValidate: true });
-    }
-  };
+    return (
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
+          Select Options
+        </Typography>
 
-  // Handle question answers
-  const handleQuestionChange = (question: string, answer: string) => {
-    setValue(`generalOptions.answers.${question}`, answer, {
-      shouldValidate: true,
-    });
-  };
+        <Card variant="outlined" sx={{ height: "100%", pb: 2, pr: 2 }}>
+          <Grid container spacing={-2}>
+            {generalOptions.optionGroups.map((group) => (
+              <OptionGroupItem
+                key={group.title}
+                group={group}
+                value={
+                  watchedOptions?.optionGroups?.[group.title]?.selectedLabel ||
+                  (group.selections.length > 0 ? group.selections[0].label : "")
+                }
+                currency={listing.currency}
+                onChange={handleOptionGroupChange}
+                error={errors?.generalOptions?.optionGroups?.[group.title]}
+              />
+            ))}
+          </Grid>
+        </Card>
+      </Box>
+    );
+  }, [
+    generalOptions.optionGroups,
+    watchedOptions?.optionGroups,
+    listing.currency,
+    handleOptionGroupChange,
+    errors?.generalOptions?.optionGroups,
+  ]);
 
+  const addonsSection = useMemo(() => {
+    if (!(generalOptions.addons ?? []).length) return null;
+
+    return (
+      <Box sx={{ mb: 5 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            mb: 2.5,
+            fontWeight: 600,
+            position: "relative",
+            paddingBottom: 1,
+          }}
+        >
+          Additional Services
+        </Typography>
+
+        <Card
+          variant="outlined"
+          sx={{
+            borderRadius: 2,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            },
+          }}
+        >
+          <CardContent sx={{ py: 2.5 }}>
+            <Box sx={{ display: "flex", flexDirection: "column" }}>
+              {(generalOptions.addons ?? []).map((addon) => (
+                <AddonItem
+                  key={`${addon.label}-${addon.price}`}
+                  addon={addon}
+                  checked={!!watchedOptions?.addons?.[addon.label]}
+                  currency={listing.currency}
+                  onToggle={handleAddonToggle}
+                />
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }, [
+    generalOptions.addons,
+    watchedOptions?.addons,
+    listing.currency,
+    handleAddonToggle,
+  ]);
+
+  const questionsSection = useMemo(() => {
+    if (!(generalOptions.questions ?? []).length) return null;
+
+    return (
+      <Box>
+        <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
+          Additional Information
+        </Typography>
+        <Card variant="outlined">
+          <CardContent>
+            {(generalOptions.questions ?? []).map((question, index) => (
+              <QuestionItem
+                key={question}
+                question={question}
+                value={watchedOptions?.answers?.[question] || ""}
+                onChange={handleQuestionChange}
+                error={errors?.generalOptions?.answers?.[question]}
+                isLast={index === (generalOptions.questions ?? []).length - 1}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }, [
+    generalOptions.questions,
+    watchedOptions?.answers,
+    handleQuestionChange,
+    errors?.generalOptions?.answers,
+  ]);
+
+  // Remove console.log that could slow down renders
   return (
     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
       <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
@@ -131,202 +456,9 @@ export default function GeneralOptionsSection({
       </Typography>
       <Divider sx={{ mb: 3 }} />
 
-      {/* Option Groups */}
-      {generalOptions.optionGroups &&
-        generalOptions.optionGroups.length > 0 && (
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
-              Select Options
-            </Typography>
-
-            <Card variant="outlined" sx={{ height: "100%", pb: 2, pr: 2 }}>
-              <Grid container spacing={-2}>
-                {generalOptions.optionGroups.map((group) => (
-                  <Grid item xs={12} md={12} key={group.title}>
-                    <CardContent>
-                      <FormControl
-                        fullWidth
-                        error={
-                          !!errors?.generalOptions?.optionGroups?.[group.title]
-                        }
-                      >
-                        <InputLabel id={`general-option-${group.title}-label`}>
-                          {group.title}
-                        </InputLabel>
-                        <Select
-                          labelId={`general-option-${group.title}-label`}
-                          id={`general-option-${group.title}`}
-                          value={
-                            watchedOptions?.optionGroups?.[group.title]
-                              ?.selectedLabel ||
-                            (group.selections.length > 0
-                              ? group.selections[0].label
-                              : "")
-                          }
-                          label={group.title}
-                          onChange={(e) =>
-                            handleOptionGroupChange(group.title, e.target.value)
-                          }
-                        >
-                          {group.selections.map((selection) => (
-                            <MenuItem
-                              key={selection.label}
-                              value={selection.label}
-                            >
-                              {selection.label} - {listing.currency}{" "}
-                              {selection.price.toLocaleString()}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors?.generalOptions?.optionGroups?.[
-                          group.title
-                        ] && (
-                          <FormHelperText error>
-                            This field is required
-                          </FormHelperText>
-                        )}
-                      </FormControl>
-                    </CardContent>
-                  </Grid>
-                ))}
-              </Grid>
-            </Card>
-          </Box>
-        )}
-      {/* Addons */}
-      {(generalOptions.addons ?? []).length > 0 && (
-        <Box sx={{ mb: 5 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              mb: 2.5,
-              fontWeight: 600,
-              position: "relative",
-              paddingBottom: 1,
-            }}
-          >
-            Additional Services
-          </Typography>
-
-          <Card
-            variant="outlined"
-            sx={{
-              borderRadius: 2,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-              transition: "all 0.2s ease-in-out",
-              "&:hover": {
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              },
-            }}
-          >
-            <CardContent sx={{ py: 2.5 }}>
-              <Box sx={{ display: "flex", flexDirection: "column" }}>
-                {(generalOptions.addons ?? []).map((addon) => (
-                  <FormControlLabel
-                    key={`${addon.label}-${addon.price}`}
-                    control={
-                      <Checkbox
-                        checked={!!watchedOptions?.addons?.[addon.label]}
-                        onChange={(e) =>
-                          handleAddonToggle(addon.label, e.target.checked)
-                        }
-                        color="primary"
-                        sx={{
-                          "&.Mui-checked": {
-                            color: "primary.main",
-                          },
-                        }}
-                      />
-                    }
-                    label={
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          width: "100%",
-                          flexWrap: { xs: "wrap", sm: "nowrap" },
-                          paddingTop: { xs: 0.5, sm: 0.75 },
-                        }}
-                      >
-                        <Typography fontWeight={500} sx={{ mr: 1, ml: 2 }}>
-                          {addon.label}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            color: "text.secondary",
-                            fontWeight: 500,
-                            backgroundColor: "action.hover",
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: 1,
-                            fontSize: "0.875rem",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            ml: "auto",
-                            mt: { xs: 0.5, sm: 0 },
-                          }}
-                        >
-                          {listing.currency} {addon.price.toLocaleString()}
-                        </Typography>
-                      </Box>
-                    }
-                    sx={{
-                      display: "flex",
-                      py: 1.5,
-                      alignItems: "flex-start",
-                      borderBottom: "1px solid",
-                      borderColor: "divider",
-                      width: "100%",
-                      margin: 0,
-                      "&:last-child": {
-                        borderBottom: "none",
-                      },
-                    }}
-                  />
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
-
-      {/* Questions */}
-      {(generalOptions.questions ?? []).length > 0 && (
-        <Box>
-          <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
-            Additional Information
-          </Typography>
-          <Card variant="outlined">
-            <CardContent>
-              {(generalOptions.questions ?? []).map((question, index) => (
-                <TextField
-                  key={index}
-                  label={question}
-                  multiline
-                  rows={1}
-                  fullWidth
-                  sx={{
-                    mb:
-                      index < (generalOptions.questions ?? []).length - 1
-                        ? 3
-                        : 0,
-                  }}
-                  value={watchedOptions?.answers?.[question] || ""}
-                  onChange={(e) =>
-                    handleQuestionChange(question, e.target.value)
-                  }
-                  error={!!errors?.generalOptions?.answers?.[question]}
-                  helperText={
-                    errors?.generalOptions?.answers?.[question]?.message
-                  }
-                  placeholder="Your answer..."
-                />
-              ))}
-            </CardContent>
-          </Card>
-        </Box>
-      )}
+      {optionGroupsSection}
+      {addonsSection}
+      {questionsSection}
     </Paper>
   );
 }

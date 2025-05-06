@@ -14,18 +14,6 @@
  *   - mode: "create" | "edit"
  *   - listing: string           ← JSON.stringified commission listing
  *   - initialData?: ProposalUI  ← only for edit
- *
- * On submit:
- *   • Build FormData:
- *       fd.append("listingId", listing._id);
- *       fd.append("deadline", values.deadline);
- *       fd.append("generalDescription", values.generalDescription);
- *       fd.append("payload", JSON.stringify({
- *         generalOptions: values.generalOptions,
- *         subjectOptions: values.subjectOptions,
- *       }));
- *       files → fd.append("referenceImages[]", file)
- *   • POST to /api/proposal  or PATCH to /api/proposal/[id]
  */
 import React from "react";
 import { useForm, FormProvider } from "react-hook-form";
@@ -79,18 +67,26 @@ export default function ProposalFormPage({
           },
           subjectOptions: {},
         },
+    mode: "onSubmit", // Explicitly set validation mode
   });
-  const { handleSubmit } = methods;
+  const {
+    handleSubmit,
+    formState: { errors },
+  } = methods;
 
   // UI feedback
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<boolean>(false);
-  const loadingRef = React.useRef(false);
+  const [loading, setLoading] = React.useState<boolean>(false);
 
   // Core submit handler
   const onSubmit = async (values: ProposalFormValues) => {
+    // Add debug logging for onSubmit only
+    console.log("onSubmit function called!");
+    console.log("Form values:", values);
+
     setError(null);
-    loadingRef.current = true;
+    setLoading(true);
 
     // Build FormData
     const fd = new FormData();
@@ -120,8 +116,15 @@ export default function ProposalFormPage({
       });
     }
 
+    // Log form data for debugging
+    console.log("Form data entries:");
+    for (var pair of fd.entries()) {
+      console.log(pair[0] + ", " + pair[1]);
+    }
+
     // try {
     //   let res;
+    //   console.log("About to make API call...");
     //   if (mode === "create") {
     //     res = await axiosClient.post("/api/proposal", fd, {
     //       headers: { "Content-Type": "multipart/form-data" },
@@ -132,6 +135,7 @@ export default function ProposalFormPage({
     //       headers: { "Content-Type": "multipart/form-data" },
     //     });
     //   }
+    //   console.log("API response:", res);
     //   setSuccess(true);
     //   setTimeout(() => {
     //     router.push(`/${username}/dashboard/proposals`);
@@ -140,15 +144,44 @@ export default function ProposalFormPage({
     //   console.error("Proposal form submit error:", e);
     //   setError(e.response?.data?.error || "Failed to save proposal");
     // } finally {
-    //   loadingRef.current = false;
+    //   setLoading(false);
     // }
+  };
+
+  // Function to display validation errors in user-friendly format
+  const getMissingFieldsMessage = () => {
+    if (Object.keys(errors).length === 0) return null;
+    
+    const fieldNames: Record<string, string> = {
+      deadline: "Deadline",
+      generalDescription: "Description",
+      referenceImages: "Reference Images",
+      "generalOptions.optionGroups": "General Options",
+      "generalOptions.addons": "Addons",
+      "generalOptions.answers": "Option Answers",
+      subjectOptions: "Subject Options"
+    };
+    
+    const missingFields = Object.keys(errors)
+      .map(key => fieldNames[key] || key)
+      .join(", ");
+    
+    return `Please complete the following required fields: ${missingFields}`;
   };
 
   return (
     <FormProvider {...methods}>
       <Box
         component="form"
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(
+          (values) => {
+            console.log("Form submit event triggered with valid data!");
+            onSubmit(values);
+          },
+          (errors) => {
+            setError(getMissingFieldsMessage() || "Please check all required fields.");
+          }
+        )}
         sx={{ maxWidth: 800, mx: "auto" }}
       >
         {error && (
@@ -190,14 +223,31 @@ export default function ProposalFormPage({
             <Button
               variant="outlined"
               onClick={() => router.back()}
-              disabled={loadingRef.current}
+              disabled={loading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={loadingRef.current}
+              disabled={loading}
+              onClick={(e) => {
+                console.log("Submit button clicked!");
+                // We'll use a manual submit to bypass possible issues
+                if (e.currentTarget.form) {
+                  console.log("Manually triggering form submission");
+                  const formEl = e.currentTarget.form;
+                  // Check if form is already being submitted
+                  if (!formEl.classList.contains("submitting")) {
+                    formEl.classList.add("submitting");
+                    // Clean up class after submission attempt
+                    setTimeout(
+                      () => formEl.classList.remove("submitting"),
+                      1000
+                    );
+                  }
+                }
+              }}
             >
               {mode === "create" ? "Create Proposal" : "Save Changes"}
             </Button>

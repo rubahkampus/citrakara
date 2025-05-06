@@ -279,6 +279,27 @@ export default function CommissionFormPage({
     }
   };
 
+  const getMissingFieldsMessage = () => {
+    if (Object.keys(errors).length === 0) return null;
+
+    const fieldNames: Record<string, string> = {
+      title: "Title",
+      slots: "Slot Count",
+      tos: "Terms of Service",
+      samples: "Sample Images",
+      description: "Description",
+      cancelKind: "Cancelation Type",
+      cancelAmount: "Cancelation Amount",
+      revisionType: "Revision Policy",
+    };
+
+    const missingFields = Object.keys(errors)
+      .map((key) => fieldNames[key] || key)
+      .join(", ");
+
+    return `Please complete the following required fields: ${missingFields}`;
+  };
+
   return (
     <FormProvider {...methods}>
       <Box sx={{ maxWidth: 1200, mx: "auto", pb: 8 }}>
@@ -330,7 +351,11 @@ export default function CommissionFormPage({
         {/* Main Form Container */}
         <Paper
           component="form"
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(onSubmit, (errors) => {
+            setError(
+              getMissingFieldsMessage() || "Please fix the highlighted errors."
+            );
+          })}
           sx={{
             p: 4,
             border: 1,

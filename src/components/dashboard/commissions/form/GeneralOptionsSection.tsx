@@ -10,10 +10,20 @@ import {
   Paper,
   Divider,
 } from "@mui/material";
-import { useFormContext, useFieldArray } from "react-hook-form";
+import { useFormContext, useFieldArray, Controller } from "react-hook-form";
 import { CommissionFormValues } from "../CommissionFormPage";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+
+// Validation function for allowed characters
+const validateAllowedCharacters = (value: string) => {
+  // Regex that only allows alphabet, spaces, -, comma, period, and numbers
+  const allowedCharsRegex = /^[a-zA-Z0-9\s\-.,?!/()]*$/;
+  return (
+    allowedCharsRegex.test(value) ||
+    "Only letters, numbers, spaces, hyphens, commas, and periods are allowed"
+  );
+};
 
 /**
  * Reusable component for price-label pairs
@@ -28,11 +38,22 @@ const PriceOptionPair: React.FC<{
 }> = ({ label, priceSuffix = "", register, remove, index, path }) => (
   <Grid container spacing={1} alignItems="center" sx={{ mb: 1 }}>
     <Grid item xs={6}>
-      <TextField
-        label="Label"
-        fullWidth
-        size="small"
-        {...register(`${path}.${index}.label`)}
+      <Controller
+        name={`${path}.${index}.label`}
+        defaultValue=""
+        rules={{
+          validate: validateAllowedCharacters,
+        }}
+        render={({ field, fieldState }) => (
+          <TextField
+            label="Label"
+            fullWidth
+            size="small"
+            error={!!fieldState.error}
+            helperText={fieldState.error ? fieldState.error.message : ""}
+            {...field}
+          />
+        )}
       />
     </Grid>
     <Grid item xs={4}>
@@ -82,12 +103,22 @@ const OptionGroupList: React.FC<{
           sx={{ p: 2, mb: 2, borderRadius: 1 }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-            <TextField
-              label="Group Title"
-              fullWidth
-              size="small"
-              {...control.register(`${path}.${groupIndex}.title`)}
-              sx={{ mr: 1, flexGrow: 1 }}
+            <Controller
+              name={`${path}.${groupIndex}.title`}
+              rules={{
+                validate: validateAllowedCharacters,
+              }}
+              render={({ field, fieldState }) => (
+                <TextField
+                  label="Group Title"
+                  fullWidth
+                  size="small"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error ? fieldState.error.message : ""}
+                  sx={{ mr: 1, flexGrow: 1 }}
+                  {...field}
+                />
+              )}
             />
             <IconButton color="error" onClick={() => remove(groupIndex)}>
               <DeleteIcon />
@@ -206,64 +237,6 @@ const AddonList: React.FC<{
   );
 };
 
-/**
- * Component for questions list
- */
-// const QuestionList: React.FC<{
-//   control: any;
-//   path: string;
-// }> = ({ control, path }) => {
-//   const { fields, append, remove } = useFieldArray({ control, name: path });
-
-//   return (
-//     <Box>
-//       {fields.length === 0 && (
-//         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-//           No questions added yet
-//         </Typography>
-//       )}
-
-//       {fields.map((field, index) => (
-//         <Grid
-//           container
-//           spacing={1}
-//           key={field.id}
-//           alignItems="center"
-//           sx={{ mb: 1 }}
-//         >
-//           <Grid item xs={10}>
-//             <TextField
-//               label="Question"
-//               fullWidth
-//               size="small"
-//               {...control.register(`${path}.${index}.title`)}
-//             />
-//           </Grid>
-//           <Grid item xs={2}>
-//             <IconButton
-//               size="small"
-//               color="error"
-//               onClick={() => remove(index)}
-//             >
-//               <DeleteIcon fontSize="small" />
-//             </IconButton>
-//           </Grid>
-//         </Grid>
-//       ))}
-
-//       <Button
-//         variant="outlined"
-//         startIcon={<AddIcon />}
-//         onClick={() => append({ title: "", detail: "" })}
-//         size="small"
-//         sx={{ mt: 1 }}
-//       >
-//         Add Question
-//       </Button>
-//     </Box>
-//   );
-// };
-
 const QuestionList: React.FC<{
   control: any;
   path: string;
@@ -287,11 +260,22 @@ const QuestionList: React.FC<{
           sx={{ mb: 1 }}
         >
           <Grid item xs={10}>
-            <TextField
-              label="Question"
-              fullWidth
-              size="small"
-              {...control.register(`${path}.${index}`)}
+            <Controller
+              control={control}
+              name={`${path}.${index}`}
+              rules={{
+                validate: validateAllowedCharacters,
+              }}
+              render={({ field, fieldState }) => (
+                <TextField
+                  label="Question"
+                  fullWidth
+                  size="small"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error ? fieldState.error.message : ""}
+                  {...field}
+                />
+              )}
             />
           </Grid>
           <Grid item xs={2}>
@@ -322,7 +306,7 @@ const QuestionList: React.FC<{
 /**
  * Main General Options Section component
  */
-const GeneralOptionsSection: React.FC = () => {
+const GeneralOptionsSection = () => {
   const { control, watch } = useFormContext<CommissionFormValues>();
   const currency = watch("currency");
 

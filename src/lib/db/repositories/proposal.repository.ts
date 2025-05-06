@@ -227,9 +227,6 @@ function calculateSelectedPrice(
   let optionGroupsTotal = 0;
   let addonsTotal = 0;
 
-  console.log(generalOptions)
-  console.log(JSON.stringify(subjectOptions))
-
   // Sum general options
   if (generalOptions?.optionGroups) {
     Object.values(generalOptions.optionGroups).forEach((selection) => {
@@ -331,20 +328,6 @@ export async function createProposal(
 
   const { optionGroups: optionGroupsPrice, addons: addonsPrice } =
     calculateSelectedPrice(input.generalOptions, sanitizedSubjectOptions);
-
-  console.log({
-    base: listingSnapshot.basePrice,
-    optionGroups: optionGroupsPrice,
-    addons: addonsPrice,
-    rush: rush?.fee,
-    discount: 0,
-    surcharge: 0,
-    total:
-      listingSnapshot.basePrice +
-      optionGroupsPrice +
-      addonsPrice +
-      (rush?.fee || 0),
-  });
 
   const calculatedPrice = {
     base: listingSnapshot.basePrice,
@@ -678,6 +661,8 @@ export function recalculateRushAndPrice(proposal: IProposal): IProposal {
 
   if (!availability) return proposal;
 
+  const proposalSnapshot = JSON.parse(JSON.stringify(proposal)) as IProposal
+
   // Recalculate rush
   const rush = calculateRush(
     listingSnapshot,
@@ -688,7 +673,7 @@ export function recalculateRushAndPrice(proposal: IProposal): IProposal {
 
   // Recalculate price
   const { optionGroups: optionGroupsPrice, addons: addonsPrice } =
-    calculateSelectedPrice(proposal.generalOptions, proposal.subjectOptions);
+    calculateSelectedPrice(proposalSnapshot.generalOptions, proposalSnapshot.subjectOptions);
 
   const surchargeAmount = proposal.artistAdjustments?.surcharge?.amount || 0;
   const discountAmount = proposal.artistAdjustments?.discount?.amount || 0;

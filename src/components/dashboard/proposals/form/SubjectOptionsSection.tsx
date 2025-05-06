@@ -71,6 +71,12 @@ const getSubjectIcon = (title: string) => {
   return null;
 };
 
+// Helper function to calculate discounted price
+const applyDiscount = (price: Cents, discount: number): Cents => {
+  if (discount <= 0) return price;
+  return Math.round(price * ((100 - discount) / 100));
+};
+
 export default function SubjectOptionsSection({
   listing,
 }: SubjectOptionsSectionProps) {
@@ -86,6 +92,7 @@ export default function SubjectOptionsSection({
     () => listing.subjectOptions || [],
     [listing.subjectOptions]
   );
+
   const watchedSubjectOptions = watch("subjectOptions") || {};
 
   if (!subjectOptions.length) {
@@ -140,9 +147,19 @@ const SubjectSection = React.memo(
       name: instancesFieldArrayName,
     });
 
-    // Fix: Add fields.length to dependencies array to prevent infinite loops
+    // FIX 1: Use a ref to track if we've already initialized to prevent double initialization
+    const initializedRef = React.useRef(false);
+
+    // Check if we have any existing data in edit mode before initializing
+    const existingInstances =
+      watchedSubjectOptions[subject.title]?.instances || [];
+    const hasExistingData = existingInstances.length > 0;
+
     React.useEffect(() => {
-      if (fields.length === 0) {
+      // Only initialize if we haven't already AND there are no fields AND no existing data
+      if (!initializedRef.current && fields.length === 0 && !hasExistingData) {
+        initializedRef.current = true;
+
         const defaultOptionGroups: Record<string, any> = {};
 
         subject.optionGroups?.forEach((group: any) => {
@@ -162,18 +179,39 @@ const SubjectSection = React.memo(
           answers: {},
         });
       }
-    }, [fields.length, append, subject.optionGroups]);
+    }, [append, fields.length, subject.optionGroups, hasExistingData]);
 
     const watchedSubject = watchedSubjectOptions[subject.title] || {};
     const instances = watchedSubject.instances || [];
 
+    // FIX 2: Improve addInstance to initialize with discounted prices for subsequent instances
     const addInstance = useCallback(() => {
+      // Create new instance with pre-calculated discounted prices for options
+      const newInstanceOptionGroups: Record<string, any> = {};
+
+      subject.optionGroups?.forEach((group: any) => {
+        const first = group.selections?.[0];
+        if (first) {
+          // Apply discount for 2+ instances
+          const price =
+            fields.length > 0 && subject.discount > 0
+              ? applyDiscount(first.price, subject.discount)
+              : first.price;
+
+          newInstanceOptionGroups[group.title] = {
+            selectedLabel: first.label,
+            price,
+            originalPrice: first.price,
+          };
+        }
+      });
+
       append({
-        optionGroups: {},
+        optionGroups: newInstanceOptionGroups,
         addons: {},
         answers: {},
       });
-    }, [append]);
+    }, [append, fields.length, subject.optionGroups, subject.discount]);
 
     // Calculate remaining slots using fields.length
     const remainingSlots = useMemo(
@@ -704,7 +742,7 @@ const InstanceCard = React.memo(
             </Box>
           )}
 
-          {/* Questions - Uncontrolled input approach for first question fix */}
+          {/* FIX 3: Questions - Improve how we handle field values */}
           {subject.questions?.length > 0 && (
             <Box>
               <Typography

@@ -100,7 +100,7 @@ const TEMPLATES: TemplateCard[] = [
           },
         ],
         questions: [
-          "What is the character's species and do you have reference images?",
+          "What is the species of the character and do you have reference images?",
           "Any preferred pose or expression?",
         ],
       },

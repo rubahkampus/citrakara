@@ -22,6 +22,15 @@ import {
 import { ProposalFormValues } from "@/types/proposal";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
+// Helper functions for encoding/decoding question text
+const encodeQuestionKey = (question: string): string => {
+  return encodeURIComponent(question);
+};
+
+const decodeQuestionKey = (key: string): string => {
+  return decodeURIComponent(key);
+};
+
 interface GeneralOptionsSectionProps {
   listing: ICommissionListing;
 }
@@ -71,7 +80,33 @@ export default function GeneralOptionsSection({
         });
       }
     }
-  }, [generalOptions.optionGroups, setValue, watchedOptions.optionGroups]);
+
+    // Initialize answers with encoded question keys
+    if (
+      (generalOptions?.questions?.length ?? 0) > 0 &&
+      Object.keys(watchedOptions.answers || {}).length === 0
+    ) {
+      const defaultAnswers: Record<string, string> = {};
+
+      (generalOptions?.questions ?? []).forEach((question) => {
+        // Encode the question to create a safe key
+        const encodedKey = encodeQuestionKey(question);
+        defaultAnswers[encodedKey] = "";
+      });
+
+      if (Object.keys(defaultAnswers).length > 0) {
+        setValue("generalOptions.answers", defaultAnswers, {
+          shouldValidate: false,
+        });
+      }
+    }
+  }, [
+    generalOptions.optionGroups,
+    generalOptions.questions,
+    setValue,
+    watchedOptions.optionGroups,
+    watchedOptions.answers,
+  ]);
 
   // Safety check - if any section is missing, don't render the component
   if (
@@ -150,7 +185,9 @@ export default function GeneralOptionsSection({
   // Debounced question change handler - created once per component instance
   const debouncedQuestionChange = React.useCallback(
     debounce((question, value) => {
-      setValue(`generalOptions.answers.${question}`, value, {
+      // Encode the question to create a safe key
+      const encodedKey = encodeQuestionKey(question);
+      setValue(`generalOptions.answers.${encodedKey}`, value, {
         shouldValidate: true,
       });
     }, 300),
@@ -325,10 +362,10 @@ export default function GeneralOptionsSection({
       {/* Questions */}
       {(generalOptions.questions ?? []).map((question) => (
         <QuestionField
-          key={question}
+          key={encodeQuestionKey(question)}
           question={question}
           control={control}
-          error={errors?.generalOptions?.answers?.[question]}
+          error={errors?.generalOptions?.answers?.[encodeQuestionKey(question)]}
         />
       ))}
     </Paper>
@@ -348,9 +385,12 @@ const QuestionField = React.memo(function QuestionField({
   control: Control<ProposalFormValues>;
   error?: { message?: string };
 }) {
-  // subscribe only to this one field
+  // Encode the question to create a safe key
+  const encodedQuestion = encodeQuestionKey(question);
+
+  // subscribe only to this one field with encoded key
   const { field } = useController({
-    name: `generalOptions.answers.${question}`,
+    name: `generalOptions.answers.${encodedQuestion}`,
     control,
     defaultValue: "",
   });
@@ -358,7 +398,7 @@ const QuestionField = React.memo(function QuestionField({
   return (
     <TextField
       {...field}
-      label={question}
+      label={question} // Display original question text as label
       multiline
       rows={1}
       fullWidth

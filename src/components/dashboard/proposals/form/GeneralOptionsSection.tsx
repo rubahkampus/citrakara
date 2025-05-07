@@ -66,6 +66,7 @@ export default function GeneralOptionsSection({
         if (group.selections.length > 0) {
           // Set the first option as default
           defaultOptionGroups[group.id.toString()] = {
+            selectedId: group.selections[0].id,
             selectedLabel: group.selections[0].label,
             price: group.selections[0].price,
           };
@@ -129,6 +130,7 @@ export default function GeneralOptionsSection({
       setValue(
         `generalOptions.optionGroups.${groupId}`,
         {
+          selectedId: selection.id,
           selectedLabel,
           price: selection.price,
         },

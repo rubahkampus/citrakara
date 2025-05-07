@@ -3,7 +3,7 @@
 /**
  * SubjectOptionsSection
  * ---------------------
- * Renders for each subjectTitle:
+ * Renders for each subjectId:
  *   - instances[] with nested optionGroups/addons/answers per instance
  * Uses useFieldArray for dynamic arrays
  */
@@ -97,7 +97,7 @@ export default function SubjectOptionsSection({
 
       {subjectOptions.map((subject) => (
         <SubjectSection
-          key={subject.title}
+          key={subject.id}
           subject={subject}
           control={control}
           setValue={setValue}
@@ -127,19 +127,19 @@ const SubjectSection = React.memo(
     listing: ICommissionListing;
     errors: any;
   }) => {
-    const subjectTitle = subject.title;
+    const subjectId = subject.id;
 
     // Use direct path for fieldArray
-    const fieldArrayName = `subjectOptions.${subjectTitle}.instances`;
+    const fieldArrayName = `subjectOptions.${subjectId}.instances`;
 
     // Initialize the form value structure if it doesn't exist
     useEffect(() => {
       // Make sure subjectOptions exists
       const subjectOptions = getValues("subjectOptions") || {};
-      if (!subjectOptions[subjectTitle]) {
-        setValue(`subjectOptions.${subjectTitle}`, { instances: [] });
+      if (!subjectOptions[subjectId]) {
+        setValue(`subjectOptions.${subjectId}`, { instances: [] });
       }
-    }, [subjectTitle, setValue, getValues]);
+    }, [subjectId, setValue, getValues]);
 
     // Use fieldArray for managing instances
     const { fields, append, remove } = useFieldArray({
@@ -161,7 +161,9 @@ const SubjectSection = React.memo(
                 ? applyDiscount(first.price, subject.discount)
                 : first.price;
 
-            defaultOptionGroups[group.title] = {
+            // store both id & price
+            defaultOptionGroups[group.id] = {
+              selectedId: first.id,
               selectedLabel: first.label,
               price,
             };
@@ -259,7 +261,7 @@ const SubjectSection = React.memo(
             getValues={getValues}
             onRemove={() => remove(index)}
             listing={listing}
-            subjectTitle={subjectTitle}
+            subjectId={subjectId}
             errors={errors}
             totalInstances={fields.length}
             isDiscountApplicable={index > 0}
@@ -305,7 +307,7 @@ const InstanceCard = React.memo(
     getValues,
     onRemove,
     listing,
-    subjectTitle,
+    subjectId,
     errors,
     totalInstances,
     isDiscountApplicable,
@@ -317,17 +319,17 @@ const InstanceCard = React.memo(
     getValues: any;
     onRemove: () => void;
     listing: ICommissionListing;
-    subjectTitle: string;
+    subjectId: string;
     errors: any;
     totalInstances: number;
     isDiscountApplicable: boolean;
   }) => {
     // Path to this instance in the form
-    const instancePath = `subjectOptions.${subjectTitle}.instances.${instanceIndex}`;
+    const instancePath = `subjectOptions.${subjectId}.instances.${instanceIndex}`;
 
     // Check for errors in this instance
     const hasErrors =
-      !!errors?.subjectOptions?.[subjectTitle]?.instances?.[instanceIndex];
+      !!errors?.subjectOptions?.[subjectId]?.instances?.[instanceIndex];
 
     // Get current instance data
     const instance = getValues(instancePath) || {
@@ -379,16 +381,19 @@ const InstanceCard = React.memo(
     );
 
     const handleOptionGroupChange = useCallback(
-      (groupTitle: string, selectedLabel: string) => {
+      (
+        groupId: number,
+        groupTitle: string,
+        selectedId: number,
+        selectedLabel: string
+      ) => {
         // Find the group in the subject
-        const group = subject.optionGroups?.find(
-          (g: any) => g.title === groupTitle
-        );
+        const group = subject.optionGroups?.find((g: any) => g.id === groupId);
         if (!group) return;
 
         // Find the selection in the group
         const selection = group.selections.find(
-          (s: any) => s.label === selectedLabel
+          (s: any) => s.id === selectedId
         );
 
         if (!selection) return;
@@ -399,11 +404,16 @@ const InstanceCard = React.memo(
             ? Math.round(selection.price * discountFactor)
             : selection.price;
 
+        // console.log({
+        //   selection,
+        //   finalPrice,
+        // });
+
         // Update the option group in the form
         setValue(
-          `${instancePath}.optionGroups.${groupTitle}`,
+          `${instancePath}.optionGroups.${groupId}`,
           {
-            selectedLabel,
+            selectedId,
             price: finalPrice,
           },
           { shouldValidate: true }
@@ -420,9 +430,9 @@ const InstanceCard = React.memo(
     );
 
     const handleAddonToggle = useCallback(
-      (addonLabel: string, checked: boolean) => {
+      (addonId: number, checked: boolean) => {
         // Find the addon in the subject
-        const addon = subject.addons?.find((a: any) => a.label === addonLabel);
+        const addon = subject.addons?.find((a: any) => a.id === addonId);
         if (!addon) return;
 
         // Apply discount if applicable
@@ -433,13 +443,13 @@ const InstanceCard = React.memo(
 
         if (checked) {
           // Add the addon
-          setValue(`${instancePath}.addons.${addonLabel}`, finalPrice, {
+          setValue(`${instancePath}.addons.${addonId}`, finalPrice, {
             shouldValidate: true,
           });
         } else {
           // Remove the addon
           const currentAddons = { ...instance.addons };
-          delete currentAddons[addonLabel];
+          delete currentAddons[addonId];
           setValue(`${instancePath}.addons`, currentAddons, {
             shouldValidate: true,
           });
@@ -457,8 +467,8 @@ const InstanceCard = React.memo(
     );
 
     // Helper to check if an addon is selected
-    const isAddonSelected = (addonLabel: string) => {
-      return !!instance.addons?.[addonLabel];
+    const isAddonSelected = (addonId: number) => {
+      return !!instance.addons?.[addonId];
     };
 
     // Handle question answers
@@ -472,8 +482,8 @@ const InstanceCard = React.memo(
     );
 
     // Get answer for a specific question
-    const getQuestionAnswer = (question: string) => {
-      return instance.answers?.[question] || "";
+    const getQuestionAnswer = (questionId: number) => {
+      return instance.answers?.[questionId] || "";
     };
 
     return (
@@ -569,14 +579,15 @@ const InstanceCard = React.memo(
               <Grid container spacing={2}>
                 {subject.optionGroups.map(
                   (group: {
+                    id: number;
                     title: string;
-                    selections: { label: string; price: Cents }[];
+                    selections: { id: Number; label: String; price: Number }[];
                   }) => (
                     <Grid item xs={12} md={12} key={group.title}>
                       <FormControl
                         fullWidth
                         error={
-                          !!errors?.subjectOptions?.[subjectTitle]?.instances?.[
+                          !!errors?.subjectOptions?.[subjectId]?.instances?.[
                             instanceIndex
                           ]?.optionGroups?.[group.title]
                         }
@@ -590,29 +601,46 @@ const InstanceCard = React.memo(
                           labelId={`subject-option-${subject.title}-${instanceIndex}-${group.title}-label`}
                           id={`subject-option-${subject.title}-${instanceIndex}-${group.title}`}
                           value={
-                            instance?.optionGroups?.[group.title]
-                              ?.selectedLabel || ""
+                            instance?.optionGroups?.[group.id]?.selectedId ?? ""
                           }
                           label={group.title}
-                          onChange={(e) =>
-                            handleOptionGroupChange(group.title, e.target.value)
-                          }
+                          onChange={(e) => {
+                            const selectedId = Number(e.target.value);
+                            const selectedLabel =
+                              group.selections.find(
+                                (selection) => selection.id === selectedId
+                              )?.label || "";
+
+                            // console.log({
+                            //   groupId: group.id,
+                            //   groupTitle: group.title,
+                            //   selectedId,
+                            //   selectedLabel: String(selectedLabel),
+                            // });
+
+                            handleOptionGroupChange(
+                              group.id,
+                              group.title,
+                              selectedId,
+                              String(selectedLabel)
+                            );
+                          }}
                         >
                           {group.selections.map((selection) => (
                             <MenuItem
-                              key={selection.label}
-                              value={selection.label}
+                              key={Number(selection.id)}
+                              value={Number(selection.id)}
                             >
                               {selection.label} -{" "}
                               {isDiscountApplicable && subject.discount > 0
-                                ? displayPrice(selection.price)
+                                ? displayPrice(Number(selection.price))
                                 : `${
                                     listing.currency
                                   } ${selection.price.toLocaleString()}`}
                             </MenuItem>
                           ))}
                         </Select>
-                        {errors?.subjectOptions?.[subjectTitle]?.instances?.[
+                        {errors?.subjectOptions?.[subjectId]?.instances?.[
                           instanceIndex
                         ]?.optionGroups?.[group.title] && (
                           <FormHelperText error>
@@ -649,14 +677,17 @@ const InstanceCard = React.memo(
                 }}
               >
                 {subject.addons.map(
-                  (addon: { label: string; price: Cents }) => (
+                  (addon: { id: Number; label: String; price: Number }) => (
                     <FormControlLabel
-                      key={addon.label}
+                      key={Number(addon.id)}
                       control={
                         <Checkbox
-                          checked={isAddonSelected(addon.label)}
+                          checked={isAddonSelected(Number(addon.id))}
                           onChange={(e) =>
-                            handleAddonToggle(addon.label, e.target.checked)
+                            handleAddonToggle(
+                              Number(addon.id),
+                              e.target.checked
+                            )
                           }
                           color="primary"
                           sx={{
@@ -696,7 +727,7 @@ const InstanceCard = React.memo(
                             }}
                           >
                             {isDiscountApplicable && subject.discount > 0
-                              ? displayPrice(addon.price)
+                              ? displayPrice(Number(addon.price))
                               : `${
                                   listing.currency
                                 } ${addon.price.toLocaleString()}`}
@@ -742,7 +773,7 @@ const InstanceCard = React.memo(
                       <QuestionField
                         key={questionObj.id}
                         question={questionObj.label}
-                        value={getQuestionAnswer(questionObj.id)}
+                        value={getQuestionAnswer(Number(questionObj.id))}
                         onChange={(value) =>
                           handleQuestionChange(questionObj.id, value)
                         }

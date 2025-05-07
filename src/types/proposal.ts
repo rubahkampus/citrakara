@@ -28,6 +28,7 @@ export type ProposalStatus =
  * ProposalFormValues: values used in the create/edit form
  */
 export interface GeneralOptionGroupInput {
+  selectedId: number;
   selectedLabel: string;
   price: number;
 }
@@ -196,6 +197,7 @@ export const convertToFormFormat = (modelData: any) => {
   if (modelData.generalOptions?.optionGroups) {
     modelData.generalOptions.optionGroups.forEach((option: OptionSelection) => {
       generalOptions.optionGroups[option.groupId] = {
+        selectedId: option.id,
         selectedLabel: option.selectedSelectionLabel,
         price: option.price,
       };
@@ -234,6 +236,7 @@ export const convertToFormFormat = (modelData: any) => {
           // Convert instance option groups
           instance.optionGroups?.forEach((option: OptionSelection) => {
             instanceOptionGroups[option.groupId] = {
+              selectedId: option.id,
               selectedLabel: option.selectedSelectionLabel,
               price: option.price,
             };

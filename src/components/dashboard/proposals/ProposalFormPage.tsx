@@ -138,30 +138,32 @@ export default function ProposalFormPage({
       });
     }
 
-    try {
-      let res;
-      console.log("About to make API call...");
-      if (mode === "create") {
-        res = await axiosClient.post("/api/proposal", fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      } else {
-        // edit: initialData._id must exist
-        res = await axiosClient.patch(`/api/proposal/${initialData!._id}`, fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      }
-      console.log("API response:", res);
-      setSuccess(true);
-      setTimeout(() => {
-        router.push(`/${username}/dashboard/proposals`);
-      }, 1500);
-    } catch (e: any) {
-      console.error("Proposal form submit error:", e);
-      setError(e.response?.data?.error || "Failed to save proposal");
-    } finally {
-      setLoading(false);
-    }
+    console.log(modelData)
+
+    // try {
+    //   let res;
+    //   console.log("About to make API call...");
+    //   if (mode === "create") {
+    //     res = await axiosClient.post("/api/proposal", fd, {
+    //       headers: { "Content-Type": "multipart/form-data" },
+    //     });
+    //   } else {
+    //     // edit: initialData._id must exist
+    //     res = await axiosClient.patch(`/api/proposal/${initialData!._id}`, fd, {
+    //       headers: { "Content-Type": "multipart/form-data" },
+    //     });
+    //   }
+    //   console.log("API response:", res);
+    //   setSuccess(true);
+    //   setTimeout(() => {
+    //     router.push(`/${username}/dashboard/proposals`);
+    //   }, 1500);
+    // } catch (e: any) {
+    //   console.error("Proposal form submit error:", e);
+    //   setError(e.response?.data?.error || "Failed to save proposal");
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   // Function to display validation errors in user-friendly format
@@ -248,7 +250,7 @@ export default function ProposalFormPage({
             <Button
               type="submit"
               variant="contained"
-              disabled={loading}
+              // disabled={loading}
               onClick={(e) => {
                 console.log("Submit button clicked!");
                 // We'll use a manual submit to bypass possible issues

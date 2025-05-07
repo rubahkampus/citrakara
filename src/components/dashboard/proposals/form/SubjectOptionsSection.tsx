@@ -5,17 +5,10 @@
  * ---------------------
  * Renders for each subjectTitle:
  *   - instances[] with nested optionGroups/addons/answers per instance
- * Use nested useFieldArray calls for dynamic depth.
- *
- * Fixed multi-discount logic to not apply to the first subject
- * PERFORMANCE OPTIMIZATIONS:
- * - Added memoization to prevent unnecessary re-renders
- * - Fixed form field handling for multiple questions
- * - Improved validation strategy
- * - Optimized state management
+ * Uses useFieldArray for dynamic arrays
  */
-import React, { useCallback, useMemo } from "react";
-import { useFormContext, useWatch, Controller } from "react-hook-form";
+import React, { useCallback, useMemo, useEffect } from "react";
+import { useFormContext, useFieldArray } from "react-hook-form";
 import {
   Box,
   Typography,
@@ -80,9 +73,9 @@ export default function SubjectOptionsSection({
 }: SubjectOptionsSectionProps) {
   const {
     control,
-    watch,
-    setValue,
     formState: { errors },
+    setValue,
+    getValues,
   } = useFormContext<ProposalFormValues>();
 
   // Memoize subjectOptions to avoid unnecessary recalculations
@@ -90,8 +83,6 @@ export default function SubjectOptionsSection({
     () => listing.subjectOptions || [],
     [listing.subjectOptions]
   );
-
-  const watchedSubjectOptions = watch("subjectOptions") || {};
 
   if (!subjectOptions.length) {
     return null;
@@ -109,10 +100,9 @@ export default function SubjectOptionsSection({
           key={subject.title}
           subject={subject}
           control={control}
-          watch={watch}
           setValue={setValue}
+          getValues={getValues}
           listing={listing}
-          watchedSubjectOptions={watchedSubjectOptions}
           errors={errors}
         />
       ))}
@@ -120,131 +110,93 @@ export default function SubjectOptionsSection({
   );
 }
 
-// Memoize SubjectSection to prevent unnecessary re-renders
+// SubjectSection component using useFieldArray for better form control
 const SubjectSection = React.memo(
   ({
     subject,
     control,
-    watch,
     setValue,
+    getValues,
     listing,
-    watchedSubjectOptions,
     errors,
   }: {
     subject: any;
     control: any;
-    watch: any;
     setValue: any;
+    getValues: any;
     listing: ICommissionListing;
-    watchedSubjectOptions: any;
     errors: any;
   }) => {
     const subjectTitle = subject.title;
 
-    // FIX 1: Use a ref to track if we've already initialized to prevent double initialization
-    const initializedRef = React.useRef(false);
+    // Use direct path for fieldArray
+    const fieldArrayName = `subjectOptions.${subjectTitle}.instances`;
 
-    // Check if we have any existing data in edit mode before initializing
-    const existingInstances =
-      watchedSubjectOptions[subjectTitle]?.instances || [];
-    const hasExistingData = existingInstances.length > 0;
+    // Initialize the form value structure if it doesn't exist
+    useEffect(() => {
+      // Make sure subjectOptions exists
+      const subjectOptions = getValues("subjectOptions") || {};
+      if (!subjectOptions[subjectTitle]) {
+        setValue(`subjectOptions.${subjectTitle}`, { instances: [] });
+      }
+    }, [subjectTitle, setValue, getValues]);
 
-    React.useEffect(() => {
-      // Only initialize if we haven't already AND there are no fields AND no existing data
-      if (!initializedRef.current && !hasExistingData) {
-        initializedRef.current = true;
+    // Use fieldArray for managing instances
+    const { fields, append, remove } = useFieldArray({
+      control,
+      name: fieldArrayName,
+    });
 
-        // Create initial default options
+    // Create a default instance for this subject
+    const createDefaultInstance = useCallback(
+      (isDiscounted = false) => {
         const defaultOptionGroups: Record<string, GeneralOptionGroupInput> = {};
 
         subject.optionGroups?.forEach((group: any) => {
           const first = group.selections?.[0];
           if (first) {
+            // Apply discount if needed (for 2+ instances)
+            const price =
+              isDiscounted && subject.discount > 0
+                ? applyDiscount(first.price, subject.discount)
+                : first.price;
+
             defaultOptionGroups[group.title] = {
               selectedLabel: first.label,
-              price: first.price,
+              price,
             };
           }
         });
 
-        // Create the first instance
-        const initialInstance: SubjectInstanceInput = {
+        return {
           optionGroups: defaultOptionGroups,
           addons: {},
           answers: {},
         };
+      },
+      [subject]
+    );
 
-        // Initialize with one instance
-        setValue(`subjectOptions.${subjectTitle}`, {
-          instances: [initialInstance],
-        });
+    // Add initial instance if none exists
+    useEffect(() => {
+      if (fields.length === 0) {
+        append(createDefaultInstance(false));
       }
-    }, [setValue, subject, subjectTitle, hasExistingData]);
+    }, [fields.length, append, createDefaultInstance]);
 
-    // Get the current instances for this subject
-    const watchedInstances =
-      watchedSubjectOptions[subjectTitle]?.instances || [];
-
-    // FIX 2: Improve addInstance to initialize with discounted prices for subsequent instances
+    // Add another instance
     const addInstance = useCallback(() => {
-      // Create new instance with pre-calculated discounted prices for options
-      const newInstanceOptionGroups: Record<string, GeneralOptionGroupInput> =
-        {};
-
-      subject.optionGroups?.forEach((group: any) => {
-        const first = group.selections?.[0];
-        if (first) {
-          // Apply discount for 2+ instances
-          const price =
-            watchedInstances.length > 0 && subject.discount > 0
-              ? applyDiscount(first.price, subject.discount)
-              : first.price;
-
-          newInstanceOptionGroups[group.title] = {
-            selectedLabel: first.label,
-            price,
-          };
-        }
-      });
-
-      // Add the new instance
-      const updatedInstances = [
-        ...(watchedInstances || []),
-        {
-          optionGroups: newInstanceOptionGroups,
-          addons: {},
-          answers: {},
-        },
-      ];
-
-      setValue(`subjectOptions.${subjectTitle}`, {
-        instances: updatedInstances,
-      });
-    }, [setValue, subject, subjectTitle, watchedInstances]);
+      append(createDefaultInstance(fields.length > 0));
+    }, [append, createDefaultInstance, fields.length]);
 
     // Calculate remaining slots
     const remainingSlots = useMemo(
       () =>
         subject.limit === -1
           ? "Unlimited"
-          : `${subject.limit - watchedInstances.length} remaining`,
-      [subject.limit, watchedInstances.length]
+          : `${subject.limit - fields.length} remaining`,
+      [subject.limit, fields.length]
     );
-
-    // Handle instance removal
-    const handleRemoveInstance = (instanceIndex: number) => {
-      const updatedInstances = [...watchedInstances];
-      updatedInstances.splice(instanceIndex, 1);
-
-      if (updatedInstances.length === 0) {
-        // If no instances left, remove the whole subject entry
-        const { [subjectTitle]: removed, ...rest } = watchedSubjectOptions;
-        setValue("subjectOptions", rest);
-      } else {
-        // Otherwise update with remaining instances
-        setValue(`subjectOptions.${subjectTitle}.instances`, updatedInstances);
-      }
-    };
 
     return (
       <Box sx={{ mb: 4 }}>
@@ -290,33 +242,31 @@ const SubjectSection = React.memo(
               onClick={addInstance}
               variant="contained"
               color="primary"
-              disabled={
-                subject.limit !== -1 && watchedInstances.length >= subject.limit
-              }
+              disabled={subject.limit !== -1 && fields.length >= subject.limit}
             >
               Add {subject.title}
             </Button>
           </Box>
         </Box>
 
-        {watchedInstances.map((instance: any, instanceIndex: number) => (
+        {fields.map((field, index) => (
           <InstanceCard
-            key={`${subjectTitle}-${instanceIndex}`}
-            instanceIndex={instanceIndex}
+            key={field.id} // Use field.id from useFieldArray for stable keys
+            instanceIndex={index}
             subject={subject}
-            instance={instance}
-            onRemove={() => handleRemoveInstance(instanceIndex)}
             control={control}
             setValue={setValue}
+            getValues={getValues}
+            onRemove={() => remove(index)}
             listing={listing}
             subjectTitle={subjectTitle}
             errors={errors}
-            totalInstances={watchedInstances.length}
-            isDiscountApplicable={instanceIndex > 0}
+            totalInstances={fields.length}
+            isDiscountApplicable={index > 0}
           />
         ))}
 
-        {watchedInstances.length === 0 && (
+        {fields.length === 0 && (
           <Card
             variant="outlined"
             sx={{
@@ -350,10 +300,10 @@ const InstanceCard = React.memo(
   ({
     instanceIndex,
     subject,
-    instance,
-    onRemove,
     control,
     setValue,
+    getValues,
+    onRemove,
     listing,
     subjectTitle,
     errors,
@@ -362,10 +312,10 @@ const InstanceCard = React.memo(
   }: {
     instanceIndex: number;
     subject: any;
-    instance: any;
-    onRemove: () => void;
     control: any;
     setValue: any;
+    getValues: any;
+    onRemove: () => void;
     listing: ICommissionListing;
     subjectTitle: string;
     errors: any;
@@ -378,6 +328,13 @@ const InstanceCard = React.memo(
     // Check for errors in this instance
     const hasErrors =
       !!errors?.subjectOptions?.[subjectTitle]?.instances?.[instanceIndex];
+
+    // Get current instance data
+    const instance = getValues(instancePath) || {
+      optionGroups: {},
+      addons: {},
+      answers: {},
+    };
 
     // Memoize the discount factor to prevent recalculations
     const discountFactor = useMemo(
@@ -412,7 +369,11 @@ const InstanceCard = React.memo(
             </>
           );
         }
-        return `${listing.currency} ${basePrice.toLocaleString()}`;
+        return (
+          <>
+            {listing.currency} {basePrice.toLocaleString()}
+          </>
+        );
       },
       [isDiscountApplicable, subject.discount, discountFactor, listing.currency]
     );
@@ -502,8 +463,8 @@ const InstanceCard = React.memo(
 
     // Handle question answers
     const handleQuestionChange = useCallback(
-      (question: string, value: string) => {
-        setValue(`${instancePath}.answers.${question}`, value, {
+      (questionId: string, value: string) => {
+        setValue(`${instancePath}.answers.${questionId}`, value, {
           shouldValidate: true,
         });
       },
@@ -773,18 +734,23 @@ const InstanceCard = React.memo(
               </Typography>
               <Card variant="outlined">
                 <CardContent>
-                  {subject.questions.map((question: any, index: number) => (
-                    <QuestionField
-                      key={question}
-                      question={question}
-                      value={getQuestionAnswer(question)}
-                      onChange={(value) =>
-                        handleQuestionChange(question, value)
-                      }
-                      error={!!hasErrors}
-                      isLastQuestion={index === subject.questions.length - 1}
-                    />
-                  ))}
+                  {subject.questions.map(
+                    (
+                      questionObj: { id: string; label: string },
+                      idx: number
+                    ) => (
+                      <QuestionField
+                        key={questionObj.id}
+                        question={questionObj.label}
+                        value={getQuestionAnswer(questionObj.id)}
+                        onChange={(value) =>
+                          handleQuestionChange(questionObj.id, value)
+                        }
+                        error={!!hasErrors}
+                        isLastQuestion={idx === subject.questions.length - 1}
+                      />
+                    )
+                  )}
                 </CardContent>
               </Card>
             </Box>

@@ -69,12 +69,8 @@ export default function ProposalListingPage({
     setFilter(null); // Reset filter when changing tabs
   };
 
-  const handleEdit = (id: string) => {
-    router.push(`/${username}/dashboard/proposals/${id}/edit`);
-  };
-
-  const handleRespond = (id: string) => {
-    router.push(`/${username}/dashboard/proposals/${id}/respond`);
+  const handleView = (id: string) => {
+    router.push(`/${username}/dashboard/proposals/${id}/view-respond`);
   };
 
   const filterProposals = (proposals: IProposal[]) => {
@@ -133,17 +129,7 @@ export default function ProposalListingPage({
           <Grid item xs={12} sm={6} lg={4} key={proposal._id.toString()}>
             <ProposalListingItem
               proposal={proposal}
-              onEdit={
-                proposal.status === "pendingArtist" && !isIncoming
-                  ? handleEdit
-                  : undefined
-              }
-              onRespond={
-                (isIncoming && proposal.status === "pendingArtist") ||
-                (!isIncoming && proposal.status === "pendingClient")
-                  ? handleRespond
-                  : undefined
-              }
+              onView={handleView}
             />
           </Grid>
         ))}

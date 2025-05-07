@@ -20,8 +20,7 @@ import PriceCheckIcon from "@mui/icons-material/PriceCheck";
 
 interface ProposalListingItemProps {
   proposal: IProposal;
-  onEdit?: (id: string) => void;
-  onRespond?: (id: string) => void;
+  onView?: (id: string) => void;
 }
 
 const statusColors = {
@@ -45,8 +44,7 @@ const statusLabels = {
 
 export default function ProposalListingItem({
   proposal,
-  onEdit,
-  onRespond,
+  onView,
 }: ProposalListingItemProps) {
   const formatDate = (dateString: string | Date) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -219,24 +217,14 @@ export default function ProposalListingItem({
 
           {/* Actions */}
           <Box sx={{ display: "flex", gap: 1, mt: "auto", pt: 2 }}>
-            {onEdit && (
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={() => onEdit(proposal._id.toString())}
-                fullWidth
-              >
-                Edit
-              </Button>
-            )}
-            {onRespond && (
+            {onView && (
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => onRespond(proposal._id.toString())}
+                onClick={() => onView(proposal._id.toString())}
                 fullWidth
               >
-                Respond
+                View
               </Button>
             )}
           </Box>

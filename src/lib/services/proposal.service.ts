@@ -360,10 +360,18 @@ export async function artistRespond(
   try {
     await connectDB();
 
+    console.log({
+      artistId,
+      proposalId,
+      decision,
+    })
+
     const proposal = await getProposalById(proposalId);
     if (!proposal) {
       throw new Error("Proposal not found");
     }
+
+    console.log(proposal.status)
 
     if (proposal.artistId.toString() !== artistId) {
       throw new Error("Not authorized to respond to this proposal");
@@ -383,8 +391,8 @@ export async function artistRespond(
     }
 
     if (
-      proposal.status !== "pendingArtist" &&
-      proposal.status !== "rejectedClient"
+      proposal.status == "pendingArtist" ||
+      proposal.status == "rejectedClient"
     ) {
       // Artist is accepting, check if there are adjustments
       let adjustment: ArtistAdjustment | undefined;

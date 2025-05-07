@@ -9,8 +9,10 @@ interface NewCommissionPageProps {
 }
 
 export default async function NewCommissionPage({
-  params: { username },
+  params,
 }: NewCommissionPageProps) {
+  const param = await params;
+  const username = param.username;
   // Get the current session and validate access
   const session = await getAuthSession();
 
@@ -43,10 +45,7 @@ export default async function NewCommissionPage({
         Create New Commission
       </Typography>
 
-      <CommissionFormPage
-        username={username}
-        mode="create"
-      />
+      <CommissionFormPage username={username} mode="create" />
     </Box>
   );
 }

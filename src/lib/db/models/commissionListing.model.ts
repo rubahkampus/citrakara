@@ -57,7 +57,7 @@ export interface IAddon {
 }
 export interface IQuestion {
   id: ID;
-  text: string;
+  label: string;
 }
 
 export const SelectionSchema = new Schema<ISelection>(
@@ -80,7 +80,7 @@ export const AddonSchema = new Schema<IAddon>(
 );
 
 export const QuestionSchema = new Schema<IQuestion>(
-  { id: Number, text: String },
+  { id: Number, label: String },
   { _id: false }
 );
 

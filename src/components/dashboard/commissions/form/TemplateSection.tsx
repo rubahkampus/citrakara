@@ -155,7 +155,7 @@ const TEMPLATES: TemplateCard[] = [
         questions: ["What kind of background do you have in mind?"],
       },
     ],
-    defaultMilestones: [
+    milestones: [
       {
         title: "Concept & Sketch",
         percent: 25,
@@ -211,7 +211,7 @@ interface TemplateCard {
     addons: Array<{ label: string; price: number }>;
     questions: string[];
   }>;
-  defaultMilestones?: {
+  milestones?: {
     title: string;
     percent: number;
     policy: {

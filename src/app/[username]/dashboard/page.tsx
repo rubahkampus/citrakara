@@ -35,7 +35,9 @@ interface Props {
   params: { username: string };
 }
 
-export default async function DashboardPage({ params: { username } }: Props) {
+export default async function DashboardPage({ params }: Props) {
+  const param = await params;
+  const username = param.username;
   const [profile, walletData, session] = await Promise.all([
     getUserPublicProfile(username),
     getUserWalletBalance(username).catch(
@@ -62,10 +64,12 @@ export default async function DashboardPage({ params: { username } }: Props) {
   }
 
   // Check if the current user is the owner of this profile
-  const isOwner = !!(session && 
-                     typeof session === 'object' && 
-                     'username' in session && 
-                     session.username === username);
+  const isOwner = !!(
+    session &&
+    typeof session === "object" &&
+    "username" in session &&
+    session.username === username
+  );
 
   const formattedBalance = Math.round((walletData.saldoAvailable || 0) / 100);
   const serializedProfile = JSON.parse(JSON.stringify(profile));

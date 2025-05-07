@@ -98,63 +98,10 @@ export async function createCommissionListing(
   session?: ClientSession
 ) {
   await connectDB();
-  console.log("Creating commission listing", payload);
-
-  // Ensure all required IDs are assigned if not present
-  const processedPayload = {
-    ...payload,
-    milestones: payload.milestones?.map((milestone, index) => ({
-      ...milestone,
-      id: milestone.id ?? index + 1,
-    })),
-    generalOptions: payload.generalOptions && {
-      ...payload.generalOptions,
-      optionGroups: payload.generalOptions.optionGroups?.map(
-        (group, groupIndex) => ({
-          ...group,
-          id: group.id ?? groupIndex + 1,
-          selections: group.selections.map((selection, selectionIndex) => ({
-            ...selection,
-            id: selection.id ?? selectionIndex + 1,
-          })),
-        })
-      ),
-      addons: payload.generalOptions.addons?.map((addon, addonIndex) => ({
-        ...addon,
-        id: addon.id ?? addonIndex + 1,
-      })),
-      questions: payload.generalOptions.questions?.map(
-        (question, questionIndex) =>
-          typeof question === "string"
-            ? { id: questionIndex + 1, label: question }
-            : { ...question, id: question.id ?? questionIndex + 1 }
-      ),
-    },
-    subjectOptions: payload.subjectOptions?.map((subject, subjectIndex) => ({
-      ...subject,
-      id: subject.id ?? subjectIndex + 1,
-      optionGroups: subject.optionGroups?.map((group, groupIndex) => ({
-        ...group,
-        id: group.id ?? groupIndex + 1,
-        selections: group.selections.map((selection, selectionIndex) => ({
-          ...selection,
-          id: selection.id ?? selectionIndex + 1,
-        })),
-      })),
-      addons: subject.addons?.map((addon, addonIndex) => ({
-        ...addon,
-        id: addon.id ?? addonIndex + 1,
-      })),
-      questions: subject.questions?.map((question, questionIndex) =>
-        typeof question === "string"
-          ? { id: questionIndex + 1, label: question }
-          : { ...question, id: question.id ?? questionIndex + 1 }
-      ),
-    })),
-  };
+  console.log("Creating commission listing", JSON.stringify(payload));
 
   const doc = new CommissionListing({
-    ...processedPayload,
+    ...payload,
     isActive: true,
     isDeleted: false,
     reviewsSummary: { avg: 0, count: 0 },

@@ -12,8 +12,10 @@ interface CommissionsPageProps {
 }
 
 export default async function CommissionsPage({
-  params: { username },
+  params,
 }: CommissionsPageProps) {
+  const param = await params;
+  const username = param.username;
   // Get the current session
   const session = await getAuthSession();
 

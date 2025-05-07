@@ -279,7 +279,7 @@ export default function ProfileDialog({
       PaperProps={{ sx: { borderRadius: 2 } }}
     >
       <DialogTitle sx={{ pb: 1 }}>
-        <Typography variant="h5" fontWeight="bold">
+        <Typography component="div" variant="h5" fontWeight="bold">
           Edit Your Profile
         </Typography>
       </DialogTitle>

@@ -42,6 +42,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
     type: "",
     flow: "",
     title: "",
+    // tos: "",
   });
 
   // Add state for base price toggle
@@ -56,6 +57,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
       type: values.type || "",
       flow: values.flow || "",
       title: values.title || "",
+      // tos: values.tos || "",
     });
     console.log("Updated display values:", values);
   };
@@ -79,21 +81,24 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
   }, []);
 
   // fetch TOS entries
-  const [tosName, setTosName] = useState("Default Terms of Service");
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await axiosClient.get("/api/tos/default");
-        if (res.data.tos) {
-          setTosName(res.data.tos.title);
-          // Auto-set the TOS ID
-          setValue("tos", res.data.tos._id);
-        }
-      } catch (error) {
-        console.error("Error fetching default TOS:", error);
-      }
-    })();
-  }, [setValue]);
+  // const [tosName, setTosName] = useState("Default Terms of Service");
+  // useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       const res = await axiosClient.get("/api/tos/default");
+  //       console.log("Default TOS:", res.data.tos);
+  //       if (res.data.tos) {
+  //         setTosName(res.data.tos.title);
+  //         // Auto-set the TOS ID
+  //         setValue("tos", res.data.tos._id);
+  //         console.log("TOS ID set to:", getValues("tos"));
+  //         updateDisplayValues();
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching default TOS:", error);
+  //     }
+  //   })();
+  // }, [setValue]);
 
   return (
     <>
@@ -120,6 +125,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
         </Typography>
         <Typography variant="body2">Type: {displayValues.type}</Typography>
         <Typography variant="body2">Flow: {displayValues.flow}</Typography>
+        {/* <Typography variant="body2">TOS: {displayValues.tos}</Typography> */}
       </Box>
 
       <Grid container spacing={3}>
@@ -340,16 +346,16 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
           />
         </Grid>
 
-        <Grid item xs={12}>
+        {/* <Grid item xs={12}> */}
           {/* Display fixed TOS */}
-          <TextField
+          {/* <TextField
             label="Terms of Service"
             value={tosName}
             fullWidth
             disabled
             helperText="Using default terms of service"
           />
-        </Grid>
+        </Grid> */}
       </Grid>
     </>
   );

@@ -621,10 +621,11 @@ const MilestonesSection: React.FC = () => {
       {fields.length > 0 && (
         <Box sx={{ mt: 2, display: "flex", alignItems: "center" }}>
           <InfoIcon color="info" fontSize="small" sx={{ mr: 1 }} />
-          <Typography variant="body2" color="text.secondary">
-            Milestone percentages: {totalPercent.toFixed(1)}% of 100%
+          <Typography component="div" variant="body2" color="text.secondary">
+            Milestone percentages: {totalPercent.toFixed(1)}% of 100% +{" "}
             {isValid && (
               <Chip
+                component="span"
                 label="Balanced"
                 color="success"
                 size="small"

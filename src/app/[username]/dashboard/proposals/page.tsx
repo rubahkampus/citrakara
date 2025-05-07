@@ -10,9 +10,9 @@ interface ProposalsPageProps {
   params: { username: string };
 }
 
-export default async function ProposalsPage({
-  params: { username },
-}: ProposalsPageProps) {
+export default async function ProposalsPage({ params }: ProposalsPageProps) {
+  const param = await params;
+  const username = param.username;
   const session = await getAuthSession();
   if (
     !session ||

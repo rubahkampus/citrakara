@@ -15,6 +15,7 @@ import {
   CommissionListingPayload,
 } from "@/lib/db/repositories/commissionListing.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
+import { getUserDefaultTos } from "./tos.service";
 
 // Define ID type to match the model
 type ID = number;
@@ -94,7 +95,6 @@ function validateListingPayload(payload: Partial<CommissionListingPayload>) {
   // Check required fields
   const requiredFields = [
     "title",
-    "tos",
     "type",
     "flow",
     "artistId",
@@ -158,7 +158,7 @@ function sanitizePayload(rawPayload: any): Partial<CommissionListingPayload> {
     "description",
     "tags",
     "slots",
-    "tos",
+    // "tos",
     "type",
     "flow",
     "deadline",
@@ -270,22 +270,7 @@ function processPayloadWithIds(
           const questionsArr = Array.isArray(processedSubject.questions)
             ? processedSubject.questions
             : [];
-          processedSubject.questions = questionsArr.map((q, idx) => {
-            // Handle both string questions and objects with 'title' field (legacy format)
-            if (typeof q === "string") {
-              return { id: idx + 1, label: q };
-            } else if (typeof q === "object" && q !== null) {
-              if ("title" in q) {
-                return { id: idx + 1, label: q.title as string };
-              } else if ("label" in q) {
-                return {
-                  id: "id" in q ? (q.id as ID) : idx + 1,
-                  label: q.label as string,
-                };
-              }
-            }
-            return { id: idx + 1, label: String(q) };
-          });
+          processedSubject.questions = questionsArr;
         }
 
         return processedSubject;
@@ -343,7 +328,7 @@ export async function createListingFromForm(artistId: string, form: FormData) {
   }
 
   // 2. Ensure essential string fields
-  for (const field of ["title", "tos", "type", "flow"] as const) {
+  for (const field of ["title", "type", "flow"] as const) {
     const v = form.get(field);
     if (!v || typeof v !== "string") {
       throw new HttpError(`Required field missing: ${field}`, 400);
@@ -357,7 +342,7 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     ...jsonPayload,
     artistId: toObjectId(artistId),
     title: form.get("title")!.toString(),
-    tos: form.get("tos")!.toString(),
+    tos: await getUserDefaultTos(artistId).toString(),
     type: form.get("type") as "template" | "custom",
     flow: form.get("flow") as "standard" | "milestone",
     basePrice: Number(form.get("basePrice") ?? 0),
@@ -408,7 +393,7 @@ export async function createListingFromForm(artistId: string, form: FormData) {
   // 9. Validate *after* thumbnail is set (so no more missing‐thumbnail errors)
   validateListingPayload(processedData);
 
-  console.log("Listing data (validated):", processedData);
+  // console.log("Listing data (validated):", JSON.stringify(processedData));
 
   // 10. Compute price range & persist
   const price = computePriceRange(processedData);
@@ -451,7 +436,7 @@ export async function updateListingFromForm(
     ...jsonPayload,
     artistId: toObjectId(artistId),
     title: (form.get("title") || existingData.title)!.toString(),
-    tos: (form.get("tos") || existingData.tos)!.toString(),
+    tos: await getUserDefaultTos(artistId).toString(),
     type: (form.get("type") as "template" | "custom") || existingData.type,
     flow: (form.get("flow") as "standard" | "milestone") || existingData.flow,
     basePrice: Number(form.get("basePrice") ?? existingData.basePrice),

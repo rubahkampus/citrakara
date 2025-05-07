@@ -31,7 +31,9 @@ interface Props {
   params: { username: string };
 }
 
-export default async function GalleriesPage({ params: { username } }: Props) {
+export default async function GalleriesPage({ params }: Props) {
+  const param = await params;
+  const username = param.username;
   const galleries = await getGalleriesByUsername(username).catch(() => []);
   return (
     <Suspense fallback={<GalleriesLoading />}>

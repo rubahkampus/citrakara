@@ -4,14 +4,17 @@ import { getAuthSession } from "@/lib/utils/session";
 import { findCommissionListingById } from "@/lib/db/repositories/commissionListing.repository";
 import CommissionFormPage from "@/components/dashboard/commissions/CommissionFormPage";
 import { notFound } from "next/navigation";
+import { PanoramaSharp } from "@mui/icons-material";
 
 interface EditCommissionPageProps {
   params: { username: string; listingId: string };
 }
 
 export default async function EditCommissionPage({
-  params: { username, listingId },
+  params,
 }: EditCommissionPageProps) {
+  const param = await params
+  const { username, listingId } = param;
   // Get the current session and validate access
   const session = await getAuthSession();
 

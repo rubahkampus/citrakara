@@ -77,7 +77,7 @@ export interface CommissionFormValues {
   slots: number;
   type: "template" | "custom";
   flow: "standard" | "milestone";
-  tos: string;
+  // tos: string;
   // Samples + Thumbnail
   samples: (File | string)[];
   thumbnailIdx: number;
@@ -155,6 +155,8 @@ export default function CommissionFormPage({
     setLoading(true);
     setError(null);
 
+    console.log("Submitting form with values:", values); // Debugging line
+
     try {
       // Validate required samples
       if (!values.samples.length) {
@@ -199,7 +201,7 @@ export default function CommissionFormPage({
       fd.append("currency", values.currency);
       fd.append("type", values.type);
       fd.append("flow", values.flow);
-      fd.append("tos", values.tos);
+      // fd.append("tos", values.tos);
       fd.append("thumbnailIdx", values.thumbnailIdx.toString());
 
       // Handle other samples
@@ -337,7 +339,7 @@ export default function CommissionFormPage({
     const fieldNames: Record<string, string> = {
       title: "Title",
       slots: "Slot Count",
-      tos: "Terms of Service",
+      // tos: "Terms of Service",
       samples: "Sample Images",
       description: "Description",
       cancelKind: "Cancelation Type",
@@ -614,7 +616,7 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       slots: data.slots ?? -1,
       type: data.type || "template",
       flow: data.flow || "standard",
-      tos: data.tos || "",
+      // tos: data.tos || "",
       samples: data.samples || [],
       thumbnailIdx:
         typeof data.thumbnailIdx === "number" && data.thumbnailIdx >= 0
@@ -656,7 +658,7 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
     slots: -1,
     type: "template",
     flow: "standard",
-    tos: "",
+    // tos: "",
     samples: [],
     thumbnailIdx: 0,
     description: [{ title: "Overview", detail: "" }],

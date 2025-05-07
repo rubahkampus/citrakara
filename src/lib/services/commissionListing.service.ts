@@ -6,12 +6,18 @@ import {
   findCommissionListingById,
   findActiveListingsByArtist,
   updateCommissionListing,
+  updateCommissionListingComponents,
   softDeleteListing,
   searchListings,
   adjustSlotsUsed,
+  addQuestion,
+  removeQuestion,
   CommissionListingPayload,
 } from "@/lib/db/repositories/commissionListing.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
+
+// Define ID type to match the model
+type ID = number;
 
 // Custom error class for HTTP status mapping
 export class HttpError extends Error {
@@ -22,6 +28,32 @@ export class HttpError extends Error {
     this.status = status;
     this.name = "HttpError";
   }
+}
+
+/**
+ * Generate sequential IDs for new components
+ */
+function generateIds<T extends { id?: ID }>(
+  items: T[],
+  startId: ID = 1
+): (T & { id: ID })[] {
+  return items.map((item, index) => ({
+    ...item,
+    id: item.id ?? startId + index,
+  }));
+}
+
+/**
+ * Convert old string questions format to new ID-based format
+ */
+function convertQuestionsToIdFormat(
+  questions?: string[]
+): { id: ID; label: string }[] {
+  if (!questions?.length) return [];
+  return questions.map((text, index) => ({
+    id: index + 1,
+    label: text,
+  }));
 }
 
 /**
@@ -36,7 +68,7 @@ function computePriceRange(input: Partial<CommissionListingPayload>) {
     if (!items?.length) return;
     const prices = items.map((item) => item.price);
     min += Math.min(...prices);
-    max += Math.max(...prices);
+    max += prices.reduce((sum, price) => sum + price, 0); // Sum all possible addons for max
   };
 
   // Add general options
@@ -155,6 +187,116 @@ function sanitizePayload(rawPayload: any): Partial<CommissionListingPayload> {
 }
 
 /**
+ * Process payload to convert legacy format to ID-based format
+ */
+function processPayloadWithIds(
+  payload: Partial<CommissionListingPayload>
+): Partial<CommissionListingPayload> {
+  const processed = { ...payload };
+
+  // Process milestones
+  if (processed.milestones) {
+    processed.milestones = generateIds(processed.milestones);
+  }
+
+  // Process general options
+  if (processed.generalOptions) {
+    const generalOptions = { ...processed.generalOptions };
+
+    // Process option groups
+    if (generalOptions.optionGroups) {
+      generalOptions.optionGroups = generateIds(
+        generalOptions.optionGroups
+      ).map((group) => ({
+        ...group,
+        selections: generateIds(group.selections),
+      }));
+    }
+
+    // Process addons
+    if (generalOptions.addons) {
+      generalOptions.addons = generateIds(generalOptions.addons);
+    }
+
+    // Convert questions from old string format to new ID-based format
+    if (generalOptions.questions) {
+      const questionsArr = Array.isArray(generalOptions.questions)
+        ? generalOptions.questions
+        : [];
+      generalOptions.questions = questionsArr.map((q, idx) => {
+        // Handle both string questions and objects with 'title' field (legacy format)
+        if (typeof q === "string") {
+          return { id: idx + 1, label: q };
+        } else if (typeof q === "object" && q !== null) {
+          if ("title" in q) {
+            return { id: idx + 1, label: q.title as string };
+          } else if ("label" in q) {
+            return {
+              id: "id" in q ? (q.id as ID) : idx + 1,
+              label: q.label as string,
+            };
+          }
+        }
+        return { id: idx + 1, label: String(q) };
+      });
+    }
+
+    processed.generalOptions = generalOptions;
+  }
+
+  // Process subject options
+  if (processed.subjectOptions) {
+    processed.subjectOptions = generateIds(processed.subjectOptions).map(
+      (subject) => {
+        const processedSubject = { ...subject };
+
+        // Process option groups
+        if (processedSubject.optionGroups) {
+          processedSubject.optionGroups = generateIds(
+            processedSubject.optionGroups
+          ).map((group) => ({
+            ...group,
+            selections: generateIds(group.selections),
+          }));
+        }
+
+        // Process addons
+        if (processedSubject.addons) {
+          processedSubject.addons = generateIds(processedSubject.addons);
+        }
+
+        // Convert questions from old string format to new ID-based format
+        if (processedSubject.questions) {
+          const questionsArr = Array.isArray(processedSubject.questions)
+            ? processedSubject.questions
+            : [];
+          processedSubject.questions = questionsArr.map((q, idx) => {
+            // Handle both string questions and objects with 'title' field (legacy format)
+            if (typeof q === "string") {
+              return { id: idx + 1, label: q };
+            } else if (typeof q === "object" && q !== null) {
+              if ("title" in q) {
+                return { id: idx + 1, label: q.title as string };
+              } else if ("label" in q) {
+                return {
+                  id: "id" in q ? (q.id as ID) : idx + 1,
+                  label: q.label as string,
+                };
+              }
+            }
+            return { id: idx + 1, label: String(q) };
+          });
+        }
+
+        return processedSubject;
+      }
+    );
+  }
+
+  return processed;
+}
+
+/**
  * Create a commission listing from a JSON payload
  * (Used when frontend has already handled image uploads)
  */
@@ -169,15 +311,18 @@ export async function createListing(
     description: payload.description ?? [], // Ensure description is an array
   };
 
+  // Process payload to ensure all components have IDs
+  const processedData = processPayloadWithIds(listingData);
+
   // Validate the listing data
-  validateListingPayload(listingData);
+  validateListingPayload(processedData);
 
   // Calculate price range
-  const priceRange = computePriceRange(listingData);
+  const priceRange = computePriceRange(processedData);
 
   // Create the listing with price
   return createCommissionListing({
-    ...listingData,
+    ...(processedData as CommissionListingPayload),
     price: priceRange,
   });
 }
@@ -197,26 +342,6 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     throw new HttpError("Invalid JSON payload", 400);
   }
 
-  /// ── FIXED: Normalize any question‐objects into simple strings ──
-  if (jsonPayload.generalOptions?.questions) {
-    jsonPayload.generalOptions.questions = (
-      jsonPayload.generalOptions.questions as any[]
-    ).map((q) => (typeof q === "string" ? q : q.title ?? ""));
-  }
-  if (Array.isArray(jsonPayload.subjectOptions)) {
-    jsonPayload.subjectOptions = (jsonPayload.subjectOptions as any[]).map(
-      (sub) => ({
-        ...sub,
-        questions: Array.isArray(sub.questions)
-          ? sub.questions.map((q: any) =>
-              typeof q === "string" ? q : ""
-            )
-          : [],
-      })
-    );
-  }
-  // ────────────────────────────────────────────────────────────────
-
   // 2. Ensure essential string fields
   for (const field of ["title", "tos", "type", "flow"] as const) {
     const v = form.get(field);
@@ -225,7 +350,6 @@ export async function createListingFromForm(artistId: string, form: FormData) {
     }
   }
 
-  // console.log("Form data:", form.get("payload"));
   console.log("Form data (raw):", form);
 
   // 3. Build our partial listingData (without thumbnail/samples yet)
@@ -278,15 +402,18 @@ export async function createListingFromForm(artistId: string, form: FormData) {
 
   console.log("Listing data (after upload):", listingData);
 
-  // 8. Validate *after* thumbnail is set (so no more missing‐thumbnail errors)
-  validateListingPayload(listingData);
+  // 8. Process payload to ensure all components have IDs
+  const processedData = processPayloadWithIds(listingData);
 
-  console.log("Listing data (validated):", listingData);
+  // 9. Validate *after* thumbnail is set (so no more missing‐thumbnail errors)
+  validateListingPayload(processedData);
 
-  // 9. Compute price range & persist
-  const price = computePriceRange(listingData);
+  console.log("Listing data (validated):", processedData);
+
+  // 10. Compute price range & persist
+  const price = computePriceRange(processedData);
   return createCommissionListing({
-    ...(listingData as CommissionListingPayload),
+    ...(processedData as CommissionListingPayload),
     price,
   });
 }
@@ -319,26 +446,7 @@ export async function updateListingFromForm(
     throw new HttpError("Invalid JSON payload", 400);
   }
 
-  // 3. Normalize any question-objects into simple strings
-  if (jsonPayload.generalOptions?.questions) {
-    jsonPayload.generalOptions.questions = (
-      jsonPayload.generalOptions.questions as any[]
-    ).map((q) => (typeof q === "string" ? q : q.title ?? ""));
-  }
-  if (Array.isArray(jsonPayload.subjectOptions)) {
-    jsonPayload.subjectOptions = (jsonPayload.subjectOptions as any[]).map(
-      (sub) => ({
-        ...sub,
-        questions: Array.isArray(sub.questions)
-          ? sub.questions.map((q: { title: any }) =>
-              typeof q === "string" ? q : q.title ?? ""
-            )
-          : [],
-      })
-    );
-  }
-
-  // 4. Build partial listingData from form fields or fall back to existing values
+  // 3. Build partial listingData from form fields or fall back to existing values
   const listingData: Partial<CommissionListingPayload> = {
     ...jsonPayload,
     artistId: toObjectId(artistId),
@@ -350,13 +458,13 @@ export async function updateListingFromForm(
     description: jsonPayload.description ?? existingData.description ?? [],
   };
 
-  // 5. Handle currency if provided
+  // 4. Handle currency if provided
   const currencyVal = form.get("currency");
   if (typeof currencyVal === "string") {
     listingData.currency = currencyVal;
   }
 
-  // Step 6: pull existing URLs and new blobs out of FormData
+  // 5. pull existing URLs and new blobs out of FormData
   const existingSamples = form
     .getAll("existingSamples[]")
     .map((v) => v.toString());
@@ -365,7 +473,7 @@ export async function updateListingFromForm(
     .getAll("samples[]")
     .filter((v) => v instanceof Blob) as Blob[];
 
-  // Step 7: if either URLs or blobs were submitted, rebuild the array
+  // 6. if either URLs or blobs were submitted, rebuild the array
   if (existingSamples.length > 0 || sampleBlobs.length > 0) {
     // upload new files (if any)
     let uploadedUrls: string[] = [];
@@ -394,10 +502,13 @@ export async function updateListingFromForm(
 
   console.log("Update listing data:", listingData);
 
+  // 7. Process payload to ensure all components have IDs, preserving existing IDs
+  const processedData = processPayloadWithIds(listingData);
+
   // 8. Merge with existing data for validation
   const merged: Partial<CommissionListingPayload> = {
     ...existingData,
-    ...listingData,
+    ...processedData,
   };
 
   // 9. Validate the merged data
@@ -405,10 +516,10 @@ export async function updateListingFromForm(
 
   // 10. Compute price range
   const price = computePriceRange(merged);
-  listingData.price = price;
+  processedData.price = price;
 
   // 11. Update listing with all processed fields
-  return updateCommissionListing(listingId, listingData);
+  return updateCommissionListingComponents(listingId, processedData);
 }
 
 /**
@@ -471,7 +582,7 @@ export async function getListingPublic(listingId: string) {
  * Search for listings with filtering options
  */
 export async function browseListings(options: {
-  text?: string;
+  label?: string;
   tags?: string[];
   artistId?: string;
   skip?: number;
@@ -498,21 +609,63 @@ export async function updateListing(
   // 2. Sanitize incoming fields
   const sanitized = sanitizePayload(updates);
 
-  // 3. Merge with existing data for a "full payload"
+  // 3. Process payload to ensure all components have IDs, preserving existing IDs where possible
+  const processedData = processPayloadWithIds(sanitized);
+
+  // 4. Merge with existing data for a "full payload"
   const merged: Partial<CommissionListingPayload> = {
     ...existing.toObject(),
-    ...sanitized,
+    ...processedData,
   };
 
-  // 4. Validate the full payload just like on create
+  // 5. Validate the full payload just like on create
   validateListingPayload(merged);
 
-  // 5. Recompute price range
+  // 6. Recompute price range
   const price = computePriceRange(merged);
-  sanitized.price = price;
+  processedData.price = price;
 
-  console.log("Sanitized listing data:", sanitized);
+  console.log("Processed listing data:", processedData);
 
-  // 6. Persist all sanitized fields (including price!)
-  return updateCommissionListing(listingId, sanitized);
+  // 7. Persist all processed fields (including price!)
+  return updateCommissionListingComponents(listingId, processedData);
+}
+
+/**
+ * Add a question to a commission listing
+ */
+export async function addQuestionToListing(
+  artistId: string,
+  listingId: string,
+  questionText: string,
+  target: { type: "general" } | { type: "subject"; subjectId: ID }
+) {
+  // Auth check
+  const existing = await findCommissionListingById(listingId);
+  if (!existing) throw new HttpError("Listing not found", 404);
+  if (existing.artistId.toString() !== artistId) {
+    throw new HttpError("Not authorized to update this listing", 403);
+  }
+
+  return addQuestion(listingId, questionText, target);
+}
+
+/**
+ * Remove a question from a commission listing
+ */
+export async function removeQuestionFromListing(
+  artistId: string,
+  listingId: string,
+  target:
+    | { type: "general"; questionId: ID }
+    | { type: "subject"; subjectId: ID; questionId: ID }
+) {
+  // Auth check
+  const existing = await findCommissionListingById(listingId);
+  if (!existing) throw new HttpError("Listing not found", 404);
+  if (existing.artistId.toString() !== artistId) {
+    throw new HttpError("Not authorized to update this listing", 403);
+  }
+
+  return removeQuestion(listingId, target);
 }

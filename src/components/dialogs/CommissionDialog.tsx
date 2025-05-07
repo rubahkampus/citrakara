@@ -66,7 +66,7 @@ interface CommissionDialogProps {
   open: boolean;
   onClose: () => void;
   commissionId?: string;
-  mode?: "view" | "edit" | "create";
+  mode?: "view";
   isOwner?: boolean;
   initialData?: ICommissionListing;
 }
@@ -82,7 +82,7 @@ export default function CommissionDialog({
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("lg"));
   const router = useRouter();
-  const { open: openDialog } = useDialogStore();
+  // const { open: openDialog } = useDialogStore();
 
   const [commission, setCommission] = useState<ICommissionListing | null>(
     initialData || null

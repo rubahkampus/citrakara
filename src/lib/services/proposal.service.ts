@@ -14,6 +14,8 @@ import {
   bulkExpirePending,
   computeDynamicEstimate as repoComputeDynamicEstimate,
   ProposalInput,
+  ProposalGeneralOptionsInput,
+  ProposalSubjectOptionsInput,
   UpdateProposalInput,
   FindOpts,
   ArtistAdjustment,
@@ -23,37 +25,51 @@ import { findCommissionListingById } from "@/lib/db/repositories/commissionListi
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 import { connectDB } from "@/lib/db/connection";
 import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
-import type { Cents, ObjectId } from "@/types/common";
+import type { Cents, ISODate, ObjectId } from "@/types/common";
 import { HttpError } from "./commissionListing.service";
 import { ICommissionListing } from "../db/models/commissionListing.model";
 
 // ========== Service Interfaces ==========
-export interface GeneralOptionsInput {
-  optionGroups?: Record<
-    string,
-    {
-      selectedLabel: string;
-      price: Cents;
-    }
-  >;
-  addons?: Record<string, Cents>;
-  answers?: Record<string, string>;
+export interface ServiceOptionSelection {
+  id: number;
+  groupId: number;
+  selectedSelectionID: number;
+  selectedSelectionLabel: string;
+  price: Cents;
 }
 
-export interface SubjectOptionsInput {
-  [subjectTitle: string]: {
-    instances: Array<{
-      optionGroups?: Record<
-        string,
-        {
-          selectedLabel: string;
-          price: Cents;
-        }
-      >;
-      addons?: Record<string, Cents>;
-      answers?: Record<string, string>;
-    }>;
-  };
+export interface ServiceAddon {
+  id: number;
+  addonId: number;
+  price: Cents;
+}
+
+export interface ServiceAnswer {
+  id: number;
+  questionId: number;
+  answer: string;
+}
+
+export interface ServiceGeneralOptionsInput {
+  optionGroups?: ServiceOptionSelection[];
+  addons?: ServiceAddon[];
+  answers?: ServiceAnswer[];
+}
+
+export interface ServiceSubjectInstance {
+  id: number;
+  optionGroups?: ServiceOptionSelection[];
+  addons?: ServiceAddon[];
+  answers?: ServiceAnswer[];
+}
+
+export interface ServiceSubjectOption {
+  subjectId: number;
+  instances: ServiceSubjectInstance[];
+}
+
+export interface ServiceSubjectOptionsInput {
+  subjects: ServiceSubjectOption[];
 }
 
 export interface CreateProposalInput {
@@ -62,8 +78,8 @@ export interface CreateProposalInput {
   latestDate: Date;
   deadline: Date;
   generalDescription: string;
-  generalOptions?: GeneralOptionsInput;
-  subjectOptions?: SubjectOptionsInput;
+  generalOptions?: ServiceGeneralOptionsInput;
+  subjectOptions?: ServiceSubjectOptionsInput;
 }
 
 export interface UpdateProposalInputService {
@@ -71,8 +87,8 @@ export interface UpdateProposalInputService {
   latestDate?: Date;
   deadline?: Date;
   generalDescription?: string;
-  generalOptions?: GeneralOptionsInput;
-  subjectOptions?: SubjectOptionsInput;
+  generalOptions?: ServiceGeneralOptionsInput;
+  subjectOptions?: ServiceSubjectOptionsInput;
 }
 
 export interface ArtistDecision {
@@ -91,6 +107,74 @@ export interface ProposalFilters {
   role?: "client" | "artist";
   status?: string[];
   beforeExpire?: boolean;
+}
+
+// ========== Helper Functions ==========
+
+// Helper function to convert service general options to repository format
+function convertGeneralOptions(
+  options?: ServiceGeneralOptionsInput
+): ProposalGeneralOptionsInput | undefined {
+  if (!options) return undefined;
+
+  const result: ProposalGeneralOptionsInput = {};
+
+  if (options.optionGroups) {
+    result.optionGroups = options.optionGroups;
+  }
+
+  if (options.addons) {
+    result.addons = options.addons;
+  }
+
+  if (options.answers) {
+    result.answers = options.answers;
+  }
+
+  return result;
+}
+
+// Helper function to convert service subject options to repository format
+function convertSubjectOptions(
+  options?: ServiceSubjectOptionsInput
+): ProposalSubjectOptionsInput[] | undefined {
+  if (!options || !options.subjects) return undefined;
+
+  return options.subjects;
+}
+
+// Helper function to validate deadline based on listing policy
+function validateDeadline(
+  listing: ICommissionListing,
+  deadline: Date,
+  earliestDate: Date,
+  latestDate: Date
+): void {
+  switch (listing.deadline.mode) {
+    case "standard":
+      // For standard mode, deadline is always system-determined as 2 weeks + latestDate
+      // Client-provided deadline is ignored
+      break;
+
+    case "withDeadline":
+      // For withDeadline mode, client-provided deadline must fall on or after earliestDate
+      if (deadline < earliestDate) {
+        throw new HttpError(
+          `Deadline cannot be earlier than ${
+            earliestDate.toISOString().split("T")[0]
+          }`,
+          400
+        );
+      }
+      break;
+
+    case "withRush":
+      // For withRush mode, any deadline is valid, but rush fees may apply
+      break;
+
+    default:
+      throw new HttpError("Invalid deadline mode in listing", 500);
+  }
 }
 
 // ========== Service Implementation ==========
@@ -128,10 +212,14 @@ export async function createProposalFromForm(
       throw new HttpError("Listing is not active", 400);
     }
 
+    // Get the baseDate (latest contract deadline or current date)
+    const baseDate =
+      (await getLatestActiveContractDeadline(listing.artistId)) || new Date();
+
     // Get dynamic availability window to tackle race conditions
     const { earliestDate, latestDate } = await repoComputeDynamicEstimate(
       listing,
-      (await getLatestActiveContractDeadline(listing.artistId)) || new Date()
+      baseDate
     );
 
     // Extract deadline from form
@@ -169,6 +257,10 @@ export async function createProposalFromForm(
     // Extract options from JSON payload
     const { generalOptions, subjectOptions } = jsonPayload;
 
+    // Convert service options format to repository format
+    const repoGeneralOptions = convertGeneralOptions(generalOptions);
+    const repoSubjectOptions = convertSubjectOptions(subjectOptions);
+
     // Create proposal input for repository
     const proposalInput: ProposalInput = {
       clientId,
@@ -177,17 +269,16 @@ export async function createProposalFromForm(
       earliestDate,
       latestDate,
       deadline,
+      baseDate, // Include baseDate in proposal creation
       generalDescription: generalDescription.toString(),
       referenceImages,
-      generalOptions,
-      subjectOptions,
+      generalOptions: repoGeneralOptions,
+      subjectOptions: repoSubjectOptions,
     };
 
     validateProposalInput(proposalInput); // Validate input before creating
 
-    const baseDate = await getLatestActiveContractDeadline(listing.artistId);
-
-    return repoCreateProposal(proposalInput, baseDate || new Date());
+    return repoCreateProposal(proposalInput);
   } catch (error) {
     console.error("Error creating proposal:", error);
     throw error;
@@ -236,16 +327,21 @@ export async function updateProposalFromForm(
       throw new HttpError("Associated listing not found", 404);
     }
 
+    // Get the baseDate (latest contract deadline or current date)
+    const baseDate =
+      (await getLatestActiveContractDeadline(listing.artistId)) || new Date();
+
     // Get dynamic availability window
     const { earliestDate, latestDate } = await repoComputeDynamicEstimate(
       listing,
-      (await getLatestActiveContractDeadline(listing.artistId)) || new Date()
+      baseDate
     );
 
     // Initialize updates object
     const updates: UpdateProposalInput = {
       earliestDate,
       latestDate,
+      baseDate, // Include updated baseDate
     };
 
     // Handle deadline update if provided
@@ -267,11 +363,15 @@ export async function updateProposalFromForm(
 
     // Extract options from JSON payload
     if (jsonPayload.generalOptions) {
-      updates.generalOptions = jsonPayload.generalOptions;
+      updates.generalOptions = convertGeneralOptions(
+        jsonPayload.generalOptions
+      );
     }
 
     if (jsonPayload.subjectOptions) {
-      updates.subjectOptions = jsonPayload.subjectOptions;
+      updates.subjectOptions = convertSubjectOptions(
+        jsonPayload.subjectOptions
+      );
     }
 
     // Handle reference images: combine existing kept images with new uploads
@@ -299,13 +399,7 @@ export async function updateProposalFromForm(
       updates.referenceImages = [...existingReferences, ...uploadedUrls];
     }
 
-    const baseDate = await getLatestActiveContractDeadline(listing.artistId);
-
-    const updatedProposal = await repoUpdateProposal(
-      proposalId,
-      updates,
-      baseDate || new Date()
-    );
+    const updatedProposal = await repoUpdateProposal(proposalId, updates);
     if (!updatedProposal) {
       throw new HttpError("Failed to update proposal", 500);
     }
@@ -314,40 +408,6 @@ export async function updateProposalFromForm(
   } catch (error) {
     console.error("Error updating proposal:", error);
     throw error;
-  }
-}
-
-// Helper function to validate deadline based on listing policy
-function validateDeadline(
-  listing: ICommissionListing,
-  deadline: Date,
-  earliestDate: Date,
-  latestDate: Date
-): void {
-  switch (listing.deadline.mode) {
-    case "standard":
-      // For standard mode, deadline is always system-determined as 2 weeks + latestDate
-      // Client-provided deadline is ignored
-      break;
-
-    case "withDeadline":
-      // For withDeadline mode, client-provided deadline must fall on or after earliestDate
-      if (deadline < earliestDate) {
-        throw new HttpError(
-          `Deadline cannot be earlier than ${
-            earliestDate.toISOString().split("T")[0]
-          }`,
-          400
-        );
-      }
-      break;
-
-    case "withRush":
-      // For withRush mode, any deadline is valid, but rush fees may apply
-      break;
-
-    default:
-      throw new HttpError("Invalid deadline mode in listing", 500);
   }
 }
 
@@ -364,14 +424,14 @@ export async function artistRespond(
       artistId,
       proposalId,
       decision,
-    })
+    });
 
     const proposal = await getProposalById(proposalId);
     if (!proposal) {
       throw new Error("Proposal not found");
     }
 
-    console.log(proposal.status)
+    console.log(proposal.status);
 
     if (proposal.artistId.toString() !== artistId) {
       throw new Error("Not authorized to respond to this proposal");
@@ -397,15 +457,11 @@ export async function artistRespond(
       // Artist is accepting, check if there are adjustments
       let adjustment: ArtistAdjustment | undefined;
       if (decision.surcharge || decision.discount) {
-        adjustment = {};
-
-        if (decision.surcharge) {
-          adjustment.proposedSurcharge = decision.surcharge;
-        }
-
-        if (decision.discount) {
-          adjustment.proposedDiscount = decision.discount;
-        }
+        adjustment = {
+          proposedSurcharge: decision.surcharge,
+          proposedDiscount: decision.discount,
+          proposedDate: new Date(),
+        };
       }
 
       return artistResponds(proposalId, true, adjustment, undefined);
@@ -455,6 +511,7 @@ export async function clientRespond(
     throw error;
   }
 }
+
 // ========== Query Operations ==========
 export async function getUserProposals(
   userId: string,
@@ -656,6 +713,11 @@ export function validateProposalInput(input: any): void {
   if (input.referenceImages && input.referenceImages.length > 5) {
     throw new Error("Maximum 5 reference images allowed");
   }
+
+  // Validate baseDate is present
+  if (!input.baseDate) {
+    throw new Error("Base date is required");
+  }
 }
 
 // ========== Utility Operations ==========
@@ -664,13 +726,16 @@ export async function getDynamicEstimate(listingId: string) {
   const listing = await findCommissionListingById(listingId);
   if (!listing) throw new Error("Listing not found");
 
-  // ── NEW: peek at the artist’s latest active contract
+  // Get the artist's latest active contract deadline
   const latestDeadline = await getLatestActiveContractDeadline(
     listing.artistId
   );
 
   const baseDate = latestDeadline ?? new Date(); // now if none
-  return repoComputeDynamicEstimate(listing, baseDate);
+  return {
+    ...repoComputeDynamicEstimate(listing, baseDate),
+    baseDate, // Also return baseDate for context
+  };
 }
 
 // TODO: replace stub with real query once contract.repository is ready
@@ -678,5 +743,5 @@ export async function getDynamicEstimate(listingId: string) {
 export async function getLatestActiveContractDeadline(
   artistId: ObjectId
 ): Promise<Date | null> {
-  return null; // for now, always “no active contract”
+  return null; // for now, always "no active contract"
 }

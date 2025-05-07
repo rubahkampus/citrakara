@@ -7,32 +7,42 @@ import type { ICommissionListing } from "@/lib/db/models/commissionListing.model
 import type { ISODate, Cents } from "@/types/common";
 
 // ========== Input Types ==========
-export interface GeneralOptionsInput {
-  optionGroups?: Record<
-    string,
-    {
-      selectedLabel: string;
-      price: Cents;
-    }
-  >;
-  addons?: Record<string, Cents>;
-  answers?: Record<string, string>;
+export interface ProposalSelectionInput {
+  id: number;
+  groupId: number;
+  selectedSelectionID: number;
+  selectedSelectionLabel: string;
+  price: Cents;
 }
 
-export interface SubjectOptionsInput {
-  [subjectTitle: string]: {
-    instances: Array<{
-      optionGroups?: Record<
-        string,
-        {
-          selectedLabel: string;
-          price: Cents;
-        }
-      >;
-      addons?: Record<string, Cents>;
-      answers?: Record<string, string>;
-    }>;
-  };
+export interface ProposalAddonInput {
+  id: number;
+  addonId: number;
+  price: Cents;
+}
+
+export interface ProposalAnswerInput {
+  id: number;
+  questionId: number;
+  answer: string;
+}
+
+export interface ProposalGeneralOptionsInput {
+  optionGroups?: ProposalSelectionInput[];
+  addons?: ProposalAddonInput[];
+  answers?: ProposalAnswerInput[];
+}
+
+export interface ProposalSubjectInstanceInput {
+  id: number;
+  optionGroups?: ProposalSelectionInput[];
+  addons?: ProposalAddonInput[];
+  answers?: ProposalAnswerInput[];
+}
+
+export interface ProposalSubjectOptionsInput {
+  subjectId: number;
+  instances: ProposalSubjectInstanceInput[];
 }
 
 export interface ProposalInput {
@@ -44,8 +54,9 @@ export interface ProposalInput {
   deadline: ISODate;
   generalDescription: string;
   referenceImages?: string[];
-  generalOptions?: GeneralOptionsInput;
-  subjectOptions?: SubjectOptionsInput;
+  generalOptions?: ProposalGeneralOptionsInput;
+  subjectOptions?: ProposalSubjectOptionsInput[];
+  baseDate: ISODate; // New required field
 }
 
 export interface UpdateProposalInput {
@@ -54,8 +65,9 @@ export interface UpdateProposalInput {
   deadline?: ISODate;
   generalDescription?: string;
   referenceImages?: string[];
-  generalOptions?: GeneralOptionsInput;
-  subjectOptions?: SubjectOptionsInput;
+  generalOptions?: ProposalGeneralOptionsInput;
+  subjectOptions?: ProposalSubjectOptionsInput[];
+  baseDate?: ISODate; // Optional during updates
 }
 
 export interface FindOpts {
@@ -66,38 +78,15 @@ export interface FindOpts {
 }
 
 export interface ArtistAdjustment {
-  proposedSurcharge?: number;
-  proposedDiscount?: number;
+  proposedSurcharge?: Cents;
+  proposedDiscount?: Cents;
+  proposedDate?: ISODate;
 }
 
 export interface Estimate {
   baseDate: Date;
   earliestDate: Date;
   latestDate: Date;
-}
-
-export interface ListingSnapshot {
-  title: string;
-  basePrice: Cents;
-  slots: number;
-  generalOptions?: any;
-  subjectOptions?: any;
-  cancelationFee: {
-    kind: "flat" | "percentage";
-    amount: number;
-  };
-  deadline: {
-    mode: "standard" | "withDeadline" | "withRush";
-    min: number;
-    max: number;
-    rushFee?: {
-      kind: "flat" | "perDay";
-      amount: number;
-    };
-  };
-  revisions?: any;
-  milestones?: any;
-  flow?: "standard" | "milestone";
 }
 
 // ========== Helper Functions ==========
@@ -188,7 +177,7 @@ function calculateRush(
   const paidDays = Math.max(
     0,
     Math.ceil(
-      (deadline.getTime() - earliestDate.getTime()) / (24 * 60 * 60 * 1000)
+      (earliestDate.getTime() - deadline.getTime()) / (24 * 60 * 60 * 1000)
     )
   );
 
@@ -215,42 +204,38 @@ function calculateRush(
 }
 
 function calculateSelectedPrice(
-  generalOptions?: GeneralOptionsInput,
-  subjectOptions?: SubjectOptionsInput
+  generalOptions?: ProposalGeneralOptionsInput,
+  subjectOptions?: ProposalSubjectOptionsInput[]
 ): { optionGroups: Cents; addons: Cents } {
   let optionGroupsTotal = 0;
   let addonsTotal = 0;
 
-  // Sum general options
+  // Calculate general options price
   if (generalOptions?.optionGroups) {
-    Object.values(generalOptions.optionGroups).forEach((selection) => {
+    generalOptions.optionGroups.forEach((selection) => {
       optionGroupsTotal += selection.price;
     });
   }
 
   if (generalOptions?.addons) {
-    Object.values(generalOptions.addons).forEach((price) => {
-      addonsTotal += price;
+    generalOptions.addons.forEach((addon) => {
+      addonsTotal += addon.price;
     });
   }
 
-  // Sum subject options
-  if (subjectOptions) {
-    Object.values(subjectOptions).forEach((subject) => {
+  // Calculate subject options price
+  if (subjectOptions && subjectOptions.length > 0) {
+    subjectOptions.forEach((subject) => {
       subject.instances.forEach((instance) => {
         if (instance.optionGroups) {
-          Object.values(instance.optionGroups).forEach((selection) => {
+          instance.optionGroups.forEach((selection) => {
             optionGroupsTotal += selection.price;
           });
         }
         if (instance.addons) {
-          for (const addon of Object.values(instance.addons)) {
-            const p =
-              typeof addon === "object" && (addon as any).price != null
-                ? (addon as any).price
-                : Number(addon);
-            addonsTotal += p;
-          }
+          instance.addons.forEach((addon) => {
+            addonsTotal += addon.price;
+          });
         }
       });
     });
@@ -260,15 +245,13 @@ function calculateSelectedPrice(
 }
 
 // ========== Repository Functions ==========
-export async function createProposal(
-  input: ProposalInput,
-  baseDate: Date
-): Promise<IProposal> {
+export async function createProposal(input: ProposalInput): Promise<IProposal> {
   await connectDB();
 
   const clientId = toObjectId(input.clientId);
   const artistId = toObjectId(input.artistId);
   const listingId = toObjectId(input.listingId);
+  const baseDate = new Date(input.baseDate);
 
   // Fetch listing for snapshot
   const listing = await CommissionListing.findById(listingId);
@@ -278,30 +261,6 @@ export async function createProposal(
 
   // Create listing snapshot
   const listingSnapshot: ICommissionListing = listing;
-
-  // ── 1) Sanitize subjectOptions so addons are numbers only
-  const sanitizedSubjectOptions: Record<string, any> = {};
-  if (input.subjectOptions) {
-    for (const [subjectKey, subjectVal] of Object.entries(
-      input.subjectOptions
-    )) {
-      sanitizedSubjectOptions[subjectKey] = {
-        instances: subjectVal.instances.map((instance) => ({
-          optionGroups: instance.optionGroups,
-          // strip out only the numeric price from each addon
-          addons: Object.fromEntries(
-            Object.entries(instance.addons || {}).map(([label, addon]) => [
-              label,
-              typeof addon === "object" && (addon as any).price != null
-                ? (addon as any).price
-                : Number(addon),
-            ])
-          ),
-          answers: instance.answers,
-        })),
-      };
-    }
-  }
 
   // Validate dates
   validateDuration(
@@ -321,7 +280,7 @@ export async function createProposal(
   );
 
   const { optionGroups: optionGroupsPrice, addons: addonsPrice } =
-    calculateSelectedPrice(input.generalOptions, sanitizedSubjectOptions);
+    calculateSelectedPrice(input.generalOptions, input.subjectOptions);
 
   const calculatedPrice = {
     base: listingSnapshot.basePrice,
@@ -344,6 +303,7 @@ export async function createProposal(
     listingSnapshot,
     status: "pendingArtist",
     expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
+    baseDate, // Add the new baseDate field
     availability: {
       earliestDate: input.earliestDate,
       latestDate: input.latestDate,
@@ -353,7 +313,7 @@ export async function createProposal(
     generalDescription: input.generalDescription,
     referenceImages: input.referenceImages || [],
     generalOptions: input.generalOptions || {},
-    subjectOptions: sanitizedSubjectOptions,
+    subjectOptions: input.subjectOptions || [],
     calculatedPrice,
   });
 
@@ -369,16 +329,19 @@ export async function getProposalById(
 
 export async function updateProposal(
   id: string | ObjectId,
-  updates: UpdateProposalInput,
-  newBaseDate: Date
+  updates: UpdateProposalInput
 ): Promise<IProposal | null> {
   await connectDB();
 
   const proposal = await Proposal.findById(toObjectId(id));
   if (!proposal) return null;
 
-  // Validate dates
-  // Validate dates - collect values to validate, handling both existing and updated values
+  // Get baseDate for validation
+  const baseDate = updates.baseDate
+    ? new Date(updates.baseDate)
+    : proposal.baseDate;
+
+  // Collect values to validate, handling both existing and updated values
   const earliestDate = new Date(
     updates.earliestDate || proposal.availability.earliestDate
   );
@@ -388,16 +351,17 @@ export async function updateProposal(
   );
 
   try {
-    // Validate dates with updated function signature
+    // Validate dates
     validateDuration(
       earliestDate,
       deadline,
       latestDate,
       proposal.listingSnapshot.deadline.mode,
-      newBaseDate
+      baseDate
     );
 
-    // Update fields - only proceed if validation passes
+    // Update fields
+    if (updates.baseDate) proposal.baseDate = updates.baseDate;
     if (updates.earliestDate)
       proposal.availability.earliestDate = updates.earliestDate;
     if (updates.latestDate)
@@ -409,26 +373,8 @@ export async function updateProposal(
       proposal.referenceImages = updates.referenceImages;
     if (updates.generalOptions)
       proposal.generalOptions = updates.generalOptions;
-    if (updates.subjectOptions) {
-      const sanitized: Record<string, any> = {};
-      for (const [key, val] of Object.entries(updates.subjectOptions)) {
-        sanitized[key] = {
-          instances: val.instances.map((inst) => ({
-            optionGroups: inst.optionGroups,
-            addons: Object.fromEntries(
-              Object.entries(inst.addons || {}).map(([label, addon]) => [
-                label,
-                typeof addon === "object" && (addon as any).price != null
-                  ? (addon as any).price
-                  : Number(addon),
-              ])
-            ),
-            answers: inst.answers,
-          })),
-        };
-      }
-      proposal.subjectOptions = sanitized;
-    }
+    if (updates.subjectOptions)
+      proposal.subjectOptions = updates.subjectOptions;
   } catch (error) {
     // Handle validation errors
     if (error instanceof Error) {
@@ -537,7 +483,7 @@ export async function artistResponds(
 ): Promise<IProposal> {
   await connectDB();
 
-  const proposal = await Proposal.findById(toObjectId(id)) as IProposal;
+  const proposal = (await Proposal.findById(toObjectId(id))) as IProposal;
   if (!proposal) {
     throw new Error("Proposal not found");
   }
@@ -555,7 +501,7 @@ export async function artistResponds(
 
     proposal.status = "rejectedArtist";
     proposal.rejectionReason = rejectionReason;
-    proposal.expiresAt = new Date; // Set expiration to now 
+    proposal.expiresAt = new Date(); // Set expiration to now
     return proposal.save();
   }
 
@@ -570,15 +516,11 @@ export async function artistResponds(
   // Accept with optional adjustment
   if (adjustment?.proposedSurcharge || adjustment?.proposedDiscount) {
     // Format adjustments to match schema
-    proposal.artistAdjustments = {};
-
-    if (adjustment.proposedSurcharge) {
-      proposal.artistAdjustments.proposedSurcharge = adjustment.proposedSurcharge
-    }
-
-    if (adjustment.proposedDiscount) {
-      proposal.artistAdjustments.discount = adjustment.proposedDiscount
-    }
+    proposal.artistAdjustments = {
+      proposedSurcharge: adjustment.proposedSurcharge,
+      proposedDiscount: adjustment.proposedDiscount,
+      proposedDate: adjustment.proposedDate || new Date(),
+    };
 
     const surchargeAmount = adjustment?.proposedSurcharge || 0;
     const discountAmount = adjustment?.proposedDiscount || 0;
@@ -595,7 +537,6 @@ export async function artistResponds(
 
     proposal.status = "pendingClient";
     proposal.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 3 days expiration
-    proposal.artistAdjustments.proposedDate = new Date(); // Set proposed date to now
   } else {
     // Simple acceptance without adjustments
     proposal.status = "accepted";
@@ -612,7 +553,7 @@ export async function clientRespondsToAdjustment(
 ): Promise<IProposal> {
   await connectDB();
 
-  const proposal = await Proposal.findById(toObjectId(id)) as IProposal;
+  const proposal = (await Proposal.findById(toObjectId(id))) as IProposal;
   if (!proposal) {
     throw new Error("Proposal not found");
   }
@@ -642,17 +583,19 @@ export async function clientRespondsToAdjustment(
     proposal.artistAdjustments = proposal.artistAdjustments || {};
 
     proposal.artistAdjustments.acceptedDate = new Date(); // Set accepted date to now
-    proposal.artistAdjustments.surcharge =
-      proposal.artistAdjustments.proposedSurcharge || 0;
-    proposal.artistAdjustments.discount =
-      proposal.artistAdjustments.discount || 0;
-    proposal.artistAdjustments.proposedSurcharge = undefined; // Clear proposed surcharge
-    proposal.artistAdjustments.proposedDiscount = undefined; // Clear proposed discount
+    proposal.artistAdjustments.acceptedSurcharge =
+      proposal.artistAdjustments.proposedSurcharge;
+    proposal.artistAdjustments.acceptedDiscount =
+      proposal.artistAdjustments.proposedDiscount;
+
+    // Clear proposed values
+    proposal.artistAdjustments.proposedSurcharge = undefined;
+    proposal.artistAdjustments.proposedDiscount = undefined;
 
     const recalculated = recalculateRushAndPrice(proposal);
     Object.assign(proposal, recalculated);
 
-    proposal.status = "pendingArtist";
+    proposal.status = "accepted";
   } else {
     proposal.status = "rejectedClient";
   }
@@ -728,7 +671,7 @@ export function computeDynamicEstimate(
 }
 
 export function recalculateRushAndPrice(proposal: IProposal): IProposal {
-  const { listingSnapshot, deadline, availability } = proposal;
+  const { listingSnapshot, deadline, availability, baseDate } = proposal;
 
   if (!availability) return proposal;
 
@@ -749,8 +692,14 @@ export function recalculateRushAndPrice(proposal: IProposal): IProposal {
       proposalSnapshot.subjectOptions
     );
 
-  const surchargeAmount = proposal.artistAdjustments?.surcharge || 0;
-  const discountAmount = proposal.artistAdjustments?.discount || 0;
+  const surchargeAmount =
+    proposal.artistAdjustments?.acceptedSurcharge ||
+    proposal.artistAdjustments?.proposedSurcharge ||
+    0;
+  const discountAmount =
+    proposal.artistAdjustments?.acceptedDiscount ||
+    proposal.artistAdjustments?.proposedDiscount ||
+    0;
 
   proposal.rush = rush || undefined;
   proposal.calculatedPrice = {

@@ -6,11 +6,10 @@ import CommissionListing, {
 import { Types, ClientSession } from "mongoose";
 
 /* ----------------------------- Input DTOs ----------------------------- */
+// Define ID type to match the model
+type ID = number;
 
 // Pure payload type instead of derived from Mongoose Document
-// In src/lib/db/repositories/commissionListing.repository.ts
-// Add the price property to the interface
-
 export interface CommissionListingPayload {
   artistId: Types.ObjectId;
   title: string;
@@ -29,7 +28,7 @@ export interface CommissionListingPayload {
     rushFee?: { kind: "flat" | "perDay"; amount: number };
   };
   basePrice: number;
-  price: { min: number; max: number }; // Add this property
+  price: { min: number; max: number };
   cancelationFee: { kind: "flat" | "percentage"; amount: number };
   latePenaltyPercent?: number;
   graceDays?: number;
@@ -46,6 +45,7 @@ export interface CommissionListingPayload {
     };
   };
   milestones?: Array<{
+    id: ID;
     title: string;
     percent: number;
     policy?: {
@@ -57,24 +57,28 @@ export interface CommissionListingPayload {
   }>;
   generalOptions?: {
     optionGroups?: Array<{
+      id: ID;
       title: string;
-      selections: { label: string; price: number }[];
+      selections: Array<{ id: ID; label: string; price: number }>;
     }>;
-    addons?: { label: string; price: number }[];
-    questions?: string[];
+    addons?: Array<{ id: ID; label: string; price: number }>;
+    questions?: Array<{ id: ID; label: string }>;
   };
   subjectOptions?: Array<{
+    id: ID;
     title: string;
     limit: number;
     discount?: number;
     optionGroups?: Array<{
+      id: ID;
       title: string;
-      selections: { label: string; price: number }[];
+      selections: Array<{ id: ID; label: string; price: number }>;
     }>;
-    addons?: { label: string; price: number }[];
-    questions?: string[];
+    addons?: Array<{ id: ID; label: string; price: number }>;
+    questions?: Array<{ id: ID; label: string }>;
   }>;
 }
+
 export type CommissionListingUpdateInput = Partial<
   Pick<
     ICommissionListing,
@@ -95,12 +99,67 @@ export async function createCommissionListing(
 ) {
   await connectDB();
   console.log("Creating commission listing", payload);
-  const doc = new CommissionListing({
+
+  // Ensure all required IDs are assigned if not present
+  const processedPayload = {
     ...payload,
+    milestones: payload.milestones?.map((milestone, index) => ({
+      ...milestone,
+      id: milestone.id ?? index + 1,
+    })),
+    generalOptions: payload.generalOptions && {
+      ...payload.generalOptions,
+      optionGroups: payload.generalOptions.optionGroups?.map(
+        (group, groupIndex) => ({
+          ...group,
+          id: group.id ?? groupIndex + 1,
+          selections: group.selections.map((selection, selectionIndex) => ({
+            ...selection,
+            id: selection.id ?? selectionIndex + 1,
+          })),
+        })
+      ),
+      addons: payload.generalOptions.addons?.map((addon, addonIndex) => ({
+        ...addon,
+        id: addon.id ?? addonIndex + 1,
+      })),
+      questions: payload.generalOptions.questions?.map(
+        (question, questionIndex) =>
+          typeof question === "string"
+            ? { id: questionIndex + 1, label: question }
+            : { ...question, id: question.id ?? questionIndex + 1 }
+      ),
+    },
+    subjectOptions: payload.subjectOptions?.map((subject, subjectIndex) => ({
+      ...subject,
+      id: subject.id ?? subjectIndex + 1,
+      optionGroups: subject.optionGroups?.map((group, groupIndex) => ({
+        ...group,
+        id: group.id ?? groupIndex + 1,
+        selections: group.selections.map((selection, selectionIndex) => ({
+          ...selection,
+          id: selection.id ?? selectionIndex + 1,
+        })),
+      })),
+      addons: subject.addons?.map((addon, addonIndex) => ({
+        ...addon,
+        id: addon.id ?? addonIndex + 1,
+      })),
+      questions: subject.questions?.map((question, questionIndex) =>
+        typeof question === "string"
+          ? { id: questionIndex + 1, label: question }
+          : { ...question, id: question.id ?? questionIndex + 1 }
+      ),
+    })),
+  };
+
+  const doc = new CommissionListing({
+    ...processedPayload,
     isActive: true,
     isDeleted: false,
     reviewsSummary: { avg: 0, count: 0 },
   });
+
   return doc.save({ session });
 }
 
@@ -130,13 +189,13 @@ export async function findActiveListingsByArtist(
 
 /** Public search –  simple tag/keyword filter */
 export async function searchListings({
-  text,
+  label,
   tags,
   artistId,
   skip = 0,
   limit = 20,
 }: {
-  text?: string;
+  label?: string;
   tags?: string[];
   artistId?: string;
   skip?: number;
@@ -151,7 +210,7 @@ export async function searchListings({
 
   if (artistId) filter.artistId = artistId;
   if (tags?.length) filter.tags = { $in: tags };
-  if (text) filter.$text = { $search: text };
+  if (label) filter.$label = { $search: label };
 
   // Execute queries in parallel for efficiency
   const [items, total] = await Promise.all([
@@ -170,6 +229,42 @@ export async function updateCommissionListing(
 ) {
   await connectDB();
   return CommissionListing.findByIdAndUpdate(id, updates, {
+    new: true,
+    session,
+  });
+}
+
+/** Update specific components with IDs */
+export async function updateCommissionListingComponents(
+  id: string | Types.ObjectId,
+  updates: Partial<CommissionListingPayload>,
+  session?: ClientSession
+) {
+  await connectDB();
+
+  // Process the updates to ensure IDs are properly maintained
+  const processedUpdates: Record<string, any> = { ...updates };
+
+  // Handle milestones update if present
+  if (updates.milestones) {
+    // Fetch current milestones to preserve IDs
+    const listing = await CommissionListing.findById(id).lean();
+    if (listing && 'milestones' in listing) {
+      const currentMilestoneMap = new Map(
+        (listing.milestones as { title: string; id: number }[]).map((m) => [m.title, m.id])
+      );
+
+      processedUpdates.milestones = updates.milestones.map((m, idx) => ({
+        ...m,
+        id: m.id ?? currentMilestoneMap.get(m.title) ?? idx + 1,
+      }));
+    }
+  }
+
+  // Similar processing for generalOptions and subjectOptions if needed
+  // This would follow the same pattern as above
+
+  return CommissionListing.findByIdAndUpdate(id, processedUpdates, {
     new: true,
     session,
   });
@@ -202,3 +297,120 @@ export async function softDeleteListing(
     { new: true, session }
   );
 }
+
+/**
+ * Helper functions for managing components with IDs
+ */
+
+/**
+ * Adds a question to either generalOptions or a specific subjectOption
+ */
+export async function addQuestion(
+  listingId: string | Types.ObjectId,
+  questionlabel: string,
+  target: { type: "general" } | { type: "subject"; subjectId: ID },
+  session?: ClientSession
+) {
+  await connectDB();
+
+  const listing = await CommissionListing.findById(listingId);
+  if (!listing) return null;
+
+  // Generate a new ID based on existing questions
+  let newId = 1;
+
+  if (target.type === "general") {
+    // Add to general options questions
+    if (!listing.generalOptions) {
+      listing.generalOptions = { questions: [] };
+    } else if (!listing.generalOptions.questions) {
+      listing.generalOptions.questions = [];
+    }
+
+    // Find highest ID and increment
+    newId =
+      Math.max(
+        0,
+        ...listing.generalOptions.questions.map((q: { id: number } | string) =>
+          typeof q === "string" ? 0 : q.id
+        )
+      ) + 1;
+
+    // Add new question
+    listing.generalOptions.questions.push({ id: newId, label: questionlabel });
+  } else {
+    // Add to subject options questions
+    if (!listing.subjectOptions || !listing.subjectOptions.length) {
+      return null; // No subjects to add to
+    }
+
+    const subjectIndex = listing.subjectOptions.findIndex(
+      (s: { id: ID }) => s.id === target.subjectId
+    );
+    if (subjectIndex === -1) return null;
+
+    if (!listing.subjectOptions[subjectIndex].questions) {
+      listing.subjectOptions[subjectIndex].questions = [];
+    }
+
+    // Find highest ID and increment
+    newId =
+      Math.max(
+        0,
+        ...listing.subjectOptions[subjectIndex].questions.map((q: { id: number } | string) =>
+          typeof q === "string" ? 0 : q.id
+        )
+      ) + 1;
+
+    // Add new question
+    listing.subjectOptions[subjectIndex].questions.push({
+      id: newId,
+      label: questionlabel,
+    });
+  }
+
+  return listing.save({ session });
+}
+
+/**
+ * Removes a question by ID
+ */
+export async function removeQuestion(
+  listingId: string | Types.ObjectId,
+  target:
+    | { type: "general"; questionId: ID }
+    | { type: "subject"; subjectId: ID; questionId: ID },
+  session?: ClientSession
+) {
+  await connectDB();
+
+  if (target.type === "general") {
+    return CommissionListing.findByIdAndUpdate(
+      listingId,
+      { $pull: { "generalOptions.questions": { id: target.questionId } } },
+      { new: true, session }
+    );
+  } else {
+    // This is more complex - we need to find the specific subject and update its questions
+    const listing = await CommissionListing.findById(listingId);
+    if (!listing || !listing.subjectOptions) return null;
+
+    const subjectIndex = listing.subjectOptions.findIndex(
+      (s: { id: ID }) => s.id === target.subjectId
+    );
+    if (subjectIndex === -1) return null;
+
+    if (!listing.subjectOptions[subjectIndex].questions) return listing;
+
+    listing.subjectOptions[subjectIndex].questions = listing.subjectOptions[
+      subjectIndex
+    ].questions.filter(
+      (q: { id: number } | string) => typeof q === "string" || q.id !== target.questionId
+    );
+
+    return listing.save({ session });
+  }
+}
+
+// Similar helper functions could be added for managing other components with IDs
+// such as optionGroups, selections, addons, etc.

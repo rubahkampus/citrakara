@@ -18,85 +18,6 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoIcon from "@mui/icons-material/Info";
 
-// Validation function for allowed characters
-const validateAllowedCharacters = (value: string) => {
-  // Regex that only allows alphabet, spaces, -, comma, period, and numbers
-  const allowedCharsRegex = /^[a-zA-Z0-9\s\-.,?!/()]*$/;
-  return (
-    allowedCharsRegex.test(value) ||
-    "Only letters, numbers, spaces, hyphens, commas, and periods are allowed"
-  );
-};
-
-/**
- * Reusable component for price-label pairs
- */
-const PriceOptionPair: React.FC<{
-  label: string;
-  priceSuffix?: string;
-  register: any;
-  control: any;
-  remove: (index: number) => void;
-  index: number;
-  path: string;
-}> = ({ label, priceSuffix = "", register, control, remove, index, path }) => (
-  <Grid container spacing={1} alignItems="center" sx={{ mb: 1 }}>
-    <Grid item xs={6}>
-      <Controller
-        control={control}
-        name={`${path}.${index}.label`}
-        rules={{
-          validate: validateAllowedCharacters,
-        }}
-        render={({ field, fieldState }) => (
-          <TextField
-            label="Label"
-            fullWidth
-            size="small"
-            error={!!fieldState.error}
-            helperText={fieldState.error ? fieldState.error.message : ""}
-            {...field}
-          />
-        )}
-      />
-    </Grid>
-    <Grid item xs={4}>
-      <Controller
-        control={control}
-        name={`${path}.${index}.price`}
-        rules={{ min: 0 }}
-        render={({ field, fieldState }) => (
-          <TextField
-            label="Price"
-            type="number"
-            fullWidth
-            size="small"
-            error={!!fieldState.error}
-            helperText={fieldState.error ? "Cannot be negative" : ""}
-            InputProps={{
-              inputProps: { min: 0 },
-              endAdornment: priceSuffix ? (
-                <span style={{ marginLeft: 4 }}>{priceSuffix}</span>
-              ) : undefined,
-            }}
-            {...field}
-            onChange={(e) => {
-              // Prevent negative values
-              const value = parseFloat(e.target.value);
-              field.onChange(value < 0 ? 0 : value);
-            }}
-          />
-        )}
-      />
-    </Grid>
-    <Grid item xs={2}>
-      <IconButton size="small" color="error" onClick={() => remove(index)}>
-        <DeleteIcon fontSize="small" />
-      </IconButton>
-    </Grid>
-  </Grid>
-);
-
 /**
  * Component for handling selections within a subject option group
  */
@@ -114,16 +35,58 @@ const SubjectOptionSelections: React.FC<{
   return (
     <Box sx={{ pl: 1 }}>
       {fields.map((field, index) => (
-        <PriceOptionPair
+        <Grid
+          container
+          spacing={1}
+          alignItems="center"
+          sx={{ mb: 1 }}
           key={field.id}
-          label="Option"
-          priceSuffix={currency}
-          register={control.register}
-          control={control}
-          remove={remove}
-          index={index}
-          path={`subjectOptions.${subjectIndex}.optionGroups.${groupIndex}.selections`}
-        />
+        >
+          <Grid item xs={6}>
+            <Controller
+              control={control}
+              name={`subjectOptions.${subjectIndex}.optionGroups.${groupIndex}.selections.${index}.label`}
+              render={({ field }) => (
+                <TextField label="Label" fullWidth size="small" {...field} />
+              )}
+            />
+          </Grid>
+          <Grid item xs={4}>
+            <Controller
+              control={control}
+              name={`subjectOptions.${subjectIndex}.optionGroups.${groupIndex}.selections.${index}.price`}
+              defaultValue={0}
+              render={({ field }) => (
+                <TextField
+                  label="Price"
+                  type="number"
+                  fullWidth
+                  size="small"
+                  InputProps={{
+                    inputProps: { min: 0 },
+                    endAdornment: currency ? (
+                      <span style={{ marginLeft: 4 }}>{currency}</span>
+                    ) : undefined,
+                  }}
+                  {...field}
+                  onChange={(e) => {
+                    const value = Math.max(0, parseFloat(e.target.value) || 0);
+                    field.onChange(value);
+                  }}
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={2}>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => remove(index)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Grid>
+        </Grid>
       ))}
 
       <Button
@@ -170,16 +133,11 @@ const SubjectOptionGroup: React.FC<{
             <Controller
               control={control}
               name={`subjectOptions.${subjectIndex}.optionGroups.${groupIndex}.title`}
-              rules={{
-                validate: validateAllowedCharacters,
-              }}
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <TextField
                   label="Group Title"
                   fullWidth
                   size="small"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error ? fieldState.error.message : ""}
                   sx={{ mr: 1, flexGrow: 1 }}
                   {...field}
                 />
@@ -240,16 +198,58 @@ const SubjectAddonList: React.FC<{
       )}
 
       {fields.map((field, index) => (
-        <PriceOptionPair
+        <Grid
+          container
+          spacing={1}
+          alignItems="center"
+          sx={{ mb: 1 }}
           key={field.id}
-          label="Addon"
-          priceSuffix={currency}
-          register={control.register}
-          control={control}
-          remove={remove}
-          index={index}
-          path={`subjectOptions.${subjectIndex}.addons`}
-        />
+        >
+          <Grid item xs={6}>
+            <Controller
+              control={control}
+              name={`subjectOptions.${subjectIndex}.addons.${index}.label`}
+              render={({ field }) => (
+                <TextField label="Label" fullWidth size="small" {...field} />
+              )}
+            />
+          </Grid>
+          <Grid item xs={4}>
+            <Controller
+              control={control}
+              name={`subjectOptions.${subjectIndex}.addons.${index}.price`}
+              defaultValue={0}
+              render={({ field }) => (
+                <TextField
+                  label="Price"
+                  type="number"
+                  fullWidth
+                  size="small"
+                  InputProps={{
+                    inputProps: { min: 0 },
+                    endAdornment: currency ? (
+                      <span style={{ marginLeft: 4 }}>{currency}</span>
+                    ) : undefined,
+                  }}
+                  {...field}
+                  onChange={(e) => {
+                    const value = Math.max(0, parseFloat(e.target.value) || 0);
+                    field.onChange(value);
+                  }}
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={2}>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => remove(index)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Grid>
+        </Grid>
       ))}
 
       <Button
@@ -265,9 +265,6 @@ const SubjectAddonList: React.FC<{
   );
 };
 
-/**
- * Component for questions within a subject
- */
 /**
  * Component for questions within a subject
  */
@@ -299,19 +296,9 @@ const SubjectQuestionList: React.FC<{
           <Grid item xs={10}>
             <Controller
               control={control}
-              name={`subjectOptions.${subjectIndex}.questions.${index}`}
-              rules={{
-                validate: validateAllowedCharacters,
-              }}
-              render={({ field, fieldState }) => (
-                <TextField
-                  label="Question"
-                  fullWidth
-                  size="small"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error ? fieldState.error.message : ""}
-                  {...field}
-                />
+              name={`subjectOptions.${subjectIndex}.questions.${index}.label`}
+              render={({ field }) => (
+                <TextField label="Question" fullWidth size="small" {...field} />
               )}
             />
           </Grid>
@@ -330,7 +317,7 @@ const SubjectQuestionList: React.FC<{
       <Button
         variant="outlined"
         startIcon={<AddIcon />}
-        onClick={() => append("")}
+        onClick={() => append({ label: "" })}
         size="small"
         sx={{ mt: 1 }}
       >
@@ -393,19 +380,11 @@ const SubjectOptionsSection = () => {
               <Controller
                 control={control}
                 name={`subjectOptions.${subjectIndex}.title`}
-                rules={{
-                  validate: validateAllowedCharacters,
-                }}
-                render={({ field, fieldState }) => (
+                render={({ field }) => (
                   <TextField
                     label="Subject Title"
                     fullWidth
-                    error={!!fieldState.error}
-                    helperText={
-                      fieldState.error
-                        ? fieldState.error.message
-                        : "Category name (e.g. Characters, Backgrounds)"
-                    }
+                    helperText="Category name (e.g. Characters, Backgrounds)"
                     {...field}
                   />
                 )}
@@ -440,7 +419,6 @@ const SubjectOptionsSection = () => {
                     }}
                     {...field}
                     onChange={(e) => {
-                      // Ensure value is at least 1
                       const value = parseInt(e.target.value);
                       field.onChange(value < 1 ? 1 : value);
                     }}
@@ -473,7 +451,6 @@ const SubjectOptionsSection = () => {
                     }}
                     {...field}
                     onChange={(e) => {
-                      // Clamp value between 0 and 100
                       const value = parseFloat(e.target.value);
                       if (value < 0) field.onChange(0);
                       else if (value > 100) field.onChange(100);

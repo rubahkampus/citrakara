@@ -15,13 +15,7 @@
  * - Optimized state management
  */
 import React, { useCallback, useMemo } from "react";
-import {
-  useFormContext,
-  useFieldArray,
-  UseFormSetValue,
-  useWatch,
-  Controller,
-} from "react-hook-form";
+import { useFormContext, useWatch, Controller } from "react-hook-form";
 import {
   Box,
   Typography,
@@ -55,7 +49,11 @@ import {
   Layers as LayersIcon,
   Info as InfoIcon,
 } from "@mui/icons-material";
-import { ProposalFormValues } from "@/types/proposal";
+import {
+  ProposalFormValues,
+  GeneralOptionGroupInput,
+  SubjectInstanceInput,
+} from "@/types/proposal";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 import { Cents } from "@/types/common";
 
@@ -136,31 +134,28 @@ const SubjectSection = React.memo(
     subject: any;
     control: any;
     watch: any;
-    setValue: UseFormSetValue<ProposalFormValues>;
+    setValue: any;
     listing: ICommissionListing;
     watchedSubjectOptions: any;
     errors: any;
   }) => {
-    const instancesFieldArrayName = `subjectOptions.${subject.title}.instances`;
-    const { fields, append, remove } = useFieldArray({
-      control,
-      name: instancesFieldArrayName,
-    });
+    const subjectTitle = subject.title;
 
     // FIX 1: Use a ref to track if we've already initialized to prevent double initialization
     const initializedRef = React.useRef(false);
 
     // Check if we have any existing data in edit mode before initializing
     const existingInstances =
-      watchedSubjectOptions[subject.title]?.instances || [];
+      watchedSubjectOptions[subjectTitle]?.instances || [];
     const hasExistingData = existingInstances.length > 0;
 
     React.useEffect(() => {
       // Only initialize if we haven't already AND there are no fields AND no existing data
-      if (!initializedRef.current && fields.length === 0 && !hasExistingData) {
+      if (!initializedRef.current && !hasExistingData) {
         initializedRef.current = true;
 
-        const defaultOptionGroups: Record<string, any> = {};
+        // Create initial default options
+        const defaultOptionGroups: Record<string, GeneralOptionGroupInput> = {};
 
         subject.optionGroups?.forEach((group: any) => {
           const first = group.selections?.[0];
@@ -168,59 +163,88 @@ const SubjectSection = React.memo(
             defaultOptionGroups[group.title] = {
               selectedLabel: first.label,
               price: first.price,
-              originalPrice: first.price,
             };
           }
         });
 
-        append({
+        // Create the first instance
+        const initialInstance: SubjectInstanceInput = {
           optionGroups: defaultOptionGroups,
           addons: {},
           answers: {},
+        };
+
+        // Initialize with one instance
+        setValue(`subjectOptions.${subjectTitle}`, {
+          instances: [initialInstance],
         });
       }
-    }, [append, fields.length, subject.optionGroups, hasExistingData]);
+    }, [setValue, subject, subjectTitle, hasExistingData]);
 
-    const watchedSubject = watchedSubjectOptions[subject.title] || {};
-    const instances = watchedSubject.instances || [];
+    // Get the current instances for this subject
+    const watchedInstances =
+      watchedSubjectOptions[subjectTitle]?.instances || [];
 
     // FIX 2: Improve addInstance to initialize with discounted prices for subsequent instances
     const addInstance = useCallback(() => {
       // Create new instance with pre-calculated discounted prices for options
-      const newInstanceOptionGroups: Record<string, any> = {};
+      const newInstanceOptionGroups: Record<string, GeneralOptionGroupInput> =
+        {};
 
       subject.optionGroups?.forEach((group: any) => {
         const first = group.selections?.[0];
         if (first) {
           // Apply discount for 2+ instances
           const price =
-            fields.length > 0 && subject.discount > 0
+            watchedInstances.length > 0 && subject.discount > 0
               ? applyDiscount(first.price, subject.discount)
               : first.price;
 
           newInstanceOptionGroups[group.title] = {
             selectedLabel: first.label,
             price,
-            originalPrice: first.price,
           };
         }
       });
 
-      append({
-        optionGroups: newInstanceOptionGroups,
-        addons: {},
-        answers: {},
-      });
-    }, [append, fields.length, subject.optionGroups, subject.discount]);
+      // Add the new instance
+      const updatedInstances = [
+        ...(watchedInstances || []),
+        {
+          optionGroups: newInstanceOptionGroups,
+          addons: {},
+          answers: {},
+        },
+      ];
 
-    // Calculate remaining slots using fields.length
+      setValue(`subjectOptions.${subjectTitle}`, {
+        instances: updatedInstances,
+      });
+    }, [setValue, subject, subjectTitle, watchedInstances]);
+
+    // Calculate remaining slots
     const remainingSlots = useMemo(
       () =>
         subject.limit === -1
           ? "Unlimited"
-          : `${subject.limit - fields.length} remaining`,
-      [subject.limit, fields.length]
+          : `${subject.limit - watchedInstances.length} remaining`,
+      [subject.limit, watchedInstances.length]
     );
+
+    // Handle instance removal
+    const handleRemoveInstance = (instanceIndex: number) => {
+      const updatedInstances = [...watchedInstances];
+      updatedInstances.splice(instanceIndex, 1);
+
+      if (updatedInstances.length === 0) {
+        // If no instances left, remove the whole subject entry
+        const { [subjectTitle]: removed, ...rest } = watchedSubjectOptions;
+        setValue("subjectOptions", rest);
+      } else {
+        // Otherwise update with remaining instances
+        setValue(`subjectOptions.${subjectTitle}.instances`, updatedInstances);
+      }
+    };
 
     return (
       <Box sx={{ mb: 4 }}>
@@ -266,30 +290,33 @@ const SubjectSection = React.memo(
               onClick={addInstance}
               variant="contained"
               color="primary"
-              disabled={subject.limit !== -1 && fields.length >= subject.limit}
+              disabled={
+                subject.limit !== -1 && watchedInstances.length >= subject.limit
+              }
             >
               Add {subject.title}
             </Button>
           </Box>
         </Box>
 
-        {fields.map((instance, instanceIndex) => (
+        {watchedInstances.map((instance: any, instanceIndex: number) => (
           <InstanceCard
-            key={instance.id}
+            key={`${subjectTitle}-${instanceIndex}`}
             instanceIndex={instanceIndex}
             subject={subject}
-            onRemove={() => remove(instanceIndex)}
+            instance={instance}
+            onRemove={() => handleRemoveInstance(instanceIndex)}
             control={control}
             setValue={setValue}
             listing={listing}
-            instancesFieldArrayName={instancesFieldArrayName}
+            subjectTitle={subjectTitle}
             errors={errors}
-            totalInstances={fields.length}
+            totalInstances={watchedInstances.length}
             isDiscountApplicable={instanceIndex > 0}
           />
         ))}
 
-        {fields.length === 0 && (
+        {watchedInstances.length === 0 && (
           <Card
             variant="outlined"
             sx={{
@@ -323,35 +350,34 @@ const InstanceCard = React.memo(
   ({
     instanceIndex,
     subject,
+    instance,
     onRemove,
     control,
     setValue,
     listing,
-    instancesFieldArrayName,
+    subjectTitle,
     errors,
     totalInstances,
     isDiscountApplicable,
   }: {
     instanceIndex: number;
     subject: any;
+    instance: any;
     onRemove: () => void;
     control: any;
     setValue: any;
     listing: ICommissionListing;
-    instancesFieldArrayName: string;
+    subjectTitle: string;
     errors: any;
     totalInstances: number;
     isDiscountApplicable: boolean;
   }) => {
-    // Use useWatch with selective watching to reduce re-renders
-    const instance = useWatch({
-      control,
-      name: `${instancesFieldArrayName}.${instanceIndex}`,
-      defaultValue: { optionGroups: {}, addons: {}, answers: {} },
-    });
+    // Path to this instance in the form
+    const instancePath = `subjectOptions.${subjectTitle}.instances.${instanceIndex}`;
 
+    // Check for errors in this instance
     const hasErrors =
-      !!errors?.subjectOptions?.[subject.title]?.instances?.[instanceIndex];
+      !!errors?.subjectOptions?.[subjectTitle]?.instances?.[instanceIndex];
 
     // Memoize the discount factor to prevent recalculations
     const discountFactor = useMemo(
@@ -393,54 +419,38 @@ const InstanceCard = React.memo(
 
     const handleOptionGroupChange = useCallback(
       (groupTitle: string, selectedLabel: string) => {
+        // Find the group in the subject
         const group = subject.optionGroups?.find(
-          (g: {
-            title: string;
-            selections: { label: string; price: Cents }[];
-          }) => g.title === groupTitle
+          (g: any) => g.title === groupTitle
         );
-
         if (!group) return;
 
-        if (selectedLabel === "") {
-          // Handle clearing the selection
-          const currentOptionGroups = { ...instance.optionGroups };
-          delete currentOptionGroups[groupTitle];
-          setValue(
-            `${instancesFieldArrayName}.${instanceIndex}.optionGroups`,
-            currentOptionGroups,
-            { shouldValidate: true }
-          );
-          return;
-        }
-
+        // Find the selection in the group
         const selection = group.selections.find(
-          (s: { label: string; price: Cents }) => s.label === selectedLabel
+          (s: any) => s.label === selectedLabel
         );
 
-        if (selection) {
-          // Apply discount if applicable
-          const finalPrice =
-            isDiscountApplicable && subject.discount > 0
-              ? Math.round(selection.price * discountFactor)
-              : selection.price;
+        if (!selection) return;
 
-          setValue(
-            `${instancesFieldArrayName}.${instanceIndex}.optionGroups.${groupTitle}`,
-            {
-              selectedLabel,
-              price: finalPrice,
-              originalPrice: selection.price, // Store original price for reference
-            },
-            { shouldValidate: true }
-          );
-        }
+        // Apply discount if applicable
+        const finalPrice =
+          isDiscountApplicable && subject.discount > 0
+            ? Math.round(selection.price * discountFactor)
+            : selection.price;
+
+        // Update the option group in the form
+        setValue(
+          `${instancePath}.optionGroups.${groupTitle}`,
+          {
+            selectedLabel,
+            price: finalPrice,
+          },
+          { shouldValidate: true }
+        );
       },
       [
         subject.optionGroups,
-        instance.optionGroups,
-        instancesFieldArrayName,
-        instanceIndex,
+        instancePath,
         setValue,
         isDiscountApplicable,
         subject.discount,
@@ -450,47 +460,60 @@ const InstanceCard = React.memo(
 
     const handleAddonToggle = useCallback(
       (addonLabel: string, checked: boolean) => {
-        const addon = subject.addons?.find(
-          (a: { label: string; price: Cents }) => a.label === addonLabel
-        );
-        const currentAddons = instance.addons || {};
+        // Find the addon in the subject
+        const addon = subject.addons?.find((a: any) => a.label === addonLabel);
+        if (!addon) return;
 
-        if (checked && addon) {
-          // Apply discount if applicable
-          const finalPrice =
-            isDiscountApplicable && subject.discount > 0
-              ? Math.round(addon.price * discountFactor)
-              : addon.price;
+        // Apply discount if applicable
+        const finalPrice =
+          isDiscountApplicable && subject.discount > 0
+            ? Math.round(addon.price * discountFactor)
+            : addon.price;
 
-          setValue(
-            `${instancesFieldArrayName}.${instanceIndex}.addons`,
-            {
-              ...currentAddons,
-              [addonLabel]: {
-                price: finalPrice,
-                originalPrice: addon.price, // Store original price for reference
-              },
-            },
-            { shouldValidate: true }
-          );
+        if (checked) {
+          // Add the addon
+          setValue(`${instancePath}.addons.${addonLabel}`, finalPrice, {
+            shouldValidate: true,
+          });
         } else {
-          const { [addonLabel]: removed, ...rest } = currentAddons;
-          setValue(`${instancesFieldArrayName}.${instanceIndex}.addons`, rest, {
+          // Remove the addon
+          const currentAddons = { ...instance.addons };
+          delete currentAddons[addonLabel];
+          setValue(`${instancePath}.addons`, currentAddons, {
             shouldValidate: true,
           });
         }
       },
       [
         subject.addons,
-        instance.addons,
-        instancesFieldArrayName,
-        instanceIndex,
+        instancePath,
         setValue,
+        instance.addons,
         isDiscountApplicable,
         subject.discount,
         discountFactor,
       ]
     );
+
+    // Helper to check if an addon is selected
+    const isAddonSelected = (addonLabel: string) => {
+      return !!instance.addons?.[addonLabel];
+    };
+
+    // Handle question answers
+    const handleQuestionChange = useCallback(
+      (question: string, value: string) => {
+        setValue(`${instancePath}.answers.${question}`, value, {
+          shouldValidate: true,
+        });
+      },
+      [instancePath, setValue]
+    );
+
+    // Get answer for a specific question
+    const getQuestionAnswer = (question: string) => {
+      return instance.answers?.[question] || "";
+    };
 
     return (
       <Accordion
@@ -592,10 +615,9 @@ const InstanceCard = React.memo(
                       <FormControl
                         fullWidth
                         error={
-                          !!errors?.subjectOptions?.[subject.title]
-                            ?.instances?.[instanceIndex]?.optionGroups?.[
-                            group.title
-                          ]
+                          !!errors?.subjectOptions?.[subjectTitle]?.instances?.[
+                            instanceIndex
+                          ]?.optionGroups?.[group.title]
                         }
                       >
                         <InputLabel
@@ -608,10 +630,7 @@ const InstanceCard = React.memo(
                           id={`subject-option-${subject.title}-${instanceIndex}-${group.title}`}
                           value={
                             instance?.optionGroups?.[group.title]
-                              ?.selectedLabel ||
-                            (group.selections.length > 0
-                              ? group.selections[0].label
-                              : "")
+                              ?.selectedLabel || ""
                           }
                           label={group.title}
                           onChange={(e) =>
@@ -632,7 +651,7 @@ const InstanceCard = React.memo(
                             </MenuItem>
                           ))}
                         </Select>
-                        {errors?.subjectOptions?.[subject.title]?.instances?.[
+                        {errors?.subjectOptions?.[subjectTitle]?.instances?.[
                           instanceIndex
                         ]?.optionGroups?.[group.title] && (
                           <FormHelperText error>
@@ -674,7 +693,7 @@ const InstanceCard = React.memo(
                       key={addon.label}
                       control={
                         <Checkbox
-                          checked={!!instance?.addons?.[addon.label]}
+                          checked={isAddonSelected(addon.label)}
                           onChange={(e) =>
                             handleAddonToggle(addon.label, e.target.checked)
                           }
@@ -742,7 +761,7 @@ const InstanceCard = React.memo(
             </Box>
           )}
 
-          {/* FIX 3: Questions - Improve how we handle field values */}
+          {/* Questions */}
           {subject.questions?.length > 0 && (
             <Box>
               <Typography
@@ -754,22 +773,18 @@ const InstanceCard = React.memo(
               </Typography>
               <Card variant="outlined">
                 <CardContent>
-                  {subject.questions.map((question: string, index: number) => {
-                    // Create separate QuestionField component to isolate each input
-                    return (
-                      <QuestionField
-                        key={`question-${subject.title}-${instanceIndex}-${question}-${index}`}
-                        question={question}
-                        instancesFieldArrayName={instancesFieldArrayName}
-                        instanceIndex={instanceIndex}
-                        subject={subject}
-                        instance={instance}
-                        setValue={setValue}
-                        errors={errors}
-                        isLastQuestion={index === subject.questions.length - 1}
-                      />
-                    );
-                  })}
+                  {subject.questions.map((question: any, index: number) => (
+                    <QuestionField
+                      key={question}
+                      question={question}
+                      value={getQuestionAnswer(question)}
+                      onChange={(value) =>
+                        handleQuestionChange(question, value)
+                      }
+                      error={!!hasErrors}
+                      isLastQuestion={index === subject.questions.length - 1}
+                    />
+                  ))}
                 </CardContent>
               </Card>
             </Box>
@@ -784,77 +799,59 @@ const InstanceCard = React.memo(
 const QuestionField = React.memo(
   ({
     question,
-    instancesFieldArrayName,
-    instanceIndex,
-    subject,
-    instance,
-    setValue,
-    errors,
+    value,
+    onChange,
+    error,
     isLastQuestion,
   }: {
     question: string;
-    instancesFieldArrayName: string;
-    instanceIndex: number;
-    subject: any;
-    instance: any;
-    setValue: any;
-    errors: any;
+    value: string;
+    onChange: (value: string) => void;
+    error?: boolean;
     isLastQuestion: boolean;
   }) => {
-    // Use uncontrolled input pattern with refs
+    // Use uncontrolled input pattern with refs for performance
     const inputRef = React.useRef<HTMLInputElement | null>(null);
-
-    // Get field path and current value
-    const fieldPath = `${instancesFieldArrayName}.${instanceIndex}.answers.${question}`;
-    const currentValue = instance?.answers?.[question] || "";
-
-    // Set field error state
-    const fieldError =
-      errors?.subjectOptions?.[subject.title]?.instances?.[instanceIndex]
-        ?.answers?.[question];
 
     // Set initial value when mounted or value changes
     React.useEffect(() => {
-      if (inputRef.current && inputRef.current.value !== currentValue) {
-        inputRef.current.value = currentValue;
+      if (inputRef.current && inputRef.current.value !== value) {
+        inputRef.current.value = value;
       }
-    }, [currentValue]);
+    }, [value]);
 
-    // Handle input changes - direct manipulation approach
-    const handleInputChange = () => {
-      if (inputRef.current) {
-        // Use requestAnimationFrame to ensure we're outside React's rendering cycle
-        requestAnimationFrame(() => {
-          setValue(fieldPath, inputRef.current?.value || "", {
-            shouldDirty: true,
-            shouldValidate: false,
-          });
-        });
-      }
-    };
+    // Handle input changes with debounce
+    const debouncedChange = React.useCallback(
+      (function () {
+        let timer: NodeJS.Timeout | null = null;
+        return function () {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => {
+            if (inputRef.current) {
+              onChange(inputRef.current.value);
+            }
+          }, 300);
+        };
+      })(),
+      [onChange]
+    );
 
     return (
       <TextField
         inputRef={inputRef}
-        name={fieldPath}
         label={question}
         multiline
         rows={2}
         fullWidth
         sx={{ mb: isLastQuestion ? 0 : 3 }}
-        // Use defaultValue for uncontrolled component
-        defaultValue={currentValue}
-        // Use input event which is more reliable for text inputs
-        onInput={handleInputChange}
+        defaultValue={value}
+        onInput={debouncedChange}
         onBlur={() => {
           if (inputRef.current) {
-            setValue(fieldPath, inputRef.current.value, {
-              shouldValidate: true,
-            });
+            onChange(inputRef.current.value);
           }
         }}
-        error={!!fieldError}
-        helperText={fieldError?.message}
+        error={error}
         placeholder="Your answer..."
       />
     );

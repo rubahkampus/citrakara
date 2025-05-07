@@ -35,33 +35,52 @@ const RevisionPolicySchema = new Schema<RevisionPolicy>(
   { _id: false }
 );
 
-/* -----------------------------------------------------------
-   Option selection and grouping sub-schemas
--------------------------------------------------------------*/
-const OptionSelectionSchema = new Schema<{ label: string; price: Cents }>(
-  {
-    label: { type: String, required: true },
-    price: { type: Number, required: true },
-  },
-  { _id: false }
-);
+// -----------------------------------------------------------
+//   Option selection and grouping sub-schemas
+// -----------------------------------------------------------
+export type ID = number;
 
-const OptionGroupSchema = new Schema<{
+export interface ISelection {
+  id: ID;
+  label: string;
+  price: Cents;
+}
+export interface IOptionGroup {
+  id: ID;
   title: string;
-  selections: { label: string; price: Cents }[];
-}>(
+  selections: ISelection[];
+}
+export interface IAddon {
+  id: ID;
+  label: string;
+  price: Cents;
+}
+export interface IQuestion {
+  id: ID;
+  text: string;
+}
+
+export const SelectionSchema = new Schema<ISelection>(
+  { id: Number, label: String, price: Number },
+  { _id: false }
+);
+
+export const OptionGroupSchema = new Schema<IOptionGroup>(
   {
+    id: { type: Number, required: true },
     title: { type: String, required: true },
-    selections: { type: [OptionSelectionSchema], default: [] },
+    selections: { type: [SelectionSchema], default: [] },
   },
   { _id: false }
 );
 
-const AddonSchema = new Schema<{ label: string; price: Cents }>(
-  {
-    label: { type: String, required: true },
-    price: { type: Number, required: true },
-  },
+export const AddonSchema = new Schema<IAddon>(
+  { id: Number, label: String, price: Number },
+  { _id: false }
+);
+
+export const QuestionSchema = new Schema<IQuestion>(
+  { id: Number, text: String },
   { _id: false }
 );
 
@@ -69,14 +88,18 @@ const AddonSchema = new Schema<{ label: string; price: Cents }>(
    GeneralOptions as explicit sub-schema (no Mixed)
 -------------------------------------------------------------*/
 const GeneralOptionsSchema = new Schema<{
-  optionGroups?: (typeof OptionGroupSchema)[];
-  addons?: (typeof AddonSchema)[];
-  questions?: string[];
+  optionGroups?: {
+    id: ID;
+    title: string;
+    selections: { id: ID; label: string; price: Cents }[];
+  }[];
+  addons?: { id: ID; label: string; price: Cents }[];
+  questions?: { id: ID; text: string }[];
 }>(
   {
     optionGroups: { type: [OptionGroupSchema], default: [] },
     addons: { type: [AddonSchema], default: [] },
-    questions: { type: [String], default: [] },
+    questions: { type: [QuestionSchema], default: [] },
   },
   { _id: false }
 );
@@ -84,32 +107,27 @@ const GeneralOptionsSchema = new Schema<{
 /* -----------------------------------------------------------
    SubjectOptions sub-schema (custom flow)
 -------------------------------------------------------------*/
-const SubjectOptionGroupSchema = new Schema<{
-  title: string;
-  selections: { label: string; price: Cents }[];
-}>(
-  {
-    title: { type: String, required: true },
-    selections: { type: [OptionSelectionSchema], default: [] },
-  },
-  { _id: false }
-);
-
-const SubjectOptionsSchema = new Schema<{
+const SubjectOptionSchema = new Schema<{
+  id: ID;
   title: string;
   limit: number;
   discount?: number;
-  optionGroups?: (typeof SubjectOptionGroupSchema)[];
-  addons?: (typeof AddonSchema)[];
-  questions?: string[];
+  optionGroups?: {
+    id: ID;
+    title: string;
+    selections: { id: ID; label: string; price: Cents }[];
+  }[];
+  addons?: { id: ID; label: string; price: Cents }[];
+  questions?: { id: ID; text: string }[];
 }>(
   {
+    id: { type: Number, required: true },
     title: { type: String, required: true },
     limit: { type: Number, required: true, default: 1 },
     discount: { type: Number, default: 0 },
-    optionGroups: { type: [SubjectOptionGroupSchema], default: [] },
+    optionGroups: { type: [OptionGroupSchema], default: [] },
     addons: { type: [AddonSchema], default: [] },
-    questions: { type: [String], default: [] },
+    questions: { type: [QuestionSchema], default: [] },
   },
   { _id: false }
 );
@@ -177,6 +195,7 @@ export interface ICommissionListing extends Document {
 
   // ─── Milestone template (flow = milestone) ──────────────
   milestones?: Array<{
+    id: ID;
     title: string; // e.g. "Sketch", "Lineart", "Color"
     percent: number; // 0-100
     policy?: RevisionPolicy; // if revision type = milestone only
@@ -187,26 +206,29 @@ export interface ICommissionListing extends Document {
   // General options
   generalOptions?: {
     optionGroups?: Array<{
+      id: ID;
       title: string; // e.g. "Copyright", "Commercial use", "NSFW"
-      selections: { label: string; price: Cents }[]; // e.g. "Full rights", "Partial rights", "No rights"
+      selections: Array<{ id: ID; label: string; price: Cents }>; // e.g. "Full rights", "Partial rights", "No rights"
     }>;
-    addons?: { label: string; price: Cents }[]; // e.g. "Stream my commission"
-    questions?: string[]; // extra questions not tied to group
+    addons?: Array<{ id: ID; label: string; price: Cents }>; // e.g. "Stream my commission"
+    questions?: Array<{ id: ID; text: string }>; // extra questions not tied to group
   };
 
   /** On‑canvas pricing such as characters, backgrounds … */
   // Only if flow = custom
   // Subject options
   subjectOptions?: Array<{
+    id: ID;
     title: string; // e.g. "Character", "Background", "Props"
     limit: number; // default 1, -1 = unlimited
     discount?: number; // e.g. 10% off for 2+ characters
     optionGroups?: Array<{
+      id: ID;
       title: string; // e.g. "Cropping"
-      selections: { label: string; price: Cents }[]; // e.g. "Full body", "Half body", "Bust"
+      selections: Array<{ id: ID; label: string; price: Cents }>; // e.g. "Full body", "Half body", "Bust"
     }>;
-    addons?: Array<{ label: string; price: Cents }>; // e.g. "Add Clothing"
-    questions?: string[]; // extra questions, e.g. "Describe chracter's pose"
+    addons?: Array<{ id: ID; label: string; price: Cents }>; // e.g. "Add Clothing"
+    questions?: Array<{ id: ID; text: string }>; // extra questions, e.g. "Describe character's pose"
   }>;
 
   /* ----- Aggregated reviews (read‑only) ------------------ */
@@ -255,7 +277,8 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       min: { type: Number, required: true },
       max: { type: Number, required: true },
       rushFee: {
-        kind: { // Changed from 'type' to 'kind'
+        kind: {
+          // Changed from 'type' to 'kind'
           type: String,
           enum: ["flat", "perDay"],
           required: function () {
@@ -301,17 +324,24 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
           return this.revisions?.type === "standard";
         },
         validate: {
-          validator: function(value: any) {
+          validator: function (value: any) {
             // Reject policy if type is 'none' or 'milestone'
             return this.revisions?.type === "standard" || !value;
           },
-          message: "Revision policy should only be provided when type is 'standard'"
-        }
+          message:
+            "Revision policy should only be provided when type is 'standard'",
+        },
       },
     },
     milestones: [
-      new Schema<{ title: string; percent: number; policy?: RevisionPolicy }>(
+      new Schema<{
+        id: ID;
+        title: string;
+        percent: number;
+        policy?: RevisionPolicy;
+      }>(
         {
+          id: { type: Number, required: true },
           title: { type: String, required: true },
           percent: { type: Number, required: true, min: 0, max: 100 },
           policy: RevisionPolicySchema,
@@ -320,7 +350,7 @@ const CommissionListingSchema = new Schema<ICommissionListing>(
       ),
     ],
     generalOptions: { type: GeneralOptionsSchema, default: () => ({}) },
-    subjectOptions: { type: [SubjectOptionsSchema], default: [] },
+    subjectOptions: { type: [SubjectOptionSchema], default: [] },
     reviewsSummary: {
       avg: { type: Number, default: 0 },
       count: { type: Number, default: 0 },

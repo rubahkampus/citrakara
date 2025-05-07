@@ -19,8 +19,9 @@ import {
   Grid,
   FormHelperText,
 } from "@mui/material";
-import { ProposalFormValues } from "@/types/proposal";
+import { ProposalFormValues, GeneralOptionGroupInput } from "@/types/proposal";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
+import { Cents } from "@/types/common";
 
 // Helper functions for encoding/decoding question text
 const encodeQuestionKey = (question: string): string => {
@@ -59,15 +60,12 @@ export default function GeneralOptionsSection({
       (generalOptions?.optionGroups?.length ?? 0) > 0 &&
       Object.keys(watchedOptions.optionGroups || {}).length === 0
     ) {
-      const defaultOptionGroups: Record<
-        string,
-        { selectedLabel: string; price: number }
-      > = {};
+      const defaultOptionGroups: Record<string, GeneralOptionGroupInput> = {};
 
       (generalOptions?.optionGroups ?? []).forEach((group) => {
         if (group.selections.length > 0) {
           // Set the first option as default
-          defaultOptionGroups[group.title] = {
+          defaultOptionGroups[group.id.toString()] = {
             selectedLabel: group.selections[0].label,
             price: group.selections[0].price,
           };
@@ -90,8 +88,8 @@ export default function GeneralOptionsSection({
 
       (generalOptions?.questions ?? []).forEach((question) => {
         // Encode the question to create a safe key
-        const encodedKey = encodeQuestionKey(question);
-        defaultAnswers[encodedKey] = "";
+        const encodedKey = encodeQuestionKey(question.text);
+        defaultAnswers[question.id.toString()] = "";
       });
 
       if (Object.keys(defaultAnswers).length > 0) {
@@ -118,14 +116,9 @@ export default function GeneralOptionsSection({
   }
 
   // Handle option group selection
-  const handleOptionGroupChange = (
-    groupTitle: string,
-    selectedLabel: string
-  ) => {
+  const handleOptionGroupChange = (groupId: number, selectedLabel: string) => {
     // Find the selected option group
-    const group = generalOptions.optionGroups?.find(
-      (g) => g.title === groupTitle
-    );
+    const group = generalOptions.optionGroups?.find((g) => g.id === groupId);
 
     if (!group) return;
 
@@ -134,7 +127,7 @@ export default function GeneralOptionsSection({
 
     if (selection) {
       setValue(
-        `generalOptions.optionGroups.${groupTitle}`,
+        `generalOptions.optionGroups.${groupId}`,
         {
           selectedLabel,
           price: selection.price,
@@ -144,7 +137,7 @@ export default function GeneralOptionsSection({
     } else if (selectedLabel === "") {
       // Handle clearing the selection
       const currentOptionGroups = { ...watchedOptions.optionGroups };
-      delete currentOptionGroups[groupTitle];
+      delete currentOptionGroups[groupId.toString()];
       setValue("generalOptions.optionGroups", currentOptionGroups, {
         shouldValidate: true,
       });
@@ -152,21 +145,16 @@ export default function GeneralOptionsSection({
   };
 
   // Handle addon toggle
-  const handleAddonToggle = (addonLabel: string, checked: boolean) => {
-    const addon = generalOptions.addons?.find((a) => a.label === addonLabel);
+  const handleAddonToggle = (addonId: number, checked: boolean) => {
+    const addon = generalOptions.addons?.find((a) => a.id === addonId);
     const currentAddons = watchedOptions?.addons || {};
 
     if (checked && addon) {
-      setValue(
-        "generalOptions.addons",
-        {
-          ...currentAddons,
-          [addonLabel]: addon.price,
-        },
-        { shouldValidate: true }
-      );
+      setValue(`generalOptions.addons.${addonId}`, addon.price, {
+        shouldValidate: true,
+      });
     } else {
-      const { [addonLabel]: removed, ...rest } = currentAddons;
+      const { [addonId.toString()]: removed, ...rest } = currentAddons;
       setValue("generalOptions.addons", rest, { shouldValidate: true });
     }
   };
@@ -184,10 +172,8 @@ export default function GeneralOptionsSection({
 
   // Debounced question change handler - created once per component instance
   const debouncedQuestionChange = React.useCallback(
-    debounce((question, value) => {
-      // Encode the question to create a safe key
-      const encodedKey = encodeQuestionKey(question);
-      setValue(`generalOptions.answers.${encodedKey}`, value, {
+    debounce((questionId, value) => {
+      setValue(`generalOptions.answers.${questionId}`, value, {
         shouldValidate: true,
       });
     }, 300),
@@ -212,32 +198,32 @@ export default function GeneralOptionsSection({
             <Card variant="outlined" sx={{ height: "100%", pb: 2, pr: 2 }}>
               <Grid container spacing={-2}>
                 {generalOptions.optionGroups.map((group) => (
-                  <Grid item xs={12} md={12} key={group.title}>
+                  <Grid item xs={12} md={12} key={group.id}>
                     <CardContent>
                       <FormControl
                         fullWidth
                         error={
-                          !!errors?.generalOptions?.optionGroups?.[group.title]
+                          !!errors?.generalOptions?.optionGroups?.[group.id]
                         }
                       >
-                        <InputLabel id={`general-option-${group.title}-label`}>
+                        <InputLabel id={`general-option-${group.id}-label`}>
                           {group.title}
                         </InputLabel>
                         <Select
-                          labelId={`general-option-${group.title}-label`}
-                          id={`general-option-${group.title}`}
+                          labelId={`general-option-${group.id}-label`}
+                          id={`general-option-${group.id}`}
                           value={
-                            watchedOptions?.optionGroups?.[group.title]
+                            watchedOptions?.optionGroups?.[group.id]
                               ?.selectedLabel || ""
                           }
                           label={group.title}
                           onChange={(e) =>
-                            handleOptionGroupChange(group.title, e.target.value)
+                            handleOptionGroupChange(group.id, e.target.value)
                           }
                         >
                           {group.selections.map((selection) => (
                             <MenuItem
-                              key={selection.label}
+                              key={selection.id}
                               value={selection.label}
                             >
                               {selection.label} - {listing.currency}{" "}
@@ -245,9 +231,7 @@ export default function GeneralOptionsSection({
                             </MenuItem>
                           ))}
                         </Select>
-                        {errors?.generalOptions?.optionGroups?.[
-                          group.title
-                        ] && (
+                        {errors?.generalOptions?.optionGroups?.[group.id] && (
                           <FormHelperText error>
                             This field is required
                           </FormHelperText>
@@ -291,12 +275,12 @@ export default function GeneralOptionsSection({
               <Box sx={{ display: "flex", flexDirection: "column" }}>
                 {(generalOptions.addons ?? []).map((addon) => (
                   <FormControlLabel
-                    key={`${addon.label}-${addon.price}`}
+                    key={addon.id}
                     control={
                       <Checkbox
-                        checked={!!watchedOptions?.addons?.[addon.label]}
+                        checked={!!watchedOptions?.addons?.[addon.id]}
                         onChange={(e) =>
-                          handleAddonToggle(addon.label, e.target.checked)
+                          handleAddonToggle(addon.id, e.target.checked)
                         }
                         color="primary"
                         sx={{
@@ -360,14 +344,23 @@ export default function GeneralOptionsSection({
       )}
 
       {/* Questions */}
-      {(generalOptions.questions ?? []).map((question) => (
-        <QuestionField
-          key={encodeQuestionKey(question)}
-          question={question}
-          control={control}
-          error={errors?.generalOptions?.answers?.[encodeQuestionKey(question)]}
-        />
-      ))}
+      {(generalOptions.questions ?? []).length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
+            Additional Information
+          </Typography>
+
+          {(generalOptions.questions ?? []).map((question) => (
+            <QuestionField
+              key={question.id}
+              questionId={question.id}
+              questionText={question.text}
+              control={control}
+              error={errors?.generalOptions?.answers?.[question.id]}
+            />
+          ))}
+        </Box>
+      )}
     </Paper>
   );
 }
@@ -377,20 +370,19 @@ export default function GeneralOptionsSection({
  * re‐renders when its own value or error changes.
  */
 const QuestionField = React.memo(function QuestionField({
-  question,
+  questionId,
+  questionText,
   control,
   error,
 }: {
-  question: string;
+  questionId: number;
+  questionText: string;
   control: Control<ProposalFormValues>;
   error?: { message?: string };
 }) {
-  // Encode the question to create a safe key
-  const encodedQuestion = encodeQuestionKey(question);
-
-  // subscribe only to this one field with encoded key
+  // Subscribe only to this one field
   const { field } = useController({
-    name: `generalOptions.answers.${encodedQuestion}`,
+    name: `generalOptions.answers.${questionId}`,
     control,
     defaultValue: "",
   });
@@ -398,9 +390,9 @@ const QuestionField = React.memo(function QuestionField({
   return (
     <TextField
       {...field}
-      label={question} // Display original question text as label
+      label={questionText} // Display original question text as label
       multiline
-      rows={1}
+      rows={2}
       fullWidth
       sx={{ mb: 3 }}
       error={!!error}

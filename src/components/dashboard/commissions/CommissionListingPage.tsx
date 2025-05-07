@@ -30,10 +30,11 @@ import {
 } from "@mui/icons-material";
 import { KButton } from "@/components/KButton";
 import { axiosClient } from "@/lib/utils/axiosClient";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
 interface CommissionListingPageProps {
   username: string;
-  listings: any[];
+  listings: ICommissionListing[];
   error: string | null;
 }
 
@@ -83,7 +84,7 @@ export default function CommissionListingPage({
   const handleToggleActive = async () => {
     if (!activeListingId) return;
 
-    const listing = localListings.find((l) => l._id === activeListingId);
+    const listing = localListings.find((l) => l._id.toString() === activeListingId);
     if (!listing) return;
 
     setLoading((prev) => ({ ...prev, [activeListingId]: true }));
@@ -96,7 +97,9 @@ export default function CommissionListingPage({
 
       setLocalListings((prev) =>
         prev.map((l) =>
-          l._id === activeListingId ? { ...l, isActive: newStatus } : l
+          l._id.toString() === activeListingId
+            ? { ...l, isActive: newStatus } as ICommissionListing
+            : l
         )
       );
 
@@ -131,7 +134,7 @@ export default function CommissionListingPage({
 
     try {
       await axiosClient.delete(`/api/commission/listing/${activeListingId}`);
-      setLocalListings((prev) => prev.filter((l) => l._id !== activeListingId));
+      setLocalListings((prev) => prev.filter((l) => l._id.toString() !== activeListingId));
       setSuccess("Commission deleted successfully");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
@@ -154,7 +157,7 @@ export default function CommissionListingPage({
   }
 
   const activeListing = activeListingId
-    ? localListings.find((l) => l._id === activeListingId)
+    ? localListings.find((l) => l._id.toString() === activeListingId)
     : null;
 
   return (
@@ -210,7 +213,7 @@ export default function CommissionListingPage({
       ) : (
         <Grid container spacing={3}>
           {localListings.map((listing) => (
-            <Grid item xs={12} sm={6} lg={4} key={listing._id}>
+            <Grid item xs={12} sm={6} lg={4} key={listing._id.toString()}>
               <Card
                 sx={{
                   height: "100%",
@@ -264,7 +267,7 @@ export default function CommissionListingPage({
                     },
                     transition: "all 0.2s ease",
                   }}
-                  onClick={(e) => handleMenuOpen(e, listing._id)}
+                  onClick={(e) => handleMenuOpen(e, listing._id.toString())}
                 >
                   <MoreVertIcon fontSize="small" />
                 </IconButton>

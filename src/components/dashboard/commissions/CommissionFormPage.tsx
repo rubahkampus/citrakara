@@ -32,28 +32,42 @@ import SubjectOptionsSection from "./form/SubjectOptionsSection";
 import TagsSection from "./form/TagsSection";
 import TemplateSection from "./form/TemplateSection";
 
-// Type definitions retained from original codebase
-type SelectionInput = { label: string; price: number };
-type OptionGroupInput = { title: string; selections: SelectionInput[] };
-type AddonInput = { label: string; price: number };
-type RevisionPolicyInput = {
+// Type definitions updated for new ID-based model
+type ID = number;
+
+export type SelectionInput = { id?: ID; label: string; price: number };
+export type OptionGroupInput = {
+  id?: ID;
+  title: string;
+  selections: SelectionInput[];
+};
+export type AddonInput = { id?: ID; label: string; price: number };
+export type QuestionInput = { id?: ID; label: string };
+export type RevisionPolicyInput = {
   limit: boolean;
   free: number;
   extraAllowed: boolean;
   fee: number;
 };
-type SubjectGroupInput = {
+export type MilestoneInput = {
+  id?: ID;
+  title: string;
+  percent: number;
+  policy?: RevisionPolicyInput;
+};
+export type SubjectGroupInput = {
+  id?: ID;
   title: string;
   limit: number;
   discount: number;
   optionGroups: OptionGroupInput[];
   addons: AddonInput[];
-  questions: string[];
+  questions: QuestionInput[];
 };
-type GeneralOptionsInput = {
+export type GeneralOptionsInput = {
   optionGroups: OptionGroupInput[];
   addons: AddonInput[];
-  questions: string[];
+  questions: QuestionInput[];
 };
 
 export interface CommissionFormValues {
@@ -85,7 +99,7 @@ export interface CommissionFormValues {
   revExtraAllowed?: boolean;
   revFee?: number;
   // Milestones
-  milestones: { title: string; percent: number; policy: RevisionPolicyInput }[];
+  milestones: MilestoneInput[];
   // Contract
   allowContractChange: boolean;
   changeable: string[];
@@ -126,6 +140,16 @@ export default function CommissionFormPage({
   } = methods;
 
   const flow = watch("flow");
+
+  // Helper to generate sequential IDs for new components
+  const generateSequentialIds = <T extends { id?: ID }>(
+    items: T[]
+  ): (T & { id: ID })[] => {
+    return items.map((item, index) => ({
+      ...item,
+      id: item.id ?? index + 1,
+    }));
+  };
 
   const onSubmit: SubmitHandler<CommissionFormValues> = async (values) => {
     setLoading(true);
@@ -203,6 +227,36 @@ export default function CommissionFormPage({
         });
       }
 
+      // Add IDs to all components
+      const processedMilestones = generateSequentialIds(values.milestones);
+
+      // Process general options
+      const processedGeneralOptions: GeneralOptionsInput = {
+        optionGroups: generateSequentialIds(
+          values.generalOptions.optionGroups
+        ).map((group) => ({
+          ...group,
+          selections: generateSequentialIds(group.selections),
+        })),
+        addons: generateSequentialIds(values.generalOptions.addons),
+        questions: generateSequentialIds(values.generalOptions.questions),
+      };
+
+      // Process subject options
+      const processedSubjectOptions = generateSequentialIds(
+        values.subjectOptions
+      ).map((subject) => ({
+        ...subject,
+        optionGroups: generateSequentialIds(subject.optionGroups).map(
+          (group) => ({
+            ...group,
+            selections: generateSequentialIds(group.selections),
+          })
+        ),
+        addons: generateSequentialIds(subject.addons),
+        questions: generateSequentialIds(subject.questions),
+      }));
+
       // Prepare JSON payload
       const payload = {
         slots: values.slots,
@@ -232,11 +286,11 @@ export default function CommissionFormPage({
                 },
               }
             : { type: values.revisionType },
-        ...(values.flow === "milestone" && { milestones: values.milestones }),
+        ...(values.flow === "milestone" && { milestones: processedMilestones }),
         allowContractChange: values.allowContractChange,
         changeable: values.changeable,
-        generalOptions: values.generalOptions,
-        subjectOptions: values.subjectOptions,
+        generalOptions: processedGeneralOptions,
+        subjectOptions: processedSubjectOptions,
       };
 
       fd.append("payload", JSON.stringify(payload));
@@ -462,41 +516,96 @@ export default function CommissionFormPage({
   );
 }
 
-// Helper: default values - retained from original codebase
-// Helper: default values for the form
 // Helper: default values for the form
 function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
   if (mode === "edit" && data) {
-    // Make sure subjectOptions.questions is in the right format
-    if (data.subjectOptions && Array.isArray(data.subjectOptions)) {
-      data.subjectOptions = data.subjectOptions.map((subject: any) => {
-        if (subject.questions) {
-          if (Array.isArray(subject.questions)) {
-            subject.questions = subject.questions.map((q: any) => {
-              if (typeof q === "object" && q !== null) {
-                return q;
-              }
-              return q; // Keep as string
-            });
-          }
+    // Convert ID-based questions to the form's expected format
+    const processGeneralOptionsQuestions = (
+      questions: any[] = []
+    ): QuestionInput[] => {
+      return questions.map((q) => {
+        if (typeof q === "string") {
+          return { label: q };
+        } else if (typeof q === "object" && q !== null) {
+          // Handle both old format (title) and new format (label)
+          return {
+            id: q.id,
+            label: q.label || q.text || q.title || "",
+          };
         }
-        return subject;
+        return { label: String(q) };
       });
-    }
+    };
 
-    // Check and format generalOptions.questions too if they exist
-    if (data.generalOptions && data.generalOptions.questions) {
-      if (Array.isArray(data.generalOptions.questions)) {
-        data.generalOptions.questions = data.generalOptions.questions.map(
-          (q: any) => {
-            if (typeof q === "object" && q !== null) {
-              return q;
-            }
-            return q; // Keep as string
-          }
-        );
-      }
-    }
+    const processSubjectOptions = (
+      subjectOptions: any[] = []
+    ): SubjectGroupInput[] => {
+      return subjectOptions.map((subject) => {
+        const questions = subject.questions
+          ? subject.questions.map((q: any) => {
+              if (typeof q === "string") {
+                return { label: q };
+              } else if (typeof q === "object" && q !== null) {
+                return {
+                  id: q.id,
+                  label: q.label || q.text || q.title || "",
+                };
+              }
+              return { label: String(q) };
+            })
+          : [];
+
+        return {
+          ...subject,
+          questions,
+          optionGroups:
+            subject.optionGroups?.map((group: any) => ({
+              ...group,
+              id: group.id,
+              selections:
+                group.selections?.map((s: any) => ({
+                  id: s.id,
+                  label: s.label,
+                  price: s.price,
+                })) || [],
+            })) || [],
+          addons:
+            subject.addons?.map((addon: any) => ({
+              id: addon.id,
+              label: addon.label,
+              price: addon.price,
+            })) || [],
+        };
+      });
+    };
+
+    // Format generalOptions for the form
+    const generalOptions = data.generalOptions || {};
+    const formattedGeneralOptions = {
+      optionGroups: (generalOptions.optionGroups || []).map((group: any) => ({
+        id: group.id,
+        title: group.title,
+        selections: (group.selections || []).map((s: any) => ({
+          id: s.id,
+          label: s.label,
+          price: s.price,
+        })),
+      })),
+      addons: (generalOptions.addons || []).map((addon: any) => ({
+        id: addon.id,
+        label: addon.label,
+        price: addon.price,
+      })),
+      questions: processGeneralOptionsQuestions(generalOptions.questions),
+    };
+
+    // Format milestones for the form
+    const milestones = (data.milestones || []).map((m: any) => ({
+      id: m.id,
+      title: m.title,
+      percent: m.percent,
+      policy: m.policy,
+    }));
 
     return {
       title: data.title || "",
@@ -524,7 +633,7 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       revFree: data.revisions?.policy?.free ?? 0,
       revExtraAllowed: data.revisions?.policy?.extraAllowed ?? false,
       revFee: data.revisions?.policy?.fee ?? 0,
-      milestones: data.milestones || [],
+      milestones: milestones,
       allowContractChange: data.allowContractChange ?? true,
       changeable: data.changeable || [
         "deadline",
@@ -533,12 +642,8 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
         "description",
         "referenceImages",
       ],
-      generalOptions: data.generalOptions || {
-        optionGroups: [],
-        addons: [],
-        questions: [],
-      },
-      subjectOptions: data.subjectOptions || [],
+      generalOptions: formattedGeneralOptions,
+      subjectOptions: processSubjectOptions(data.subjectOptions),
       tags: data.tags || [],
     } as CommissionFormValues;
   }

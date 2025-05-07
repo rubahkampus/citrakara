@@ -19,7 +19,11 @@ import React from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { axiosClient } from "@/lib/utils/axiosClient";
-import { ProposalFormValues } from "@/types/proposal";
+import {
+  ProposalFormValues,
+  convertToFormFormat,
+  convertToModelFormat,
+} from "@/types/proposal";
 import DeadlineSection from "./form/DeadlineSection";
 import DescriptionSection from "./form/DescriptionSection";
 import ReferenceImagesSection from "./form/ReferenceImagesSection";
@@ -45,42 +49,43 @@ export default function ProposalFormPage({
   const router = useRouter();
   const listingObj: any = JSON.parse(listing);
 
-  console.log("initialData", initialData);
+  // Convert initial data to form format if it exists
+  const formattedInitialData = React.useMemo(() => {
+    if (!initialData) return undefined;
+
+    // Convert backend model data to form format
+    const formData = convertToFormFormat({
+      ...initialData,
+      id: initialData._id?.toString(),
+      listingId: initialData.listingId.toString(),
+      deadline:
+        initialData.deadline instanceof Date
+          ? initialData.deadline.toISOString()
+          : initialData.deadline,
+      generalDescription: initialData.generalDescription || "",
+      referenceImages: initialData.referenceImages || [],
+    });
+
+    return formData;
+  }, [initialData]);
 
   // Initialize RHF with optional existing data
   const methods = useForm<ProposalFormValues>({
-    defaultValues: initialData
-      ? {
-          ...initialData,
-          id: initialData?._id?.toString() || undefined, // Convert ObjectId to string for edit mode
-          listingId: initialData.listingId.toString(),
-          deadline:
-            initialData.deadline instanceof Date
-              ? initialData.deadline.toISOString()
-              : initialData.deadline,
-          generalDescription: initialData.generalDescription || "",
-          referenceImages: initialData.referenceImages || [],
-          generalOptions: initialData.generalOptions || {
-            optionGroups: {},
-            addons: {},
-            answers: {},
-          },
-          subjectOptions: initialData.subjectOptions || {},
-        }
-      : {
-          listingId: listingObj._id, // Add this for form data
-          deadline: "", // user will fill or API will set for standard mode
-          generalDescription: "",
-          referenceImages: [],
-          generalOptions: {
-            optionGroups: {},
-            addons: {},
-            answers: {},
-          },
-          subjectOptions: {},
-        },
+    defaultValues: formattedInitialData || {
+      listingId: listingObj._id,
+      deadline: "", // user will fill or API will set for standard mode
+      generalDescription: "",
+      referenceImages: [],
+      generalOptions: {
+        optionGroups: {},
+        addons: {},
+        answers: {},
+      },
+      subjectOptions: {},
+    },
     mode: "onSubmit", // Explicitly set validation mode
   });
+
   const {
     handleSubmit,
     formState: { errors },
@@ -93,12 +98,14 @@ export default function ProposalFormPage({
 
   // Core submit handler
   const onSubmit = async (values: ProposalFormValues) => {
-    // Add debug logging for onSubmit only
     console.log("onSubmit function called!");
     console.log("Form values:", values);
 
     setError(null);
     setLoading(true);
+
+    // Convert form data to model format for API
+    const modelData = convertToModelFormat(values);
 
     // Build FormData
     const fd = new FormData();
@@ -106,32 +113,29 @@ export default function ProposalFormPage({
     fd.append("deadline", values.deadline);
     fd.append("generalDescription", values.generalDescription);
 
-    // Payload: only nested options
+    // Payload: converted nested options
     fd.append(
       "payload",
       JSON.stringify({
-        generalOptions: values.generalOptions,
-        subjectOptions: values.subjectOptions,
+        generalOptions: modelData.generalOptions,
+        subjectOptions: modelData.subjectOptions,
       })
     );
 
     // Files
     values.referenceImages?.forEach((file) => {
-      fd.append("referenceImages[]", file);
+      if (file instanceof File) {
+        fd.append("referenceImages[]", file);
+      }
     });
 
     // For edit mode, include existing images
     if (mode === "edit" && initialData) {
-      // Use the referenceImages from initialData
       initialData.referenceImages.forEach((url) => {
-        fd.append("existingReferences[]", url);
+        if (typeof url === "string") {
+          fd.append("existingReferences[]", url);
+        }
       });
-    }
-
-    // Log form data for debugging
-    console.log("Form data entries:");
-    for (var pair of fd.entries()) {
-      console.log(pair[0] + ", " + pair[1]);
     }
 
     try {

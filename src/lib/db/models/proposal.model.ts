@@ -3,6 +3,47 @@ import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate, Cents } from "@/types/common";
 import type { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
+type ID = number;
+
+type ProposalSelection = {
+  id: ID;
+  groupId: ID;
+  selectedSelectionID: ID;
+  selectedSelectionLabel: string;
+  price: Cents;
+};
+
+type ProposalAddon = {
+  id: ID;
+  addonId: ID;
+  price: Cents;
+};
+
+type ProposalAnswer = {
+  id: ID;
+  questionId: ID;
+  answer: string;
+};
+
+type ProposalGeneralOptions = {
+  optionGroups?: ProposalSelection[];
+  addons?: ProposalAddon[];
+  answers?: ProposalAnswer[];
+};
+
+type ProposalSubjectInstance = {
+  id: ID;
+  optionGroups?: ProposalSelection[];
+  addons?: ProposalAddon[];
+  answers?: ProposalAnswer[];
+};
+
+type ProposalSubjectOptions = Array<{
+  subjectId: ID;
+  instances: ProposalSubjectInstance[];
+}>;
+
+// ----- Interfaces -----
 export interface IProposal extends Document {
   _id: ObjectId;
 
@@ -11,8 +52,8 @@ export interface IProposal extends Document {
   artistId: ObjectId;
   listingId: ObjectId;
 
-  /* ---- immutable listing snapshot (audit) ---- */
-  listingSnapshot: ICommissionListing
+  /* ---- immutable listing snapshot ---- */
+  listingSnapshot: ICommissionListing;
 
   /* ---- lifecycle status ---- */
   status:
@@ -25,14 +66,17 @@ export interface IProposal extends Document {
     | "paid"; // -> end of lifecycle, functionally we're never going to use this status, but it's here for completeness, since we have paidAt field and we don't have cron jobs to clean up paid proposals
   expiresAt?: ISODate; // present in pending / negotiating
 
+  /* ---- prediction base date ---- */
+  baseDate: ISODate; // when availability was computed
+
   /* ---- dynamic availability window ---- */
   availability: {
     earliestDate: ISODate; // dynamicMin
     latestDate: ISODate; // dynamicMax
   };
-  deadline: ISODate; // chosen by client
+  deadline: ISODate; // chosen by client, if standard, it's two weeks from baseDate
 
-  /* ---- rush details (auto-computed) ---- */
+  /* ---- rush details ---- */
   rush?: {
     days: number; // number of rushed days from latestDate, latestDate - deadline, negatve if deadline in the future (e.g. standard always be two weeks, then days = -14)
     paidDays?: number; // number of rushed days from earliest date, earliestDate - deadline
@@ -44,43 +88,8 @@ export interface IProposal extends Document {
   referenceImages: string[]; // ≤ 5
 
   /* ---- option selections ---- */
-  // General options store client's answers to general questions and selections
-  generalOptions?: {
-    // groupTitle → selectedLabel and price
-    optionGroups?: Record<
-      string,
-      {
-        selectedLabel: string;
-        price: Cents;
-      }
-    >;
-    // addon label → price
-    addons?: Record<string, Cents>;
-    // question text → client's answer
-    answers?: Record<string, string>;
-  };
-
-  // Subject options store client's answers per subject (e.g., Character, Background)
-  subjectOptions?: {
-    [subjectTitle: string]: {
-      // e.g., "Character", "Background"
-      // For each character / background instance if multiple are allowed
-      instances: Array<{
-        // optionGroup title → selected label and price
-        optionGroups?: Record<
-          string,
-          {
-            selectedLabel: string;
-            price: Cents;
-          }
-        >;
-        // addon label → price
-        addons?: Record<string, Cents>;
-        // question text → client's answer
-        answers?: Record<string, string>;
-      }>;
-    };
-  };
+  generalOptions?: ProposalGeneralOptions;
+  subjectOptions?: ProposalSubjectOptions;
 
   /* ---- price computation ---- */
   calculatedPrice: {
@@ -88,83 +97,81 @@ export interface IProposal extends Document {
     optionGroups: Cents;
     addons: Cents;
     rush: Cents;
-    discount: Cents; // client-side coupons + subject-specific discounts
-    surcharge: Cents; // artist adjustments
-    total: Cents; // final amount due
+    discount: Cents;
+    surcharge: Cents;
+    total: Cents;
   };
 
-  /* ---- artist adjustments (before accept) ---- */
+  /* ---- artist adjustments ---- */
   artistAdjustments?: {
     proposedSurcharge?: Cents;
     proposedDiscount?: Cents;
     proposedDate?: ISODate;
     acceptedDate?: ISODate;
-    surcharge?: Cents;
-    discount?: Cents;
+    acceptedSurcharge?: Cents;
+    acceptedDiscount?: Cents;
   };
 
-  /* ---- rejection meta ---- */
   rejectionReason?: string;
 
-  /* timestamps */
+  /* ---- timestamps ---- */
   createdAt: ISODate;
   updatedAt: ISODate;
 }
 
 /** ---- Sub-schemas for clearer validation ---- */
-const GeneralOptionsSelectionSchema = new Schema(
+const ProposalSelectionSchema = new Schema(
   {
-    selectedLabel: { type: String, required: true },
+    id: { type: Number, required: true },
+    groupId: { type: Number, required: true },
+    selectedSelectionID: { type: Number, required: true },
+    selectedSelectionLabel: { type: String, required: true },
     price: { type: Number, required: true },
   },
   { _id: false }
 );
 
-const GeneralOptionsSchema = new Schema(
+const ProposalAddonSchema = new Schema(
   {
-    optionGroups: {
-      type: Map,
-      of: GeneralOptionsSelectionSchema,
-      default: {},
-    },
-    addons: {
-      type: Map,
-      of: Number, // price in cents
-      default: {},
-    },
-    answers: {
-      type: Map,
-      of: String,
-      default: {},
-    },
+    id: { type: Number, required: true },
+    addonId: { type: Number, required: true },
+    price: { type: Number, required: true },
   },
   { _id: false }
 );
 
-const SubjectInstanceSchema = new Schema(
+const ProposalAnswerSchema = new Schema(
   {
-    optionGroups: {
-      type: Map,
-      of: GeneralOptionsSelectionSchema,
-      default: {},
-    },
-    addons: {
-      type: Map,
-      of: Number, // price in cents
-      default: {},
-    },
-    answers: {
-      type: Map,
-      of: String,
-      default: {},
-    },
+    id: { type: Number, required: true },
+    questionId: { type: Number, required: true },
+    answer: { type: String, required: true },
   },
   { _id: false }
 );
 
-const SubjectOptionGroupSchema = new Schema(
+const ProposalGeneralOptionsSchema = new Schema(
   {
-    instances: { type: [SubjectInstanceSchema], required: true },
+    optionGroups: { type: [ProposalSelectionSchema], default: [] },
+    addons: { type: [ProposalAddonSchema], default: [] },
+    answers: { type: [ProposalAnswerSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const ProposalSubjectInstanceSchema = new Schema(
+  {
+    id: { type: Number, required: true },
+    optionGroups: { type: [ProposalSelectionSchema], default: [] },
+    addons: { type: [ProposalAddonSchema], default: [] },
+    answers: { type: [ProposalAnswerSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const ProposalSubjectSchema = new Schema(
+  {
+    subjectId: { type: Number, required: true },
+    instances: { type: [ProposalSubjectInstanceSchema], required: true },
   },
   { _id: false }
 );
@@ -190,6 +197,7 @@ const ProposalSchema = new Schema<IProposal>(
         "rejectedArtist",
         "rejectedClient",
         "expired",
+        "paid",
       ],
       default: "pendingArtist",
     },
@@ -197,6 +205,9 @@ const ProposalSchema = new Schema<IProposal>(
 
     /* listing snapshot */
     listingSnapshot: { type: Schema.Types.Mixed, required: true },
+
+    /* prediction base date */
+    baseDate: { type: Date, required: true },
 
     /* availability + deadline */
     availability: {
@@ -224,12 +235,8 @@ const ProposalSchema = new Schema<IProposal>(
     },
 
     /* general & subject option selections */
-    generalOptions: { type: GeneralOptionsSchema, default: {} },
-    subjectOptions: {
-      type: Map,
-      of: SubjectOptionGroupSchema,
-      default: {},
-    },
+    generalOptions: { type: ProposalGeneralOptionsSchema, default: {} },
+    subjectOptions: { type: [ProposalSubjectSchema], default: [] },
 
     /* price breakdown */
     calculatedPrice: {
@@ -242,15 +249,14 @@ const ProposalSchema = new Schema<IProposal>(
       total: { type: Number, required: true, default: 0 },
     },
 
+    /* artist adjustments */
     artistAdjustments: {
-      surcharge: {
-        amount: { type: Number },
-        reason: { type: String },
-      },
-      discount: {
-        amount: { type: Number },
-        reason: { type: String },
-      },
+      proposedSurcharge: { type: Number },
+      proposedDiscount: { type: Number },
+      proposedDate: { type: Date },
+      acceptedDate: { type: Date },
+      acceptedSurcharge: { type: Number },
+      acceptedDiscount: { type: Number },
     },
 
     rejectionReason: { type: String },

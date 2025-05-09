@@ -9,8 +9,12 @@ interface ViewRespondProposalPageProps {
 }
 
 export default async function ViewRespondProposalPage({
-  params: { username, proposalId },
+  params,
 }: ViewRespondProposalPageProps) {
+  const param = await params
+  const username = param.username
+  const proposalId = param.proposalId
+
   const session = await getAuthSession();
   if (
     !session ||

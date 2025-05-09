@@ -5,7 +5,7 @@ import type { ICommissionListing } from "@/lib/db/models/commissionListing.model
 
 type ID = number;
 
-type ProposalSelection = {
+export type ProposalSelection = {
   id: ID;
   groupId: ID;
   selectedSelectionID: ID;
@@ -13,32 +13,32 @@ type ProposalSelection = {
   price: Cents;
 };
 
-type ProposalAddon = {
+export type ProposalAddon = {
   id: ID;
   addonId: ID;
   price: Cents;
 };
 
-type ProposalAnswer = {
+export type ProposalAnswer = {
   id: ID;
   questionId: ID;
   answer: string;
 };
 
-type ProposalGeneralOptions = {
+export type ProposalGeneralOptions = {
   optionGroups?: ProposalSelection[];
   addons?: ProposalAddon[];
   answers?: ProposalAnswer[];
 };
 
-type ProposalSubjectInstance = {
+export type ProposalSubjectInstance = {
   id: ID;
   optionGroups?: ProposalSelection[];
   addons?: ProposalAddon[];
   answers?: ProposalAnswer[];
 };
 
-type ProposalSubjectOptions = Array<{
+export type ProposalSubjectOptions = Array<{
   subjectId: ID;
   instances: ProposalSubjectInstance[];
 }>;
@@ -144,7 +144,7 @@ const ProposalAnswerSchema = new Schema(
   {
     id: { type: Number, required: true },
     questionId: { type: Number, required: true },
-    answer: { type: String, required: true },
+    answer: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -273,5 +273,37 @@ ProposalSchema.index(
   { expiresAt: 1, status: 1 },
   { partialFilterExpression: { status: { $in: ["pendingArtist"] } } }
 );
+
+ProposalSchema.pre('save', function(next) {
+  if (this.subjectOptions && this.listingSnapshot) {
+    this.subjectOptions.forEach(subjectOption => {
+      const subjectTemplate = this.listingSnapshot.subjectOptions?.find(
+        s => s.id === subjectOption.subjectId
+      );
+      
+      if (subjectTemplate) {
+        subjectOption.instances.forEach(instance => {
+          (instance.optionGroups ?? []).forEach(group => {
+            const optGroupTemplate = subjectTemplate.optionGroups?.find(
+              g => g.id === group.groupId
+            );
+            
+            if (optGroupTemplate) {
+              const selection = optGroupTemplate.selections.find(
+                s => s.id === group.selectedSelectionID
+              );
+              
+              if (selection && !group.selectedSelectionLabel) {
+                group.selectedSelectionLabel = selection.label;
+              }
+            }
+          });
+        });
+      }
+    });
+  }
+  
+  next();
+});
 
 export default models.Proposal || model<IProposal>("Proposal", ProposalSchema);

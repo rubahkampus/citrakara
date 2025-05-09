@@ -278,6 +278,8 @@ export async function createProposalFromForm(
 
     validateProposalInput(proposalInput); // Validate input before creating
 
+    // console.log(proposalInput, JSON.stringify(proposalInput))
+
     return repoCreateProposal(proposalInput);
   } catch (error) {
     console.error("Error creating proposal:", error);

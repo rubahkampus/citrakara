@@ -12,8 +12,12 @@ interface EditProposalPageProps {
 }
 
 export default async function EditProposalPage({
-  params: { username, proposalId },
+  params,
 }: EditProposalPageProps) {
+  const param = await params
+  const username = param.username
+  const proposalId = param.proposalId
+
   const session = await getAuthSession();
   if (
     !session ||
@@ -38,6 +42,8 @@ export default async function EditProposalPage({
         </Alert>
       );
     }
+
+    // console.log(proposal)
 
     // Format proposal for UI and serialize both the proposal data and listing snapshot
     const serializedProposal = JSON.parse(JSON.stringify(proposal));

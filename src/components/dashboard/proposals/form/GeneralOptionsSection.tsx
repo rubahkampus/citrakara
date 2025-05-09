@@ -382,24 +382,65 @@ const QuestionField = React.memo(function QuestionField({
   control: Control<ProposalFormValues>;
   error?: { message?: string };
 }) {
-  // Subscribe only to this one field
+  // Get current value from form controller
   const { field } = useController({
     name: `generalOptions.answers.${questionId}`,
     control,
     defaultValue: "",
   });
 
+  // Use uncontrolled input pattern with refs for performance
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Set initial value when mounted or value changes
+  React.useEffect(() => {
+    if (inputRef.current && inputRef.current.value !== field.value) {
+      inputRef.current.value = field.value;
+    }
+  }, [field.value]);
+
+  // Handle input changes with debounce
+  const debouncedChange = React.useCallback(
+    (function () {
+      let timer: NodeJS.Timeout | null = null;
+      return function () {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (inputRef.current) {
+            field.onChange(inputRef.current.value);
+          }
+        }, 300);
+      };
+    })(),
+    [field]
+  );
+
+  // Find if this is the last question to adjust margin
+  const isLastQuestion = React.useMemo(() => {
+    const questions = control._formValues.generalOptions?.questions || [];
+    return (
+      questions.length > 0 && questions[questions.length - 1]?.id === questionId
+    );
+  }, [control._formValues.generalOptions?.questions, questionId]);
+
   return (
     <TextField
-      {...field}
-      label={questionText} // Display original question text as label
+      inputRef={inputRef}
+      label={questionText}
       multiline
       rows={2}
       fullWidth
-      sx={{ mb: 3 }}
+      sx={{ mb: isLastQuestion ? 0 : 3 }}
+      defaultValue={field.value}
+      onInput={debouncedChange}
+      onBlur={() => {
+        if (inputRef.current) {
+          field.onChange(inputRef.current.value);
+        }
+      }}
       error={!!error}
       helperText={error?.message}
-      placeholder="Your answer…"
+      placeholder="Your answer..."
     />
   );
 });

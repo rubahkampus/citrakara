@@ -8,7 +8,7 @@
  * Use useFormContext(watch) to read calculated fields.
  * No input elements.
  *
- * Fixed to handle multi-subject discounts that don't apply to the first subject.
+ * Fixed to handle multi-subject discounts that apply correctly to additional subjects.
  */
 import React, { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
@@ -66,14 +66,14 @@ export default function PriceBreakdownSection({
     const discountDetails: DiscountDetail[] = [];
     let rushDetails = { days: 0, fee: 0 };
 
-    // Calculate option groups total
+    // Calculate general option groups total
     if (watched.generalOptions?.optionGroups) {
       Object.entries(watched.generalOptions.optionGroups).forEach(
-        ([groupName, option]: [string, any]) => {
+        ([groupId, option]) => {
           if (option?.price) {
             optionGroups += option.price;
             optionGroupDetails.push({
-              name: `${groupName}: ${option.selectedLabel}`,
+              name: `${option.selectedLabel}`,
               price: option.price,
             });
           }
@@ -81,13 +81,23 @@ export default function PriceBreakdownSection({
       );
     }
 
-    // Calculate addons total
+    // Calculate general addons total
     if (watched.generalOptions?.addons) {
       Object.entries(watched.generalOptions.addons).forEach(
-        ([addonName, addonPrice]: [string, any]) => {
-          if (typeof addonPrice === "number") {
+        ([addonId, addonPrice]) => {
+          if (typeof addonPrice === "number" && addonPrice > 0) {
             addons += addonPrice;
-            addonDetails.push({ name: addonName, price: addonPrice });
+
+            // Find addon label from listing
+            const addonLabel =
+              listing.generalOptions?.addons?.find(
+                (a) => a.id.toString() === addonId
+              )?.label || `Addon ${addonId}`;
+
+            addonDetails.push({
+              name: addonLabel,
+              price: addonPrice,
+            });
           }
         }
       );
@@ -95,113 +105,116 @@ export default function PriceBreakdownSection({
 
     // Calculate subject options
     if (watched.subjectOptions) {
-      Object.entries(watched.subjectOptions).forEach(
-        ([subjectTitle, subject]: [string, any]) => {
-          const subjectInstances = subject?.instances || [];
-          const subjectDiscount =
-            listing.subjectOptions?.find((s) => s.title === subjectTitle)
-              ?.discount || 0;
+      Object.entries(watched.subjectOptions).forEach(([subjectId, subject]) => {
+        // Find subject title from listing
+        const subjectTitle =
+          listing.subjectOptions?.find((s) => s.id.toString() === subjectId)
+            ?.title || `Subject ${subjectId}`;
 
-          // Calculate instance prices for all instances
-          subjectInstances.forEach((instance: any, index: number) => {
-            let instanceTotal = 0;
-            const isDiscountApplicable = index > 0;
+        const subjectInstances = subject?.instances || [];
+        const subjectDiscount =
+          listing.subjectOptions?.find((s) => s.id.toString() === subjectId)
+            ?.discount || 0;
 
-            // Instance option groups
-            if (instance?.optionGroups) {
-              Object.entries(instance.optionGroups).forEach(
-                ([groupName, option]: [string, any]) => {
-                  if (option?.price) {
-                    const price = option.price;
-                    optionGroups += price;
+        // Calculate instance prices for all instances
+        subjectInstances.forEach((instance, index) => {
+          let instanceTotal = 0;
+          const isDiscountApplicable = index > 0;
 
-                    // For display purposes, show if discount applied or not
-                    optionGroupDetails.push({
-                      name: `${subjectTitle} #${index + 1} - ${groupName}: ${
-                        option.selectedLabel
-                      }${
-                        isDiscountApplicable && subjectDiscount > 0
-                          ? " (discounted)"
-                          : ""
-                      }`,
-                      price: price,
-                    });
+          // Instance option groups
+          if (instance?.optionGroups) {
+            Object.entries(instance.optionGroups).forEach(
+              ([groupId, option]) => {
+                if (option?.price) {
+                  let price = option.price;
 
-                    instanceTotal += price;
-
-                    // We track the discount amount here if applicable
-                    if (
-                      isDiscountApplicable &&
-                      subjectDiscount > 0 &&
-                      option.originalPrice
-                    ) {
-                      const appliedDiscount = option.originalPrice - price;
-                      discount += appliedDiscount;
-                    }
+                  // Apply discount if this is not the first instance
+                  if (isDiscountApplicable && subjectDiscount > 0) {
+                    const discountedPrice = price;
+                    const originalPrice =
+                      discountedPrice / (1 - subjectDiscount / 100);
+                    const appliedDiscount = originalPrice - discountedPrice;
+                    discount += appliedDiscount;
                   }
+
+                  optionGroups += price;
+
+                  // Find option group label from listing
+                  const optionGroupTitle =
+                    listing.subjectOptions
+                      ?.find((s) => s.id.toString() === subjectId)
+                      ?.optionGroups?.find((g) => g.id.toString() === groupId)
+                      ?.title || `Option ${groupId}`;
+
+                  // For display purposes, show if discount applied or not
+                  optionGroupDetails.push({
+                    name: `${subjectTitle} #${
+                      index + 1
+                    } - ${optionGroupTitle}: ${option.selectedLabel}${
+                      isDiscountApplicable && subjectDiscount > 0
+                        ? " (discounted)"
+                        : ""
+                    }`,
+                    price: price,
+                  });
+
+                  instanceTotal += price;
                 }
-              );
-            }
+              }
+            );
+          }
 
-            // Instance addons
-            if (instance?.addons) {
-              Object.entries(instance.addons).forEach(
-                ([addonName, addonData]: [string, any]) => {
-                  if (addonData) {
-                    let price: number;
-                    let originalPrice: number | undefined;
+          // Instance addons
+          if (instance?.addons) {
+            Object.entries(instance.addons).forEach(([addonId, addonPrice]) => {
+              if (typeof addonPrice === "number" && addonPrice > 0) {
+                let price = addonPrice;
 
-                    // Handle both new and old format
-                    if (typeof addonData === "number") {
-                      price = addonData;
-                    } else if (addonData.price) {
-                      price = addonData.price;
-                      originalPrice = addonData.originalPrice;
-                    } else {
-                      return; // Skip if we can't determine the price
-                    }
-
-                    addons += price;
-                    addonDetails.push({
-                      name: `${subjectTitle} #${index + 1} - ${addonName}${
-                        isDiscountApplicable && subjectDiscount > 0
-                          ? " (discounted)"
-                          : ""
-                      }`,
-                      price: price,
-                    });
-
-                    instanceTotal += price;
-
-                    // Track original price for discount calculation
-                    if (
-                      isDiscountApplicable &&
-                      subjectDiscount > 0 &&
-                      originalPrice
-                    ) {
-                      const appliedDiscount = originalPrice - price;
-                      discount += appliedDiscount;
-                    }
-                  }
+                // Apply discount if this is not the first instance
+                if (isDiscountApplicable && subjectDiscount > 0) {
+                  const discountedPrice = price;
+                  const originalPrice =
+                    discountedPrice / (1 - subjectDiscount / 100);
+                  const appliedDiscount = originalPrice - discountedPrice;
+                  discount += appliedDiscount;
                 }
-              );
-            }
-          });
 
-          // Add discount details for display,
-          // but we DON'T double-count the discount amount here
-          if (subjectInstances.length > 1 && subjectDiscount > 0) {
-            // Store discount details for display
-            discountDetails.push({
-              subjectTitle,
-              discountPercentage: subjectDiscount,
-              originalAmount: 0, // We'll use 0 here since we don't need to add to discount amount
-              discountAmount: 0, // We'll use 0 here since we don't need to add to discount amount
-              count: subjectInstances.length - 1, // Count of discounted instances
+                addons += price;
+
+                // Find addon label from listing
+                const addonLabel =
+                  listing.subjectOptions
+                    ?.find((s) => s.id.toString() === subjectId)
+                    ?.addons?.find((a) => a.id.toString() === addonId)?.label ||
+                  `Addon ${addonId}`;
+
+                addonDetails.push({
+                  name: `${subjectTitle} #${index + 1} - ${addonLabel}${
+                    isDiscountApplicable && subjectDiscount > 0
+                      ? " (discounted)"
+                      : ""
+                  }`,
+                  price: price,
+                });
+
+                instanceTotal += price;
+              }
             });
           }
+        });
+
+        // Add discount details for display
+        if (subjectInstances.length > 1 && subjectDiscount > 0) {
+          // Store discount details for display
+          discountDetails.push({
+            subjectTitle,
+            discountPercentage: subjectDiscount,
+            originalAmount: 0, // We calculate this separately when applying discount
+            discountAmount: 0, // We calculate this separately when applying discount
+            count: subjectInstances.length - 1, // Count of discounted instances
+          });
         }
-      );
+      });
     }
 
     // Calculate rush fee if applicable
@@ -454,9 +467,7 @@ export default function PriceBreakdownSection({
                     fontSize="small"
                     sx={{ mr: 1 }}
                   />
-                  <Typography color="success.main">
-                    Saved
-                  </Typography>
+                  <Typography color="success.main">Saved</Typography>
                   <Tooltip
                     title={
                       <Box>

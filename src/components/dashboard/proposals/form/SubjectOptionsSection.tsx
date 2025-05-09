@@ -132,14 +132,8 @@ const SubjectSection = React.memo(
     // Use direct path for fieldArray
     const fieldArrayName = `subjectOptions.${subjectId}.instances`;
 
-    // Initialize the form value structure if it doesn't exist
-    useEffect(() => {
-      // Make sure subjectOptions exists
-      const subjectOptions = getValues("subjectOptions") || {};
-      if (!subjectOptions[subjectId]) {
-        setValue(`subjectOptions.${subjectId}`, { instances: [] });
-      }
-    }, [subjectId, setValue, getValues]);
+    // Initialize form once with a ref to track initialization
+    const isInitialized = React.useRef(false);
 
     // Use fieldArray for managing instances
     const { fields, append, remove } = useFieldArray({
@@ -152,7 +146,37 @@ const SubjectSection = React.memo(
       (isDiscounted = false) => {
         const defaultOptionGroups: Record<string, GeneralOptionGroupInput> = {};
 
+        // Check if we already have values in the form
+        const existingValues =
+          getValues(`subjectOptions.${subjectId}`)?.instances?.[0]
+            ?.optionGroups || {};
+
         subject.optionGroups?.forEach((group: any) => {
+          // Check if we already have a selected value for this group
+          const existingSelection = existingValues[group.id];
+
+          if (existingSelection) {
+            // Use existing selection if available
+            const selection = group.selections.find(
+              (s: any) => s.id === existingSelection.selectedId
+            );
+            if (selection) {
+              // Apply discount if needed (for 2+ instances)
+              const price =
+                isDiscounted && subject.discount > 0
+                  ? applyDiscount(selection.price, subject.discount)
+                  : selection.price;
+
+              defaultOptionGroups[group.id] = {
+                selectedId: existingSelection.selectedId,
+                selectedLabel: existingSelection.selectedLabel,
+                price,
+              };
+              return;
+            }
+          }
+
+          // Fall back to first option if no existing selection
           const first = group.selections?.[0];
           if (first) {
             // Apply discount if needed (for 2+ instances)
@@ -176,15 +200,39 @@ const SubjectSection = React.memo(
           answers: {},
         };
       },
-      [subject]
+      [subject, subjectId, getValues]
     );
 
-    // Add initial instance if none exists
+    // Combined initialization effect that runs once
     useEffect(() => {
-      if (fields.length === 0) {
+      // Only initialize once
+      if (isInitialized.current) return;
+
+      // Make sure subjectOptions exists
+      const subjectOptions = getValues("subjectOptions") || {};
+
+      // If subject has no instances, initialize with empty array
+      if (!subjectOptions[subjectId]) {
+        setValue(`subjectOptions.${subjectId}`, { instances: [] });
+      }
+
+      // If subject.limit is 1 or greater but not unlimited (-1),
+      // and we have no instances yet, add exactly one instance
+      if (fields.length === 0 && subject.limit !== 0) {
         append(createDefaultInstance(false));
       }
-    }, [fields.length, append, createDefaultInstance]);
+
+      // Mark as initialized to prevent duplicate initialization
+      isInitialized.current = true;
+    }, [
+      subjectId,
+      setValue,
+      getValues,
+      fields.length,
+      append,
+      createDefaultInstance,
+      subject.limit,
+    ]);
 
     // Add another instance
     const addInstance = useCallback(() => {
@@ -199,6 +247,9 @@ const SubjectSection = React.memo(
           : `${subject.limit - fields.length} remaining`,
       [subject.limit, fields.length]
     );
+
+    // If subject limit is exactly 1, we don't need the add button and UI for multiple
+    const isSingleInstanceOnly = subject.limit === 1;
 
     return (
       <Box sx={{ mb: 4 }}>
@@ -216,7 +267,7 @@ const SubjectSection = React.memo(
               {subject.title}
             </Typography>
 
-            {subject.discount > 0 && (
+            {subject.discount > 0 && !isSingleInstanceOnly && (
               <Tooltip
                 title={`Get ${
                   subject.discount
@@ -233,22 +284,26 @@ const SubjectSection = React.memo(
             )}
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-              {remainingSlots}
-            </Typography>
+          {!isSingleInstanceOnly && (
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                {remainingSlots}
+              </Typography>
 
-            <Button
-              startIcon={<AddIcon />}
-              size="small"
-              onClick={addInstance}
-              variant="contained"
-              color="primary"
-              disabled={subject.limit !== -1 && fields.length >= subject.limit}
-            >
-              Add {subject.title}
-            </Button>
-          </Box>
+              <Button
+                startIcon={<AddIcon />}
+                size="small"
+                onClick={addInstance}
+                variant="contained"
+                color="primary"
+                disabled={
+                  subject.limit !== -1 && fields.length >= subject.limit
+                }
+              >
+                Add {subject.title}
+              </Button>
+            </Box>
+          )}
         </Box>
 
         {fields.map((field, index) => (
@@ -265,6 +320,7 @@ const SubjectSection = React.memo(
             errors={errors}
             totalInstances={fields.length}
             isDiscountApplicable={index > 0}
+            showRemoveButton={!isSingleInstanceOnly || fields.length > 1} // Show for non-single instance subjects or when we have more than 1
           />
         ))}
 
@@ -311,6 +367,7 @@ const InstanceCard = React.memo(
     errors,
     totalInstances,
     isDiscountApplicable,
+    showRemoveButton = true,
   }: {
     instanceIndex: number;
     subject: any;
@@ -323,6 +380,7 @@ const InstanceCard = React.memo(
     errors: any;
     totalInstances: number;
     isDiscountApplicable: boolean;
+    showRemoveButton?: boolean;
   }) => {
     // Path to this instance in the form
     const instancePath = `subjectOptions.${subjectId}.instances.${instanceIndex}`;
@@ -404,16 +462,12 @@ const InstanceCard = React.memo(
             ? Math.round(selection.price * discountFactor)
             : selection.price;
 
-        // console.log({
-        //   selection,
-        //   finalPrice,
-        // });
-
         // Update the option group in the form
         setValue(
           `${instancePath}.optionGroups.${groupId}`,
           {
             selectedId,
+            selectedLabel: selectedLabel,
             price: finalPrice,
           },
           { shouldValidate: true }
@@ -549,22 +603,25 @@ const InstanceCard = React.memo(
             </Typography>
           </Box>
         </AccordionSummary>
-        <Box
-          sx={{ position: "absolute", top: "12px", right: "40px", zIndex: 1 }}
-        >
-          <Tooltip title="Remove this item">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              sx={{ color: "error.main" }}
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
+        {/* Only show remove button if showRemoveButton is true */}
+        {showRemoveButton && (
+          <Box
+            sx={{ position: "absolute", top: "12px", right: "40px", zIndex: 1 }}
+          >
+            <Tooltip title="Remove this item">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+                sx={{ color: "error.main" }}
+              >
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
         <AccordionDetails sx={{ p: 3 }}>
           {/* Option Groups */}
           {subject.optionGroups?.length > 0 && (
@@ -610,13 +667,6 @@ const InstanceCard = React.memo(
                               group.selections.find(
                                 (selection) => selection.id === selectedId
                               )?.label || "";
-
-                            // console.log({
-                            //   groupId: group.id,
-                            //   groupTitle: group.title,
-                            //   selectedId,
-                            //   selectedLabel: String(selectedLabel),
-                            // });
 
                             handleOptionGroupChange(
                               group.id,

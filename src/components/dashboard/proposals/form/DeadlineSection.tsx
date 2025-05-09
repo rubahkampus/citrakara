@@ -1,25 +1,3 @@
-// src/components/dashboard/proposals/form/DeadlineSection.tsx
-
-/**
- * DeadlineSection
- * ---------------
- * Renders the deadline picker according to the listing's deadline configuration.
- * Now fetches dynamic date estimates from the API to account for artist's current workload.
- *
- * Props:
- *   - listingDeadline: {
- *       mode: "standard" | "withDeadline" | "withRush",
- *       min: number,    // days after now (baseline)
- *       max: number,    // days after now (baseline)
- *       rushFee?: { kind: "flat" | "perDay"; amount: number }
- *     }
- *
- * Behavior:
- *   - Fetches dynamic date estimates from /api/proposal/estimate/[listingId]
- *   - mode === "standard": no input; display info text with dynamic dates
- *   - mode === "withDeadline": enforce dynamicEarliest ≤ deadline (no rush fee); can be after dynamicLatest
- *   - mode === "withRush": same as withDeadline for deadline > dynamicEarliest (no rush fee); ; if < dynamicEarliest, rush fees apply
- */
 import React, { useEffect, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import {
@@ -44,12 +22,21 @@ interface DateEstimate {
 }
 
 export default function DeadlineSection({ listing }: DeadlineSectionProps) {
-  const { control, setValue } = useFormContext<ProposalFormValues>();
+  const { control, setValue, getValues } = useFormContext<ProposalFormValues>();
   const [loading, setLoading] = useState(true);
   const [dateEstimate, setDateEstimate] = useState<DateEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const listingDeadline = listing.deadline;
+
+  // Check if we're in edit mode
+  useEffect(() => {
+    const formValues = getValues();
+    if (formValues.id) {
+      setIsEditMode(true);
+    }
+  }, [getValues]);
 
   // Fetch dynamic date estimates when component mounts
   useEffect(() => {
@@ -80,12 +67,46 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
           latestDate: latestDate.toISOString(),
         });
 
-        // For standard mode, auto-set the deadline to 2 weeks after latestDate
-        if (listingDeadline.mode === "standard") {
-          const stdDeadline = new Date(latestDate);
-          // Add 2 weeks (14 days) to the latest date
-          stdDeadline.setDate(stdDeadline.getDate() + 14);
-          setValue("deadline", stdDeadline.toISOString().slice(0, 10));
+        // Get the current form values to check if we're in edit mode and have an existing deadline
+        const formValues = getValues();
+        const existingDeadline = formValues.deadline;
+        const isEditing = !!formValues.id;
+
+        // Only set a value automatically if this is a new proposal (not edit mode)
+        // OR if we're in standard mode (which forces a specific deadline)
+        if (
+          listingDeadline.mode === "standard" ||
+          !isEditing ||
+          !existingDeadline
+        ) {
+          if (listingDeadline.mode === "standard") {
+            // For standard mode, always set the deadline to 2 weeks after latestDate
+            const stdDeadline = new Date(latestDate);
+            // Add 2 weeks (14 days) to the latest date
+            stdDeadline.setDate(stdDeadline.getDate() + 14);
+            setValue("deadline", stdDeadline.toISOString().slice(0, 10));
+          } else if (!isEditing) {
+            if (listingDeadline.mode === "withDeadline") {
+              const stdDeadline = new Date(latestDate);
+              stdDeadline.setDate(stdDeadline.getDate() + 1);
+              setValue("deadline", stdDeadline.toISOString().slice(0, 10));
+            } else if (listingDeadline.mode === "withRush") {
+              const stdDeadline = new Date(latestDate);
+              stdDeadline.setDate(stdDeadline.getDate() + 1);
+              setValue("deadline", stdDeadline.toISOString().slice(0, 10));
+            }
+          }
+        }
+
+        // Handle existing deadline in edit mode
+        if (isEditing && existingDeadline) {
+          // If the deadline is a full ISO string, convert it to YYYY-MM-DD format
+          if (existingDeadline.includes("T")) {
+            const formattedDate = new Date(existingDeadline)
+              .toISOString()
+              .slice(0, 10);
+            setValue("deadline", formattedDate);
+          }
         }
 
         setError(null);
@@ -122,6 +143,7 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
     listingDeadline.max,
     listingDeadline.mode,
     setValue,
+    getValues,
   ]);
 
   if (loading) {
@@ -262,11 +284,18 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
             automatically set to allow sufficient time for high-quality work.
           </Typography>
 
-          {/* Hidden field to store the deadline value */}
+          {/* Hidden field to store the deadline value - always disabled for standard mode */}
           <Controller
             name="deadline"
             control={control}
-            render={({ field }) => <input type="hidden" {...field} />}
+            render={({ field }) => (
+              <input
+                type="hidden"
+                {...field}
+                value={standardDeadlineStr}
+                disabled={true}
+              />
+            )}
           />
         </Paper>
       );
@@ -366,7 +395,15 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
                 type="date"
                 fullWidth
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ min: earliestStr }}
+                inputProps={{
+                  min: new Date(
+                    new Date(earliestStr).setDate(
+                      new Date(earliestStr).getDate() + 1
+                    )
+                  )
+                    .toISOString()
+                    .split("T")[0],
+                }}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
                 sx={{

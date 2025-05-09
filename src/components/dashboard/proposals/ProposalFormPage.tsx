@@ -66,6 +66,8 @@ export default function ProposalFormPage({
       referenceImages: initialData.referenceImages || [],
     });
 
+    console.log("initialDataLoaded from API", JSON.stringify(formData))
+
     return formData;
   }, [initialData]);
 
@@ -98,8 +100,9 @@ export default function ProposalFormPage({
 
   // Core submit handler
   const onSubmit = async (values: ProposalFormValues) => {
-    console.log("onSubmit function called!");
-    console.log("Form values:", values);
+    // console.log("onSubmit function called!");
+    // console.log("Edit (before convertToModelFormat function):", JSON.stringify(values));
+    console.log("Form values (before convertToModelFormat function):", JSON.stringify(values));
 
     setError(null);
     setLoading(true);
@@ -138,32 +141,36 @@ export default function ProposalFormPage({
       });
     }
 
-    console.log(modelData)
+    for (var pair of fd.entries()) {
+      console.log(pair[0] + ", " + pair[1]);
+    } // Debugging line
 
-    // try {
-    //   let res;
-    //   console.log("About to make API call...");
-    //   if (mode === "create") {
-    //     res = await axiosClient.post("/api/proposal", fd, {
-    //       headers: { "Content-Type": "multipart/form-data" },
-    //     });
-    //   } else {
-    //     // edit: initialData._id must exist
-    //     res = await axiosClient.patch(`/api/proposal/${initialData!._id}`, fd, {
-    //       headers: { "Content-Type": "multipart/form-data" },
-    //     });
-    //   }
-    //   console.log("API response:", res);
-    //   setSuccess(true);
-    //   setTimeout(() => {
-    //     router.push(`/${username}/dashboard/proposals`);
-    //   }, 1500);
-    // } catch (e: any) {
-    //   console.error("Proposal form submit error:", e);
-    //   setError(e.response?.data?.error || "Failed to save proposal");
-    // } finally {
-    //   setLoading(false);
-    // }
+    // console.log("After convertToModelFormat function (ready for upload)",JSON.stringify(modelData));
+
+    try {
+      let res;
+      console.log("About to make API call...");
+      if (mode === "create") {
+        res = await axiosClient.post("/api/proposal", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        // edit: initialData._id must exist
+        res = await axiosClient.patch(`/api/proposal/${initialData!._id}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+      console.log("API response:", res);
+      setSuccess(true);
+      setTimeout(() => {
+        router.push(`/${username}/dashboard/proposals`);
+      }, 1500);
+    } catch (e: any) {
+      console.error("Proposal form submit error:", e);
+      setError(e.response?.data?.error || "Failed to save proposal");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Function to display validation errors in user-friendly format

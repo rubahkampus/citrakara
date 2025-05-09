@@ -2,6 +2,8 @@
 /**
  * Derived from IProposal
  */
+import { IProposal } from "@/lib/db/models/proposal.model";
+
 export interface PriceBreakdown {
   basePrice: number;
   optionsTotal: number;
@@ -120,23 +122,23 @@ export const convertToModelFormat = (formValues: ProposalFormValues) => {
   const generalOptions: ModelGeneralOptions = {
     optionGroups: Object.entries(formValues.generalOptions.optionGroups).map(
       ([groupId, option], index) => ({
-        id: index,
+        id: index + 1,
         groupId: Number(groupId),
-        selectedSelectionID: index,
+        selectedSelectionID: option.selectedId,
         selectedSelectionLabel: option.selectedLabel,
         price: option.price,
       })
     ),
     addons: Object.entries(formValues.generalOptions.addons).map(
       ([addonId, price], index) => ({
-        id: index,
+        id: index + 1,
         addonId: Number(addonId),
         price,
       })
     ),
     answers: Object.entries(formValues.generalOptions.answers).map(
       ([questionId, answer], index) => ({
-        id: index,
+        id: index + 1,
         questionId: Number(questionId),
         answer,
       })
@@ -149,26 +151,26 @@ export const convertToModelFormat = (formValues: ProposalFormValues) => {
       ([subjectId, subject], subjectIndex) => ({
         subjectId: Number(subjectId),
         instances: subject.instances.map((instance, instanceIndex) => ({
-          id: instanceIndex,
+          id: instanceIndex + 1,
           optionGroups: Object.entries(instance.optionGroups).map(
             ([groupId, option], index) => ({
-              id: index,
+              id: index + 1,
               groupId: Number(groupId),
-              selectedSelectionID: index,
+              selectedSelectionID: option.selectedId,
               selectedSelectionLabel: option.selectedLabel,
               price: option.price,
             })
           ),
           addons: Object.entries(instance.addons).map(
             ([addonId, price], index) => ({
-              id: index,
+              id: index + 1,
               addonId: Number(addonId),
               price: typeof price === "object" ? (price as any).price : price,
             })
           ),
           answers: Object.entries(instance.answers).map(
             ([questionId, answer], index) => ({
-              id: index,
+              id: index + 1,
               questionId: Number(questionId),
               answer,
             })
@@ -185,88 +187,119 @@ export const convertToModelFormat = (formValues: ProposalFormValues) => {
   };
 };
 
-export const convertToFormFormat = (modelData: any) => {
-  // Convert general options
-  const generalOptions: GeneralOptionsInput = {
-    optionGroups: {},
-    addons: {},
-    answers: {},
+/**
+ * Convert database format back to form format
+ * This handles the specific structure of the data coming from the database
+ */
+export const convertToFormFormat = (dbData: any): ProposalFormValues => {
+  // Initialize the form values structure
+  const formValues: ProposalFormValues = {
+    id: dbData._id?.toString() || dbData.id,
+    listingId: dbData.listingId?.toString() || "",
+    deadline: dbData.deadline
+      ? new Date(dbData.deadline).toISOString().split("T")[0]
+      : "",
+    earliestDate: dbData.availability?.earliestDate
+      ? new Date(dbData.availability.earliestDate).toISOString().split("T")[0]
+      : undefined,
+    latestDate: dbData.availability?.latestDate
+      ? new Date(dbData.availability.latestDate).toISOString().split("T")[0]
+      : undefined,
+    generalDescription: dbData.generalDescription || "",
+    referenceImages: dbData.referenceImages || [],
+    generalOptions: {
+      optionGroups: {},
+      addons: {},
+      answers: {},
+    },
+    subjectOptions: {},
   };
 
-  // Convert option groups to record format
-  if (modelData.generalOptions?.optionGroups) {
-    modelData.generalOptions.optionGroups.forEach((option: OptionSelection) => {
-      generalOptions.optionGroups[option.groupId] = {
-        selectedId: option.id,
-        selectedLabel: option.selectedSelectionLabel,
-        price: option.price,
-      };
-    });
+  // If the data already has the form structure (already converted), just return it
+  if (
+    dbData.generalOptions &&
+    typeof dbData.generalOptions.optionGroups === "object" &&
+    !Array.isArray(dbData.generalOptions.optionGroups) &&
+    dbData.subjectOptions &&
+    typeof dbData.subjectOptions === "object" &&
+    !Array.isArray(dbData.subjectOptions)
+  ) {
+    return dbData as ProposalFormValues;
   }
 
-  // Convert addons to record format
-  if (modelData.generalOptions?.addons) {
-    modelData.generalOptions.addons.forEach((addon: Addon) => {
-      generalOptions.addons[addon.addonId] = addon.price;
-    });
+  // Process general options if they exist in the DB format
+  if (dbData.generalOptions) {
+    // Handle optionGroups
+    if (Array.isArray(dbData.generalOptions.optionGroups)) {
+      dbData.generalOptions.optionGroups.forEach((option: OptionSelection) => {
+        formValues.generalOptions.optionGroups[option.groupId] = {
+          selectedId: option.selectedSelectionID,
+          selectedLabel: option.selectedSelectionLabel,
+          price: option.price,
+        };
+      });
+    }
+
+    // Handle addons
+    if (Array.isArray(dbData.generalOptions.addons)) {
+      dbData.generalOptions.addons.forEach((addon: Addon) => {
+        formValues.generalOptions.addons[addon.addonId] = addon.price;
+      });
+    }
+
+    // Handle answers
+    if (Array.isArray(dbData.generalOptions.answers)) {
+      dbData.generalOptions.answers.forEach((answer: Answer) => {
+        formValues.generalOptions.answers[answer.questionId] = answer.answer;
+      });
+    }
   }
 
-  // Convert answers to record format
-  if (modelData.generalOptions?.answers) {
-    modelData.generalOptions.answers.forEach((answer: Answer) => {
-      generalOptions.answers[answer.questionId] = answer.answer;
-    });
-  }
-
-  // Convert subject options
-  const subjectOptions: SubjectOptionsInput = {};
-
-  // Convert subjects array to record format
-  if (modelData.subjectOptions?.subjects) {
-    modelData.subjectOptions.subjects.forEach((subject: SubjectOption) => {
+  // Process subject options if they exist in the DB format as an array
+  if (Array.isArray(dbData.subjectOptions)) {
+    dbData.subjectOptions.forEach((subject: any) => {
       const subjectId = subject.subjectId.toString();
 
-      subjectOptions[subjectId] = {
-        instances: subject.instances.map((instance: SubjectInstance) => {
-          const instanceOptionGroups: Record<string, GeneralOptionGroupInput> =
-            {};
-          const instanceAddons: Record<string, number> = {};
-          const instanceAnswers: Record<string, string> = {};
-
-          // Convert instance option groups
-          instance.optionGroups?.forEach((option: OptionSelection) => {
-            instanceOptionGroups[option.groupId] = {
-              selectedId: option.id,
-              selectedLabel: option.selectedSelectionLabel,
-              price: option.price,
-            };
-          });
-
-          // Convert instance addons
-          instance.addons?.forEach((addon: Addon) => {
-            instanceAddons[addon.addonId] = addon.price;
-          });
-
-          // Convert instance answers
-          instance.answers?.forEach((answer: Answer) => {
-            instanceAnswers[answer.questionId] = answer.answer;
-          });
-
-          return {
-            optionGroups: instanceOptionGroups,
-            addons: instanceAddons,
-            answers: instanceAnswers,
+      formValues.subjectOptions[subjectId] = {
+        instances: subject.instances.map((instance: any) => {
+          const instanceData: SubjectInstanceInput = {
+            optionGroups: {},
+            addons: {},
+            answers: {},
           };
+
+          // Handle instance optionGroups
+          if (Array.isArray(instance.optionGroups)) {
+            instance.optionGroups.forEach((option: any) => {
+              instanceData.optionGroups[option.groupId] = {
+                selectedId: option.selectedSelectionID,
+                selectedLabel: option.selectedSelectionLabel,
+                price: option.price,
+              };
+            });
+          }
+
+          // Handle instance addons
+          if (Array.isArray(instance.addons)) {
+            instance.addons.forEach((addon: any) => {
+              instanceData.addons[addon.addonId] = addon.price;
+            });
+          }
+
+          // Handle instance answers
+          if (Array.isArray(instance.answers)) {
+            instance.answers.forEach((answer: any) => {
+              instanceData.answers[answer.questionId] = answer.answer;
+            });
+          }
+
+          return instanceData;
         }),
       };
     });
   }
 
-  return {
-    ...modelData,
-    generalOptions,
-    subjectOptions,
-  };
+  return formValues;
 };
 
 /**

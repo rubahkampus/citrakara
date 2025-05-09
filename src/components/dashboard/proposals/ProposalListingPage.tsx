@@ -70,7 +70,7 @@ export default function ProposalListingPage({
   };
 
   const handleView = (id: string) => {
-    router.push(`/${username}/dashboard/proposals/${id}/view-respond`);
+    router.push(`/${username}/dashboard/proposals/${id}/view`);
   };
 
   const filterProposals = (proposals: IProposal[]) => {

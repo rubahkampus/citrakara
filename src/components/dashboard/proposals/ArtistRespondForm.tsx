@@ -12,11 +12,13 @@ import {
   Stack,
   InputAdornment,
   Chip,
+  Divider,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import MoneyOffIcon from "@mui/icons-material/MoneyOff";
 import PaymentIcon from "@mui/icons-material/Payment";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { IProposal } from "@/lib/db/models/proposal.model";
 
 interface ArtistRespondFormProps {
@@ -81,15 +83,33 @@ export default function ArtistRespondForm({
     proposal.calculatedPrice.total + surcharge - discount;
 
   return (
-    <Box>
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent>
+    <Box sx={{ width: "100%" }}>
+      <Card
+        elevation={2}
+        variant="outlined"
+        sx={{
+          mb: 3,
+          borderRadius: 2,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+          overflow: "hidden",
+          width: "100%",
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           {activeView === "reject" ? (
             /* Rejection Form */
             <>
-              <Typography variant="h6" gutterBottom>
-                Reject Proposal
+              <Typography
+                variant="h6"
+                gutterBottom
+                color="error.main"
+                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              >
+                <CloseIcon fontSize="small" /> Reject Proposal
               </Typography>
+
+              <Divider sx={{ my: 2 }} />
+
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Please provide a reason for rejecting this proposal.
               </Typography>
@@ -103,26 +123,36 @@ export default function ArtistRespondForm({
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 placeholder="Explain why you're rejecting this proposal"
-                sx={{ mb: 3 }}
+                sx={{
+                  mb: 3,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 1.5,
+                    bgcolor: "background.paper",
+                  },
+                }}
                 error={!rejectionReason}
                 helperText={
                   !rejectionReason ? "Rejection reason is required" : ""
                 }
               />
 
-              <Stack direction="row" spacing={2} justifyContent="center">
+              <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button
                   variant="outlined"
+                  startIcon={<ArrowBackIcon />}
                   onClick={resetRejectionForm}
                   disabled={loading}
+                  sx={{ borderRadius: 1.5 }}
                 >
-                  Cancel
+                  Back
                 </Button>
                 <Button
                   variant="contained"
                   color="error"
+                  startIcon={<CloseIcon />}
                   onClick={handleConfirmReject}
                   disabled={loading || !rejectionReason}
+                  sx={{ borderRadius: 1.5 }}
                 >
                   Confirm Rejection
                 </Button>
@@ -131,9 +161,15 @@ export default function ArtistRespondForm({
           ) : activeView === "adjust" ? (
             /* Adjustment Form */
             <>
-              <Typography variant="h6" gutterBottom>
-                Price Adjustment
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              >
+                <PaymentIcon fontSize="small" /> Price Adjustment
               </Typography>
+
+              <Divider sx={{ my: 2 }} />
 
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={6}>
@@ -161,11 +197,18 @@ export default function ArtistRespondForm({
                               (surcharge / proposal.calculatedPrice.total) *
                               100
                             ).toFixed(1)}%`}
+                            sx={{ borderRadius: 1 }}
                           />
                         </InputAdornment>
                       ),
                     }}
                     helperText="Additional charge for complexity"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 1.5,
+                        bgcolor: "background.paper",
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -193,11 +236,18 @@ export default function ArtistRespondForm({
                               (discount / proposal.calculatedPrice.total) *
                               100
                             ).toFixed(1)}%`}
+                            sx={{ borderRadius: 1 }}
                           />
                         </InputAdornment>
                       ),
                     }}
                     helperText="Discount to secure the commission"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 1.5,
+                        bgcolor: "background.paper",
+                      },
+                    }}
                   />
                 </Grid>
               </Grid>
@@ -206,10 +256,12 @@ export default function ArtistRespondForm({
                 <Box
                   sx={{
                     mb: 3,
-                    p: 2,
-                    bgcolor: "action.hover",
-                    borderRadius: 1,
+                    p: 2.5,
+                    bgcolor: surcharge > 0 ? "error.50" : "success.50",
+                    borderRadius: 2,
                     textAlign: "center",
+                    border: 1,
+                    borderColor: surcharge > 0 ? "error.100" : "success.100",
                   }}
                 >
                   <Typography
@@ -219,7 +271,7 @@ export default function ArtistRespondForm({
                   >
                     New Total
                   </Typography>
-                  <Typography variant="h6" fontWeight="bold">
+                  <Typography variant="h5" fontWeight="bold" sx={{ mb: 0.5 }}>
                     {formatCurrency(calculateTotal())}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
@@ -230,19 +282,23 @@ export default function ArtistRespondForm({
                 </Box>
               )}
 
-              <Stack direction="row" spacing={2} justifyContent="center">
+              <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button
                   variant="outlined"
+                  startIcon={<ArrowBackIcon />}
                   onClick={resetAdjustmentForm}
                   disabled={loading}
+                  sx={{ borderRadius: 1.5 }}
                 >
-                  Cancel
+                  Back
                 </Button>
                 <Button
                   variant="contained"
                   color="primary"
+                  startIcon={<PaymentIcon />}
                   onClick={handleSubmitAdjustment}
                   disabled={loading || (surcharge === 0 && discount === 0)}
+                  sx={{ borderRadius: 1.5 }}
                 >
                   Submit Adjustment
                 </Button>
@@ -251,23 +307,35 @@ export default function ArtistRespondForm({
           ) : (
             /* Main Options View */
             <>
-              <Typography variant="h6" gutterBottom>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              >
                 Your Response
               </Typography>
+
+              <Divider sx={{ my: 2 }} />
 
               <Box
                 sx={{
                   mb: 3,
-                  p: 2,
-                  borderRadius: 1,
-                  bgcolor: "action.hover",
+                  p: 3,
+                  borderRadius: 2,
+                  bgcolor: "primary.50",
                   textAlign: "center",
+                  border: 1,
+                  borderColor: "primary.100",
                 }}
               >
-                <Typography variant="subtitle2" color="text.secondary">
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
                   Project Total
                 </Typography>
-                <Typography variant="h6" fontWeight="bold">
+                <Typography variant="h5" fontWeight="bold">
                   {formatCurrency(proposal.calculatedPrice.total)}
                 </Typography>
               </Box>
@@ -292,6 +360,7 @@ export default function ArtistRespondForm({
                   onClick={() => setActiveView("reject")}
                   disabled={loading}
                   fullWidth
+                  sx={{ borderRadius: 1.5, py: 1 }}
                 >
                   Reject
                 </Button>
@@ -299,10 +368,11 @@ export default function ArtistRespondForm({
                 <Button
                   variant="outlined"
                   color="primary"
-                  startIcon={surcharge > 0 ? <PaymentIcon /> : <MoneyOffIcon />}
+                  startIcon={<MoneyOffIcon />}
                   onClick={() => setActiveView("adjust")}
                   disabled={loading}
                   fullWidth
+                  sx={{ borderRadius: 1.5, py: 1 }}
                 >
                   Adjust Price
                 </Button>
@@ -314,6 +384,7 @@ export default function ArtistRespondForm({
                   onClick={handleAccept}
                   disabled={loading}
                   fullWidth
+                  sx={{ borderRadius: 1.5, py: 1 }}
                 >
                   Accept As Is
                 </Button>

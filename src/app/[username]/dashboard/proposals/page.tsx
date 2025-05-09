@@ -38,7 +38,7 @@ export default async function ProposalsPage({ params }: ProposalsPageProps) {
   const serializedIncoming = JSON.parse(JSON.stringify(incoming));
   const serializedOutgoing = JSON.parse(JSON.stringify(outgoing));
 
-  // console.log("serializedOutgoing:", outgoing);
+  console.log("serializedOutgoing:", JSON.stringify(outgoing[outgoing.length-1]));
 
   return (
     <Box>

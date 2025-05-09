@@ -57,17 +57,28 @@ export default function ClientRespondForm({
   const discountAmount =
     adjustments?.acceptedDiscount || adjustments?.proposedDiscount || 0;
 
+  // Determine adjustment status
+  const isAdjustmentProposed =
+    adjustments?.proposedDate &&
+    !adjustments?.acceptedDate &&
+    proposal.status === "pendingClient";
+
+  // Calculate final price
+  const finalPrice = isAdjustmentProposed
+    ? proposal.calculatedPrice.total + surchargeAmount - discountAmount
+    : proposal.calculatedPrice.total;
+
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       {/* Adjustment Notice Alert */}
-      {hasAdjustments && proposal.status === "pendingClient" && (
+      {isAdjustmentProposed && (
         <Alert severity="info" sx={{ mb: 2 }}>
           The artist has proposed price adjustments. Please review and respond.
         </Alert>
       )}
 
       {/* Response Cards */}
-      <Card variant="outlined" sx={{ mb: 3 }}>
+      <Card variant="outlined" sx={{ mb: 3, width: "100%" }} elevation={2}>
         <CardContent>
           {activeView === "cancel" ? (
             /* Cancellation View */
@@ -137,7 +148,7 @@ export default function ClientRespondForm({
               </Typography>
 
               {/* Price Adjustments Display */}
-              {proposal.status === "pendingClient" && hasAdjustments && (
+              {isAdjustmentProposed && hasAdjustments && (
                 <Box
                   sx={{
                     mb: 3,
@@ -186,7 +197,7 @@ export default function ClientRespondForm({
                   Final Total
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                  {formatCurrency(proposal.calculatedPrice.total)}
+                  {formatCurrency(finalPrice)}
                 </Typography>
               </Box>
 

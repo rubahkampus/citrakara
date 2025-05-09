@@ -1,14 +1,14 @@
 import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession } from "@/lib/utils/session";
 import { notFound } from "next/navigation";
-import ViewRespondFormPage from "@/components/dashboard/proposals/ViewRespondFormPage";
+import ProposalDetailsPage from "@/components/dashboard/proposals/ProposalDetailsPage";
 import { fetchProposalById } from "@/lib/services/proposal.service";
 
 interface ViewRespondProposalPageProps {
   params: { username: string; proposalId: string };
 }
 
-export default async function ViewRespondProposalPage({
+export default async function viewProposalPage({
   params,
 }: ViewRespondProposalPageProps) {
   const param = await params
@@ -48,7 +48,7 @@ export default async function ViewRespondProposalPage({
           Proposal: {proposal.listingSnapshot.title}
         </Typography>
 
-        <ViewRespondFormPage
+        <ProposalDetailsPage
           username={username}
           role={role}
           proposal={serializedProposal}

@@ -1,15 +1,4 @@
 // src/components/dashboard/proposals/form/PriceBreakdownSection.tsx
-
-/**
- * PriceBreakdownSection
- * ---------------------
- * Displays a real‑time summary of price components:
- *   base, optionGroups, addons, rush, discount, surcharge, total
- * Use useFormContext(watch) to read calculated fields.
- * No input elements.
- *
- * Fixed to handle multi-subject discounts that apply correctly to additional subjects.
- */
 import React, { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import {
@@ -18,11 +7,11 @@ import {
   Paper,
   Divider,
   Card,
-  CardContent,
   Tooltip,
   alpha,
   Fade,
   Chip,
+  Grid,
 } from "@mui/material";
 import {
   Info as InfoIcon,
@@ -220,13 +209,17 @@ export default function PriceBreakdownSection({
     // Calculate rush fee if applicable
     if (watched.deadline && listing.deadline?.mode === "withRush") {
       const deadlineDate = new Date(watched.deadline);
-      const minDate = new Date();
-      minDate.setDate(minDate.getDate() + listing.deadline.min);
+      const earliestDate = new Date(); // This should be the estimated earliest date from API
+      // Adjust with listing.deadline.min days
+      earliestDate.setDate(earliestDate.getDate() + listing.deadline.min);
 
-      if (deadlineDate < minDate) {
-        const rushDays = Math.ceil(
-          (minDate.getTime() - deadlineDate.getTime()) / (24 * 60 * 60 * 1000)
+      if (deadlineDate < earliestDate) {
+        // Calculate rush days - days between chosen deadline and earliest date
+        const timeDiff = Math.abs(
+          earliestDate.getTime() - deadlineDate.getTime()
         );
+        const rushDays = Math.ceil(timeDiff / (24 * 60 * 60 * 1000));
+
         const rushFee = listing.deadline.rushFee;
 
         if (rushFee) {
@@ -262,16 +255,8 @@ export default function PriceBreakdownSection({
     return `${listing.currency} ${amount.toLocaleString()}`;
   };
 
-  // Check if price breakdown has details
-  const hasDetails =
-    priceBreakdown.optionGroupDetails.length > 0 ||
-    priceBreakdown.addonDetails.length > 0 ||
-    priceBreakdown.rush > 0 ||
-    priceBreakdown.discount > 0 ||
-    priceBreakdown.surcharge > 0;
-
   return (
-    <Paper
+    <Card
       sx={{
         p: 3,
         mb: 3,
@@ -309,15 +294,8 @@ export default function PriceBreakdownSection({
       </Box>
       <Divider sx={{ mb: 2 }} />
 
-      <Card
-        variant="outlined"
-        sx={{
-          mb: 2,
-          borderRadius: 2,
-          transition: "all 0.2s",
-        }}
-      >
-        <CardContent sx={{ py: 2 }}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
           {/* Base Price */}
           <Box
             sx={{
@@ -408,7 +386,9 @@ export default function PriceBreakdownSection({
               </Typography>
             </Box>
           )}
+        </Grid>
 
+        <Grid item xs={12} md={6}>
           {/* Rush Fee */}
           {priceBreakdown.rush > 0 && (
             <Box
@@ -429,7 +409,14 @@ export default function PriceBreakdownSection({
                   title={
                     <Box>
                       <Typography variant="body2">
-                        {priceBreakdown.rushDetails.days} day(s) rush
+                        {priceBreakdown.rushDetails.days} day(s) rush fee
+                      </Typography>
+                      <Typography variant="body2">
+                        {listing.deadline.rushFee?.kind === "flat"
+                          ? "Flat fee"
+                          : `${formatCurrency(
+                              listing.deadline.rushFee?.amount || 0
+                            )} per day`}
                       </Typography>
                     </Box>
                   }
@@ -449,60 +436,56 @@ export default function PriceBreakdownSection({
 
           {/* Discount */}
           {priceBreakdown.discount > 0 && (
-            <Fade in={priceBreakdown.discount > 0}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  mb: 1.5,
-                  alignItems: "center",
-                  p: 1,
-                  bgcolor: alpha("#4caf50", 0.08),
-                  borderRadius: 1,
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <DiscountIcon
-                    color="success"
-                    fontSize="small"
-                    sx={{ mr: 1 }}
-                  />
-                  <Typography color="success.main">Saved</Typography>
-                  <Tooltip
-                    title={
-                      <Box>
-                        {priceBreakdown.discountDetails.map((detail, i) => (
-                          <Box key={i} sx={{ mb: 0.5 }}>
-                            <Typography variant="body2">
-                              {detail.subjectTitle}: {detail.discountPercentage}
-                              % off for {detail.count} additional item(s)
-                            </Typography>
-                          </Box>
-                        ))}
-                        <Typography
-                          variant="body2"
-                          sx={{ mt: 1, fontStyle: "italic" }}
-                        >
-                          Discount applies to all items after the first one
-                        </Typography>
-                      </Box>
-                    }
-                    arrow
-                  >
-                    <InfoIcon
-                      fontSize="small"
-                      sx={{ ml: 1, color: "success.main", cursor: "pointer" }}
-                    />
-                  </Tooltip>
-                </Box>
-                <Typography color="success.main" fontWeight="medium">
-                  {formatCurrency(priceBreakdown.discount)}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mb: 1.5,
+                alignItems: "center",
+                p: 1,
+                bgcolor: alpha("#4caf50", 0.08),
+                borderRadius: 1,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <DiscountIcon color="success" fontSize="small" sx={{ mr: 1 }} />
+                <Typography color="success.main">
+                  Multi-Item Discount
                 </Typography>
+                <Tooltip
+                  title={
+                    <Box>
+                      {priceBreakdown.discountDetails.map((detail, i) => (
+                        <Box key={i} sx={{ mb: 0.5 }}>
+                          <Typography variant="body2">
+                            {detail.subjectTitle}: {detail.discountPercentage}%
+                            off for {detail.count} additional item(s)
+                          </Typography>
+                        </Box>
+                      ))}
+                      <Typography
+                        variant="body2"
+                        sx={{ mt: 1, fontStyle: "italic" }}
+                      >
+                        Discount applies to all items after the first one
+                      </Typography>
+                    </Box>
+                  }
+                  arrow
+                >
+                  <InfoIcon
+                    fontSize="small"
+                    sx={{ ml: 1, color: "success.main", cursor: "pointer" }}
+                  />
+                </Tooltip>
               </Box>
-            </Fade>
+              <Typography color="success.main" fontWeight="medium">
+                -{formatCurrency(priceBreakdown.discount)}
+              </Typography>
+            </Box>
           )}
 
-          {/* Surcharge */}
+          {/* Surcharge (if applicable) */}
           {priceBreakdown.surcharge > 0 && (
             <Box
               sx={{
@@ -528,8 +511,8 @@ export default function PriceBreakdownSection({
               </Typography>
             </Box>
           )}
-        </CardContent>
-      </Card>
+        </Grid>
+      </Grid>
 
       {/* Total */}
       <Box
@@ -537,6 +520,7 @@ export default function PriceBreakdownSection({
           display: "flex",
           justifyContent: "space-between",
           p: 2,
+          mt: 2,
           bgcolor: alpha("#000", 0.03),
           borderRadius: 2,
         }}
@@ -577,6 +561,6 @@ export default function PriceBreakdownSection({
           </Typography>
         )}
       </Box>
-    </Paper>
+    </Card>
   );
 }

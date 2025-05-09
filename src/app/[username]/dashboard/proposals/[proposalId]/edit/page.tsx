@@ -31,10 +31,12 @@ export default async function EditProposalPage({
     const proposal = await fetchProposalById(proposalId, session.id);
     if (!proposal) notFound();
 
+    console.log(proposal.status)
+
     // Only the client who created it can edit, and only when pendingArtist
     if (
-      proposal.clientId.toString() !== session.id ||
-      proposal.status !== "pendingArtist"
+      proposal.clientId.toString() !== session.id || ["rejectedArtist", "expired", "accepted", "paid"].includes(proposal.status)
+      // proposal.status !== "pendingArtist"
     ) {
       return (
         <Alert severity="error">

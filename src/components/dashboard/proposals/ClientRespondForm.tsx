@@ -14,6 +14,7 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { IProposal } from "@/lib/db/models/proposal.model";
+import ProposalPaymentDialog from "./ProposalPaymentDialog";
 
 interface ClientRespondFormProps {
   proposal: IProposal;
@@ -32,6 +33,7 @@ export default function ClientRespondForm({
   const [activeView, setActiveView] = useState<"main" | "cancel" | "reject">(
     "main"
   );
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
   // Format currency helper
   const formatCurrency = (amount: number) => `IDR ${amount.toLocaleString()}`;
@@ -40,8 +42,9 @@ export default function ClientRespondForm({
   const handleAccept = () => onSubmit({ acceptAdjustments: true });
   const handleConfirmReject = () => onSubmit({ acceptAdjustments: false });
   const handleConfirmCancel = () => onSubmit({ cancel: true });
-  const handleProceedToPayment = () =>
-    (window.location.href = `/payment/${proposal._id}`);
+  const handleProceedToPayment = () => {
+    setPaymentDialogOpen(true);
+  };
 
   // Calculate adjustments data
   const adjustments = proposal.artistAdjustments;
@@ -257,6 +260,28 @@ export default function ClientRespondForm({
               </Stack>
             </>
           )}
+
+          {proposal.status === "accepted" && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<CheckCircleIcon />}
+              onClick={handleProceedToPayment}
+              disabled={loading}
+              fullWidth
+            >
+              Proceed to Payment
+            </Button>
+          )}
+
+          <ProposalPaymentDialog
+            open={paymentDialogOpen}
+            onClose={() => setPaymentDialogOpen(false)}
+            proposalId={proposal._id.toString()}
+            totalAmount={proposal.calculatedPrice.total}
+            proposalTitle={proposal.generalDescription.substring(0, 50) + "..."}
+            artistName="Artist Name" // You'll need to get this from the proposal or context
+          />
         </CardContent>
       </Card>
     </Box>

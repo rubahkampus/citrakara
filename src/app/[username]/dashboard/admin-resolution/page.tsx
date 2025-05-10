@@ -1,18 +1,21 @@
-// src/app/[username]/dashboard/resolution/page.tsx
+// src/app/[username]/dashboard/admin-resolution/page.tsx
 import { Suspense } from "react";
 import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
-import { getResolutionTicketsByUser } from "@/lib/services/ticket.service";
+import { isUserAdminById } from "@/lib/services/user.service";
+import { getAllResolutionTickets } from "@/lib/services/ticket.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
-// This component would be created in src/components/dashboard/resolution/
-// import ResolutionListPage from "@/components/dashboard/resolution/ResolutionListPage";
+// This component would be created in src/components/dashboard/admin/
+// import AdminResolutionListPage from "@/components/dashboard/admin/AdminResolutionListPage";
 
-interface ResolutionPageProps {
+interface AdminResolutionPageProps {
   params: { username: string };
 }
 
-export default async function ResolutionPage({ params }: ResolutionPageProps) {
+export default async function AdminResolutionPage({
+  params,
+}: AdminResolutionPageProps) {
   const { username } = params;
   const session = await getAuthSession();
 
@@ -20,12 +23,18 @@ export default async function ResolutionPage({ params }: ResolutionPageProps) {
     return <Alert severity="error">You do not have access to this page</Alert>;
   }
 
+  // Check if user is an admin
+  const isAdmin = await isUserAdminById((session as Session).id);
+  if (!isAdmin) {
+    return <Alert severity="error">You do not have admin privileges</Alert>;
+  }
+
   let resolutionTickets;
   try {
-    resolutionTickets = await getResolutionTicketsByUser(
-      (session as Session).id,
-      "both"
-    );
+    // Default to fetching awaiting review tickets
+    resolutionTickets = await getAllResolutionTickets({
+      status: ["awaitingReview"],
+    });
   } catch (err) {
     console.error("Error fetching resolution tickets:", err);
     return <Alert severity="error">Failed to load resolution data</Alert>;
@@ -36,23 +45,23 @@ export default async function ResolutionPage({ params }: ResolutionPageProps) {
   return (
     <Box>
       <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        Dispute Resolution
+        Admin Resolution Center
       </Typography>
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <ResolutionListPage
+        {/* <AdminResolutionListPage
           username={username}
           tickets={serializedTickets}
           userId={session.id}
         /> */}
         <Box>
-          <Typography variant="h6">Your Resolution Tickets</Typography>
+          <Typography variant="h6">Pending Resolution Tickets</Typography>
           {resolutionTickets.length === 0 ? (
-            <Typography>No resolution tickets found</Typography>
+            <Typography>No pending resolution tickets found</Typography>
           ) : (
             <Typography>
-              Found {resolutionTickets.length} resolution tickets
+              Found {resolutionTickets.length} tickets awaiting review
             </Typography>
           )}
         </Box>

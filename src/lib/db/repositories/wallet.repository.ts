@@ -1,12 +1,17 @@
 // src/lib/db/repositories/wallet.repository.ts
-import Wallet from "@/lib/db/models/wallet.model";
 import { connectDB } from "@/lib/db/connection";
-import { ObjectId } from "mongoose";
+import Wallet, { IWallet } from "@/lib/db/models/wallet.model";
+import { ClientSession } from "mongoose";
+import type { ObjectId, Cents } from "@/types/common";
+import { toObjectId } from "@/lib/utils/toObjectId";
 
 /**
  * Create a new wallet for a user
  */
-export async function createWallet(userId: string | ObjectId) {
+export async function createWallet(
+  userId: string | ObjectId,
+  session?: ClientSession
+) {
   await connectDB();
 
   const wallet = new Wallet({
@@ -15,24 +20,179 @@ export async function createWallet(userId: string | ObjectId) {
     saldoEscrowed: 0,
   });
 
-  return wallet.save();
+  if (session) {
+    return wallet.save({ session });
+  } else {
+    return wallet.save();
+  }
 }
 
 /**
  * Find wallet by user ID
  */
-export async function findWalletByUserId(userId: string | ObjectId) {
-  await connectDB();
-  return Wallet.findOne({ user: userId });
-}
-
-/**
- * Update wallet balance
- */
-export async function updateWalletBalance(
-  walletId: string | ObjectId,
-  update: { saldoAvailable?: number; saldoEscrowed?: number }
+export async function findWalletByUserId(
+  userId: string | ObjectId,
+  session?: ClientSession
 ) {
   await connectDB();
-  return Wallet.findByIdAndUpdate(walletId, update, { new: true });
+
+  if (session) {
+    return Wallet.findOne({ user: userId }).session(session);
+  } else {
+    return Wallet.findOne({ user: userId });
+  }
+}
+
+// Add funds to available balance
+export async function addFundsToWallet(
+  userId: string | ObjectId,
+  amount: Cents,
+  session?: ClientSession
+): Promise<IWallet | null> {
+  await connectDB();
+
+  return Wallet.findOneAndUpdate(
+    { userId: toObjectId(userId) },
+    { $inc: { saldoAvailable: amount } },
+    { new: true, session }
+  );
+}
+
+// Move funds from available to escrow (for contract creation)
+export async function moveToEscrow(
+  userId: string | ObjectId,
+  amount: Cents,
+  session?: ClientSession
+): Promise<IWallet | null> {
+  await connectDB();
+
+  // Find the wallet first to check if it has enough funds
+  const wallet = await Wallet.findOne({ userId: toObjectId(userId) }).session(
+    session || null
+  );
+
+  if (!wallet || wallet.saldoAvailable < amount) {
+    throw new Error("Insufficient funds");
+  }
+
+  return Wallet.findOneAndUpdate(
+    { userId: toObjectId(userId) },
+    {
+      $inc: {
+        saldoAvailable: -amount,
+        saldoEscrowed: amount,
+      },
+    },
+    { new: true, session }
+  );
+}
+
+// Move funds from escrow to available (for artist payment)
+export async function releaseFromEscrowToArtist(
+  userId: string | ObjectId,
+  amount: Cents,
+  session?: ClientSession
+): Promise<IWallet | null> {
+  await connectDB();
+
+  return Wallet.findOneAndUpdate(
+    { userId: toObjectId(userId) },
+    { $inc: { saldoAvailable: amount } },
+    { new: true, session }
+  );
+}
+
+// Move funds from escrow back to client (for refund)
+export async function refundFromEscrowToClient(
+  userId: string | ObjectId,
+  amount: Cents,
+  session?: ClientSession
+): Promise<IWallet | null> {
+  await connectDB();
+
+  return Wallet.findOneAndUpdate(
+    { userId: toObjectId(userId) },
+    { $inc: { saldoAvailable: amount } },
+    { new: true, session }
+  );
+}
+
+// Reduce escrow balance (after payments or refunds)
+export async function reduceEscrowBalance(
+  userId: string | ObjectId,
+  amount: Cents,
+  session?: ClientSession
+): Promise<IWallet | null> {
+  await connectDB();
+
+  return Wallet.findOneAndUpdate(
+    { userId: toObjectId(userId) },
+    { $inc: { saldoEscrowed: -amount } },
+    { new: true, session }
+  );
+}
+
+// Get wallet summary (for displaying in UI)
+export async function getWalletSummary(
+  userId: string | ObjectId,
+  session?: ClientSession
+): Promise<{
+  available: Cents;
+  escrowed: Cents;
+  total: Cents;
+} | null> {
+  await connectDB();
+
+  const wallet = await Wallet.findOne({ userId: toObjectId(userId) }).session(
+    session || null
+  );
+
+  if (!wallet) {
+    return null;
+  }
+
+  return {
+    available: wallet.saldoAvailable,
+    escrowed: wallet.saldoEscrowed,
+    total: wallet.saldoAvailable + wallet.saldoEscrowed,
+  };
+}
+
+// Transfer funds between users (used in admin resolution)
+export async function transferBetweenUsers(
+  fromUserId: string | ObjectId,
+  toUserId: string | ObjectId,
+  amount: Cents,
+  session?: ClientSession
+): Promise<void> {
+  await connectDB();
+
+  // Deduct from source user
+  await Wallet.findOneAndUpdate(
+    { userId: toObjectId(fromUserId) },
+    { $inc: { saldoAvailable: -amount } },
+    { session }
+  );
+
+  // Add to target user
+  await Wallet.findOneAndUpdate(
+    { userId: toObjectId(toUserId) },
+    { $inc: { saldoAvailable: amount } },
+    { session }
+  );
+}
+
+// Check if a user has sufficient available funds
+export async function hasSufficientFunds(
+  userId: string | ObjectId,
+  amount: Cents,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const wallet = await Wallet.findOne({ userId: toObjectId(userId) }).session(
+    session || null
+  );
+
+  return wallet ? wallet.saldoAvailable >= amount : false;
 }

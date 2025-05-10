@@ -4,8 +4,12 @@ import {
   findUserByUsername,
   findUserPublicProfileByUsername,
   updateUserByUsername,
+  isAdminById as repoIsAdminById,
+  isAdminByUsername as repoIsAdminByUsername,
 } from "@/lib/db/repositories/user.repository";
 import { uploadFileToR2 } from "@/lib/utils/cloudflare";
+import { Types } from "mongoose";
+import { HttpError } from "./commissionListing.service";
 
 export async function checkUserAvailability(email?: string, username?: string) {
   if (!email && !username) throw new Error("Missing email or username");
@@ -84,4 +88,29 @@ export async function updateUserProfile(username: string, formData: FormData) {
   }
 
   return updateUserByUsername(username, updates);
+}
+
+/** Service: Determine if a user is admin by their ID */
+export async function isUserAdminById(userId: string): Promise<boolean> {
+  const isAdmin = await repoIsAdminById(new Types.ObjectId(userId));
+  return isAdmin;
+}
+
+/** Service: Determine if a user is admin by their username */
+export async function isUserAdminByUsername(
+  username: string
+): Promise<boolean> {
+  const isAdmin = await repoIsAdminByUsername(username);
+  return isAdmin;
+}
+
+/** Optional: Guard middleware for Express-like routes */
+export function requireAdmin(roles: string[] = ["admin"]) {
+  return async function (req: any, res: any, next: any) {
+    const userId = req.user?.id;
+    if (!userId) throw new HttpError("Authentication required", 401);
+    const isAdmin = await repoIsAdminById(userId);
+    if (!isAdmin) throw new HttpError("Forbidden: Admins only", 403);
+    next();
+  };
 }

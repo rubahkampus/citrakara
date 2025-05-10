@@ -1,175 +1,208 @@
 // src/lib/services/wallet.service.ts
-import { findWalletByUserId } from "@/lib/db/repositories/wallet.repository";
-import { findUserByUsername } from "@/lib/db/repositories/user.repository";
-import {
-  createTransaction,
-  getTransactionHistoryByUserId,
-} from "@/lib/db/repositories/walletTransaction.repository";
-import { ObjectId } from "mongoose";
+import { startSession } from "mongoose";
+import type { ObjectId, Cents } from "@/types/common";
+import * as walletRepo from "@/lib/db/repositories/wallet.repository";
+import * as escrowTransactionRepo from "@/lib/db/repositories/escrowTransaction.repository";
 import { connectDB } from "@/lib/db/connection";
-import { WalletBalanceResponse, Transaction } from "@/types/wallet";
+import { HttpError } from "./commissionListing.service";
+import { getUserContracts } from "./contract.service";
+import { isAdminById } from "../db/repositories/user.repository";
 
 /**
- * Get wallet balance for a user by username
- * This function is used in the dashboard and needs to return saldoAvailable
- * for backward compatibility with the dashboard component
+ * Get a user's wallet
  */
-export async function getUserWalletBalance(
-  username: string
-): Promise<WalletBalanceResponse> {
+export async function getUserWallet(userId: string): Promise<any> {
+  const wallet = await walletRepo.findWalletByUserId(userId);
+  if (!wallet) {
+    throw new HttpError("Wallet not found", 404);
+  }
+  return wallet;
+}
+
+/**
+ * Get wallet summary (available, escrowed, total)
+ */
+export async function getWalletSummary(userId: string): Promise<{
+  available: Cents;
+  escrowed: Cents;
+  total: Cents;
+}> {
+  const summary = await walletRepo.getWalletSummary(userId);
+  if (!summary) {
+    throw new HttpError("Wallet not found", 404);
+  }
+  return summary;
+}
+
+/**
+ * Add funds to a user's wallet
+ * This might be connected to a payment gateway in a real implementation
+ */
+export async function addFundsToWallet(
+  userId: string,
+  amount: Cents
+): Promise<any> {
   await connectDB();
+  const session = await startSession();
 
-  // First find the user document to get the userId
-  const user = await findUserByUsername(username);
-  if (!user) {
-    throw new Error("User not found");
+  try {
+    session.startTransaction();
+
+    // Verify amount is positive
+    if (amount <= 0) {
+      throw new HttpError("Amount must be positive", 400);
+    }
+
+    // Add funds to wallet
+    const wallet = await walletRepo.addFundsToWallet(userId, amount, session);
+    if (!wallet) {
+      throw new HttpError("Wallet not found", 404);
+    }
+
+    // In a real implementation, you would process payment here
+
+    await session.commitTransaction();
+    return wallet;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  // Then find the wallet using the user ID
-  const wallet = await findWalletByUserId(user._id);
-  if (!wallet) {
-    throw new Error("Wallet not found");
-  }
-
-  // Return with both the original property names and the new format
-  // for backward compatibility
-  return {
-    saldoAvailable: wallet.saldoAvailable,
-    saldoEscrowed: wallet.saldoEscrowed,
-    available: wallet.saldoAvailable,
-    escrowed: wallet.saldoEscrowed,
-    total: wallet.saldoAvailable + wallet.saldoEscrowed,
-  };
 }
 
 /**
- * Get wallet balance by user ID
- * This is the internal version used by other services
+ * Check if a user has sufficient funds
  */
-export async function getWalletBalanceByUserId(
-  userId: string | ObjectId
-): Promise<Omit<WalletBalanceResponse, "saldoAvailable" | "saldoEscrowed">> {
-  const wallet = await findWalletByUserId(userId);
-  if (!wallet) {
-    throw new Error("Wallet not found");
-  }
-
-  return {
-    available: wallet.saldoAvailable,
-    escrowed: wallet.saldoEscrowed,
-    total: wallet.saldoAvailable + wallet.saldoEscrowed,
-  };
+export async function checkSufficientFunds(
+  userId: string,
+  amount: Cents
+): Promise<boolean> {
+  return walletRepo.hasSufficientFunds(userId, amount);
 }
 
 /**
- * Add funds to a user's available balance
+ * Get all transactions for a user
  */
-export async function addFundsToUserWallet(
-  userId: string | ObjectId,
-  amount: number,
-  source: Transaction["source"],
-  note?: string
-) {
-  const wallet = await findWalletByUserId(userId);
-  if (!wallet) {
-    throw new Error("Wallet not found");
+export async function getTransactions(userId: string): Promise<any[]> {
+  // Find all contracts associated with this user
+  // This would need to be implemented based on your data structure
+  const contracts = await getUserContracts(userId); // This would be populated from contract repository
+  const mergedContracts = [...contracts.asArtist, ...contracts.asClient];
+
+  // Get transactions from all contracts
+  const transactions = [];
+  for (const contract of mergedContracts) {
+    const contractTransactions =
+      await escrowTransactionRepo.findEscrowTransactionsByContract(
+        contract._id
+      );
+
+    // Filter transactions relevant to this user
+    for (const tx of contractTransactions) {
+      const isRelevant =
+        (tx.from === "client" && contract.clientId.toString() === userId) ||
+        (tx.to === "artist" && contract.artistId.toString() === userId) ||
+        (tx.to === "client" && contract.clientId.toString() === userId);
+
+      if (isRelevant) {
+        transactions.push({
+          ...tx.toObject(),
+          contractId: contract.id,
+        });
+      }
+    }
   }
 
-  return createTransaction({
-    walletId: wallet._id,
-    type: "credit",
-    amount,
-    target: "available",
-    source,
-    note,
-  });
+  return transactions.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}
+/**
+ * Create or update a wallet for a user
+ * Typically called during user registration
+ */
+export async function ensureWalletExists(userId: string): Promise<any> {
+  await connectDB();
+  const session = await startSession();
+
+  try {
+    session.startTransaction();
+
+    // Check if wallet already exists
+    let wallet = await walletRepo.findWalletByUserId(userId, session);
+
+    // If not, create it
+    if (!wallet) {
+      wallet = await walletRepo.createWallet(userId, session);
+    }
+
+    await session.commitTransaction();
+    return wallet;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 }
 
 /**
- * Move funds from available to escrow
+ * Move funds between users (admin only)
  */
-export async function moveToEscrow(
-  userId: string | ObjectId,
-  amount: number,
-  source: "commission" | "payment",
-  note?: string
-) {
-  const wallet = await findWalletByUserId(userId);
-  if (!wallet) {
-    throw new Error("Wallet not found");
+export async function transferBetweenUsers(
+  fromUserId: string,
+  toUserId: string,
+  amount: Cents,
+  adminId: string,
+  reason: string
+): Promise<void> {
+  await connectDB();
+  const session = await startSession();
+
+  try {
+    session.startTransaction();
+
+    // Verify admin permissions (to be implemented)
+    const isAdmin = isAdminById(adminId);
+    if (!isAdmin) {
+      throw new HttpError(
+        "Only administrators can transfer funds between users",
+        403
+      );
+    }
+
+    // Verify amount is positive
+    if (amount <= 0) {
+      throw new HttpError("Amount must be positive", 400);
+    }
+
+    // Check if source user has sufficient funds
+    const hasFunds = await walletRepo.hasSufficientFunds(
+      fromUserId,
+      amount,
+      session
+    );
+    if (!hasFunds) {
+      throw new HttpError("Source user has insufficient funds", 400);
+    }
+
+    // Transfer funds
+    await walletRepo.transferBetweenUsers(
+      fromUserId,
+      toUserId,
+      amount,
+      session
+    );
+
+    // In a real implementation, you would log this transfer
+    // and possibly create a special transaction record
+
+    await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  if (wallet.saldoAvailable < amount) {
-    throw new Error("Insufficient available balance");
-  }
-
-  // First debit from available
-  await createTransaction({
-    walletId: wallet._id,
-    type: "debit",
-    amount,
-    target: "available",
-    source,
-    note: `Move to escrow: ${note || ""}`,
-  });
-
-  // Then credit to escrow
-  return createTransaction({
-    walletId: wallet._id,
-    type: "credit",
-    amount,
-    target: "escrowed",
-    source,
-    note: `Moved from available: ${note || ""}`,
-  });
-}
-
-/**
- * Release funds from escrow to available
- */
-export async function releaseFromEscrow(
-  userId: string | ObjectId,
-  amount: number,
-  source: "commission" | "refund" | "release",
-  note?: string
-) {
-  const wallet = await findWalletByUserId(userId);
-  if (!wallet) {
-    throw new Error("Wallet not found");
-  }
-
-  if (wallet.saldoEscrowed < amount) {
-    throw new Error("Insufficient escrowed balance");
-  }
-
-  // First debit from escrow
-  await createTransaction({
-    walletId: wallet._id,
-    type: "debit",
-    amount,
-    target: "escrowed",
-    source,
-    note: `Release from escrow: ${note || ""}`,
-  });
-
-  // Then credit to available
-  return createTransaction({
-    walletId: wallet._id,
-    type: "credit",
-    amount,
-    target: "available",
-    source,
-    note: `Released from escrow: ${note || ""}`,
-  });
-}
-
-/**
- * Get transaction history for a user
- */
-export async function getUserTransactionHistory(
-  userId: string | ObjectId,
-  limit = 50,
-  skip = 0
-) {
-  return getTransactionHistoryByUserId(userId, limit, skip);
 }

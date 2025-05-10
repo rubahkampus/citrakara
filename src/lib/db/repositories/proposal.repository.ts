@@ -1,5 +1,5 @@
 // src/lib/db/repositories/proposal.repository.ts
-import mongoose, { ClientSession, ObjectId, Types } from "mongoose";
+import mongoose, { ObjectId, Schema, Types } from "mongoose";
 import { connectDB } from "@/lib/db/connection";
 import Proposal, { IProposal } from "@/lib/db/models/proposal.model";
 import CommissionListing from "@/lib/db/models/commissionListing.model";
@@ -203,6 +203,21 @@ function calculateRush(
     paidDays,
     fee: rushFee,
   };
+}
+
+/**
+ * Like getProposalById, but throws if not found.
+ * Now accepts string | Types.ObjectId | Schema.Types.ObjectId
+ */
+export async function findProposalById(
+  id: string | Types.ObjectId | Schema.Types.ObjectId
+): Promise<IProposal> {
+  await connectDB();
+  const proposal = await Proposal.findById(toObjectId(id));
+  if (!proposal) {
+    throw new Error(`Proposal not found for id ${id}`);
+  }
+  return proposal;
 }
 
 // ========== Repository Functions ==========
@@ -634,77 +649,91 @@ function calculateSelectedPrice(
   generalOptions?: ProposalGeneralOptionsInput,
   subjectOptions?: ProposalSubjectOptionsInput[]
 ): { optionGroups: Cents; addons: Cents } {
-  console.log('Starting new price calculation approach');
-  
+  console.log("Starting new price calculation approach");
+
   // Initialize the totals
   let optionGroupsTotal = 0;
   let addonsTotal = 0;
-  
+
   // Helper function to log a selection lookup
   const logSelectionLookup = (
-    context: string, 
-    selectionId: number, 
-    groupId: number, 
+    context: string,
+    selectionId: number,
+    groupId: number,
     foundPrice: number | null,
     inputPrice: number | undefined
   ) => {
     if (foundPrice !== null) {
-      console.log(`${context}: Found selection ID ${selectionId} in group ${groupId} with price ${foundPrice}`);
+      console.log(
+        `${context}: Found selection ID ${selectionId} in group ${groupId} with price ${foundPrice}`
+      );
     } else if (inputPrice !== undefined) {
-      console.log(`${context}: Selection ID ${selectionId} not found in listing, using input price ${inputPrice}`);
+      console.log(
+        `${context}: Selection ID ${selectionId} not found in listing, using input price ${inputPrice}`
+      );
     } else {
-      console.log(`${context}: Selection ID ${selectionId} not found in listing and no input price available, using 0`);
+      console.log(
+        `${context}: Selection ID ${selectionId} not found in listing and no input price available, using 0`
+      );
     }
   };
-  
+
   // Helper function to log an addon lookup
   const logAddonLookup = (
-    context: string, 
-    addonId: number, 
+    context: string,
+    addonId: number,
     foundPrice: number | null,
     inputPrice: number | undefined
   ) => {
     if (foundPrice !== null) {
-      console.log(`${context}: Found addon ID ${addonId} with price ${foundPrice}`);
+      console.log(
+        `${context}: Found addon ID ${addonId} with price ${foundPrice}`
+      );
     } else if (inputPrice !== undefined) {
-      console.log(`${context}: Addon ID ${addonId} not found in listing, using input price ${inputPrice}`);
+      console.log(
+        `${context}: Addon ID ${addonId} not found in listing, using input price ${inputPrice}`
+      );
     } else {
-      console.log(`${context}: Addon ID ${addonId} not found in listing and no input price available, using 0`);
+      console.log(
+        `${context}: Addon ID ${addonId} not found in listing and no input price available, using 0`
+      );
     }
   };
-  
+
   // Helper function to find a selection price from the listing
   const findSelectionPrice = (
-    optionGroups: Array<{
-      id: ID;
-      title: string;
-      selections: Array<{ id: ID; label: string; price: Cents }>;
-    }> | undefined,
+    optionGroups:
+      | Array<{
+          id: ID;
+          title: string;
+          selections: Array<{ id: ID; label: string; price: Cents }>;
+        }>
+      | undefined,
     groupId: number,
     selectionId: number
   ): number | null => {
     if (!optionGroups) return null;
-    
-    const group = optionGroups.find(g => g.id === groupId);
+
+    const group = optionGroups.find((g) => g.id === groupId);
     if (!group) return null;
-    
-    const selection = group.selections.find(s => s.id === selectionId);
+
+    const selection = group.selections.find((s) => s.id === selectionId);
     return selection ? selection.price : null;
   };
-  
+
   // Helper function to find an addon price from the listing
   const findAddonPrice = (
     addons: Array<{ id: ID; label: string; price: Cents }> | undefined,
     addonId: number
   ): number | null => {
     if (!addons) return null;
-    
-    const addon = addons.find(a => a.id === addonId);
+
+    const addon = addons.find((a) => a.id === addonId);
     return addon ? addon.price : null;
   };
-  
+
   // 1. Process General Options
-  console.log('Processing General Options:');
+  console.log("Processing General Options:");
   if (generalOptions?.optionGroups && generalOptions.optionGroups.length > 0) {
     for (const selection of generalOptions.optionGroups) {
       const price = findSelectionPrice(
@@ -712,51 +741,65 @@ function calculateSelectedPrice(
         selection.groupId,
         selection.selectedSelectionID
       );
-      
-      logSelectionLookup('General', selection.selectedSelectionID, selection.groupId, price, selection.price);
-      
+
+      logSelectionLookup(
+        "General",
+        selection.selectedSelectionID,
+        selection.groupId,
+        price,
+        selection.price
+      );
+
       // Use the price from listing or fallback to input price
-      optionGroupsTotal += price !== null ? price : (selection.price || 0);
+      optionGroupsTotal += price !== null ? price : selection.price || 0;
     }
   }
-  
+
   if (generalOptions?.addons && generalOptions.addons.length > 0) {
     for (const addon of generalOptions.addons) {
       const price = findAddonPrice(
         listingSnapshot.generalOptions?.addons,
         addon.addonId
       );
-      
-      logAddonLookup('General', addon.addonId, price, addon.price);
-      
+
+      logAddonLookup("General", addon.addonId, price, addon.price);
+
       // Use the price from listing or fallback to input price
-      addonsTotal += price !== null ? price : (addon.price || 0);
+      addonsTotal += price !== null ? price : addon.price || 0;
     }
   }
-  
+
   // 2. Process Subject Options
-  console.log('Processing Subject Options:');
-  if (subjectOptions && subjectOptions.length > 0 && listingSnapshot.subjectOptions) {
+  console.log("Processing Subject Options:");
+  if (
+    subjectOptions &&
+    subjectOptions.length > 0 &&
+    listingSnapshot.subjectOptions
+  ) {
     for (const subject of subjectOptions) {
-      const subjectOption = listingSnapshot.subjectOptions.find(s => s.id === subject.subjectId);
-      
+      const subjectOption = listingSnapshot.subjectOptions.find(
+        (s) => s.id === subject.subjectId
+      );
+
       if (!subjectOption) {
         console.log(`Subject ID ${subject.subjectId} not found in listing`);
         continue;
       }
-      
-      console.log(`Found subject "${subjectOption.title}" with ${subject.instances.length} instances`);
-      
+
+      console.log(
+        `Found subject "${subjectOption.title}" with ${subject.instances.length} instances`
+      );
+
       // Special handling for multiple instances and discount
       const instancePrices: number[] = [];
-      
+
       // Process each instance
       for (let idx = 0; idx < subject.instances.length; idx++) {
         const instance = subject.instances[idx];
         let instanceTotal = 0;
-        
+
         console.log(`Processing instance #${idx + 1}:`);
-        
+
         // Process option groups for this instance
         if (instance.optionGroups && instance.optionGroups.length > 0) {
           for (const selection of instance.optionGroups) {
@@ -765,74 +808,89 @@ function calculateSelectedPrice(
               selection.groupId,
               selection.selectedSelectionID
             );
-            
-            logSelectionLookup(`Subject ${subject.subjectId} Instance ${idx+1}`, 
-                           selection.selectedSelectionID, 
-                           selection.groupId, 
-                           price, 
-                           selection.price);
-            
+
+            logSelectionLookup(
+              `Subject ${subject.subjectId} Instance ${idx + 1}`,
+              selection.selectedSelectionID,
+              selection.groupId,
+              price,
+              selection.price
+            );
+
             // Use the price from listing or fallback to input price
-            instanceTotal += price !== null ? price : (selection.price || 0);
+            instanceTotal += price !== null ? price : selection.price || 0;
           }
         }
-        
+
         // Process addons for this instance
         if (instance.addons && instance.addons.length > 0) {
           for (const addon of instance.addons) {
-            const price = findAddonPrice(
-              subjectOption.addons,
-              addon.addonId
+            const price = findAddonPrice(subjectOption.addons, addon.addonId);
+
+            logAddonLookup(
+              `Subject ${subject.subjectId} Instance ${idx + 1}`,
+              addon.addonId,
+              price,
+              addon.price
             );
-            
-            logAddonLookup(`Subject ${subject.subjectId} Instance ${idx+1}`, 
-                        addon.addonId, 
-                        price, 
-                        addon.price);
-            
+
             // Use the price from listing or fallback to input price
-            instanceTotal += price !== null ? price : (addon.price || 0);
+            instanceTotal += price !== null ? price : addon.price || 0;
           }
         }
-        
+
         console.log(`Instance #${idx + 1} total: ${instanceTotal}`);
         instancePrices.push(instanceTotal);
       }
-      
+
       // Apply discount if applicable
       if (subject.instances.length > 1 && subjectOption.discount) {
-        console.log(`Applying ${subjectOption.discount}% discount to instances after the first`);
-        
+        console.log(
+          `Applying ${subjectOption.discount}% discount to instances after the first`
+        );
+
         let totalForSubject = instancePrices[0]; // First instance at full price
-        
+
         // Apply discount to all subsequent instances
         for (let i = 1; i < instancePrices.length; i++) {
-          const discountedPrice = instancePrices[i] * (1 - subjectOption.discount / 100);
-          console.log(`Instance #${i + 1}: Original: ${instancePrices[i]}, Discounted: ${discountedPrice}`);
+          const discountedPrice =
+            instancePrices[i] * (1 - subjectOption.discount / 100);
+          console.log(
+            `Instance #${i + 1}: Original: ${
+              instancePrices[i]
+            }, Discounted: ${discountedPrice}`
+          );
           totalForSubject += discountedPrice;
         }
-        
+
         console.log(`Subject total after discount: ${totalForSubject}`);
         optionGroupsTotal += Math.round(totalForSubject); // Round to avoid floating point issues
       } else {
         // No discount needed
-        const totalForSubject = instancePrices.reduce((sum, price) => sum + price, 0);
+        const totalForSubject = instancePrices.reduce(
+          (sum, price) => sum + price,
+          0
+        );
         console.log(`Subject total (no discount): ${totalForSubject}`);
         optionGroupsTotal += totalForSubject;
       }
     }
   }
-  
+
   // 3. Final calculation
   console.log(`Final calculation:`);
   console.log(`  Base price: ${listingSnapshot.basePrice}`);
   console.log(`  Option groups total: ${optionGroupsTotal}`);
   console.log(`  Addons total: ${addonsTotal}`);
-  console.log(`  Grand total: ${listingSnapshot.basePrice + optionGroupsTotal + addonsTotal}`);
-  
-  return { 
-    optionGroups: Math.round(optionGroupsTotal), 
-    addons: addonsTotal 
+  console.log(
+    `  Grand total: ${
+      listingSnapshot.basePrice + optionGroupsTotal + addonsTotal
+    }`
+  );
+
+  return {
+    optionGroups: Math.round(optionGroupsTotal),
+    addons: addonsTotal,
   };
 }
 
@@ -843,8 +901,8 @@ export function recalculateRushAndPrice(proposal: IProposal): IProposal {
   const { listingSnapshot, deadline, availability, baseDate } = proposal;
 
   if (!availability) return proposal;
-  
-  console.log('Recalculating rush and price for proposal');
+
+  console.log("Recalculating rush and price for proposal");
 
   // Recalculate rush
   const rush = calculateRush(
@@ -874,15 +932,15 @@ export function recalculateRushAndPrice(proposal: IProposal): IProposal {
   console.log(`Rush fee: ${rush?.fee || 0}`);
   console.log(`Surcharge: ${surchargeAmount}`);
   console.log(`Discount: ${discountAmount}`);
-  
-  const total = 
+
+  const total =
     listingSnapshot.basePrice +
     optionGroupsPrice +
     addonsPrice +
     (rush?.fee || 0) +
     surchargeAmount -
     discountAmount;
-    
+
   console.log(`Final total price: ${total}`);
 
   proposal.rush = rush || undefined;

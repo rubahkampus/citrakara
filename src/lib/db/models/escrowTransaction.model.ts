@@ -4,7 +4,7 @@ import type { ObjectId, ISODate, Cents } from "@/types/common";
 
 export interface IEscrowTransaction extends Document {
   _id: ObjectId;
-  contractId: ObjectId; // always tied to a contract
+  contractId: ObjectId | null; // always tied to a contract
 
   type: // reason for money move
   | "hold" // client → escrow
@@ -25,7 +25,8 @@ const EscrowTransactionSchema = new Schema<IEscrowTransaction>(
     contractId: {
       type: Schema.Types.ObjectId,
       ref: "Contract",
-      required: true,
+      required: false, // ← no longer required
+      default: null, // ← initialize to null
     },
     type: {
       type: String,

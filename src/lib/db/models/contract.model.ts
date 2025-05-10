@@ -127,16 +127,16 @@ export interface IContract extends Document {
   escrowTxnId: ObjectId; // Initial payment at the creation of contract referencing the escrow transaction
 
   /* — Ticketed negotiation flows —*/
-  cancelTickets: ICancelTicket[]; // zero or many cancellation attempts
-  revisionTickets: IRevisionTicket[]; // revision requests
-  changeTickets: IChangeTicket[]; // spec/price changes
-  resolutionTickets: IResolutionTicket[]; // admin dispute cases
+  cancelTickets: ObjectId[]; // zero or many cancellation attempts
+  revisionTickets: ObjectId[]; // revision requests
+  changeTickets: ObjectId[]; // spec/price changes
+  resolutionTickets: ObjectId[]; // admin dispute cases
 
   /* — Uploads (immutable artifacts) —*/
-  progressUploadsStandard: IProgressUploadStandard[];
-  progressUploadsMilestone: IProgressUploadMilestone[];
-  revisionUploads: IRevisionUpload[];
-  finalUploads: IFinalUpload[];
+  progressUploadsStandard: ObjectId[];
+  progressUploadsMilestone: ObjectId[];
+  revisionUploads: ObjectId[];
+  finalUploads: ObjectId[];
 
   /* — Post‑project feedback —*/
   completion?: {
@@ -184,7 +184,7 @@ const MilestoneSchema = new Schema<IMilestone>({
     type: Number,
   },
   revisionPolicy: {
-    type: RevisionPolicySchema, // Assuming RevisionPolicy is a complex type that could vary
+    type: RevisionPolicySchema, 
   },
   startedAt: {
     type: Date,

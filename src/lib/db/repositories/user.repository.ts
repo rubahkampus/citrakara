@@ -97,3 +97,31 @@ export async function updateUserByUsername(
     "-password"
   );
 }
+
+/** Get a user by their MongoDB ObjectId */
+export async function findUserById(
+  id: string | mongoose.Types.ObjectId
+) {
+  await connectDB();
+  return User.findById(id);
+}
+
+/** Check if a user has the 'admin' role */
+export async function isAdminById(
+  id: string | mongoose.Types.ObjectId
+): Promise<boolean> {
+  await connectDB();
+  const user = await User.findById(id).select("roles");
+  if (!user) return false;
+  return user.roles.includes("admin");
+}
+
+/** Check if a user identified by username has the 'admin' role */
+export async function isAdminByUsername(
+  username: string
+): Promise<boolean> {
+  await connectDB();
+  const user = await User.findOne({ username }).select("roles");
+  if (!user) return false;
+  return user.roles.includes("admin");
+}

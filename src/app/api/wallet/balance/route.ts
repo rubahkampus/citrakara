@@ -1,34 +1,44 @@
 // src/app/api/wallet/balance/route.ts
-import { NextResponse } from "next/server";
-import { getAuthSession } from "@/lib/utils/session";
-import { getUserWalletBalance } from "@/lib/services/wallet.service";
+import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/api/withAuth";
+import { rotateToken } from "@/lib/api/rotateToken";
 import { handleError } from "@/lib/utils/errorHandler";
-import { cookieOptions } from "@/lib/utils/cookies";
+import {
+  getWalletSummary,
+  addFundsToWallet,
+} from "@/lib/services/wallet.service";
 
-export async function GET() {
+// Get wallet balance
+export async function GET(req: NextRequest) {
   try {
-    const session = await getAuthSession();
-    
-    if (!session || typeof session === "string" || !session.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    return withAuth(async (session) => {
+      const summary = await getWalletSummary(session.id);
 
-    const wallet = await getUserWalletBalance(session.id);
-    
-    const response = NextResponse.json({ wallet });
-    
-    // If token was refreshed, set the new access token
-    if ("_refreshedAccessToken" in session) {
-      response.cookies.set("accessToken", session._refreshedAccessToken!, {
-        ...cookieOptions,
-        maxAge: 60 * 15,
+      const response = NextResponse.json(summary);
+      rotateToken(response, session);
+      return response;
+    });
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+// Add funds to wallet
+export async function POST(req: NextRequest) {
+  try {
+    const { amount } = await req.json();
+
+    return withAuth(async (session) => {
+      const wallet = await addFundsToWallet(session.id, amount);
+
+      const response = NextResponse.json({
+        message: "Funds added successfully",
+        wallet,
       });
-    }
-    
-    return response;
+
+      rotateToken(response, session);
+      return response;
+    });
   } catch (error) {
     return handleError(error);
   }

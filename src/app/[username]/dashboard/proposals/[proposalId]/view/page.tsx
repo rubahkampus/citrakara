@@ -1,3 +1,4 @@
+// src/app/[username]/dashboard/proposals/[proposalId]/view/page.tsx
 import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession } from "@/lib/utils/session";
 import { notFound } from "next/navigation";

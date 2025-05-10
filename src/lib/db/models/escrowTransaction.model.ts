@@ -1,91 +1,57 @@
-// src/lib/db/models/escrowTransaction.model.ts
-// -----------------------------------------------------------------------------
-// EscrowTransaction – atomic record of every money move through the KOMIS
-// “escrow” account.  WalletService writes two WalletTransaction rows that
-// mirror each EscrowTransaction so user balances stay consistent.
-// -----------------------------------------------------------------------------
-
-import { Schema, model, models, Document } from "mongoose";
+// src/lib/db/models/escrowtransaction.model.ts
+import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate, Cents } from "@/types/common";
-
-export type EscrowTxnType =
-  | "hold" // client → escrow (order payment)
-  | "release" // escrow → artist (payout)
-  | "refund" // escrow → client (cancel / over-delivery)
-  | "penalty" // escrow → client (late-penalty)
-  | "revision_fee" // client → escrow
-  | "change_fee"; // client → escrow (contract-change)
-
-export type EscrowStatus =
-  | "held" // money is sitting in escrow
-  | "released" // sent to artist
-  | "refunded"; // returned to client
 
 export interface IEscrowTransaction extends Document {
   _id: ObjectId;
+  contractId: ObjectId; // always tied to a contract
 
-  contractId: ObjectId; // link to Contract / Order
-  walletTransactionId: ObjectId; // mirror row in wallet_txns (optional)
+  type: // reason for money move
+  | "hold" // client → escrow
+    | "release" // escrow → artist
+    | "refund" // escrow → client
+    | "revision_fee" // client → escrow
+    | "change_fee"; // client → escrow
 
-  /** direction of funds */
-  type: EscrowTxnType;
-  from: "client" | "escrow";
-  to: "escrow" | "artist" | "client";
-
+  from: "client" | "escrow"; // source wallet
+  to: "escrow" | "artist" | "client"; // destination wallet
   amount: Cents;
-  currency: "IDR";
-
-  status: EscrowStatus;
-
-  /** bookkeeping / traceability */
+  note?: string; // free‑text annotation
   createdAt: ISODate;
-  note?: string; // optional human comment
 }
 
-const EscrowSchema = new Schema<IEscrowTransaction>(
+const EscrowTransactionSchema = new Schema<IEscrowTransaction>(
   {
     contractId: {
       type: Schema.Types.ObjectId,
       ref: "Contract",
       required: true,
     },
-    walletTransactionId: {
-      type: Schema.Types.ObjectId,
-      ref: "WalletTransaction",
-    },
-
     type: {
       type: String,
-      enum: [
-        "hold",
-        "release",
-        "refund",
-        "penalty",
-        "revision_fee",
-        "change_fee",
-      ],
+      enum: ["hold", "release", "refund", "revision_fee", "change_fee"],
       required: true,
     },
-    from: { type: String, enum: ["client", "escrow"], required: true },
-    to: { type: String, enum: ["escrow", "artist", "client"], required: true },
-
-    amount: { type: Number, required: true },
-    currency: { type: String, default: "IDR" },
-
-    status: {
+    from: {
       type: String,
-      enum: ["held", "released", "refunded"],
+      enum: ["client", "escrow"],
       required: true,
     },
-
-    note: String,
+    to: {
+      type: String,
+      enum: ["escrow", "artist", "client"],
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    note: {
+      type: String,
+    },
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  { timestamps: true }
 );
 
-/* Indexes for quick look-ups */
-EscrowSchema.index({ contractId: 1, createdAt: -1 });
-EscrowSchema.index({ status: 1, createdAt: -1 });
-
 export default models.EscrowTransaction ||
-  model<IEscrowTransaction>("EscrowTransaction", EscrowSchema);
+  model<IEscrowTransaction>("EscrowTransaction", EscrowTransactionSchema);

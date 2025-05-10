@@ -1174,7 +1174,7 @@ export default function ProposalDetailsPage({
         </TableContainer>
 
         {/* Price adjustments section */}
-        {(proposal.artistAdjustments?.proposedSurcharge ||
+        {/* {(proposal.artistAdjustments?.proposedSurcharge ||
           proposal.artistAdjustments?.proposedDiscount) && (
           <Paper
             variant="outlined"
@@ -1233,7 +1233,7 @@ export default function ProposalDetailsPage({
               )}
             </Grid>
           </Paper>
-        )}
+        )} */}
       </Paper>
 
       {/* Rush Details if applicable */}

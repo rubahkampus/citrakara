@@ -25,7 +25,7 @@ export interface RevisionPolicy {
   /** Fee per extra revision (rupiah‑cents) */
   fee: Cents;
 }
-const RevisionPolicySchema = new Schema<RevisionPolicy>(
+export const RevisionPolicySchema = new Schema<RevisionPolicy>(
   {
     limit: { type: Boolean, required: true },
     free: { type: Number, required: true },
@@ -162,34 +162,51 @@ export interface ICommissionListing extends Document {
 
   // ─── Timing / rush ───────────────────────────────────────
   deadline: {
-    mode: "standard" | "withDeadline" | "withRush";
-    min: number; // days
-    max: number; // days
-    rushFee?: { kind: "flat" | "perDay"; amount: Cents };
+    mode:
+      | "standard" // Deadline will always be baseDate (calculated based on the latest deadline in all of the artist active contracts) + max + 14 days
+      | "withDeadline" // Deadline can be choosen as long as it does not fall behind baseDate + min
+      | "withRush"; // Deadline can be choosen and it can fall behind baseDate + min, but fee will apply
+    min: number; // minimum days to complete order
+    max: number; // maximum days to complete order
+    rushFee?: {
+      kind:
+        | "flat" // fee is flat
+        | "perDay"; // fee is counted based on amount * days behind baseDate + min
+      amount: Cents;
+    }; // For mode == "withRush"
   };
 
   // ─── Financial guardrails ───────────────────────────────
-  basePrice: Cents; // Changed from optional to required
+  basePrice: Cents; // base price of commission, can be 0
   price: { min: Cents; max: Cents }; // calculated from basePrice + options
-  cancelationFee: { kind: "flat" | "percentage"; amount: number }; // Changed 'type' to 'kind'
-  latePenaltyPercent?: number; // hardcode 10%
-  graceDays?: number; // hardcode 7 days
+  cancelationFee: {
+    kind:
+      | "flat" // Amount is IDR of fee
+      | "percentage"; // Amount is 0-100 (percentage)
+    amount: number;
+  }; // Changed 'type' to 'kind'
+
+  latePenaltyPercent?: number; // 0-100, For now it's hardcoded to 10%
+  graceDays?: number; // For now it's hardcode 7 days
   currency: string; // ISO‑4217, default "IDR"
 
   // ─── Client‑side edit toggles ────────────────────────────
   allowContractChange: boolean;
+  // List of changeable stuff on the proposal that can be changed while contract is underway
   changeable?: Array<
     | "deadline"
-    | "generalOptions"
-    | "subjectOptions"
-    | "description"
     | "generalDescription"
     | "referenceImages"
+    | "generalOptions"
+    | "subjectOptions" 
   >;
 
   // ─── Revision policy snapshot ────────────────────────────
   revisions?: {
-    type: "none" | "standard" | "milestone";
+    type: 
+    "none" // No revision 
+    | "standard" // Revision is standard, can be in flow == milestone | standard, policy apply to the whole contract as a whole, ( e.g. using a slot in any step of the milestone will subtract the available slot as a whole)
+    | "milestone"; // Only in flow == milestone, every milestone steps has its own policy
     policy?: RevisionPolicy; // if revision type = standard only
   };
 
@@ -203,6 +220,7 @@ export interface ICommissionListing extends Document {
 
   /* ---------------- OPTION MATRIX ------------------------ */
   /** Meta / off‑canvas add‑ons */
+  // ALL IDs HERE STARTS FROM 1
   // General options
   generalOptions?: {
     optionGroups?: Array<{
@@ -211,7 +229,7 @@ export interface ICommissionListing extends Document {
       selections: Array<{ id: ID; label: string; price: Cents }>; // e.g. "Full rights", "Partial rights", "No rights"
     }>;
     addons?: Array<{ id: ID; label: string; price: Cents }>; // e.g. "Stream my commission"
-    questions?: Array<{ id: ID; text: string }>; // extra questions not tied to group
+    questions?: Array<{ id: ID; text: string }>; // extra questions 
   };
 
   /** On‑canvas pricing such as characters, backgrounds … */
@@ -221,7 +239,7 @@ export interface ICommissionListing extends Document {
     id: ID;
     title: string; // e.g. "Character", "Background", "Props"
     limit: number; // default 1, -1 = unlimited
-    discount?: number; // e.g. 10% off for 2+ characters
+    discount?: number; // e.g. 10% off for 2+ characters, will always apply starting from the secon instance of every subject
     optionGroups?: Array<{
       id: ID;
       title: string; // e.g. "Cropping"

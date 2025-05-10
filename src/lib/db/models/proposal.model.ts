@@ -149,7 +149,7 @@ const ProposalAnswerSchema = new Schema(
   { _id: false }
 );
 
-const ProposalGeneralOptionsSchema = new Schema(
+export const ProposalGeneralOptionsSchema = new Schema(
   {
     optionGroups: { type: [ProposalSelectionSchema], default: [] },
     addons: { type: [ProposalAddonSchema], default: [] },
@@ -158,7 +158,7 @@ const ProposalGeneralOptionsSchema = new Schema(
   { _id: false }
 );
 
-const ProposalSubjectInstanceSchema = new Schema(
+export const ProposalSubjectInstanceSchema = new Schema(
   {
     id: { type: Number, required: true },
     optionGroups: { type: [ProposalSelectionSchema], default: [] },
@@ -168,7 +168,7 @@ const ProposalSubjectInstanceSchema = new Schema(
   { _id: false }
 );
 
-const ProposalSubjectSchema = new Schema(
+export const ProposalSubjectSchema = new Schema(
   {
     subjectId: { type: Number, required: true },
     instances: { type: [ProposalSubjectInstanceSchema], required: true },

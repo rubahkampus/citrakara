@@ -1,367 +1,387 @@
 // src/lib/db/models/ticket.model.ts
-import { Schema, Types } from "mongoose";
+import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate, Cents } from "@/types/common";
+import { ProposalGeneralOptionsSchema, ProposalSubjectSchema } from "./proposal.model";
 
-/*──────────────────── 1 ▸ Work Uploads ────────────────────*/
-export type WorkUploadStatus =
-  | "submitted" // artist sent, client hasn’t opened
-  | "reviewing" // client is looking at it (24 h window)
-  | "approved" // client accepted
-  | "rejected"; // client rejected → triggers (or ties to) a revision
-
-export interface WorkUpload {
-  kind: "progress" | "final";
-  milestoneIndex?: number; // always present in milestone flow
-  status: WorkUploadStatus;
-  /** If this upload is responding to a specific revision ticket. */
-  revisionTicketId?: ObjectId;
-  images: string[];
-  description?: string;
-  uploadedAt: ISODate;
-}
-
-export const WorkUploadSchema = new Schema<WorkUpload>(
-  {
-    kind: { type: String, enum: ["progress", "final"], required: true },
-    milestoneIndex: Number,
-    status: {
-      type: String,
-      enum: ["submitted", "reviewing", "approved", "rejected"],
-      required: true,
-    },
-    revisionTicketId: Types.ObjectId,
-    images: { type: [String], required: true },
-    description: String,
-    uploadedAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
-
-/*──────────────────── 2 ▸ Status history – unchanged ─────*/
-export type ContractStatus =
-  | "pending_start"
-  | "in_progress"
-  | "awaiting_review"
-  | "revising"
-  | "late"
-  | "cancelled"
-  | "disputed"
-  | "completed"
-  | "refunded";
-
-export interface HistoryEvent {
-  event: ContractStatus;
-  by: "client" | "artist" | "system" | "moderator";
-  at: ISODate;
-}
-
-export const HistorySchema = new Schema<HistoryEvent>(
-  {
-    event: {
-      type: String,
-      enum: [
-        "pending_start",
-        "in_progress",
-        "awaiting_review",
-        "revising",
-        "late",
-        "cancelled",
-        "disputed",
-        "completed",
-        "refunded",
-      ],
-      required: true,
-    },
-    by: {
-      type: String,
-      enum: ["client", "artist", "system", "moderator"],
-      required: true,
-    },
-    at: { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
-
-/*──────────────────── 3 ▸ Event log – unchanged ──────────*/
-export type ContractEventType =
-  | "status_change"
-  | "milestone_progress"
-  | "revision_requested"
-  | "revision_delivered"
-  | "cancel_opened"
-  | "cancel_resolved"
-  | "change_request"
-  | "change_applied"
-  | "late_flagged"
-  | "payout_released"
-  | "refund_issued";
-
-export interface ContractEvent {
-  type: ContractEventType;
-  timestamp: ISODate;
-  actor: "client" | "artist" | "system" | "admin";
-  actorId: ObjectId;
-  data?: Record<string, unknown>;
-}
-
-export const ContractEventSchema = new Schema<ContractEvent>(
-  {
-    type: {
-      type: String,
-      enum: [
-        "status_change",
-        "milestone_progress",
-        "revision_requested",
-        "revision_delivered",
-        "cancel_opened",
-        "cancel_resolved",
-        "change_request",
-        "change_applied",
-        "late_flagged",
-        "payout_released",
-        "refund_issued",
-      ],
-      required: true,
-    },
-    timestamp: { type: Date, default: Date.now },
-    actor: {
-      type: String,
-      enum: ["client", "artist", "system", "admin"],
-      required: true,
-    },
-    actorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    data: Schema.Types.Mixed,
-  },
-  { _id: false }
-);
-
-/*──────────────────── 4 ▸ Milestones ─────────────────────*/
-export interface Milestone {
-  title: string;
-  description?: string;
-  index: number;
-  percent: number;
-  status: "pending" | "in_progress" | "reviewing" | "approved" | "rejected";
-  startedAt?: ISODate;
-  completedAt?: ISODate;
-  /** Every upload ever submitted for this milestone */
-  uploads: WorkUpload[];
-  /** Final approved upload (null until accepted) */
-  acceptedUploadId?: ObjectId;
-  revisionsUsed: number;
-  revisionPolicy?: Record<string, unknown>;
-}
-
-export const MilestoneSchema = new Schema<Milestone>(
-  {
-    title: { type: String, required: true },
-    description: String,
-    index: { type: Number, required: true },
-    percent: { type: Number, min: 0, max: 100, required: true },
-    status: {
-      type: String,
-      enum: ["pending", "in_progress", "reviewing", "approved", "rejected"],
-      default: "pending",
-    },
-    startedAt: Date,
-    completedAt: Date,
-    uploads: [WorkUploadSchema],
-    acceptedUploadId: Types.ObjectId,
-    revisionsUsed: { type: Number, default: 0 },
-    revisionPolicy: Schema.Types.Mixed,
-  },
-  { _id: false }
-);
-
-/*──────────────────── 5 ▸ Tickets ────────────────────────*/
-/* 5a ▸ Revision */
-export interface RevisionTicket {
+/* ---------------------------------------------------------------------------
+   CancelTicket – client‑or‑artist request to terminate the contract early.
+   Approves/rejects, may escalate; actual payout is handled by FinalUpload +
+   contract.cancelSummary after ticket status = accepted/acceptedDisputed.
+--------------------------------------------------------------------------- */
+export interface ICancelTicket extends Document {
   _id: ObjectId;
-  milestoneIdx?: number;
-  description: string;
-  referenceImages?: string[];
+
+  requestedBy: "client" | "artist"; // who opened the ticket
+  reason: string; // free‑text justification
+
   status:
-    | "awaiting_artist"
-    | "artist_revising"
-    | "client_review"
-    | "awaiting_payment"
-    | "closed_success"
-    | "closed_rejected"
-    | "closed_out_of_scope"
-    | "closed_cancelled"
-    | "disputed"
-    | "closed_by_staff";
-  reviewExpiresAt?: ISODate;
-  paidFee?: Cents;
-  paymentTxnId?: ObjectId;
-  workUploadId?: ObjectId;
+    | "pending" // waiting for other party's response
+    | "accepted" // EOL | cancellation mutually agreed
+    | "forcedAccepted" // EOL | admin forced acceptance
+    | "rejected" // EOL except disputed before expired | except disputed before expired | declined by the other party
+    | "disputed"; // auto-escalated due to expiry or disagreement
+
+  createdAt: ISODate; // ticket opened
+  expiresAt: ISODate; // Cancellation is void if it does not end the reach the EOL in 48H  and becomes uninteractable other than dispute escalation and becomes uninteractable
+  resolvedAt?: ISODate; // When EOL is reached successfully -> move to FinalUpload model
 }
 
-export const RevisionTicketSchema = new Schema<RevisionTicket>(
-  {
-    _id: { type: Schema.Types.ObjectId, default: () => new Types.ObjectId() },
-    milestoneIdx: Number,
-    description: { type: String, required: true },
-    referenceImages: [String],
-    status: {
-      type: String,
-      enum: [
-        "awaiting_artist",
-        "artist_revising",
-        "client_review",
-        "awaiting_payment",
-        "closed_success",
-        "closed_rejected",
-        "closed_out_of_scope",
-        "closed_cancelled",
-        "disputed",
-        "closed_by_staff",
-      ],
-      default: "awaiting_artist",
-    },
-    reviewExpiresAt: Date,
-    paidFee: Number,
-    paymentTxnId: Types.ObjectId,
-    workUploadId: Types.ObjectId,
-  },
-  { _id: false }
-);
-
-/* 5b ▸ Cancel – unchanged */
-export interface CancelTicket {
+/* ---------------------------------------------------------------------------
+   RevisionTicket – client asks for a change to delivered work. May cost extra.
+   Flow: pending → accepted → (optional) paid → artist delivers RevisionUpload.
+--------------------------------------------------------------------------- */
+export interface IRevisionTicket extends Document {
   _id: ObjectId;
-  requestedBy: "client" | "artist";
-  requestedAt: ISODate;
-  reason: string;
-  status: "pending" | "accepted" | "rejected" | "escalated" | "resolved";
-  respondBy?: ISODate;
-  workPercentComplete?: number;
-  artistPayout?: Cents;
-  clientRefund?: Cents;
-}
-export const CancelTicketSchema = new Schema<CancelTicket>(
-  {
-    _id: { type: Schema.Types.ObjectId, default: () => new Types.ObjectId() },
-    requestedBy: { type: String, enum: ["client", "artist"], required: true },
-    requestedAt: { type: Date, default: Date.now },
-    reason: { type: String, required: true },
-    status: {
-      type: String,
-      enum: ["pending", "accepted", "rejected", "escalated", "resolved"],
-      default: "pending",
-    },
-    respondBy: Date,
-    workPercentComplete: Number,
-    artistPayout: Number,
-    clientRefund: Number,
-  },
-  { _id: false }
-);
 
-/* 5c ▸ Change  (restricted payload) */
-export interface ChangeSet {
-  deadlineAt?: ISODate;
-  generalOptions?: Record<string, unknown>;
-  subjectOptions?: Record<string, unknown>;
-}
+  milestoneIdx?: number | undefined; // if we're using flow == milestone and revision.type == milestone, undefined if revision type == standard
+  description: string; // what client wants changed
+  referenceImages?: string[]; // visual refs
 
-export interface ChangeTicket {
-  _id: ObjectId;
-  requestedBy: "client" | "artist";
-  requestedAt: ISODate;
-  changeSet: ChangeSet;
-  reason: string;
   status:
-    | "draft"
-    | "pending"
-    | "accepted"
-    | "rejected"
-    | "applied"
-    | "cancelled";
-  respondBy?: ISODate;
-  paidFee?: Cents;
-  transactionId?: ObjectId;
-  appliedAt?: ISODate;
-  contractVersionAfter?: number;
+    | "pending" // waiting on artist response
+    | "accepted" // artist agreed to do revision
+    | "forcedAcceptedArtist" // admin forced artist to revise, move to finalizedFree if free, if paid, wait for payment
+    | "rejected" // EOL except disputed before expired | artist refused revision
+    | "paid" // EOL | client paid any required fee
+    | "cancelled" // EOL | withdrawn before payment
+    | "disputed"; // client escalated further
+
+  resolved: boolean; // set true once upload accepted / flow ends
+  artistRejectionReason?: string; // filled if status = rejected
+
+  paidFee?: Cents | undefined; // fee per listing rules if paid, undefined if free
+  escrowTxnId?: ObjectId; // Escrow row for that fee
+
+  createdAt: ISODate; // ticket opened
+  expiresAt: ISODate; // Revision is void if it does not end the reach the EOL in 48H  and becomes uninteractable other than dispute escalation
+  resolvedAt?: ISODate; //  When EOL is reached successfully -> move to RevisionUpload model, track the revision in milestone or revision in IContract
 }
 
-export const ChangeTicketSchema = new Schema<ChangeTicket>(
+/* ---------------------------------------------------------------------------
+   ChangeTicket – client proposes spec/price changes post‑contract.  
+   Artist may accept, reject, or add a surcharge.  
+--------------------------------------------------------------------------- */
+export interface IChangeTicket extends Document {
+  _id: ObjectId;
+
+  createdAt: ISODate; // ticket opened
+  expiresAt?: ISODate; // Change is void if it does not end the reach the EOL in 48H  and becomes uninteractable other than dispute escalation
+
+  reason: string; // client's explanation
+  changeSet: {
+    // requested diffs
+    deadlineAt?: ISODate;
+    generalDescription: string;
+    referenceImages: string[];
+    generalOptions?: ProposalGeneralOptions;
+    subjectOptions?: ProposalSubjectOptions;
+  };
+
+  status:
+    | "pendingArtist" // waiting on artist action
+    | "pendingClient" // artist proposed surcharge, waiting on client
+    | "acceptedArtist" // artist OK -> if no surcharge proposed, it's auto to finalizedFree, if surcharge proposed, move to pendingClient
+    | "rejectedArtist" // EOL except disputed before expired | artist said no
+    | "rejectedClient" //  can be disputed before expired | client declined surcharge -> practically back at pendingArtist
+    | "forcedAcceptedClient" // admin forced client to pay the artist proposed surcharge
+    | "forcedAcceptedArtist" // admin forced artist to revise with paidFee determined by admin and client to pay
+    | "paid" // EOL | fee (if any) paid, change auto‑applied
+    | "cancelled"; // EOL | withdrawn or expired draft
+
+  isPaidChange: boolean; // if artist proposed surcharge
+  paidFee?: Cents; // surcharge amount, proposed by artist
+  escrowTxnId?: ObjectId; // Escrow row for surcharge
+
+  resolvedAt?: ISODate; // contract actually mutated
+  contractVersionBefore?: number; // old version
+  contractVersionAfter?: number; // version bump after apply
+}
+
+/* ---------------------------------------------------------------------------
+   ResolutionTicket - MUTABLE – single escalation vehicle for ALL disputes.
+   • Can target a CancelTicket, RevisionTicket, FinalUpload, or Milestone upload.
+   • Flow: 
+       open  → (counterparty may add proof within 24 h) → awaitingReview → resolved
+       OR    → cancelled automatically if the original item resolves first.
+   • Admin decides outcome once both proofs present or the counter window expires.
+--------------------------------------------------------------------------- */
+export interface IResolutionTicket extends Document {
+  _id: ObjectId;
+
+  /* ----- linkage ----- */
+  contractId: ObjectId; // parent contract (1‑to‑many)
+  submittedBy: "client" | "artist"; // who opened the dispute
+  submittedById: ObjectId; // user id of opener
+
+  /* the object being challenged */
+  targetType: "cancel" | "revision" | "final" | "milestone"; // entity class
+  targetId: ObjectId; // id of that entity
+
+  /* ----- initiator proof ----- */
+  description: string; // why they think it's wrong
+  proofImages?: string[]; // URLs (e.g. screenshots)
+
+  /* ----- counter‑proof ----- */
+  counterparty: "client" | "artist"; // who may respond
+  counterDescription?: string; // response text
+  counterProofImages?: string[]; // their evidence
+  counterExpiresAt: ISODate; // 24 h after ticket creation
+
+  /* ----- dispute workflow status ----- */
+  status:
+    | "open" // waiting for counterparty proof / timer running
+    | "awaitingReview" // both proofs in OR counter expired → admin time
+    | "resolved" // admin issued decision
+    | "cancelled"; // original ticket/upload resolved → dispute moot
+
+  /* ----- admin ruling (filled when status = resolved) ----- */
+  decision?: "favorClient" | "favorArtist"; // result
+  resolutionNote?: string; // moderator reasoning
+  resolvedBy?: ObjectId; // admin/mod id
+  resolvedAt?: ISODate; // final timestamp
+
+  createdAt: ISODate; // dispute opened
+}
+
+// Type import for ChangeTicket
+interface ProposalGeneralOptions {
+  // Add any properties from the original interface
+  [key: string]: any;
+}
+
+interface ProposalSubjectOptions {
+  // Add any properties from the original interface
+  [key: string]: any;
+}
+
+// Schema for CancelTicket
+const CancelTicketSchema = new Schema<ICancelTicket>(
   {
-    _id: { type: Schema.Types.ObjectId, default: () => new Types.ObjectId() },
-    requestedBy: { type: String, enum: ["client", "artist"], required: true },
-    requestedAt: { type: Date, default: Date.now },
-
-    changeSet: {
-      deadlineAt: Date,
-      generalOptions: Schema.Types.Mixed,
-      subjectOptions: Schema.Types.Mixed,
+    requestedBy: {
+      type: String,
+      enum: ["client", "artist"],
+      required: true,
     },
+    reason: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "accepted", "forcedAccepted", "rejected", "disputed"],
+      default: "pending",
+      required: true,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+    },
+    resolvedAt: {
+      type: Date,
+    },
+  },
+  { timestamps: true }
+);
 
-    reason: { type: String, required: true },
+// Schema for RevisionTicket
+const RevisionTicketSchema = new Schema<IRevisionTicket>(
+  {
+    milestoneIdx: {
+      type: Number,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    referenceImages: {
+      type: [String],
+    },
     status: {
       type: String,
       enum: [
-        "draft",
         "pending",
         "accepted",
+        "forcedAcceptedArtist",
         "rejected",
-        "applied",
+        "paid",
         "cancelled",
+        "disputed",
       ],
-      default: "draft",
-    },
-    respondBy: Date,
-    paidFee: Number,
-    transactionId: Schema.Types.ObjectId,
-    appliedAt: Date,
-    contractVersionAfter: Number,
-  },
-  { _id: false }
-);
-
-/* 5d ▸ Resolution – unchanged */
-export interface ResolutionTicket {
-  _id: ObjectId;
-  openedBy: "client" | "artist" | "admin";
-  openedAt: ISODate;
-  issue: string;
-  status: "open" | "under_review" | "resolved";
-  originalTicketId?: ObjectId;
-  ticketType?: "revision" | "cancel" | "change" | "late";
-  actionTaken?:
-    | "full_refund"
-    | "partial_refund"
-    | "release_funds"
-    | "no_action";
-  resolvedAt?: ISODate;
-  resolvedBy?: ObjectId;
-}
-export const ResolutionTicketSchema = new Schema<ResolutionTicket>(
-  {
-    _id: { type: Schema.Types.ObjectId, default: () => new Types.ObjectId() },
-    openedBy: {
-      type: String,
-      enum: ["client", "artist", "admin"],
+      default: "pending",
       required: true,
     },
-    openedAt: { type: Date, default: Date.now },
-    issue: { type: String, required: true },
+    resolved: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    artistRejectionReason: {
+      type: String,
+    },
+    paidFee: {
+      type: Number,
+    },
+    escrowTxnId: {
+      type: Schema.Types.ObjectId,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+    },
+    resolvedAt: {
+      type: Date,
+    },
+  },
+  { timestamps: true }
+);
+
+// Schema for ChangeTicket
+const ChangeTicketSchema = new Schema<IChangeTicket>(
+  {
+    reason: {
+      type: String,
+      required: true,
+    },
+    changeSet: {
+      deadlineAt: {
+        type: Date,
+      },
+      generalDescription: {
+        type: String,
+        required: true,
+      },
+      referenceImages: {
+        type: [String],
+        required: true,
+      },
+      generalOptions: { type: ProposalGeneralOptionsSchema, default: {} },
+      subjectOptions: { type: [ProposalSubjectSchema], default: [] },
+    },
     status: {
       type: String,
-      enum: ["open", "under_review", "resolved"],
-      default: "open",
+      enum: [
+        "pendingArtist",
+        "pendingClient",
+        "acceptedArtist",
+        "rejectedArtist",
+        "rejectedClient",
+        "forcedAcceptedClient",
+        "forcedAcceptedArtist",
+        "paid",
+        "cancelled",
+      ],
+      default: "pendingArtist",
+      required: true,
     },
-    originalTicketId: Schema.Types.ObjectId,
-    ticketType: {
-      type: String,
-      enum: ["revision", "cancel", "change", "late"],
+    isPaidChange: {
+      type: Boolean,
+      required: true,
     },
-    actionTaken: {
-      type: String,
-      enum: ["full_refund", "partial_refund", "release_funds", "no_action"],
+    paidFee: {
+      type: Number,
     },
-    resolvedAt: Date,
-    resolvedBy: Schema.Types.ObjectId,
+    escrowTxnId: {
+      type: Schema.Types.ObjectId,
+    },
+    expiresAt: {
+      type: Date,
+    },
+    resolvedAt: {
+      type: Date,
+    },
+    contractVersionBefore: {
+      type: Number,
+    },
+    contractVersionAfter: {
+      type: Number,
+    },
   },
-  { _id: false }
+  { timestamps: true }
 );
+
+// Schema for ResolutionTicket
+const ResolutionTicketSchema = new Schema<IResolutionTicket>(
+  {
+    contractId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "Contract",
+    },
+    submittedBy: {
+      type: String,
+      enum: ["client", "artist"],
+      required: true,
+    },
+    submittedById: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+    },
+    targetType: {
+      type: String,
+      enum: ["cancel", "revision", "final", "milestone"],
+      required: true,
+    },
+    targetId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    proofImages: {
+      type: [String],
+    },
+    counterparty: {
+      type: String,
+      enum: ["client", "artist"],
+      required: true,
+    },
+    counterDescription: {
+      type: String,
+    },
+    counterProofImages: {
+      type: [String],
+    },
+    counterExpiresAt: {
+      type: Date,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["open", "awaitingReview", "resolved", "cancelled"],
+      default: "open",
+      required: true,
+    },
+    decision: {
+      type: String,
+      enum: ["favorClient", "favorArtist"],
+    },
+    resolutionNote: {
+      type: String,
+    },
+    resolvedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+    resolvedAt: {
+      type: Date,
+    },
+  },
+  { timestamps: true }
+);
+
+// Create and export the models
+export const CancelTicket =
+  models.CancelTicket ||
+  model<ICancelTicket>("CancelTicket", CancelTicketSchema);
+export const RevisionTicket =
+  models.RevisionTicket ||
+  model<IRevisionTicket>("RevisionTicket", RevisionTicketSchema);
+export const ChangeTicket =
+  models.ChangeTicket ||
+  model<IChangeTicket>("ChangeTicket", ChangeTicketSchema);
+export const ResolutionTicket =
+  models.ResolutionTicket ||
+  model<IResolutionTicket>("ResolutionTicket", ResolutionTicketSchema);

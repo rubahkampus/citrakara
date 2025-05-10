@@ -4,16 +4,16 @@ import type { ObjectId, ISODate, Cents } from "@/types/common";
 
 export interface IWallet extends Document {
   _id: ObjectId;
-  user: ObjectId;
-  saldoAvailable: Cents; // can be spent or withdrawn
-  saldoEscrowed: Cents; // held for commissions in progress
+  userId: ObjectId; // owner user
+  saldoAvailable: Cents; // withdrawable / spendable
+  saldoEscrowed: Cents; // locked in contracts
   createdAt: ISODate;
   updatedAt: ISODate;
 }
 
 const WalletSchema = new Schema<IWallet>(
   {
-    user: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,

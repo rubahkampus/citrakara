@@ -23,33 +23,74 @@ export async function getContractById(
   contractId: string | ObjectId,
   userId: string
 ): Promise<IContract> {
-  await connectDB();
+  try {
+    await connectDB();
 
-  const contract = await contractRepo.findContractById(contractId, {
-    lean: true,
-    populate: [
-      "cancelTickets",
-      "revisionTickets",
-      "changeTickets",
-      "resolutionTickets",
-    ],
-  });
+    // Try to populate everything but catch specific errors
+    try {
+      const contract = await contractRepo.findContractById(contractId, {
+        lean: true,
+        populate: [
+          "cancelTickets",
+          "revisionTickets",
+          "changeTickets",
+          "resolutionTickets",
+        ],
+      });
 
-  if (!contract) {
-    throw new HttpError("Contract not found", 404);
+      if (!contract) {
+        throw new HttpError("Contract not found", 404);
+      }
+
+      // Verify user is part of the contract
+      const isClient = contract.clientId.toString() === userId;
+      const isArtist = contract.artistId.toString() === userId;
+
+      if (!isClient && !isArtist) {
+        throw new HttpError("Not authorized to view this contract", 403);
+      }
+
+      return contract;
+    } catch (error) {
+      // If the error is related to missing model registration, try again without populating
+      if (error instanceof Error && error.name === "MissingSchemaError") {
+        console.warn(
+          "Schema registration issue detected, fetching without population"
+        );
+
+        const contract = await contractRepo.findContractById(contractId, {
+          lean: true,
+          // Skip population
+        });
+
+        if (!contract) {
+          throw new HttpError("Contract not found", 404);
+        }
+
+        // Verify user is part of the contract
+        const isClient = contract.clientId.toString() === userId;
+        const isArtist = contract.artistId.toString() === userId;
+
+        if (!isClient && !isArtist) {
+          throw new HttpError("Not authorized to view this contract", 403);
+        }
+
+        // Provide empty arrays for the tickets that couldn't be populated
+        contract.cancelTickets = [];
+        contract.revisionTickets = [];
+        contract.changeTickets = [];
+        contract.resolutionTickets = [];
+
+        return contract;
+      }
+
+      throw error;
+    }
+  } catch (error) {
+    console.error("Error in getContractById:", error);
+    throw error;
   }
-
-  // Verify user is part of the contract
-  const isClient = contract.clientId.toString() === userId;
-  const isArtist = contract.artistId.toString() === userId;
-
-  if (!isClient && !isArtist) {
-    throw new HttpError("Not authorized to view this contract", 403);
-  }
-
-  return contract;
 }
-
 /**
  * Get all contracts for a user (as client, artist or both)
  */
@@ -161,15 +202,26 @@ export async function createContractFromProposal(
       proposal.listingSnapshot.flow === "milestone" &&
       proposal.listingSnapshot.milestones
     ) {
-      contractInput.milestones = proposal.listingSnapshot.milestones.map(
-        (m: any, idx: number) => ({
-          index: idx,
-          title: m.title,
-          percent: m.percent,
-          status: idx === 0 ? "inProgress" : "pending",
-          policy: m.policy,
-        })
-      );
+      if (proposal.listingSnapshot.revisions?.type === "milestone") {
+        contractInput.milestones = proposal.listingSnapshot.milestones.map(
+          (m: any, idx: number) => ({
+            index: idx,
+            title: m.title,
+            percent: m.percent,
+            status: idx === 0 ? "inProgress" : "pending",
+            revisionPolicy: m.policy,
+          })
+        )
+      } else {
+        contractInput.milestones = proposal.listingSnapshot.milestones.map(
+          (m: any, idx: number) => ({
+            index: idx,
+            title: m.title,
+            percent: m.percent,
+            status: idx === 0 ? "inProgress" : "pending"
+          })
+        )
+      } 
     }
 
     // Add revision policy if standard

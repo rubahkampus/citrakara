@@ -7,7 +7,7 @@ import { getAllResolutionTickets } from "@/lib/services/ticket.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/admin/
-// import AdminResolutionListPage from "@/components/dashboard/admin/AdminResolutionListPage";
+import AdminResolutionListPage from "@/components/dashboard/admin-resolution/AdminResolutionListPage";
 
 interface AdminResolutionPageProps {
   params: { username: string };
@@ -16,7 +16,8 @@ interface AdminResolutionPageProps {
 export default async function AdminResolutionPage({
   params,
 }: AdminResolutionPageProps) {
-  const { username } = params;
+  const param = await params
+  const { username } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -50,11 +51,11 @@ export default async function AdminResolutionPage({
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <AdminResolutionListPage
+        <AdminResolutionListPage
           username={username}
           tickets={serializedTickets}
-          userId={session.id}
-        /> */}
+          userId={(session as Session).id}
+        />
         <Box>
           <Typography variant="h6">Pending Resolution Tickets</Typography>
           {resolutionTickets.length === 0 ? (

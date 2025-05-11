@@ -6,7 +6,7 @@ import { findResolutionTicketById } from "@/lib/db/repositories/ticket.repositor
 import { getContractById } from "@/lib/services/contract.service";
 
 // This component would be created in src/components/dashboard/admin/
-// import AdminResolutionForm from "@/components/dashboard/admin/AdminResolutionForm";
+import AdminResolutionForm from "@/components/dashboard/admin-resolution/AdminResolutionForm";
 
 interface AdminResolutionDetailPageProps {
   params: {
@@ -18,7 +18,8 @@ interface AdminResolutionDetailPageProps {
 export default async function AdminResolutionDetailPage({
   params,
 }: AdminResolutionDetailPageProps) {
-  const { username, ticketId } = params;
+  const param = await params;
+  const { username, ticketId } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -227,11 +228,11 @@ export default async function AdminResolutionDetailPage({
           </Typography>
 
           {/* This component would be implemented separately */}
-          {/* <AdminResolutionForm
-            ticket={serializedTicket}
-            contract={serializedContract}
-            userId={session.id}
-          /> */}
+          <AdminResolutionForm
+            ticket={JSON.parse(JSON.stringify(ticket))}
+            contract={JSON.parse(JSON.stringify(contract))}
+            userId={(session as Session).id}
+          />
 
           <Box>
             <Typography sx={{ mb: 2 }}>

@@ -100,6 +100,8 @@ export async function createProgressUploadMilestone(
 
   // If it's a final milestone upload, add status and expiration
   if (input.isFinal) {
+    // TODO - Change the status at og milestone
+    
     upload.status = "submitted";
 
     // Set expiration date to 24 hours from now

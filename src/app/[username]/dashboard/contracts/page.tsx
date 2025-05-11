@@ -13,7 +13,8 @@ interface ContractsPageProps {
 }
 
 export default async function ContractsPage({ params }: ContractsPageProps) {
-  const username = params.username;
+  const param = params
+  const username = param.username;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {

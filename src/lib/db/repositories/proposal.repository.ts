@@ -611,18 +611,23 @@ export async function finalizeAcceptance(
 ): Promise<IProposal> {
   await connectDB();
 
-  const proposal = await Proposal.findById(toObjectId(id));
+  // If you want the initial read in the same session, do:
+  const findQuery = Proposal.findById(toObjectId(id));
+  if (session) findQuery.session(session);
+  const proposal = await findQuery;
+
   if (!proposal) {
     throw new Error("Proposal not found");
   }
-
   if (proposal.status !== "accepted") {
     throw new Error("Proposal is not in accepted status");
   }
 
   proposal.status = "paid";
 
-  return proposal.save().session(session || null);
+  // pass the session here:
+  await proposal.save({ session });
+  return proposal;
 }
 
 const DAY = 24 * 60 * 60 * 1000; // Number of milliseconds in a day

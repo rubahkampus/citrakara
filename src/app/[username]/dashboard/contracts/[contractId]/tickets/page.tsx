@@ -18,7 +18,8 @@ interface TicketsListPageProps {
 export default async function TicketsListPage({
   params,
 }: TicketsListPageProps) {
-  const { username, contractId } = params;
+  const param = await params
+  const { username, contractId } = await param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {

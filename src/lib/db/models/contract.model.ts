@@ -8,7 +8,10 @@ import {
   type ProposalGeneralOptions,
   type ProposalSubjectOptions,
 } from "./proposal.model";
-import { type RevisionPolicy, RevisionPolicySchema } from "./commissionListing.model";
+import {
+  type RevisionPolicy,
+  RevisionPolicySchema,
+} from "./commissionListing.model";
 import type {
   ICancelTicket,
   IRevisionTicket,
@@ -35,7 +38,7 @@ export interface IMilestone {
   revisionPolicy?: RevisionPolicy; // per‑milestone revision - If revision type == milestone
 
   startedAt?: ISODate; // first time artist worked, for first milestone is upon contract creation, for the next is upon previous completion
-  createdAt?: ISODate; // artist flagged final upload
+  submittedAt?: ISODate; // artist flagged final upload
   completedAt?: ISODate; // client accepted
 
   acceptedUploadId?: ObjectId; // ProgressUploadMilestone that closed this step
@@ -187,12 +190,12 @@ const MilestoneSchema = new Schema<IMilestone>({
     type: Number,
   },
   revisionPolicy: {
-    type: RevisionPolicySchema, 
+    type: RevisionPolicySchema,
   },
   startedAt: {
     type: Date,
   },
-  createdAt: {
+  submittedAt: {
     type: Date,
   },
   completedAt: {

@@ -5,8 +5,8 @@ import { findResolutionTicketById } from "@/lib/db/repositories/ticket.repositor
 import { getContractById } from "@/lib/services/contract.service";
 
 // This component would be created in src/components/dashboard/resolution/
-// import ResolutionTicketDetails from "@/components/dashboard/resolution/ResolutionTicketDetails";
-// import CounterproofForm from "@/components/dashboard/resolution/CounterproofForm";
+import ResolutionTicketDetails from "@/components/dashboard/resolution/ResolutionTicketDetails";
+import CounterproofForm from "@/components/dashboard/resolution/CounterproofForm";
 
 interface ResolutionDetailPageProps {
   params: {
@@ -18,7 +18,8 @@ interface ResolutionDetailPageProps {
 export default async function ResolutionDetailPage({
   params,
 }: ResolutionDetailPageProps) {
-  const { username, ticketId } = params;
+  const param = await params
+  const { username, ticketId } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -159,7 +160,7 @@ export default async function ResolutionDetailPage({
 
                 {/* This component would be implemented separately */}
                 {/* <CounterproofForm
-                  ticket={serializedTicket}
+                  ticket={JSON.parse(JSON.stringify(ticket))}
                   userId={session.id}
                 /> */}
 

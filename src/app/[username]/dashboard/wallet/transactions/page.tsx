@@ -6,7 +6,7 @@ import { getTransactions } from "@/lib/services/wallet.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/wallet/
-// import TransactionsPage from "@/components/dashboard/wallet/TransactionsPage";
+import TransactionsPage from "@/components/dashboard/wallet/TransactionsPage";
 
 interface TransactionsPageProps {
   params: { username: string };
@@ -15,7 +15,8 @@ interface TransactionsPageProps {
 export default async function WalletTransactionsPage({
   params,
 }: TransactionsPageProps) {
-  const { username } = params;
+  const param = await params;
+  const { username } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -40,10 +41,10 @@ export default async function WalletTransactionsPage({
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <TransactionsPage
+        <TransactionsPage
           username={username}
           transactions={serializedTransactions}
-        /> */}
+        />
         <Box>
           <Typography variant="h6">Recent Transactions</Typography>
           {transactions.length === 0 ? (

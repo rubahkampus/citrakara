@@ -6,7 +6,7 @@ import { getUserContracts } from "@/lib/services/contract.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/wallet/
-// import ClaimableContractsPage from "@/components/dashboard/wallet/ClaimableContractsPage";
+import ClaimableContractsPage from "@/components/dashboard/wallet/ClaimableContractsPage";
 
 interface ClaimableContractsPageProps {
   params: { username: string };
@@ -15,7 +15,8 @@ interface ClaimableContractsPageProps {
 export default async function WalletClaimableContractsPage({
   params,
 }: ClaimableContractsPageProps) {
-  const { username } = params;
+  const param = await params
+  const { username } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -67,12 +68,12 @@ export default async function WalletClaimableContractsPage({
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <ClaimableContractsPage
+        <ClaimableContractsPage
           username={username}
           asArtist={serializedAsArtist}
           asClient={serializedAsClient}
-          userId={session.id}
-        /> */}
+          userId={(session as Session).id}
+        />
         <Box>
           <Typography variant="h6">Claimable as Artist</Typography>
           {asArtist.length === 0 ? (

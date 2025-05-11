@@ -6,14 +6,15 @@ import { getResolutionTicketsByUser } from "@/lib/services/ticket.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/resolution/
-// import ResolutionListPage from "@/components/dashboard/resolution/ResolutionListPage";
+import ResolutionListPage from "@/components/dashboard/resolution/ResolutionListPage";
 
 interface ResolutionPageProps {
   params: { username: string };
 }
 
 export default async function ResolutionPage({ params }: ResolutionPageProps) {
-  const { username } = params;
+  const param = await params;
+  const { username } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -41,11 +42,11 @@ export default async function ResolutionPage({ params }: ResolutionPageProps) {
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <ResolutionListPage
+        <ResolutionListPage
           username={username}
           tickets={serializedTickets}
-          userId={session.id}
-        /> */}
+          userId={(session as Session).id}
+        />
         <Box>
           <Typography variant="h6">Your Resolution Tickets</Typography>
           {resolutionTickets.length === 0 ? (

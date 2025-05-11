@@ -19,7 +19,8 @@ interface UploadsListPageProps {
 export default async function UploadsListPage({
   params,
 }: UploadsListPageProps) {
-  const { username, contractId } = params;
+  const param = await params
+  const { username, contractId } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {

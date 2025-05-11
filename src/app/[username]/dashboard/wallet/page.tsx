@@ -6,14 +6,15 @@ import { getWalletSummary } from "@/lib/services/wallet.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/wallet/
-// import WalletDashboardPage from "@/components/dashboard/wallet/WalletDashboardPage";
+import WalletDashboardPage from "@/components/dashboard/wallet/WalletDashboardPage";
 
 interface WalletPageProps {
   params: { username: string };
 }
 
 export default async function WalletPage({ params }: WalletPageProps) {
-  const { username } = params;
+  const param = await params;
+  const { username } = param;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -36,10 +37,10 @@ export default async function WalletPage({ params }: WalletPageProps) {
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <WalletDashboardPage
+        <WalletDashboardPage
           username={username}
           walletSummary={walletSummary}
-        /> */}
+        />
         <Box>
           <Typography variant="h6">Wallet Summary</Typography>
           <Typography>Available Balance: {walletSummary.available}</Typography>

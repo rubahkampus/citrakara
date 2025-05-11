@@ -8,10 +8,10 @@ import { findChangeTicketById } from "@/lib/db/repositories/ticket.repository";
 import { findResolutionTicketById } from "@/lib/db/repositories/ticket.repository";
 
 // These components would be created in src/components/dashboard/contracts/tickets/
-// import CancelTicketDetails from "@/components/dashboard/contracts/tickets/CancelTicketDetails";
-// import RevisionTicketDetails from "@/components/dashboard/contracts/tickets/RevisionTicketDetails";
-// import ChangeTicketDetails from "@/components/dashboard/contracts/tickets/ChangeTicketDetails";
-// import ResolutionTicketDetails from "@/components/dashboard/contracts/tickets/ResolutionTicketDetails";
+import CancelTicketDetails from "@/components/dashboard/contracts/tickets/CancelTicketDetails";
+import RevisionTicketDetails from "@/components/dashboard/contracts/tickets/RevisionTicketDetails";
+import ChangeTicketDetails from "@/components/dashboard/contracts/tickets/ChangeTicketDetails";
+import ResolutionTicketDetails from "@/components/dashboard/contracts/tickets/ResolutionTicketDetails";
 
 interface TicketDetailsPageProps {
   params: { 
@@ -23,7 +23,8 @@ interface TicketDetailsPageProps {
 }
 
 export default async function TicketDetailsPage({ params }: TicketDetailsPageProps) {
-  const { username, contractId, ticketType, ticketId } = params;
+  const param = await params
+  const { username, contractId, ticketType, ticketId } = param;
   const session = await getAuthSession();
   
   if (!session || !isUserOwner(session as Session, username)) {
@@ -84,47 +85,43 @@ export default async function TicketDetailsPage({ params }: TicketDetailsPagePro
 
       {/* These would be implemented separately */}
       {ticketType === "cancel" && (
-        <Box>Cancel ticket details would be displayed here</Box>
-        // <CancelTicketDetails 
-        //   contract={serializedContract} 
-        //   ticket={serializedTicket} 
-        //   userId={session.id} 
-        //   isArtist={isArtist} 
-        //   isClient={isClient} 
-        // />
+        <CancelTicketDetails 
+          contract={serializedContract} 
+          ticket={serializedTicket} 
+          userId={(session as Session).id} 
+          isArtist={isArtist} 
+          isClient={isClient} 
+        />
       )}
 
       {ticketType === "revision" && (
-        <Box>Revision ticket details would be displayed here</Box>
-        // <RevisionTicketDetails 
-        //   contract={serializedContract} 
-        //   ticket={serializedTicket} 
-        //   userId={session.id} 
-        //   isArtist={isArtist} 
-        //   isClient={isClient} 
-        // />
+        <RevisionTicketDetails 
+          contract={serializedContract} 
+          ticket={serializedTicket} 
+          userId={(session as Session).id} 
+          isArtist={isArtist} 
+          isClient={isClient} 
+        />
       )}
 
       {ticketType === "change" && (
-        <Box>Change ticket details would be displayed here</Box>
-        // <ChangeTicketDetails 
-        //   contract={serializedContract} 
-        //   ticket={serializedTicket} 
-        //   userId={session.id} 
-        //   isArtist={isArtist} 
-        //   isClient={isClient} 
-        // />
+        <ChangeTicketDetails 
+          contract={serializedContract} 
+          ticket={serializedTicket} 
+          userId={(session as Session).id} 
+          isArtist={isArtist} 
+          isClient={isClient} 
+        />
       )}
 
       {ticketType === "resolution" && (
-        <Box>Resolution ticket details would be displayed here</Box>
-        // <ResolutionTicketDetails 
-        //   contract={serializedContract} 
-        //   ticket={serializedTicket} 
-        //   userId={session.id} 
-        //   isArtist={isArtist} 
-        //   isClient={isClient} 
-        // />
+        <ResolutionTicketDetails 
+          contract={serializedContract} 
+          ticket={serializedTicket} 
+          userId={(session as Session).id} 
+          isArtist={isArtist} 
+          isClient={isClient} 
+        />
       )}
     </Box>
   );

@@ -4,6 +4,7 @@ import Contract, { IContract } from "@/lib/db/models/contract.model";
 import { ClientSession, Types } from "mongoose";
 import type { ObjectId, ISODate } from "@/types/common";
 import { toObjectId } from "@/lib/utils/toObjectId";
+import { ensureModelsRegistered } from "../models";
 
 // Interface for creating a new contract
 export interface CreateContractInput {
@@ -36,35 +37,78 @@ export interface CreateContractInput {
     index: number;
     title: string;
     percent: number;
-    policy?: any;
+    revisionPolicy?: any;
   }>;
   revisionPolicy?: any;
 }
 
-// Find a contract by ID
+/**
+ * Find contract by ID with robust error handling
+ */
 export async function findContractById(
-  id: string | ObjectId,
-  options?: { lean?: boolean; populate?: string[]; session?: ClientSession }
+  contractId: string | ObjectId,
+  options: {
+    session?: ClientSession;
+    lean?: boolean;
+    populate?: string[];
+  } = {}
 ): Promise<IContract | null> {
-  await connectDB();
+  try {
+    // Ensure all models are registered
+    ensureModelsRegistered();
 
-  let query = Contract.findById(toObjectId(id));
+    const { session, lean = false, populate = [] } = options;
 
-  if (options?.populate) {
-    options.populate.forEach((path) => {
-      query = query.populate(path);
-    });
+    let query = Contract.findById(contractId);
+
+    // Apply population if requested
+    if (populate && populate.length > 0) {
+      try {
+        populate.forEach((path) => {
+          query = query.populate(path);
+        });
+      } catch (err) {
+        console.warn(
+          `Population error for path(s) ${populate.join(", ")}:`,
+          err
+        );
+        // Continue without population
+      }
+    }
+
+    if (session) {
+      query = query.session(session);
+    }
+
+    if (lean) {
+      query = query.lean();
+    }
+
+    return await query.exec();
+  } catch (error) {
+    console.error("Error in findContractById:", error);
+    // If it's a specific model error, try again without population
+    if (error instanceof Error && error.name === "MissingSchemaError") {
+      try {
+        const { session, lean = false } = options;
+        let query = Contract.findById(contractId);
+
+        if (session) {
+          query = query.session(session);
+        }
+
+        if (lean) {
+          query = query.lean();
+        }
+
+        return await query.exec();
+      } catch (fallbackError) {
+        console.error("Fallback query also failed:", fallbackError);
+        throw fallbackError;
+      }
+    }
+    throw error;
   }
-
-  if (options?.session) {
-    query = query.session(options.session);
-  }
-
-  if (options?.lean) {
-    return query.lean<IContract>();
-  }
-
-  return query;
 }
 
 // Find contracts by user (as client or artist)
@@ -318,7 +362,7 @@ export async function updateMilestoneStatus(
   if (status === "inProgress" && !milestone.startedAt) {
     milestone.startedAt = new Date();
   } else if (status === "submitted") {
-    milestone.createdAt = new Date();
+    milestone.submittedAt = new Date();
   } else if (status === "accepted") {
     milestone.completedAt = new Date();
 

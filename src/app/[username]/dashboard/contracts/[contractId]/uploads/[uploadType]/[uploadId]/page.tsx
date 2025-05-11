@@ -15,11 +15,11 @@ import {
 } from "@/lib/db/models/upload.model";
 
 // These components would be created in src/components/dashboard/contracts/uploads/
-// import ProgressUploadDetails from "@/components/dashboard/contracts/uploads/ProgressUploadDetails";
-// import MilestoneUploadDetails from "@/components/dashboard/contracts/uploads/MilestoneUploadDetails";
-// import RevisionUploadDetails from "@/components/dashboard/contracts/uploads/RevisionUploadDetails";
-// import FinalUploadDetails from "@/components/dashboard/contracts/uploads/FinalUploadDetails";
-// import UploadReviewForm from "@/components/dashboard/contracts/uploads/UploadReviewForm";
+import ProgressUploadDetails from "@/components/dashboard/contracts/uploads/ProgressUploadDetails";
+import MilestoneUploadDetails from "@/components/dashboard/contracts/uploads/MilestoneUploadDetails";
+import RevisionUploadDetails from "@/components/dashboard/contracts/uploads/RevisionUploadDetails";
+import FinalUploadDetails from "@/components/dashboard/contracts/uploads/FinalUploadDetails";
+import UploadReviewForm from "@/components/dashboard/contracts/uploads/UploadReviewForm";
 
 interface UploadDetailsPageProps {
   params: {
@@ -37,8 +37,10 @@ export default async function UploadDetailsPage({
   params,
   searchParams,
 }: UploadDetailsPageProps) {
-  const { username, contractId, uploadType, uploadId } = params;
-  const showReview = searchParams.review === "true";
+  const param = await params
+  const searchParam = await searchParams
+  const { username, contractId, uploadType, uploadId } = param;
+  const showReview = searchParam.review === "true";
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -132,14 +134,13 @@ export default async function UploadDetailsPage({
       {showReview && uploadType !== "progress" ? (
         // Review Form Mode
         <Box>
-          {/* This would be implemented separately */}
-          {/* <UploadReviewForm
+          <UploadReviewForm
             contract={serializedContract}
             upload={serializedUpload}
             uploadType={uploadType}
             userId={(session as Session).id}
             isPastDeadline={isPastDeadline}
-          /> */}
+          />
           <Box>
             <Typography>Upload review form would be displayed here</Typography>
             <Typography>
@@ -160,14 +161,13 @@ export default async function UploadDetailsPage({
         <Box>
           {/* These would be implemented separately */}
           {uploadType === "progress" && (
-            <Box>Progress upload details would be displayed here</Box>
-            // <ProgressUploadDetails
-            //   contract={serializedContract}
-            //   upload={serializedUpload}
-            //   userId={(session as Session).id}
-            //   isArtist={isArtist}
-            //   isClient={isClient}
-            // />
+            <ProgressUploadDetails
+              contract={serializedContract}
+              upload={serializedUpload}
+              userId={(session as Session).id}
+              isArtist={isArtist}
+              isClient={isClient}
+            />
           )}
 
           {uploadType === "milestone" && (
@@ -189,15 +189,15 @@ export default async function UploadDetailsPage({
                   </Button>
                 </Box>
               )}
+              <MilestoneUploadDetails
+                contract={serializedContract}
+                upload={serializedUpload}
+                userId={(session as Session).id}
+                isArtist={isArtist}
+                isClient={isClient}
+                canReview={canReview}
+              />
             </Box>
-            // <MilestoneUploadDetails
-            //   contract={serializedContract}
-            //   upload={serializedUpload}
-            //   userId={(session as Session).id}
-            //   isArtist={isArtist}
-            //   isClient={isClient}
-            //   canReview={canReview}
-            // />
           )}
 
           {uploadType === "revision" && (
@@ -219,15 +219,15 @@ export default async function UploadDetailsPage({
                   </Button>
                 </Box>
               )}
+              <RevisionUploadDetails
+                contract={serializedContract}
+                upload={serializedUpload}
+                userId={(session as Session).id}
+                isArtist={isArtist}
+                isClient={isClient}
+                canReview={canReview}
+              />
             </Box>
-            // <RevisionUploadDetails
-            //   contract={serializedContract}
-            //   upload={serializedUpload}
-            //   userId={(session as Session).id}
-            //   isArtist={isArtist}
-            //   isClient={isClient}
-            //   canReview={canReview}
-            // />
           )}
 
           {uploadType === "final" && (
@@ -249,15 +249,15 @@ export default async function UploadDetailsPage({
                   </Button>
                 </Box>
               )}
+              <FinalUploadDetails
+                contract={serializedContract}
+                upload={serializedUpload}
+                userId={(session as Session).id}
+                isArtist={isArtist}
+                isClient={isClient}
+                canReview={canReview}
+              />
             </Box>
-            // <FinalUploadDetails
-            //   contract={serializedContract}
-            //   upload={serializedUpload}
-            //   userId={(session as Session).id}
-            //   isArtist={isArtist}
-            //   isClient={isClient}
-            //   canReview={canReview}
-            // />
           )}
         </Box>
       )}

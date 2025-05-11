@@ -888,38 +888,7 @@ export default function ProposalDetailsPage({
         {/* Timeline for proposal progress */}
         <Box
           sx={{ mt: 3, pt: 2, borderTop: "1px dashed", borderColor: "divider" }}
-        >
-          {/* <Stepper
-            activeStep={
-              proposal.status === "pendingArtist"
-                ? 0
-                : proposal.status === "pendingClient" ||
-                  proposal.status === "rejectedClient"
-                ? 1
-                : proposal.status === "accepted"
-                ? 2
-                : proposal.status === "paid"
-                ? 3
-                : 0
-            }
-            alternativeLabel
-          >
-            {getTimelineSteps().map((step, index) => (
-              <Step key={index} completed={step.completed}>
-                <StepLabel
-                  StepIconProps={{
-                    icon: step.icon || index + 1,
-                  }}
-                >
-                  <Typography variant="body2">{step.label}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {step.date}
-                  </Typography>
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper> */}
-        </Box>
+        ></Box>
       </Paper>
 
       {/* Response Form Section */}
@@ -1172,68 +1141,6 @@ export default function ProposalDetailsPage({
             </TableBody>
           </Table>
         </TableContainer>
-
-        {/* Price adjustments section */}
-        {/* {(proposal.artistAdjustments?.proposedSurcharge ||
-          proposal.artistAdjustments?.proposedDiscount) && (
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 3,
-              borderRadius: 1,
-              bgcolor: "background.default",
-              borderLeft: 3,
-              borderColor:
-                proposal.status === "rejectedClient"
-                  ? "error.light"
-                  : "warning.light",
-            }}
-          >
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: "medium", mb: 2 }}
-            >
-              Artist's Proposed Adjustments{" "}
-              {proposal.status === "rejectedClient" ? "- Rejected" : ""}
-            </Typography>
-            <Grid container spacing={2}>
-              {proposal.artistAdjustments?.proposedSurcharge && (
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">
-                    Proposed Surcharge
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    color="error.main"
-                    sx={{ fontWeight: "medium" }}
-                  >
-                    +
-                    {formatCurrency(
-                      proposal.artistAdjustments.proposedSurcharge
-                    )}
-                  </Typography>
-                </Grid>
-              )}
-              {proposal.artistAdjustments?.proposedDiscount && (
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">
-                    Proposed Discount
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    color="success.main"
-                    sx={{ fontWeight: "medium" }}
-                  >
-                    -
-                    {formatCurrency(
-                      proposal.artistAdjustments.proposedDiscount
-                    )}
-                  </Typography>
-                </Grid>
-              )}
-            </Grid>
-          </Paper>
-        )} */}
       </Paper>
 
       {/* Rush Details if applicable */}
@@ -1265,7 +1172,7 @@ export default function ProposalDetailsPage({
                 Rush Days
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                {proposal.rush.days}
+                {proposal.rush.days < 0 ? 0 : proposal.rush.days}
               </Typography>
             </Grid>
             {proposal.rush.paidDays !== undefined && (

@@ -270,7 +270,22 @@ function processPayloadWithIds(
           const questionsArr = Array.isArray(processedSubject.questions)
             ? processedSubject.questions
             : [];
-          processedSubject.questions = questionsArr;
+          processedSubject.questions = questionsArr.map((q, idx) => {
+            // Handle both string questions and objects with 'title' field (legacy format)
+            if (typeof q === "string") {
+              return { id: idx + 1, text: q };
+            } else if (typeof q === "object" && q !== null) {
+              if ("title" in q) {
+                return { id: idx + 1, text: q.title as string };
+              } else if ("label" in q) {
+                return {
+                  id: "id" in q ? (q.id as ID) : idx + 1,
+                  text: q.label as string,
+                };
+              }
+            }
+            return { id: idx + 1, text: String(q) };
+          });
         }
 
         return processedSubject;

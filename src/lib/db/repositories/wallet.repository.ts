@@ -52,7 +52,7 @@ export async function addFundsToWallet(
   await connectDB();
 
   return Wallet.findOneAndUpdate(
-    { userId: toObjectId(userId) },
+    { user: toObjectId(userId) },
     { $inc: { saldoAvailable: amount } },
     { new: true, session }
   );
@@ -67,7 +67,7 @@ export async function moveToEscrow(
   await connectDB();
 
   // Find the wallet first to check if it has enough funds
-  const wallet = await Wallet.findOne({ userId: toObjectId(userId) }).session(
+  const wallet = await Wallet.findOne({ user: toObjectId(userId) }).session(
     session || null
   );
 
@@ -76,7 +76,7 @@ export async function moveToEscrow(
   }
 
   return Wallet.findOneAndUpdate(
-    { userId: toObjectId(userId) },
+    { user: toObjectId(userId) },
     {
       $inc: {
         saldoAvailable: -amount,
@@ -96,7 +96,7 @@ export async function releaseFromEscrowToArtist(
   await connectDB();
 
   return Wallet.findOneAndUpdate(
-    { userId: toObjectId(userId) },
+    { user: toObjectId(userId) },
     { $inc: { saldoAvailable: amount } },
     { new: true, session }
   );
@@ -111,7 +111,7 @@ export async function refundFromEscrowToClient(
   await connectDB();
 
   return Wallet.findOneAndUpdate(
-    { userId: toObjectId(userId) },
+    { user: toObjectId(userId) },
     { $inc: { saldoAvailable: amount } },
     { new: true, session }
   );
@@ -126,7 +126,7 @@ export async function reduceEscrowBalance(
   await connectDB();
 
   return Wallet.findOneAndUpdate(
-    { userId: toObjectId(userId) },
+    { user: toObjectId(userId) },
     { $inc: { saldoEscrowed: -amount } },
     { new: true, session }
   );
@@ -143,7 +143,7 @@ export async function getWalletSummary(
 } | null> {
   await connectDB();
 
-  const wallet = await Wallet.findOne({ userId: toObjectId(userId) }).session(
+  const wallet = await Wallet.findOne({ user: toObjectId(userId) }).session(
     session || null
   );
 
@@ -169,14 +169,14 @@ export async function transferBetweenUsers(
 
   // Deduct from source user
   await Wallet.findOneAndUpdate(
-    { userId: toObjectId(fromUserId) },
+    { user: toObjectId(fromUserId) },
     { $inc: { saldoAvailable: -amount } },
     { session }
   );
 
   // Add to target user
   await Wallet.findOneAndUpdate(
-    { userId: toObjectId(toUserId) },
+    { user: toObjectId(toUserId) },
     { $inc: { saldoAvailable: amount } },
     { session }
   );
@@ -190,7 +190,7 @@ export async function hasSufficientFunds(
 ): Promise<boolean> {
   await connectDB();
 
-  const wallet = await Wallet.findOne({ userId: toObjectId(userId) }).session(
+  const wallet = await Wallet.findOne({ user: toObjectId(userId) }).session(
     session || null
   );
 

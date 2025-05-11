@@ -1,5 +1,5 @@
 // src/lib/db/repositories/proposal.repository.ts
-import mongoose, { ObjectId, Schema, Types } from "mongoose";
+import mongoose, { ClientSession, ObjectId, Schema, Types } from "mongoose";
 import { connectDB } from "@/lib/db/connection";
 import Proposal, { IProposal } from "@/lib/db/models/proposal.model";
 import CommissionListing from "@/lib/db/models/commissionListing.model";
@@ -606,7 +606,8 @@ export async function expireProposal(id: string | ObjectId): Promise<void> {
 }
 
 export async function finalizeAcceptance(
-  id: string | ObjectId
+  id: string | Types.ObjectId | Schema.Types.ObjectId,
+  session?: ClientSession
 ): Promise<IProposal> {
   await connectDB();
 
@@ -621,7 +622,7 @@ export async function finalizeAcceptance(
 
   proposal.status = "paid";
 
-  return proposal.save();
+  return proposal.save().session(session || null);
 }
 
 const DAY = 24 * 60 * 60 * 1000; // Number of milliseconds in a day

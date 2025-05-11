@@ -817,12 +817,12 @@ const InstanceCard = React.memo(
                 <CardContent>
                   {subject.questions.map(
                     (
-                      questionObj: { id: string; label: string },
+                      questionObj: { id: string; text: string },
                       idx: number
                     ) => (
                       <QuestionField
                         key={questionObj.id}
-                        question={questionObj.label}
+                        question={questionObj.text}
                         value={getQuestionAnswer(Number(questionObj.id))}
                         onChange={(value) =>
                           handleQuestionChange(questionObj.id, value)

@@ -250,27 +250,29 @@ export default function ClientRespondForm({
                     variant="contained"
                     color="primary"
                     startIcon={<CheckCircleIcon />}
-                    onClick={handleProceedToPayment}
-                    disabled={loading}
+                    disabled={true}
                     fullWidth
                   >
-                    Proceed to Payment
+                    Accepted
                   </Button>
                 )}
               </Stack>
             </>
           )}
 
-          {proposal.status === "accepted" && (
+          {(proposal.status === "accepted" || proposal.status === "paid") && (
             <Button
               variant="contained"
               color="primary"
               startIcon={<CheckCircleIcon />}
               onClick={handleProceedToPayment}
-              disabled={loading}
+              disabled={loading && proposal.status == "paid"}
               fullWidth
+              sx={{ mt: 2 }}
             >
-              Proceed to Payment
+              {proposal.status == "accepted"
+                ? "Proceed to Payment"
+                : "Proposal Paid"}
             </Button>
           )}
 

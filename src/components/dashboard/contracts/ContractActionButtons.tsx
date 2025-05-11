@@ -1,4 +1,6 @@
 // src/components/dashboard/contracts/ContractActionButtons.tsx
+'use client'
+
 import React from "react";
 import { Box, Button, Stack } from "@mui/material";
 import Link from "next/link";

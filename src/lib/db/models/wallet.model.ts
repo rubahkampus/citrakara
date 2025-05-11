@@ -4,7 +4,7 @@ import type { ObjectId, ISODate, Cents } from "@/types/common";
 
 export interface IWallet extends Document {
   _id: ObjectId;
-  userId: ObjectId; // owner user
+  user: ObjectId; // owner user
   saldoAvailable: Cents; // withdrawable / spendable
   saldoEscrowed: Cents; // locked in contracts
   createdAt: ISODate;
@@ -13,7 +13,7 @@ export interface IWallet extends Document {
 
 const WalletSchema = new Schema<IWallet>(
   {
-    userId: {
+    user: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,

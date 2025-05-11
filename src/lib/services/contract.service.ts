@@ -5,12 +5,16 @@ import * as escrowService from "./escrowTransaction.service";
 import * as walletService from "./wallet.service";
 import * as uploadRepo from "@/lib/db/repositories/upload.repository";
 import * as ticketRepo from "@/lib/db/repositories/ticket.repository";
-import { findProposalById } from "@/lib/db/repositories/proposal.repository";
+import {
+  finalizeAcceptance,
+  findProposalById,
+} from "@/lib/db/repositories/proposal.repository";
 import { HttpError } from "./commissionListing.service";
 import { applySlotDelta } from "./commissionListing.service";
 import { IContract } from "../db/models/contract.model";
 import { connectDB } from "../db/connection";
 import { ClientSession, startSession } from "mongoose";
+import { toObjectId } from "../utils/toObjectId";
 
 /**
  * Get contract by ID
@@ -182,6 +186,8 @@ export async function createContractFromProposal(
       contract._id,
       session
     );
+
+    await finalizeAcceptance(proposalId, session);
 
     await session.commitTransaction();
 

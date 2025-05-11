@@ -17,15 +17,18 @@ import {
   Paper,
   Card,
   CardContent,
-  Stack,
-  Chip,
-  TextField,
   Stepper,
   Step,
   StepLabel,
+  Avatar,
+  Checkbox,
+  FormGroup,
+  Stack,
 } from "@mui/material";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
+import PaymentIcon from "@mui/icons-material/Payment";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { useRouter } from "next/navigation";
@@ -45,6 +48,82 @@ interface ProposalPaymentDialogProps {
   artistName: string;
 }
 
+// Indonesian payment methods
+const indonesianPaymentMethods = [
+  {
+    value: "gopay",
+    label: "GoPay",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Gopay_logo.svg/512px-Gopay_logo.svg.png",
+    category: "ewallet",
+  },
+  {
+    value: "ovo",
+    label: "OVO",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Logo_ovo_purple.svg/512px-Logo_ovo_purple.svg.png",
+    category: "ewallet",
+  },
+  {
+    value: "dana",
+    label: "DANA",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/512px-Logo_dana_blue.svg.png",
+    category: "ewallet",
+  },
+  {
+    value: "linkaja",
+    label: "LinkAja",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/LinkAja.svg/512px-LinkAja.svg.png",
+    category: "ewallet",
+  },
+  {
+    value: "shopeepay",
+    label: "ShopeePay",
+    icon: "https://luckydraw.id/wp-content/uploads/2021/01/shopee-pay-logo.png",
+    category: "ewallet",
+  },
+  {
+    value: "bca",
+    label: "BCA Virtual Account",
+    icon: "https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BCA_logo.svg/512px-BCA_logo.svg.png",
+    category: "bank",
+  },
+  {
+    value: "bni",
+    label: "BNI Virtual Account",
+    icon: "https://upload.wikimedia.org/wikipedia/id/thumb/5/55/BNI_logo.svg/512px-BNI_logo.svg.png",
+    category: "bank",
+  },
+  {
+    value: "bri",
+    label: "BRI Virtual Account",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/BRI_2020.svg/512px-BRI_2020.svg.png",
+    category: "bank",
+  },
+  {
+    value: "mandiri",
+    label: "Mandiri Virtual Account",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Bank_Mandiri_logo_2016.svg/512px-Bank_Mandiri_logo_2016.svg.png",
+    category: "bank",
+  },
+  {
+    value: "alfamart",
+    label: "Alfamart",
+    icon: "https://upload.wikimedia.org/wikipedia/id/thumb/9/9d/Logo_Alfamart.png/512px-Logo_Alfamart.png",
+    category: "retail",
+  },
+  {
+    value: "indomaret",
+    label: "Indomaret",
+    icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Logo_Indomaret.png/512px-Logo_Indomaret.png",
+    category: "retail",
+  },
+  {
+    value: "card",
+    label: "Kartu Kredit/Debit",
+    icon: "",
+    category: "card",
+  },
+];
+
 export default function ProposalPaymentDialog({
   open,
   onClose,
@@ -55,9 +134,8 @@ export default function ProposalPaymentDialog({
 }: ProposalPaymentDialogProps) {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "card">(
-    "wallet"
-  );
+  const [useWallet, setUseWallet] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<string>("gopay");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [walletDetails, setWalletDetails] = useState<WalletSummary | null>(
@@ -67,14 +145,16 @@ export default function ProposalPaymentDialog({
   const [success, setSuccess] = useState(false);
   const [contractId, setContractId] = useState<string | null>(null);
 
-  // Mock credit card state
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardName, setCardName] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCVC, setCardCVC] = useState("");
-
   // Steps for the payment process
-  const steps = ["Select Payment Method", "Payment Details", "Confirmation"];
+  const steps = ["Pilih Metode Pembayaran", "Konfirmasi"];
+
+  // Payment categories
+  const paymentCategories = [
+    { id: "ewallet", label: "E-Wallet" },
+    { id: "bank", label: "Virtual Account Bank" },
+    { id: "retail", label: "Minimarket" },
+    { id: "card", label: "Kartu Kredit/Debit" },
+  ];
 
   // Fetch wallet balance on component mount
   useEffect(() => {
@@ -88,18 +168,30 @@ export default function ProposalPaymentDialog({
     try {
       const response = await axiosClient.get("/api/wallet/balance");
       setWalletDetails(response.data);
+
+      // If wallet has insufficient funds, don't auto-select it
+      if (response.data.available < totalAmount) {
+        setUseWallet(false);
+      }
     } catch (err) {
       console.error("Error fetching wallet details:", err);
-      setError("Failed to load wallet information. Please try again.");
+      setError("Gagal memuat informasi dompet. Silakan coba lagi.");
+      setUseWallet(false);
     } finally {
       setWalletLoading(false);
     }
   };
 
+  const handleUseWalletChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setUseWallet(event.target.checked);
+  };
+
   const handlePaymentMethodChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setPaymentMethod(event.target.value as "wallet" | "card");
+    setPaymentMethod(event.target.value);
   };
 
   const handleNextStep = () => {
@@ -115,35 +207,41 @@ export default function ProposalPaymentDialog({
     setError(null);
 
     try {
+      // Calculate how much to use from wallet
+      const walletAmount =
+        useWallet && walletDetails
+          ? Math.min(walletDetails.available, totalAmount)
+          : 0;
+
+      const remainingAmount = totalAmount - walletAmount;
+      const needsSecondaryPayment = remainingAmount > 0;
+
       // Calls the contract creation endpoint with payment details
       const response = await axiosClient.post(
         `/api/contract/create-from-proposal`,
         {
           proposalId,
-          paymentMethod,
+          paymentMethod:
+            useWallet && !needsSecondaryPayment
+              ? "wallet"
+              : useWallet && needsSecondaryPayment
+              ? "combo"
+              : "card",
+          secondaryMethod:
+            useWallet && needsSecondaryPayment ? "card" : null,
+          walletAmount,
+          remainingAmount,
           paymentAmount: totalAmount,
-          // Only include card details if using card payment method
-          ...(paymentMethod === "card"
-            ? {
-                card: {
-                  number: cardNumber,
-                  name: cardName,
-                  expiry: cardExpiry,
-                  cvc: cardCVC,
-                },
-              }
-            : {}),
         }
       );
 
       setContractId(response.data.contractId);
       setSuccess(true);
-      setActiveStep(2); // Move to confirmation step
+      setActiveStep(steps.length - 1); // Move to confirmation step
     } catch (err: any) {
       console.error("Error creating contract:", err);
       setError(
-        err.response?.data?.error ||
-          "Failed to create contract. Please try again."
+        err.response?.data?.error || "Gagal membuat kontrak. Silakan coba lagi."
       );
     } finally {
       setLoading(false);
@@ -152,7 +250,7 @@ export default function ProposalPaymentDialog({
 
   const handleCloseDialog = () => {
     if (success) {
-      // If successful, refresh the page or redirect to the new contract
+      // If successful, redirect to the new contract
       if (contractId) {
         router.push(`/contracts/${contractId}`);
       } else {
@@ -173,191 +271,174 @@ export default function ProposalPaymentDialog({
   const hasSufficientFunds =
     walletDetails && walletDetails.available >= totalAmount;
 
+  // Calculate wallet contribution and remaining amount
+  const walletContribution =
+    useWallet && walletDetails
+      ? Math.min(walletDetails.available, totalAmount)
+      : 0;
+  const remainingAmount = totalAmount - walletContribution;
+  const needsAdditionalPayment = useWallet && remainingAmount > 0;
+
   // Format currency as IDR
-  const formatCurrency = (amount: number) => `IDR ${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(amount);
 
   // Render payment method selection
   const renderPaymentMethodSelection = () => (
     <Box sx={{ p: 1 }}>
-      <Typography variant="subtitle1" gutterBottom>
-        Choose Payment Method
-      </Typography>
-
-      <RadioGroup value={paymentMethod} onChange={handlePaymentMethodChange}>
-        <Paper variant="outlined" sx={{ mb: 2, p: 2, borderRadius: 1 }}>
+      {/* Wallet Option */}
+      <Paper
+        variant="outlined"
+        sx={{
+          mb: 3,
+          p: 2,
+          borderRadius: 1,
+        }}
+      >
+        <FormGroup>
           <FormControlLabel
-            value="wallet"
-            control={<Radio />}
+            control={
+              <Checkbox
+                checked={useWallet}
+                onChange={handleUseWalletChange}
+                disabled={walletLoading || !walletDetails}
+              />
+            }
             label={
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <AccountBalanceWalletIcon sx={{ mr: 1 }} />
-                <Box>
-                  <Typography variant="body1">Pay from Wallet</Typography>
-                  {walletLoading ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Loading wallet balance...
-                    </Typography>
-                  ) : walletDetails ? (
-                    <Typography
-                      variant="body2"
-                      color={hasSufficientFunds ? "success.main" : "error.main"}
-                    >
-                      Available: {formatCurrency(walletDetails.available)}
-                    </Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Wallet balance unavailable
-                    </Typography>
-                  )}
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <AccountBalanceWalletIcon sx={{ mr: 1 }} />
+                  <Typography variant="body1">Gunakan Saldo Dompet</Typography>
                 </Box>
+                {walletLoading ? (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 4 }}
+                  >
+                    Memuat saldo dompet...
+                  </Typography>
+                ) : walletDetails ? (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 4 }}
+                  >
+                    Saldo: {formatCurrency(walletDetails.available)}
+                    {useWallet && !hasSufficientFunds && (
+                      <Box
+                        component="span"
+                        sx={{ color: "warning.main", fontWeight: "medium" }}
+                      >
+                        {` (${formatCurrency(
+                          walletContribution
+                        )} akan digunakan dari dompet)`}
+                      </Box>
+                    )}
+                  </Typography>
+                ) : (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 4 }}
+                  >
+                    Saldo dompet tidak tersedia
+                  </Typography>
+                )}
               </Box>
             }
           />
-        </Paper>
+        </FormGroup>
+      </Paper>
 
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-          <FormControlLabel
-            value="card"
-            control={<Radio />}
-            label={
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <CreditCardIcon sx={{ mr: 1 }} />
-                <Typography variant="body1">Credit/Debit Card</Typography>
-              </Box>
-            }
-          />
-        </Paper>
-      </RadioGroup>
-
-      {paymentMethod === "wallet" && !hasSufficientFunds && walletDetails && (
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          Insufficient funds in your wallet. Available:{" "}
-          {formatCurrency(walletDetails.available)}, Required:{" "}
-          {formatCurrency(totalAmount)}
-        </Alert>
-      )}
-    </Box>
-  );
-
-  // Render payment details based on selected method
-  const renderPaymentDetails = () => (
-    <Box sx={{ p: 1 }}>
-      {paymentMethod === "wallet" ? (
-        <Box>
-          <Typography variant="subtitle1" gutterBottom>
-            Wallet Payment
-          </Typography>
-
-          <Card variant="outlined" sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Available Balance
-              </Typography>
-              <Typography variant="h6">
-                {walletDetails
-                  ? formatCurrency(walletDetails.available)
-                  : "Loading..."}
-              </Typography>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="body2" color="text.secondary">
-                Payment Amount
-              </Typography>
-              <Typography variant="h6" color="primary.main">
-                {formatCurrency(totalAmount)}
-              </Typography>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="body2" color="text.secondary">
-                Remaining Balance After Payment
-              </Typography>
-              <Typography
-                variant="h6"
-                color={hasSufficientFunds ? "text.primary" : "error.main"}
-              >
-                {walletDetails
-                  ? formatCurrency(
-                      Math.max(0, walletDetails.available - totalAmount)
-                    )
-                  : "Loading..."}
-              </Typography>
-            </CardContent>
-          </Card>
-
-          {!hasSufficientFunds && walletDetails && (
-            <Alert severity="error">
-              You don't have enough funds in your wallet. Please add more funds
-              or use a different payment method.
-            </Alert>
-          )}
-        </Box>
-      ) : (
-        <Box>
-          <Typography variant="subtitle1" gutterBottom>
-            Card Payment
-          </Typography>
-
+      {/* Additional Payment Method Section */}
+      {(!useWallet || needsAdditionalPayment) && (
+        <>
           <Box sx={{ mb: 2 }}>
-            <TextField
-              label="Card Number"
-              variant="outlined"
-              fullWidth
-              margin="normal"
-              placeholder="1234 5678 9012 3456"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value)}
-              inputProps={{ maxLength: 19 }}
-            />
-
-            <TextField
-              label="Cardholder Name"
-              variant="outlined"
-              fullWidth
-              margin="normal"
-              placeholder="John Doe"
-              value={cardName}
-              onChange={(e) => setCardName(e.target.value)}
-            />
-
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <TextField
-                label="Expiry Date"
-                variant="outlined"
-                margin="normal"
-                placeholder="MM/YY"
-                value={cardExpiry}
-                onChange={(e) => setCardExpiry(e.target.value)}
-                inputProps={{ maxLength: 5 }}
-                sx={{ flex: 1 }}
-              />
-
-              <TextField
-                label="CVC"
-                variant="outlined"
-                margin="normal"
-                placeholder="123"
-                value={cardCVC}
-                onChange={(e) => setCardCVC(e.target.value)}
-                inputProps={{ maxLength: 3 }}
-                sx={{ flex: 1 }}
-              />
-            </Box>
+            <Typography variant="subtitle1" fontWeight="bold">
+              {useWallet && needsAdditionalPayment
+                ? `Pilih Metode Pembayaran untuk ${formatCurrency(
+                    remainingAmount
+                  )}`
+                : "Pilih Metode Pembayaran"}
+            </Typography>
           </Box>
 
-          <Alert severity="info" sx={{ mt: 2 }}>
-            This is a mock payment system. No real payment will be processed.
-            Any valid-looking card details will be accepted.
-          </Alert>
-        </Box>
+          {/* Payment method categories */}
+          <RadioGroup
+            value={paymentMethod}
+            onChange={handlePaymentMethodChange}
+          >
+            {paymentCategories.map((category) => {
+              const methodsInCategory = indonesianPaymentMethods.filter(
+                (method) => method.category === category.id
+              );
+
+              return (
+                <Paper
+                  key={category.id}
+                  variant="outlined"
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="body1" sx={{ mb: 1 }}>
+                    {category.label}
+                  </Typography>
+
+                  <Stack
+                    direction="row"
+                    flexWrap="wrap"
+                    gap={1}
+                    sx={{
+                      "& .MuiFormControlLabel-root": {
+                        margin: 0,
+                        minWidth: { xs: "45%", sm: "30%" },
+                      },
+                    }}
+                  >
+                    {methodsInCategory.map((method) => (
+                      <FormControlLabel
+                        key={method.value}
+                        value={method.value}
+                        control={<Radio size="small" />}
+                        label={
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            {method.icon ? (
+                              <Avatar
+                                src={method.icon}
+                                sx={{ width: 24, height: 24, mr: 1 }}
+                                variant="square"
+                              />
+                            ) : (
+                              <CreditCardIcon sx={{ fontSize: 24, mr: 1 }} />
+                            )}
+                            <Typography variant="body2">
+                              {method.label}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    ))}
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </RadioGroup>
+        </>
       )}
     </Box>
   );
 
   // Render confirmation page
   const renderConfirmation = () => (
-    <Box sx={{ p: 1, textAlign: "center" }}>
+    <Box sx={{ p: 1 }}>
       {success ? (
         <Box
           sx={{
@@ -365,14 +446,15 @@ export default function ProposalPaymentDialog({
             flexDirection: "column",
             alignItems: "center",
             gap: 2,
+            py: 3,
           }}
         >
           <CheckCircleIcon color="success" sx={{ fontSize: 60 }} />
           <Typography variant="h6" color="success.main">
-            Contract Created Successfully!
+            Kontrak Berhasil Dibuat!
           </Typography>
-          <Typography variant="body1">
-            Your contract with {artistName} has been created and funded.
+          <Typography variant="body1" textAlign="center">
+            Kontrak Anda dengan {artistName} telah berhasil dibuat dan didanai.
           </Typography>
           <Button
             variant="contained"
@@ -380,16 +462,16 @@ export default function ProposalPaymentDialog({
             onClick={viewContract}
             sx={{ mt: 2 }}
           >
-            View Contract
+            Lihat Kontrak
           </Button>
         </Box>
       ) : (
         <Box>
           <Typography variant="h6" gutterBottom>
-            Order Summary
+            Ringkasan Pembayaran
           </Typography>
 
-          <Card variant="outlined" sx={{ mb: 3, textAlign: "left" }}>
+          <Card variant="outlined" sx={{ mb: 3 }}>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
                 Proposal
@@ -399,39 +481,79 @@ export default function ProposalPaymentDialog({
               </Typography>
 
               <Typography variant="body2" color="text.secondary">
-                Artist
+                Seniman
               </Typography>
               <Typography variant="body1" gutterBottom>
                 {artistName}
               </Typography>
 
+              <Divider sx={{ my: 2 }} />
+
               <Typography variant="body2" color="text.secondary">
-                Payment Method
+                Metode Pembayaran
               </Typography>
-              <Typography variant="body1" gutterBottom>
-                {paymentMethod === "wallet"
-                  ? "Wallet Balance"
-                  : "Credit/Debit Card"}
-              </Typography>
+
+              {useWallet && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    mb: walletContribution < totalAmount ? 0.5 : 0,
+                  }}
+                >
+                  <AccountBalanceWalletIcon sx={{ mr: 1, fontSize: 20 }} />
+                  <Typography variant="body1">
+                    Dompet: {formatCurrency(walletContribution)}
+                  </Typography>
+                </Box>
+              )}
+
+              {(needsAdditionalPayment || !useWallet) && (
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  {paymentMethod === "card" ? (
+                    <CreditCardIcon sx={{ mr: 1, fontSize: 20 }} />
+                  ) : ["alfamart", "indomaret"].includes(paymentMethod) ? (
+                    <StorefrontIcon sx={{ mr: 1, fontSize: 20 }} />
+                  ) : (
+                    <PaymentIcon sx={{ mr: 1, fontSize: 20 }} />
+                  )}
+                  <Typography variant="body1">
+                    {
+                      indonesianPaymentMethods.find(
+                        (m) => m.value === paymentMethod
+                      )?.label
+                    }
+                    {needsAdditionalPayment
+                      ? `: ${formatCurrency(remainingAmount)}`
+                      : ""}
+                  </Typography>
+                </Box>
+              )}
 
               <Divider sx={{ my: 2 }} />
 
               <Typography variant="body2" color="text.secondary">
-                Total Payment
+                Total Pembayaran
               </Typography>
-              <Typography variant="h6" color="primary.main">
+              <Typography
+                variant="h6"
+                color="primary.main"
+                sx={{ fontWeight: "bold" }}
+              >
                 {formatCurrency(totalAmount)}
               </Typography>
             </CardContent>
           </Card>
 
           <Alert severity="info" sx={{ mb: 3 }}>
-            This will create a contract and transfer funds to escrow. The artist
-            will be notified.
+            Ini akan membuat kontrak dan mentransfer dana ke escrow. Seniman
+            akan diberi tahu.
           </Alert>
 
           {loading ? (
-            <CircularProgress />
+            <Box sx={{ display: "flex", justifyContent: "center", my: 2 }}>
+              <CircularProgress />
+            </Box>
           ) : (
             <Button
               variant="contained"
@@ -439,9 +561,8 @@ export default function ProposalPaymentDialog({
               onClick={handleCreateContract}
               fullWidth
               size="large"
-              disabled={paymentMethod === "wallet" && !hasSufficientFunds}
             >
-              Confirm Payment & Create Contract
+              Konfirmasi Pembayaran
             </Button>
           )}
         </Box>
@@ -450,10 +571,22 @@ export default function ProposalPaymentDialog({
   );
 
   return (
-    <Dialog open={open} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-      <DialogTitle>Create Contract & Payment</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={handleCloseDialog}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 2 } }}
+    >
+      <DialogTitle
+        sx={{ borderBottom: "1px solid", borderColor: "divider", pb: 2 }}
+      >
+        <Typography variant="h6" component="div">
+          Pembayaran Kontrak
+        </Typography>
+      </DialogTitle>
 
-      <DialogContent>
+      <DialogContent sx={{ p: 3 }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -470,27 +603,24 @@ export default function ProposalPaymentDialog({
 
         <Box>
           {activeStep === 0 && renderPaymentMethodSelection()}
-          {activeStep === 1 && renderPaymentDetails()}
-          {activeStep === 2 && renderConfirmation()}
+          {activeStep === 1 && renderConfirmation()}
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
+      <DialogActions
+        sx={{ p: 2, borderTop: "1px solid", borderColor: "divider" }}
+      >
         <Button onClick={handleCloseDialog} color="inherit">
-          {success ? "Close" : "Cancel"}
+          {success ? "Tutup" : "Batal"}
         </Button>
 
-        {!success && activeStep > 0 && activeStep < 2 && (
-          <Button onClick={handleBackStep}>Back</Button>
+        {!success && activeStep > 0 && activeStep < steps.length - 1 && (
+          <Button onClick={handleBackStep}>Kembali</Button>
         )}
 
-        {!success && activeStep < 1 && (
-          <Button
-            onClick={handleNextStep}
-            variant="contained"
-            disabled={paymentMethod === "wallet" && !hasSufficientFunds}
-          >
-            Next
+        {!success && activeStep < steps.length - 1 && (
+          <Button onClick={handleNextStep} variant="contained">
+            Lanjut
           </Button>
         )}
       </DialogActions>

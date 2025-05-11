@@ -1,4 +1,6 @@
 // src/components/dashboard/contracts/UploadsListPage.tsx
+'use client'
+
 import React, { useState } from "react";
 import {
   Box,

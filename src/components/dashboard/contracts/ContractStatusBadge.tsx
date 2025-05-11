@@ -1,4 +1,6 @@
 // src/components/dashboard/contracts/ContractStatusBadge.tsx
+'use client'
+
 import React from "react";
 import { Chip } from "@mui/material";
 

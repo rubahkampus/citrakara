@@ -57,10 +57,6 @@ export default async function AdminResolutionDetailPage({
   // Check if ticket is ready for admin resolution
   const canResolve = ticket.status === "awaitingReview";
 
-  // Serialize for client components
-  const serializedTicket = JSON.parse(JSON.stringify(ticket));
-  const serializedContract = JSON.parse(JSON.stringify(contract));
-
   return (
     <Box>
       <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>

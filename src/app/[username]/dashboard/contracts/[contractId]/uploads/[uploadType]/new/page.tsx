@@ -7,6 +7,7 @@ import { getContractById } from "@/lib/services/contract.service";
 // import ProgressUploadForm from "@/components/dashboard/contracts/uploads/ProgressUploadForm";
 // import RevisionUploadForm from "@/components/dashboard/contracts/uploads/RevisionUploadForm";
 // import FinalUploadForm from "@/components/dashboard/contracts/uploads/FinalUploadForm";
+// import MilestoneUploadForm from "@/components/dashboard/contracts/uploads/MilestoneUploadForm";
 
 interface CreateUploadPageProps {
   params: {

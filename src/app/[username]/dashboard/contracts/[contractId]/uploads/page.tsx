@@ -7,19 +7,21 @@ import { getContractUploads } from "@/lib/services/upload.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/contracts/
-// import UploadsListPage from "@/components/dashboard/contracts/UploadsListPage";
+import UploadsListPageWrapper from "@/components/dashboard/contracts/UploadListPage";
 
 interface UploadsListPageProps {
-  params: { 
+  params: {
     username: string;
     contractId: string;
   };
 }
 
-export default async function UploadsListPage({ params }: UploadsListPageProps) {
+export default async function UploadsListPage({
+  params,
+}: UploadsListPageProps) {
   const { username, contractId } = params;
   const session = await getAuthSession();
-  
+
   if (!session || !isUserOwner(session as Session, username)) {
     return <Alert severity="error">You do not have access to this page</Alert>;
   }
@@ -55,18 +57,21 @@ export default async function UploadsListPage({ params }: UploadsListPageProps) 
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <UploadsListPage
+        <UploadsListPageWrapper
           username={username}
           contractId={contractId}
           uploads={serializedUploads}
           isArtist={isArtist}
           isClient={isClient}
           contractStatus={contract.status}
-        /> */}
+        />
         <Box>
-          <Typography>Upload listings for contract {contractId} would be displayed here.</Typography>
           <Typography>
-            There are {uploads.progressStandard.length} standard progress uploads, 
+            Upload listings for contract {contractId} would be displayed here.
+          </Typography>
+          <Typography>
+            There are {uploads.progressStandard.length} standard progress
+            uploads,
             {uploads.progressMilestone.length} milestone progress uploads,
             {uploads.revision.length} revision uploads, and
             {uploads.final.length} final uploads.

@@ -95,8 +95,8 @@ export default async function UploadDetailsPage({
       (upload as IProgressUploadMilestone).isFinal) ||
       uploadType === "revision" ||
       uploadType === "final") &&
-    ("expiresAt" in upload &&
-    upload.status === "submitted");
+    "expiresAt" in upload &&
+    upload.status === "submitted";
 
   // If review mode is requested but not allowed, show an error
   if (showReview && !canReview) {
@@ -129,7 +129,7 @@ export default async function UploadDetailsPage({
       )}
 
       {/* Show review form or details based on mode */}
-      {showReview ? (
+      {showReview && uploadType !== "progress" ? (
         // Review Form Mode
         <Box>
           {/* This would be implemented separately */}

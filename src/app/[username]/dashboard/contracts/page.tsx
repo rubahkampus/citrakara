@@ -6,7 +6,7 @@ import { getUserContracts } from "@/lib/services/contract.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/contracts/
-// import ContractListingPage from "@/components/dashboard/contracts/ContractListingPage";
+import ContractListingPage from "@/components/dashboard/contracts/ContractListingPage";
 
 interface ContractsPageProps {
   params: { username: string };
@@ -15,8 +15,8 @@ interface ContractsPageProps {
 export default async function ContractsPage({ params }: ContractsPageProps) {
   const username = params.username;
   const session = await getAuthSession();
-  
-  if (!session || !isUserOwner((session as Session), username)) {
+
+  if (!session || !isUserOwner(session as Session, username)) {
     return <Alert severity="error">You do not have access to this page</Alert>;
   }
 
@@ -43,11 +43,11 @@ export default async function ContractsPage({ params }: ContractsPageProps) {
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <ContractListingPage
+        <ContractListingPage
           username={username}
           asArtist={serializedAsArtist}
           asClient={serializedAsClient}
-        /> */}
+        />
         <Typography>Contract listing component would be here</Typography>
       </Suspense>
     </Box>

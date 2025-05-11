@@ -156,6 +156,9 @@ export interface IContract extends Document {
     clientPayout: Cents; // refunded to client
     escrowTxnIds: ObjectId[]; // refund / release txn ids
   };
+
+  createdAt: ISODate,
+  updatedAt: ISODate
 }
 
 // Schema for Milestone

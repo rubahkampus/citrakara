@@ -19,6 +19,7 @@
     "@mui/material": "^6.4.6",
     "@mui/material-nextjs": "^7.0.2",
     "@mui/system": "^6.4.6",
+    "@mui/x-date-pickers": "^8.3.0",
     "axios": "^1.8.1",
     "bcryptjs": "^3.0.2",
     "mongodb": "^6.13.1",

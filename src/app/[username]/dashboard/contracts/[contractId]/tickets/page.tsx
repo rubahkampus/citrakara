@@ -6,7 +6,7 @@ import { getContractById } from "@/lib/services/contract.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/contracts/
-// import TicketsListPage from "@/components/dashboard/contracts/TicketsListPage";
+import TicketsListPageWrapper from "@/components/dashboard/contracts/TicketListPage";
 
 interface TicketsListPageProps {
   params: {
@@ -57,14 +57,14 @@ export default async function TicketsListPage({
 
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <TicketsListPage
+        <TicketsListPageWrapper
           username={username}
           contractId={contractId}
           tickets={serializedTickets}
           isArtist={isArtist}
           isClient={isClient}
           contractStatus={contract.status}
-        /> */}
+        />
         <Box>
           Ticket listings for contract {contractId} would be displayed here.
           There are {cancelTickets.length} cancel tickets,

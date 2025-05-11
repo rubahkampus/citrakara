@@ -6,7 +6,7 @@ import { getContractById } from "@/lib/services/contract.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
 // This component would be created in src/components/dashboard/contracts/
-// import ContractDetailsPage from "@/components/dashboard/contracts/ContractDetailsPage";
+import ContractDetailsPageWrapper from "@/components/dashboard/contracts/ContractDetailsPage";
 
 interface ContractDetailsPageProps {
   params: {
@@ -40,11 +40,11 @@ export default async function ContractDetailsPage({
     <Box>
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
-        {/* <ContractDetailsPage
+        <ContractDetailsPageWrapper
           username={username}
           contract={serializedContract}
-          userId={session.id}
-        /> */}
+          userId={(session as Session).id}
+        />
         <Box>Contract details for {contractId} would be displayed here</Box>
       </Suspense>
     </Box>

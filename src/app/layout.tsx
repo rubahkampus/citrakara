@@ -3,7 +3,6 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { Container } from "@mui/material";
 import { Roboto } from "next/font/google";
 import GlobalNavbar from "@/components/GlobalNavbar";
-import ThemeProviderWrapper from "@/components/ThemeProviderWraper";
 import DialogManager from "@/components/dialogs/DialogManager";
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '@/theme';

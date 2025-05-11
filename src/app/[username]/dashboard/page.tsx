@@ -3,10 +3,9 @@ import { Suspense } from "react";
 import { Paper, Box, Skeleton, Typography } from "@mui/material";
 import DashboardProfileRenderer from "@/components/dashboard/DashboardProfileRenderer";
 import { getUserPublicProfile } from "@/lib/services/user.service";
-import { getUserWalletBalance } from "@/lib/services/wallet.service";
+import { getWalletSummary } from "@/lib/services/wallet.service";
 import { notFound } from "next/navigation";
-import { getAuthSession } from "@/lib/utils/session";
-import { WalletBalanceResponse } from "@/types/wallet";
+import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 
 function ProfileLoading() {
   return (
@@ -36,21 +35,23 @@ interface Props {
 }
 
 export default async function DashboardPage({ params }: Props) {
-  const param = await params;
-  const username = param.username;
-  const [profile, walletData, session] = await Promise.all([
+  const username = params.username;
+  const session = await getAuthSession();
+
+  // Check if the current user is the owner of this profile
+  const isOwner = isUserOwner(session as Session, username);
+
+  if (!isOwner) {
+    return notFound();
+  }
+
+  const [profile, walletSummary] = await Promise.all([
     getUserPublicProfile(username),
-    getUserWalletBalance(username).catch(
-      () =>
-        ({
-          saldoAvailable: 0,
-          saldoEscrowed: 0,
-          available: 0,
-          escrowed: 0,
-          total: 0,
-        } as WalletBalanceResponse)
-    ),
-    getAuthSession(),
+    getWalletSummary((session as Session).id).catch(() => ({
+      available: 0,
+      escrowed: 0,
+      total: 0,
+    })),
   ]);
 
   if (!profile) {
@@ -63,15 +64,8 @@ export default async function DashboardPage({ params }: Props) {
     );
   }
 
-  // Check if the current user is the owner of this profile
-  const isOwner = !!(
-    session &&
-    typeof session === "object" &&
-    "username" in session &&
-    session.username === username
-  );
-
-  const formattedBalance = Math.round((walletData.saldoAvailable || 0) / 100);
+  // Convert cents to dollars/currency units for display
+  const formattedBalance = Math.round(walletSummary.available / 100);
   const serializedProfile = JSON.parse(JSON.stringify(profile));
 
   return (
@@ -80,7 +74,7 @@ export default async function DashboardPage({ params }: Props) {
         profile={serializedProfile}
         saldo={formattedBalance}
         tosSummary=""
-        isOwner={isOwner} // Add this prop with the correct value
+        isOwner={isOwner}
       />
     </Suspense>
   );

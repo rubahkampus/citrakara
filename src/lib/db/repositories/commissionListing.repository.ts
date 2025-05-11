@@ -62,7 +62,7 @@ export interface CommissionListingPayload {
       selections: Array<{ id: ID; label: string; price: number }>;
     }>;
     addons?: Array<{ id: ID; label: string; price: number }>;
-    questions?: Array<{ id: ID; label: string }>;
+    questions?: Array<{ id: ID; text: string }>;
   };
   subjectOptions?: Array<{
     id: ID;
@@ -75,7 +75,7 @@ export interface CommissionListingPayload {
       selections: Array<{ id: ID; label: string; price: number }>;
     }>;
     addons?: Array<{ id: ID; label: string; price: number }>;
-    questions?: Array<{ id: ID; label: string }>;
+    questions?: Array<{ id: ID; text: string }>;
   }>;
 }
 

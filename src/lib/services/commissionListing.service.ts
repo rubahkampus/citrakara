@@ -49,11 +49,11 @@ function generateIds<T extends { id?: ID }>(
  */
 function convertQuestionsToIdFormat(
   questions?: string[]
-): { id: ID; label: string }[] {
+): { id: ID; text: string }[] {
   if (!questions?.length) return [];
   return questions.map((text, index) => ({
     id: index + 1,
-    label: text,
+    text: text,
   }));
 }
 
@@ -226,18 +226,18 @@ function processPayloadWithIds(
       generalOptions.questions = questionsArr.map((q, idx) => {
         // Handle both string questions and objects with 'title' field (legacy format)
         if (typeof q === "string") {
-          return { id: idx + 1, label: q };
+          return { id: idx + 1, text: q };
         } else if (typeof q === "object" && q !== null) {
           if ("title" in q) {
-            return { id: idx + 1, label: q.title as string };
+            return { id: idx + 1, text: q.title as string };
           } else if ("label" in q) {
             return {
               id: "id" in q ? (q.id as ID) : idx + 1,
-              label: q.label as string,
+              text: q.label as string,
             };
           }
         }
-        return { id: idx + 1, label: String(q) };
+        return { id: idx + 1, text: String(q) };
       });
     }
 
@@ -279,37 +279,6 @@ function processPayloadWithIds(
   }
 
   return processed;
-}
-
-/**
- * Create a commission listing from a JSON payload
- * (Used when frontend has already handled image uploads)
- */
-export async function createListing(
-  artistId: string,
-  payload: Omit<CommissionListingPayload, "artistId" | "price">
-) {
-  // Prepare the complete listing data
-  const listingData = {
-    ...payload,
-    artistId: toObjectId(artistId),
-    description: payload.description ?? [], // Ensure description is an array
-  };
-
-  // Process payload to ensure all components have IDs
-  const processedData = processPayloadWithIds(listingData);
-
-  // Validate the listing data
-  validateListingPayload(processedData);
-
-  // Calculate price range
-  const priceRange = computePriceRange(processedData);
-
-  // Create the listing with price
-  return createCommissionListing({
-    ...(processedData as CommissionListingPayload),
-    price: priceRange,
-  });
 }
 
 /**

@@ -11,6 +11,7 @@ interface Props {
   profile: {
     profilePicture: string;
     displayName?: string;
+    isAdmin?: boolean;
   };
 }
 
@@ -34,6 +35,7 @@ export default function DashboardSidebarWrapper({ username, profile }: Props) {
           profilePicture={profile.profilePicture}
           displayName={profile.displayName}
           expanded={false}
+          isAdmin={profile.isAdmin}
         />
       </Box>
     );
@@ -52,6 +54,7 @@ export default function DashboardSidebarWrapper({ username, profile }: Props) {
         profilePicture={profile.profilePicture}
         displayName={profile.displayName}
         expanded={sidebar === "expanded"}
+        isAdmin={profile.isAdmin}
       />
     </Box>
   );

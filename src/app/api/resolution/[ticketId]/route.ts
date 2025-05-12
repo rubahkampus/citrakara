@@ -12,12 +12,13 @@ export async function GET(
   { params }: { params: { ticketId: string } }
 ) {
   try {
+    const param = await params
     const session = await getAuthSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ticket = await findResolutionTicketById(params.ticketId);
+    const ticket = await findResolutionTicketById(param.ticketId);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }

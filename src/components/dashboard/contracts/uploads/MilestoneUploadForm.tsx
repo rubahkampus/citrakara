@@ -2,6 +2,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import axios from "axios";
 import {
   Box,
   Button,
@@ -12,8 +15,13 @@ import {
   Paper,
   FormControlLabel,
   Checkbox,
+  IconButton,
+  Grid,
+  Divider,
+  Stack,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import { IContract } from "@/lib/db/models/contract.model";
 
 interface MilestoneUploadFormProps {
@@ -22,19 +30,40 @@ interface MilestoneUploadFormProps {
   milestoneIdx: number;
 }
 
+interface FormValues {
+  description: string;
+  isFinal: boolean;
+}
+
 export default function MilestoneUploadForm({
   contract,
   userId,
   milestoneIdx,
 }: MilestoneUploadFormProps) {
   const router = useRouter();
-  const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [isFinal, setIsFinal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const axiosClient = axios.create({
+    baseURL: process.env.NEXT_PUBLIC_API_URL || "",
+  });
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    watch,
+  } = useForm<FormValues>({
+    defaultValues: {
+      description: "",
+      isFinal: false,
+    },
+  });
+
+  const watchIsFinal = watch("isFinal");
 
   // Get current milestone information for display
   const milestone = contract.milestones?.[milestoneIdx];
@@ -47,23 +76,39 @@ export default function MilestoneUploadForm({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      setFiles(selectedFiles);
+
+      // Enforce the 5 file limit
+      const totalFiles = [...files, ...selectedFiles];
+      const limitedFiles = totalFiles.slice(0, 5);
+
+      if (totalFiles.length > 5) {
+        setError("Maximum 5 images allowed. Only the first 5 will be used.");
+        setTimeout(() => setError(null), 3000);
+      }
+
+      setFiles(limitedFiles);
 
       // Create and set preview URLs
-      const newPreviewUrls = selectedFiles.map((file) =>
+      const newPreviewUrls = limitedFiles.map((file) =>
         URL.createObjectURL(file)
       );
-      setPreviewUrls((prevUrls) => {
-        // Revoke previous URLs to avoid memory leaks
-        prevUrls.forEach((url) => URL.revokeObjectURL(url));
-        return newPreviewUrls;
-      });
+
+      // Revoke previous URLs to avoid memory leaks
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      setPreviewUrls(newPreviewUrls);
     }
   };
 
+  // Remove a file and its preview
+  const removeFile = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+
+    setFiles(files.filter((_, i) => i !== index));
+    setPreviewUrls(previewUrls.filter((_, i) => i !== index));
+  };
+
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     setError(null);
 
@@ -75,29 +120,23 @@ export default function MilestoneUploadForm({
 
       // Create FormData
       const formData = new FormData();
-      formData.append("description", description);
+      formData.append("description", data.description);
       formData.append("milestoneIdx", milestoneIdx.toString());
-      formData.append("isFinal", isFinal.toString());
+      formData.append("isFinal", data.isFinal.toString());
 
       files.forEach((file) => {
         formData.append("images[]", file);
       });
 
-      // Submit to API
-      const response = await fetch(
-        `/api/contract/${contract._id}/uploads/milestone/new`,
+      // Submit to API using axios
+      await axiosClient.post(
+        `/api/contract/${contract._id}/uploads/milestone`,
+        formData,
         {
-          method: "POST",
-          body: formData,
+          headers: { "Content-Type": "multipart/form-data" },
         }
       );
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to upload milestone progress");
-      }
-
-      const data = await response.json();
       setSuccess(true);
 
       // Redirect after successful submission
@@ -108,9 +147,15 @@ export default function MilestoneUploadForm({
         router.refresh();
       }, 1500);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
+      if (axios.isAxiosError(err) && err.response) {
+        setError(
+          err.response.data.error || "Failed to upload milestone progress"
+        );
+      } else {
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred"
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -123,81 +168,168 @@ export default function MilestoneUploadForm({
           Milestone upload successful! Redirecting...
         </Alert>
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
 
+          {/* Milestone Info Display */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight="bold">
-              Milestone: {milestone.title} ({milestone.percent}%)
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              Milestone Information
             </Typography>
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              Status: {milestone.status}
-            </Typography>
+            <Box
+              sx={{
+                p: 2,
+                bgcolor: "background.paper",
+                borderRadius: 1,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight="bold">
+                {milestone.title} ({milestone.percent}%)
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Status:{" "}
+                <span style={{ fontWeight: "bold" }}>{milestone.status}</span>
+              </Typography>
+            </Box>
           </Box>
 
+          <Divider sx={{ my: 3 }} />
+
+          {/* Description Section */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              Progress Description
+            </Typography>
+
+            <Controller
+              name="description"
+              control={control}
+              rules={{
+                required: "Description is required",
+                minLength: {
+                  value: 10,
+                  message: "Description must be at least 10 characters",
+                },
+              }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Description"
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Describe your progress on this milestone..."
+                  error={!!errors.description}
+                  helperText={errors.description?.message}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+          </Box>
+
+          {/* Image Upload Section */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
               Upload Images
             </Typography>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-              disabled={isSubmitting}
-              style={{ marginBottom: "16px" }}
-            />
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Upload up to 5 images showing your progress on this milestone.
+            </Typography>
 
-            {previewUrls.length > 0 && (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 2 }}>
+            <Box sx={{ mb: 2 }}>
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={<AddPhotoAlternateIcon />}
+                disabled={isSubmitting || files.length >= 5}
+                sx={{ mt: 1 }}
+              >
+                Add Images
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  disabled={isSubmitting || files.length >= 5}
+                />
+              </Button>
+              {files.length > 0 && (
+                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                  {files.length}/5 images selected
+                </Typography>
+              )}
+            </Box>
+
+            {previewUrls.length > 0 ? (
+              <Grid container spacing={1} sx={{ mt: 1 }}>
                 {previewUrls.map((url, index) => (
-                  <Box
-                    key={index}
-                    component="img"
-                    src={url}
-                    alt={`Preview ${index}`}
-                    sx={{
-                      width: 100,
-                      height: 100,
-                      objectFit: "cover",
-                      borderRadius: 1,
-                    }}
-                  />
+                  <Grid item key={index} xs={6} sm={4} md={3}>
+                    <Box sx={{ position: "relative" }}>
+                      <Box
+                        component="img"
+                        src={url}
+                        alt={`Preview ${index}`}
+                        sx={{
+                          width: "100%",
+                          height: 120,
+                          objectFit: "cover",
+                          borderRadius: 1,
+                        }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => removeFile(index)}
+                        sx={{
+                          position: "absolute",
+                          top: 4,
+                          right: 4,
+                          bgcolor: "rgba(255,255,255,0.7)",
+                          "&:hover": {
+                            bgcolor: "rgba(255,255,255,0.9)",
+                          },
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Grid>
                 ))}
-              </Box>
+              </Grid>
+            ) : (
+              <Alert severity="info" sx={{ mt: 1 }}>
+                Please select at least one image to upload.
+              </Alert>
             )}
           </Box>
 
+          {/* Final Delivery Checkbox */}
           <Box sx={{ mb: 3 }}>
-            <TextField
-              label="Description"
-              multiline
-              rows={4}
-              fullWidth
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={isSubmitting}
-              placeholder="Provide details about this milestone progress"
-            />
-          </Box>
-
-          <Box sx={{ mb: 3 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isFinal}
-                  onChange={(e) => setIsFinal(e.target.checked)}
-                  disabled={isSubmitting}
+            <Controller
+              name="isFinal"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      {...field}
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      disabled={isSubmitting}
+                    />
+                  }
+                  label="This is the final delivery for this milestone (requires client review)"
                 />
-              }
-              label="This is the final delivery for this milestone (requires client review)"
+              )}
             />
 
-            {isFinal && (
+            {watchIsFinal && (
               <Alert severity="info" sx={{ mt: 1 }}>
                 By marking this as final, you are indicating that this milestone
                 is complete and ready for client review. The client will need to
@@ -206,15 +338,29 @@ export default function MilestoneUploadForm({
             )}
           </Box>
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={isSubmitting}
-            sx={{ minWidth: 120 }}
-          >
-            {isSubmitting ? <CircularProgress size={24} /> : "Upload Milestone"}
-          </Button>
+          {/* Submit Buttons */}
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={isSubmitting || files.length === 0}
+              sx={{ minWidth: 120 }}
+            >
+              {isSubmitting ? (
+                <CircularProgress size={24} />
+              ) : (
+                "Upload Milestone"
+              )}
+            </Button>
+          </Stack>
         </form>
       )}
     </Paper>

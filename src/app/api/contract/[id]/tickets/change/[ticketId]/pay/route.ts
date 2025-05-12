@@ -11,11 +11,29 @@ export async function POST(
   { params }: { params: { id: string; ticketId: string } }
 ) {
   try {
-    const contractId = params.id;
-    const ticketId = params.ticketId;
+    const param = await params
+    const contractId = param.id;
+    const ticketId = param.ticketId;
+
+    // Parse request body
+    const {
+      paymentMethod,
+      secondaryMethod,
+      walletAmount,
+      remainingAmount,
+      paymentAmount,
+    } = await req.json();
 
     return withAuth(async (session) => {
-      const result = await payChangeFee(contractId, ticketId, session.id);
+      const result = await payChangeFee(
+        contractId,
+        ticketId,
+        session.idpaymentMethod,
+        secondaryMethod,
+        walletAmount,
+        remainingAmount,
+        paymentAmount
+      );
 
       const response = NextResponse.json({
         message: "Change fee paid successfully",

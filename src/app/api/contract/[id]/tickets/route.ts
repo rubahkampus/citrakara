@@ -11,7 +11,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const contractId = params.id;
+    const param = await params
+    const contractId = param.id;
 
     return withAuth(async (session) => {
       // Get contract with tickets populated

@@ -13,7 +13,11 @@ import { isAdminById } from "../db/repositories/user.repository";
 import { addFundsToWallet, checkSufficientFunds } from "./wallet.service";
 import { IContract } from "../db/models/contract.model";
 import { toObjectId } from "@/lib/utils/toObjectId";
-import { ICancelTicket, IChangeTicket, IRevisionTicket } from "../db/models/ticket.model";
+import {
+  ICancelTicket,
+  IChangeTicket,
+  IRevisionTicket,
+} from "../db/models/ticket.model";
 
 /**
  * Create a cancellation ticket
@@ -850,7 +854,7 @@ export async function payChangeFee(
 }
 
 /**
- * Create a resolution ticket using FormData
+ * Create a resolution ticket using FormData with improved validation and edge case handling
  */
 export async function createResolutionTicket(
   contractId: string | ObjectId,
@@ -901,11 +905,57 @@ export async function createResolutionTicket(
     }
 
     const description = form.get("description")?.toString() || "";
+    if (!description || description.trim().length < 10) {
+      throw new HttpError(
+        "A detailed description (at least 10 characters) is required",
+        400
+      );
+    }
+
+    // Determine if user is client or artist
+    const submittedBy = isClient ? "client" : "artist";
+
+    // // Validate the resolution ticket request
+    // const validation = validateResolutionTicketRequest(
+    //   contract,
+    //   targetType,
+    //   targetId,
+    //   submittedBy
+    // );
+
+    // if (!validation.valid) {
+    //   throw new HttpError(
+    //     validation.error || "Invalid resolution ticket request",
+    //     400
+    //   );
+    // }
+
+    // // Check for existing open resolutions for this target
+    // const hasExistingResolution = await hasOpenResolutionForTarget(
+    //   contractId,
+    //   targetType,
+    //   targetId
+    // );
+
+    // if (hasExistingResolution) {
+    //   throw new HttpError(
+    //     "A resolution ticket already exists for this item. Please use the existing resolution.",
+    //     400
+    //   );
+    // }
 
     // Get image blobs from form data
     const proofImageBlobs = form
       .getAll("proofImages[]")
       .filter((v) => v instanceof Blob) as Blob[];
+
+    // Require at least one proof image for evidence
+    if (!proofImageBlobs.length) {
+      throw new HttpError(
+        "At least one proof image is required to support your resolution request",
+        400
+      );
+    }
 
     // Upload proof images
     let proofImageUrls: string[] = [];
@@ -918,7 +968,6 @@ export async function createResolutionTicket(
     }
 
     // Create resolution ticket
-    const submittedBy = isClient ? "client" : "artist";
     const ticket = await ticketRepo.createResolutionTicket(
       {
         contractId,
@@ -941,7 +990,13 @@ export async function createResolutionTicket(
     );
 
     await session.commitTransaction();
-    return ticket;
+
+    // Include additional context in response
+    return {
+      ...ticket.toObject(),
+      message:
+        "Resolution ticket created successfully. The other party has 24 hours to respond.",
+    };
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -1526,19 +1581,123 @@ async function applyMilestoneResolution(
   }
 }
 
-export async function getRevisionTicketById(id: string): Promise<IRevisionTicket | null> {
+/**
+ * Cancel a resolution ticket if the underlying issue is resolved
+ * This can be called when parties resolve their issues without admin intervention
+ */
+export async function cancelResolutionTicket(
+  ticketId: string | ObjectId,
+  userId: string
+): Promise<any> {
+  await connectDB();
+  const session = await startSession();
+
+  try {
+    session.startTransaction();
+
+    // Get the ticket
+    const ticket = await ticketRepo.findResolutionTicketById(ticketId, session);
+    if (!ticket) {
+      throw new HttpError("Resolution ticket not found", 404);
+    }
+
+    // Get the contract
+    const contract = await contractRepo.findContractById(ticket.contractId, {
+      session,
+    });
+    if (!contract) {
+      throw new HttpError("Contract not found", 404);
+    }
+
+    // Check if the user is either the submitter or the counterparty
+    const isSubmitter = ticket.submittedById.toString() === userId;
+    const isClient = contract.clientId.toString() === userId;
+    const isArtist = contract.artistId.toString() === userId;
+    const isCounterparty =
+      (ticket.submittedBy === "client" && isArtist) ||
+      (ticket.submittedBy === "artist" && isClient);
+
+    if (!isSubmitter) {
+      throw new HttpError("Not authorized to cancel this resolution", 403);
+    }
+
+    if (isCounterparty) {
+      throw new HttpError("Only submitter can cancel this ticket", 403);
+    }
+
+    // Verify ticket is still open or in awaiting review
+    if (ticket.status !== "open" && ticket.status !== "awaitingReview") {
+      throw new HttpError(
+        "This resolution ticket cannot be cancelled because it's already resolved",
+        400
+      );
+    }
+
+    // Cancel the ticket
+    const cancelledTicket = await ticketRepo.cancelResolutionTicket(
+      ticketId,
+      session
+    );
+
+    await session.commitTransaction();
+    return cancelledTicket;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+// Add this function to your existing ticket service file
+
+/**
+ * Find active cancellation tickets for a contract
+ * An active ticket is one with status 'accepted' or 'forcedAccepted'
+ */
+export async function findActiveCancelTickets(
+  contractId: string | ObjectId,
+  userId: string
+): Promise<ICancelTicket[]> {
+  await connectDB();
+
+  // Verify user has access to the contract
+  const contract = await contractRepo.findContractById(contractId);
+  if (!contract) {
+    throw new HttpError("Contract not found", 404);
+  }
+
+  // Check if user is artist or client of the contract
+  if (
+    contract.artistId.toString() !== userId &&
+    contract.clientId.toString() !== userId
+  ) {
+    throw new HttpError("Unauthorized access to contract", 403);
+  }
+
+  // Call repository function to find active tickets
+  return ticketRepo.findActiveCancelTickets(contractId);
+}
+
+export async function getRevisionTicketById(
+  id: string
+): Promise<IRevisionTicket | null> {
   // Call the repository function to find the ticket
   const ticket = await ticketRepo.findRevisionTicketById(id);
   return ticket;
 }
 
-export async function getCancelTicketById(id: string): Promise<ICancelTicket | null> {
+export async function getCancelTicketById(
+  id: string
+): Promise<ICancelTicket | null> {
   // Call the repository function to find the ticket
   const ticket = await ticketRepo.findCancelTicketById(id);
   return ticket;
 }
 
-export async function getChangeTicketById(id: string): Promise<IChangeTicket | null> {
+export async function getChangeTicketById(
+  id: string
+): Promise<IChangeTicket | null> {
   // Call the repository function to find the ticket
   const ticket = await ticketRepo.findChangeTicketById(id);
   return ticket;

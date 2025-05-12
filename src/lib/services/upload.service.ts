@@ -13,6 +13,7 @@ import {
   IRevisionUpload,
 } from "../db/models/upload.model";
 import { connectDB } from "../db/connection";
+import { isUserAdminById } from "./user.service";
 
 /**
  * Create a standard progress upload using FormData
@@ -297,6 +298,7 @@ export async function createRevisionUpload(
     // Create revision upload
     const upload = await uploadRepo.createRevisionUpload(
       {
+        contractId,
         revisionTicketId,
         artistId: userId,
         images: imageUrls,
@@ -449,6 +451,69 @@ export async function createFinalUpload(
     throw error;
   } finally {
     session.endSession();
+  }
+}
+
+/**
+ * Get an upload based on its type and ID, with permission checks
+ * @param uploadType The type of upload (milestone, revision, or final)
+ * @param uploadId The ID of the upload
+ * @param contractId The ID of the contract the upload should belong to
+ * @param userId The ID of the requesting user
+ * @param userRole Optional - if provided, will specifically check for this role
+ * @returns The upload if found and user has access
+ */
+export async function getUpload(
+  uploadType: "milestone" | "revision" | "final",
+  uploadId: string | ObjectId,
+  contractId: string | ObjectId,
+  userId: string,
+): Promise<any> {
+  await connectDB();
+  
+  try {
+    // Verify contract exists and user has access
+    const contract = await contractRepo.findContractById(contractId);
+    if (!contract) {
+      throw new HttpError("Contract not found", 404);
+    }
+
+    // Check if user has permission to view this contract
+    const isClient = contract.clientId.toString() === userId;
+    const isArtist = contract.artistId.toString() === userId;
+    const isAdmin = await isUserAdminById(userId); // Assuming there's a userService to check admin status
+
+    if (!isClient && !isArtist && !isAdmin) {
+      throw new HttpError("You don't have permission to view this upload", 403);
+    }
+
+    // Get the upload based on type
+    let upload;
+    switch (uploadType) {
+      case "milestone":
+        upload = await uploadRepo.findProgressUploadMilestoneById(uploadId);
+        break;
+      case "revision":
+        upload = await uploadRepo.findRevisionUploadById(uploadId);
+        break;
+      case "final":
+        upload = await uploadRepo.findFinalUploadById(uploadId);
+        break;
+    }
+
+    if (!upload) {
+      throw new HttpError("Upload not found", 404);
+    }
+
+    // Verify the upload belongs to the specified contract
+    const uploadContractId = upload.contractId.toString();
+    if (uploadContractId !== contractId.toString()) {
+      throw new HttpError("Upload does not belong to the specified contract", 400);
+    }
+
+    return upload;
+  } catch (error) {
+    throw error;
   }
 }
 

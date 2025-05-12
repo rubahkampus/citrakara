@@ -1,62 +1,84 @@
-// src/components/dashboard/contracts/tickets/ChangeTicketForm.tsx
 "use client";
+// src/components/dashboard/contracts/tickets/ChangeTicketFormPage.tsx
 
-import { useState } from "react";
+import React, { useState } from "react";
+import { useForm, FormProvider } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { axiosClient } from "@/lib/utils/axiosClient";
+import { IContract } from "@/lib/db/models/contract.model";
 import {
   Box,
   Paper,
   Typography,
-  TextField,
   Button,
   Alert,
+  Snackbar,
   CircularProgress,
   Divider,
-  FormControlLabel,
-  Checkbox,
-  FormGroup,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  SelectChangeEvent,
-  Switch,
+  TextField,
 } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { useRouter } from "next/navigation";
-import { IContract } from "@/lib/db/models/contract.model";
 
-interface ChangeTicketFormProps {
+// Import section components
+import DeadlineSection from "./form/DeadlineSection";
+import DescriptionSection from "./form/DescriptionSection";
+import ReferenceImagesSection from "./form/ReferenceImagesSection";
+import GeneralOptionsSection from "./form/GeneralOptionsSection";
+import SubjectOptionsSection from "./form/SubjectOptionsSection";
+
+export interface GeneralOptionGroupInput {
+  selectedId: number;
+  selectedLabel: string;
+  price: number;
+}
+
+export interface GeneralOptionsInput {
+  optionGroups: Record<string, GeneralOptionGroupInput>;
+  addons: Record<string, number>;
+  answers: Record<string, string>;
+}
+
+export interface SubjectInstanceInput {
+  optionGroups: Record<string, GeneralOptionGroupInput>;
+  addons: Record<string, number>;
+  answers: Record<string, string>;
+}
+
+export interface SubjectOptionsInput {
+  [subjectTitle: string]: {
+    instances: SubjectInstanceInput[];
+  };
+}
+
+// Define interfaces for the form values
+export interface ChangeTicketFormValues {
+  reason: string;
+  includeDeadline: boolean;
+  includeDescription: boolean;
+  includeGeneralOptions: boolean;
+  includeSubjectOptions: boolean;
+  deadlineAt: Date | null;
+  generalDescription: string;
+  referenceImages: Array<File | string>;
+  generalOptions: Record<string, any>;
+  subjectOptions: Record<string, any>;
+}
+
+// Main component props
+interface ChangeTicketFormPageProps {
   contract: IContract;
   userId: string;
   isClient: boolean;
 }
 
-export default function ChangeTicketForm({
+export default function ChangeTicketFormPage({
   contract,
   userId,
   isClient,
-}: ChangeTicketFormProps) {
+}: ChangeTicketFormPageProps) {
   const router = useRouter();
 
-  // Form state
-  const [reason, setReason] = useState("");
-  const [generalDescription, setGeneralDescription] = useState("");
-  const [deadlineAt, setDeadlineAt] = useState<Date | null>(null);
-  const [files, setFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-
-  // Change sections to include
-  const [includeDeadline, setIncludeDeadline] = useState(false);
-  const [includeDescription, setIncludeDescription] = useState(false);
-  const [includeGeneralOptions, setIncludeGeneralOptions] = useState(false);
-  const [includeSubjectOptions, setIncludeSubjectOptions] = useState(false);
-
-  // Process status
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  // Get the latest contract terms
+  const latestTerms = contract.contractTerms[contract.contractTerms.length - 1];
 
   // Get allowed change types from contract
   const allowedChanges =
@@ -66,101 +88,112 @@ export default function ChangeTicketForm({
   const isChangeAllowed =
     contract.proposalSnapshot.listingSnapshot?.allowContractChange || false;
 
-  // Handle file input change
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      setFiles(selectedFiles);
+  // Form state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-      // Create and set preview URLs
-      const newPreviewUrls = selectedFiles.map((file) =>
-        URL.createObjectURL(file)
-      );
-      setPreviewUrls((prevUrls) => {
-        // Revoke previous URLs to avoid memory leaks
-        prevUrls.forEach((url) => URL.revokeObjectURL(url));
-        return newPreviewUrls;
-      });
-    }
-  };
+  // Initialize form with React Hook Form
+  const methods = useForm<ChangeTicketFormValues>({
+    defaultValues: {
+      reason: "",
+      includeDeadline: false,
+      includeDescription: false,
+      includeGeneralOptions: false,
+      includeSubjectOptions: false,
+      deadlineAt: null,
+      generalDescription: latestTerms.generalDescription || "",
+      referenceImages: [],
+      generalOptions: {},
+      subjectOptions: {},
+    },
+    mode: "onSubmit",
+  });
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isValid },
+  } = methods;
+
+  // Watch values to determine which sections are included
+  const includeDeadline = watch("includeDeadline");
+  const includeDescription = watch("includeDescription");
+  const includeGeneralOptions = watch("includeGeneralOptions");
+  const includeSubjectOptions = watch("includeSubjectOptions");
+
+  // Form submission handler
+  const onSubmit = async (values: ChangeTicketFormValues) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Validate input
-      if (!reason.trim()) {
-        throw new Error("Please provide a reason for the requested changes");
-      }
-
-      // Check that at least one change is included
+      // Validate that at least one change is included
       if (
-        !includeDeadline &&
-        !includeDescription &&
-        !includeGeneralOptions &&
-        !includeSubjectOptions
+        !values.includeDeadline &&
+        !values.includeDescription &&
+        !values.includeGeneralOptions &&
+        !values.includeSubjectOptions &&
+        values.referenceImages.length === 0
       ) {
         throw new Error(
           "Please select at least one aspect of the contract to change"
         );
       }
 
-      // Check that each included change has necessary data
-      if (includeDeadline && !deadlineAt) {
-        throw new Error("Please select a new deadline date");
-      }
-
-      if (includeDescription && !generalDescription.trim()) {
-        throw new Error("Please provide a new description");
-      }
-
       // Create FormData
       const formData = new FormData();
-      formData.append("reason", reason);
+      formData.append("reason", values.reason);
 
-      if (includeDeadline && deadlineAt) {
-        formData.append("deadlineAt", deadlineAt.toISOString());
+      // Add deadline if included
+      if (values.includeDeadline && values.deadlineAt) {
+        formData.append("deadlineAt", values.deadlineAt.toISOString());
       }
 
-      if (includeDescription) {
-        formData.append("generalDescription", generalDescription);
+      // Add description if included
+      if (values.includeDescription) {
+        formData.append("generalDescription", values.generalDescription);
       }
 
-      // For simplicity in this example, we're not handling the complex
-      // structure of generalOptions and subjectOptions. In a real app,
-      // you'd need UI for selecting these options and proper JSON handling.
-
-      // If including general options
-      if (includeGeneralOptions) {
-        formData.append("generalOptions", JSON.stringify({}));
+      // Add general options if included
+      if (values.includeGeneralOptions) {
+        formData.append(
+          "generalOptions",
+          JSON.stringify(values.generalOptions)
+        );
       }
 
-      // If including subject options
-      if (includeSubjectOptions) {
-        formData.append("subjectOptions", JSON.stringify([]));
+      // Add subject options if included
+      if (values.includeSubjectOptions) {
+        formData.append(
+          "subjectOptions",
+          JSON.stringify(values.subjectOptions)
+        );
       }
 
       // Add reference images
-      files.forEach((file) => {
-        formData.append("referenceImages[]", file);
-      });
+      if (values.referenceImages.length > 0) {
+        values.referenceImages.forEach((file) => {
+          if (file instanceof File) {
+            formData.append("referenceImages[]", file);
+          } else if (typeof file === "string") {
+            // For existing images that should be kept
+            formData.append("existingReferenceImages[]", file);
+          }
+        });
+      }
 
-      // Submit to API
-      const response = await fetch(
-        `/api/contract/${contract._id}/tickets/change/new`,
+      // Submit to API using axios
+      const response = await axiosClient.post(
+        `/api/contract/${contract._id}/tickets/change`,
+        formData,
         {
-          method: "POST",
-          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to create change request");
-      }
 
       setSuccess(true);
 
@@ -169,13 +202,35 @@ export default function ChangeTicketForm({
         router.push(`/dashboard/${userId}/contracts/${contract._id}/tickets`);
         router.refresh();
       }, 1500);
-    } catch (err) {
+    } catch (error: any) {
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to create change request"
       );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Function to display validation errors in user-friendly format
+  const getMissingFieldsMessage = () => {
+    if (Object.keys(errors).length === 0) return null;
+
+    const fieldNames: Record<string, string> = {
+      reason: "Reason",
+      deadlineAt: "Deadline",
+      generalDescription: "Description",
+      referenceImages: "Reference Images",
+      generalOptions: "General Options",
+      subjectOptions: "Subject Options",
+    };
+
+    const missingFields = Object.keys(errors)
+      .map((key) => fieldNames[key] || key)
+      .join(", ");
+
+    return `Please complete the following required fields: ${missingFields}`;
   };
 
   // Check if contract changes are allowed
@@ -185,19 +240,49 @@ export default function ChangeTicketForm({
     );
   }
 
+  // Check if user is a client (only clients can create change tickets)
+  if (!isClient) {
+    return (
+      <Alert severity="warning">
+        Only clients can request contract changes.
+      </Alert>
+    );
+  }
+
   return (
-    <Paper elevation={2} sx={{ p: 3 }}>
-      {success ? (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          Contract change request submitted successfully! Redirecting...
-        </Alert>
-      ) : (
-        <form onSubmit={handleSubmit}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+    <FormProvider {...methods}>
+      <Box
+        component="form"
+        onSubmit={handleSubmit(
+          (values) => onSubmit(values),
+          (errors) => {
+            setError(
+              getMissingFieldsMessage() || "Please check all required fields."
+            );
+          }
+        )}
+        sx={{ maxWidth: 800, mx: "auto" }}
+      >
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Paper
+          component="div"
+          sx={{
+            p: 4,
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 2,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+            mb: 3,
+          }}
+        >
+          <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 3 }}>
+            Request Contract Changes
+          </Typography>
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" fontWeight="bold">
@@ -223,214 +308,96 @@ export default function ChangeTicketForm({
             </Alert>
           </Box>
 
-          <Divider sx={{ mb: 3 }} />
+          <Divider sx={{ my: 3 }} />
 
-          {/* Reason for change */}
-          <Box sx={{ mb: 3 }}>
+          {/* Reason input - stays in the main component */}
+          <Box sx={{ mb: 4 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
               Reason for Changes
             </Typography>
             <TextField
+              {...register("reason", {
+                required: "Reason is required",
+                minLength: {
+                  value: 10,
+                  message:
+                    "Please provide a more detailed reason (minimum 10 characters)",
+                },
+              })}
               label="Reason"
               multiline
               rows={3}
               fullWidth
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
               placeholder="Explain why you need these changes..."
-              required
+              error={!!errors.reason}
+              helperText={errors.reason?.message}
               disabled={isSubmitting}
+              sx={{ mt: 1 }}
             />
           </Box>
 
-          <Divider sx={{ mb: 3 }} />
+          <Divider sx={{ my: 3 }} />
 
-          {/* Change options */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Select Changes to Request
-            </Typography>
-            <FormGroup>
-              {allowedChanges.includes("deadline") && (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={includeDeadline}
-                      onChange={(e) => setIncludeDeadline(e.target.checked)}
-                      disabled={isSubmitting}
-                    />
-                  }
-                  label="Change deadline"
-                />
-              )}
-
-              {allowedChanges.includes("generalDescription") && (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={includeDescription}
-                      onChange={(e) => setIncludeDescription(e.target.checked)}
-                      disabled={isSubmitting}
-                    />
-                  }
-                  label="Change general description"
-                />
-              )}
-
-              {allowedChanges.includes("generalOptions") && (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={includeGeneralOptions}
-                      onChange={(e) =>
-                        setIncludeGeneralOptions(e.target.checked)
-                      }
-                      disabled={isSubmitting}
-                    />
-                  }
-                  label="Change general options"
-                />
-              )}
-
-              {allowedChanges.includes("subjectOptions") && (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={includeSubjectOptions}
-                      onChange={(e) =>
-                        setIncludeSubjectOptions(e.target.checked)
-                      }
-                      disabled={isSubmitting}
-                    />
-                  }
-                  label="Change subject options"
-                />
-              )}
-            </FormGroup>
-          </Box>
-
-          {/* Deadline change section */}
-          {includeDeadline && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                New Deadline
-              </Typography>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="New Deadline Date"
-                  value={deadlineAt}
-                  onChange={(newValue) => setDeadlineAt(newValue)}
-                  slotProps={{ textField: { fullWidth: true } }}
-                  minDate={new Date()}
-                  disabled={isSubmitting}
-                />
-              </LocalizationProvider>
-            </Box>
+          {/* Section components */}
+          {allowedChanges.includes("deadline") && (
+            <DeadlineSection contract={contract} disabled={isSubmitting} />
           )}
 
-          {/* Description change section */}
-          {includeDescription && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                New General Description
-              </Typography>
-              <TextField
-                label="Description"
-                multiline
-                rows={4}
-                fullWidth
-                value={generalDescription}
-                onChange={(e) => setGeneralDescription(e.target.value)}
-                placeholder="Enter new description..."
-                required={includeDescription}
-                disabled={isSubmitting}
-              />
-            </Box>
+          {allowedChanges.includes("generalDescription") && (
+            <DescriptionSection contract={contract} disabled={isSubmitting} />
           )}
 
-          {/* General options change section - simplified */}
-          {includeGeneralOptions && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                General Options Changes
-              </Typography>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  In a production version, this would include UI for modifying
-                  general options. For this simplified version, you are
-                  requesting to change general options but not specifying the
-                  exact changes.
-                </Typography>
-              </Alert>
-            </Box>
-          )}
+          <ReferenceImagesSection contract={contract} disabled={isSubmitting} />
 
-          {/* Subject options change section - simplified */}
-          {includeSubjectOptions && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                Subject Options Changes
-              </Typography>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  In a production version, this would include UI for modifying
-                  subject options. For this simplified version, you are
-                  requesting to change subject options but not specifying the
-                  exact changes.
-                </Typography>
-              </Alert>
-            </Box>
-          )}
-
-          {/* Reference images */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Reference Images (Optional)
-            </Typography>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
+          {allowedChanges.includes("generalOptions") && (
+            <GeneralOptionsSection
+              contract={contract}
               disabled={isSubmitting}
-              style={{ marginBottom: "16px" }}
             />
+          )}
 
-            {previewUrls.length > 0 && (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 2 }}>
-                {previewUrls.map((url, index) => (
-                  <Box
-                    key={index}
-                    component="img"
-                    src={url}
-                    alt={`Preview ${index}`}
-                    sx={{
-                      width: 100,
-                      height: 100,
-                      objectFit: "cover",
-                      borderRadius: 1,
-                    }}
-                  />
-                ))}
-              </Box>
-            )}
+          {allowedChanges.includes("subjectOptions") && (
+            <SubjectOptionsSection
+              contract={contract}
+              disabled={isSubmitting}
+            />
+          )}
+
+          {/* Form Controls */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
+            <Button
+              variant="outlined"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isSubmitting}
+              sx={{ minWidth: 180 }}
+            >
+              {isSubmitting ? (
+                <>
+                  <CircularProgress size={24} sx={{ mr: 1 }} />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Change Request"
+              )}
+            </Button>
           </Box>
+        </Paper>
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={isSubmitting}
-            sx={{ minWidth: 120 }}
-          >
-            {isSubmitting ? (
-              <CircularProgress size={24} />
-            ) : (
-              "Submit Change Request"
-            )}
-          </Button>
-        </form>
-      )}
-    </Paper>
+        {/* Success Snackbar */}
+        <Snackbar
+          open={success}
+          message="Change request submitted successfully!"
+          autoHideDuration={2000}
+          onClose={() => setSuccess(false)}
+        />
+      </Box>
+    </FormProvider>
   );
 }

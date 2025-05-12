@@ -476,3 +476,23 @@ export async function cancelResolutionTicket(
     { new: true, session }
   );
 }
+
+// Add this function to your existing ticket repository file
+
+/**
+ * Find active cancel tickets for a contract
+ * Active tickets have status 'accepted' or 'forcedAccepted'
+ */
+export async function findActiveCancelTickets(
+  contractId: string | ObjectId
+): Promise<ICancelTicket[]> {
+  await connectDB();
+  
+  // Find cancel tickets with status accepted or forcedAccepted
+  const tickets = await CancelTicket.find({
+    contractId: toObjectId(contractId),
+    status: { $in: ["accepted", "forcedAccepted"] }
+  }).sort({ createdAt: -1 });
+  
+  return tickets;
+}

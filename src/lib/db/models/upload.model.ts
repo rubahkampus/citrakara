@@ -88,6 +88,7 @@ export interface IFinalUpload extends Document {
 export interface IRevisionUpload extends Document {
   _id: ObjectId;
 
+  contractId: ObjectId;
   revisionTicketId: ObjectId; // parent ticket
   artistId: ObjectId;
 
@@ -241,6 +242,11 @@ const RevisionUploadSchema = new Schema<IRevisionUpload>(
       required: true,
       ref: "RevisionTicket",
     },
+    contractId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "Contract",
+    },
     artistId: {
       type: Schema.Types.ObjectId,
       required: true,
@@ -271,7 +277,20 @@ const RevisionUploadSchema = new Schema<IRevisionUpload>(
 );
 
 // Create and export the models
-export const ProgressUploadStandard = models.ProgressUploadStandard || model<IProgressUploadStandard>("ProgressUploadStandard", ProgressUploadStandardSchema);
-export const ProgressUploadMilestone = models.ProgressUploadMilestone || model<IProgressUploadMilestone>("ProgressUploadMilestone", ProgressUploadMilestoneSchema);
-export const FinalUpload = models.FinalUpload || model<IFinalUpload>("FinalUpload", FinalUploadSchema);
-export const RevisionUpload = models.RevisionUpload || model<IRevisionUpload>("RevisionUpload", RevisionUploadSchema);
+export const ProgressUploadStandard =
+  models.ProgressUploadStandard ||
+  model<IProgressUploadStandard>(
+    "ProgressUploadStandard",
+    ProgressUploadStandardSchema
+  );
+export const ProgressUploadMilestone =
+  models.ProgressUploadMilestone ||
+  model<IProgressUploadMilestone>(
+    "ProgressUploadMilestone",
+    ProgressUploadMilestoneSchema
+  );
+export const FinalUpload =
+  models.FinalUpload || model<IFinalUpload>("FinalUpload", FinalUploadSchema);
+export const RevisionUpload =
+  models.RevisionUpload ||
+  model<IRevisionUpload>("RevisionUpload", RevisionUploadSchema);

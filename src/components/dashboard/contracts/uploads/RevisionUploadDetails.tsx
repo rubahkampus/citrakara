@@ -1,7 +1,9 @@
-// src/components/dashboard/contracts/uploads/RevisionUploadDetails.tsx
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import {
   Box,
   Paper,
@@ -10,10 +12,22 @@ import {
   Button,
   Chip,
   Alert,
+  AlertTitle,
   CircularProgress,
   Link,
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Skeleton,
+  Stack,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
+import InfoIcon from "@mui/icons-material/Info";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { IContract } from "@/lib/db/models/contract.model";
 import { IRevisionUpload } from "@/lib/db/models/upload.model";
 import { IRevisionTicket } from "@/lib/db/models/ticket.model";
@@ -25,6 +39,10 @@ interface RevisionUploadDetailsProps {
   isArtist: boolean;
   isClient: boolean;
   canReview: boolean;
+}
+
+interface ReviewFormValues {
+  action: "accept" | "reject";
 }
 
 export default function RevisionUploadDetails({
@@ -39,6 +57,18 @@ export default function RevisionUploadDetails({
   const [ticket, setTicket] = useState<IRevisionTicket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [reviewAction, setReviewAction] = useState<"accept" | "reject" | null>(
+    null
+  );
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  const { handleSubmit } = useForm<ReviewFormValues>();
+
+  const axiosClient = axios.create({
+    baseURL: process.env.NEXT_PUBLIC_API_URL || "",
+  });
 
   // Format date for display
   const formatDate = (date?: string | Date) => {
@@ -50,20 +80,18 @@ export default function RevisionUploadDetails({
   useEffect(() => {
     const fetchTicket = async () => {
       try {
-        const response = await fetch(
-          `/api/contract/${contract._id}/tickets/revision/${upload.revisionTicketId}`
+        const response = await axiosClient.get(
+          `/api/contract/${contract._id}/tickets/revision?ticketId=${upload.revisionTicketId}`
         );
-        if (!response.ok) {
-          throw new Error("Failed to fetch revision ticket details");
-        }
-        const data = await response.json();
-        setTicket(data);
+        setTicket(response.data.ticket);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "An error occurred while fetching ticket"
-        );
+        if (axios.isAxiosError(err) && err.response) {
+          setError(err.response.data.error || "Failed to fetch ticket details");
+        } else {
+          setError(
+            err instanceof Error ? err.message : "An unknown error occurred"
+          );
+        }
       } finally {
         setIsLoading(false);
       }
@@ -72,11 +100,44 @@ export default function RevisionUploadDetails({
     fetchTicket();
   }, [contract._id, upload.revisionTicketId]);
 
+  // Handle review confirmation
+  const handleReviewConfirm = async () => {
+    if (!reviewAction) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await axiosClient.post(
+        `/api/contract/${contract._id}/uploads/revision/${upload._id}/review`,
+        { action: reviewAction },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      setReviewSuccess(true);
+      setOpenConfirmDialog(false);
+
+      // Refresh the page after a short delay
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.error || "Review action failed");
+      } else {
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred"
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Handle review button click
-  const handleReviewClick = () => {
-    router.push(
-      `/dashboard/${userId}/contracts/${contract._id}/uploads/revision/${upload._id}?review=true`
-    );
+  const handleReview = (action: "accept" | "reject") => {
+    setReviewAction(action);
+    setOpenConfirmDialog(true);
   };
 
   // Determine status colors
@@ -103,33 +164,44 @@ export default function RevisionUploadDetails({
 
   if (isLoading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-        <CircularProgress />
-      </Box>
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <Skeleton variant="text" width="50%" height={40} />
+        <Skeleton variant="text" width="30%" />
+        <Skeleton variant="text" width="25%" />
+        <Divider sx={{ my: 2 }} />
+        <Skeleton variant="rectangular" height={200} sx={{ mb: 2 }} />
+        <Skeleton variant="text" width="40%" />
+        <Skeleton variant="text" width="100%" height={100} />
+      </Paper>
     );
   }
 
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
+      {/* Header with Status */}
       <Box
         sx={{
           mb: 3,
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
+          alignItems: "flex-start",
         }}
       >
         <Box>
-          <Typography variant="h6">Revision Upload</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="h5" fontWeight="medium">
+            Revision Upload
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Uploaded by {isArtist ? "you" : "the artist"} on{" "}
             {formatDate(upload.createdAt)}
           </Typography>
           {ticket?.milestoneIdx !== undefined && (
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
               For Milestone:{" "}
-              {contract.milestones?.[ticket.milestoneIdx]?.title ||
-                `#${ticket.milestoneIdx}`}
+              <span style={{ fontWeight: "medium" }}>
+                {contract.milestones?.[ticket.milestoneIdx]?.title ||
+                  `#${ticket.milestoneIdx}`}
+              </span>
             </Typography>
           )}
         </Box>
@@ -138,17 +210,37 @@ export default function RevisionUploadDetails({
           label={upload.status}
           color={getStatusColor(upload.status)}
           variant="outlined"
+          sx={{ fontWeight: "medium" }}
         />
       </Box>
 
+      {/* Success Message */}
+      {reviewSuccess && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          <AlertTitle>Success</AlertTitle>
+          Revision has been{" "}
+          {reviewAction === "accept" ? "accepted" : "rejected"} successfully!
+        </Alert>
+      )}
+
+      {/* Error Message */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
+          <AlertTitle>Error</AlertTitle>
           {error}
         </Alert>
       )}
 
+      {/* Status Alerts */}
       {upload.status === "submitted" && (
-        <Alert severity="info" sx={{ mb: 3 }}>
+        <Alert
+          severity="info"
+          sx={{ mb: 3 }}
+          icon={isPastDeadline ? <AccessTimeIcon /> : <InfoIcon />}
+        >
+          <AlertTitle>
+            {isPastDeadline ? "Review Deadline Approaching" : "Review Required"}
+          </AlertTitle>
           This revision upload requires {isClient ? "your" : "client"} review.
           {isPastDeadline &&
             " This upload is past its review deadline and may be automatically accepted."}
@@ -159,119 +251,325 @@ export default function RevisionUploadDetails({
 
       {/* Revision Ticket Details */}
       {ticket && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight="bold">
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
             Revision Request Details
           </Typography>
-          <Typography variant="body2">Status: {ticket.status}</Typography>
-          <Typography variant="body2">
-            Created: {formatDate(ticket.createdAt)}
-          </Typography>
-          {ticket.paidFee !== undefined && (
-            <Typography variant="body2">
-              Paid Revision: Yes (Fee: {ticket.paidFee})
-            </Typography>
-          )}
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Client's request:
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 0.5, mb: 1 }}>
-            {ticket.description}
-          </Typography>
 
-          <Box sx={{ mb: 2 }}>
-            <Link
-              href={`/dashboard/${userId}/contracts/${contract._id}/tickets/revision/${ticket._id}`}
-              underline="hover"
-            >
-              View full revision ticket
-            </Link>
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: "background.paper",
+              borderRadius: 1,
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Status:
+                </Typography>
+                <Typography variant="body1" fontWeight="medium">
+                  {ticket.status}
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Created:
+                </Typography>
+                <Typography variant="body1">
+                  {formatDate(ticket.createdAt)}
+                </Typography>
+              </Grid>
+
+              {ticket.paidFee !== undefined && (
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Paid Revision:
+                  </Typography>
+                  <Typography variant="body1">
+                    Yes (Fee: ${(ticket.paidFee / 100).toFixed(2)})
+                  </Typography>
+                </Grid>
+              )}
+            </Grid>
+
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Client's request:
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  mt: 0.5,
+                  p: 1.5,
+                  bgcolor: "action.hover",
+                  borderRadius: 1,
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {ticket.description}
+              </Typography>
+            </Box>
+
+            {ticket.referenceImages && ticket.referenceImages.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 0.5 }}
+                >
+                  Reference images:
+                </Typography>
+                <Grid container spacing={1}>
+                  {ticket.referenceImages.map((url, index) => (
+                    <Grid item key={index} xs={6} sm={4} md={3} lg={2}>
+                      <Box
+                        component="img"
+                        src={url}
+                        alt={`Reference ${index}`}
+                        sx={{
+                          width: "100%",
+                          height: 100,
+                          objectFit: "cover",
+                          borderRadius: 1,
+                          border: "1px solid #eee",
+                        }}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            )}
+
+            <Box sx={{ mt: 2 }}>
+              <Link
+                href={`/dashboard/${userId}/contracts/${contract._id}/tickets/revision/${ticket._id}`}
+                underline="hover"
+              >
+                View full revision ticket
+              </Link>
+            </Box>
           </Box>
         </Box>
       )}
 
       {/* Images */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
           Revision Images
         </Typography>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+        <Grid container spacing={2}>
           {upload.images.map((url, index) => (
-            <Box
-              key={index}
-              component="a"
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{
-                display: "block",
-                width: {
-                  xs: "100%",
-                  sm: "calc(50% - 8px)",
-                  md: "calc(33.33% - 11px)",
-                },
-              }}
-            >
+            <Grid item key={index} xs={12} sm={6} md={4}>
               <Box
-                component="img"
-                src={url}
-                alt={`Revision ${index + 1}`}
+                component="a"
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
                 sx={{
+                  display: "block",
                   width: "100%",
-                  height: "auto",
-                  maxHeight: 300,
-                  objectFit: "contain",
-                  borderRadius: 1,
-                  border: "1px solid #eee",
+                  position: "relative",
+                  "&:hover": {
+                    "& > .img-overlay": {
+                      opacity: 1,
+                    },
+                  },
                 }}
-              />
-            </Box>
+              >
+                <Box
+                  component="img"
+                  src={url}
+                  alt={`Revision ${index + 1}`}
+                  sx={{
+                    width: "100%",
+                    height: 250,
+                    objectFit: "cover",
+                    borderRadius: 1,
+                    border: "1px solid #eee",
+                  }}
+                />
+                <Box
+                  className="img-overlay"
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(0,0,0,0.5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    opacity: 0,
+                    transition: "opacity 0.2s",
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="body2">
+                    Click to view full size
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
           ))}
-        </Box>
+        </Grid>
       </Box>
 
-      {/* Description */}
+      {/* Artist's Description */}
       {upload.description && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
             Artist's Description
           </Typography>
-          <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
-            {upload.description}
-          </Typography>
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: "background.paper",
+              borderRadius: 1,
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
+              {upload.description}
+            </Typography>
+          </Box>
         </Box>
       )}
 
-      {/* Action Button for Client */}
-      {isClient && canReview && (
-        <Box sx={{ mb: 3 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleReviewClick}
-          >
-            Review Revision
-          </Button>
+      {/* Action Buttons for Client */}
+      {isClient && canReview && upload.status === "submitted" && (
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
+            Review Actions
+          </Typography>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<CancelIcon />}
+              onClick={() => handleReview("reject")}
+              disabled={isSubmitting}
+            >
+              Reject Revision
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              onClick={() => handleReview("accept")}
+              disabled={isSubmitting}
+            >
+              Accept Revision
+            </Button>
+          </Stack>
         </Box>
       )}
 
       {/* Status History */}
       <Box>
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-          Status History
+        <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
+          Status Timeline
         </Typography>
-        <Typography variant="body2">
-          Created: {formatDate(upload.createdAt)}
-        </Typography>
-        {upload.resolvedAt && (
-          <Typography variant="body2">
-            Resolved: {formatDate(upload.resolvedAt)}
-          </Typography>
-        )}
-        {upload.status !== "submitted" && (
-          <Typography variant="body2">Final Status: {upload.status}</Typography>
-        )}
+        <Box
+          sx={{
+            p: 2,
+            bgcolor: "background.paper",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Created:
+              </Typography>
+              <Typography variant="body1">
+                {formatDate(upload.createdAt)}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Review Deadline:
+              </Typography>
+              <Typography
+                variant="body1"
+                color={isPastDeadline ? "error.main" : "text.primary"}
+              >
+                {formatDate(upload.expiresAt)}
+                {isPastDeadline && " (Passed)"}
+              </Typography>
+            </Grid>
+
+            {upload.resolvedAt && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Resolved:
+                </Typography>
+                <Typography variant="body1">
+                  {formatDate(upload.resolvedAt)}
+                </Typography>
+              </Grid>
+            )}
+
+            {upload.status !== "submitted" && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Final Status:
+                </Typography>
+                <Typography variant="body1" fontWeight="medium">
+                  {upload.status}
+                </Typography>
+              </Grid>
+            )}
+          </Grid>
+        </Box>
       </Box>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={() => setOpenConfirmDialog(false)}
+      >
+        <DialogTitle>
+          {reviewAction === "accept" ? "Accept Revision" : "Reject Revision"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {reviewAction === "accept"
+              ? "Are you sure you want to accept this revision? This action cannot be undone."
+              : "Are you sure you want to reject this revision? This action cannot be undone and may require further revisions from the artist."}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setOpenConfirmDialog(false)}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleReviewConfirm}
+            color={reviewAction === "accept" ? "success" : "error"}
+            variant="contained"
+            disabled={isSubmitting}
+            startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+          >
+            {isSubmitting
+              ? "Processing..."
+              : reviewAction === "accept"
+              ? "Yes, Accept"
+              : "Yes, Reject"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

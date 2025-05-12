@@ -2,6 +2,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import axios from "axios";
 import {
   Box,
   Paper,
@@ -11,8 +14,8 @@ import {
   Alert,
   CircularProgress,
   Divider,
+  Stack,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
 import { IContract } from "@/lib/db/models/contract.model";
 
 interface CancelTicketFormProps {
@@ -22,6 +25,10 @@ interface CancelTicketFormProps {
   isClient: boolean;
 }
 
+interface FormValues {
+  reason: string;
+}
+
 export default function CancelTicketForm({
   contract,
   userId,
@@ -29,14 +36,27 @@ export default function CancelTicketForm({
   isClient,
 }: CancelTicketFormProps) {
   const router = useRouter();
-  const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const axiosClient = axios.create({
+    baseURL: process.env.NEXT_PUBLIC_API_URL || "",
+  });
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      reason: "",
+    },
+  });
+
   // Format price for display
   const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat("en-US").format(amount);
+    return new Intl.NumberFormat("id-ID").format(amount);
   };
 
   // Calculate approximate refund based on contract policy and status
@@ -87,31 +107,24 @@ export default function CancelTicketForm({
   const outcome = calculateApproximateOutcome();
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
       // Validate input
-      if (!reason.trim()) {
+      if (!data.reason.trim()) {
         throw new Error("Please provide a reason for cancellation");
       }
 
-      // Submit to API
-      const response = await fetch(
+      // Submit to API using axios
+      const response = await axiosClient.post(
         `/api/contract/${contract._id}/tickets/cancel/new`,
+        { reason: data.reason },
         {
-          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason }),
         }
       );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to create cancellation ticket");
-      }
 
       setSuccess(true);
 
@@ -121,13 +134,35 @@ export default function CancelTicketForm({
         router.refresh();
       }, 1500);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
+      if (axios.isAxiosError(err) && err.response) {
+        setError(
+          err.response.data.error || "Failed to create cancellation ticket"
+        );
+      } else {
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred"
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Detect if cancellation fee is configured
+  const hasCancellationFee =
+    !!contract.proposalSnapshot.listingSnapshot.cancelationFee;
+
+  // Check if contract is in a state where it can be cancelled
+  const canCancel = ["active"].includes(contract.status);
+
+  if (!canCancel) {
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        This contract cannot be cancelled in its current state:{" "}
+        {contract.status}
+      </Alert>
+    );
+  }
 
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
@@ -136,7 +171,7 @@ export default function CancelTicketForm({
           Cancellation request submitted successfully! Redirecting...
         </Alert>
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
@@ -144,19 +179,30 @@ export default function CancelTicketForm({
           )}
 
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight="bold">
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
               Contract Information
             </Typography>
-            <Typography variant="body2">Status: {contract.status}</Typography>
-            <Typography variant="body2">
-              Total Amount: {formatPrice(contract.finance.total)}
-            </Typography>
+            <Box sx={{ p: 2, bgcolor: "background.paper", borderRadius: 1 }}>
+              <Typography variant="body2">
+                <strong>Status:</strong> {contract.status}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Total Amount:</strong>{" "}
+                {formatPrice(contract.finance.total)}
+              </Typography>
+              {contract.deadlineAt && (
+                <Typography variant="body2">
+                  <strong>Deadline:</strong>{" "}
+                  {new Date(contract.deadlineAt).toLocaleDateString()}
+                </Typography>
+              )}
+            </Box>
           </Box>
 
           <Divider sx={{ mb: 3 }} />
 
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
               Cancellation Details
             </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
@@ -165,26 +211,35 @@ export default function CancelTicketForm({
               and accept your request.
             </Typography>
 
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                Cancellation Fee:{" "}
-                {contract.proposalSnapshot.listingSnapshot.cancelationFee
-                  ?.kind === "flat"
-                  ? formatPrice(
-                      contract.proposalSnapshot.listingSnapshot.cancelationFee
-                        .amount
-                    )
-                  : `${contract.proposalSnapshot.listingSnapshot.cancelationFee?.amount}% of total`}
-              </Typography>
-              <Typography variant="body2">
-                {isClient
-                  ? "You will pay this fee to the artist even if they haven't started work."
-                  : "You will forfeit this fee to the client if you cancel."}
-              </Typography>
-            </Alert>
+            {hasCancellationFee ? (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                  Cancellation Fee:{" "}
+                  {contract.proposalSnapshot.listingSnapshot.cancelationFee
+                    ?.kind === "flat"
+                    ? formatPrice(
+                        contract.proposalSnapshot.listingSnapshot.cancelationFee
+                          .amount
+                      )
+                    : `${contract.proposalSnapshot.listingSnapshot.cancelationFee?.amount}% of total`}
+                </Typography>
+                <Typography variant="body2">
+                  {isClient
+                    ? "You will pay this fee to the artist even if they haven't started work."
+                    : "You will forfeit this fee to the client if you cancel."}
+                </Typography>
+              </Alert>
+            ) : (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  No cancellation fee is configured for this contract. Final
+                  amounts will be calculated based on work completed.
+                </Typography>
+              </Alert>
+            )}
 
             <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="body2">
+              <Typography variant="body2" fontWeight="bold">
                 Estimated outcome if accepted with no work done:
               </Typography>
               <Typography variant="body2">
@@ -201,32 +256,54 @@ export default function CancelTicketForm({
           </Box>
 
           <Box sx={{ mb: 3 }}>
-            <TextField
-              label="Reason for Cancellation"
-              multiline
-              rows={4}
-              fullWidth
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Explain why you need to cancel this contract"
-              required
-              disabled={isSubmitting}
+            <Controller
+              name="reason"
+              control={control}
+              rules={{
+                required: "Please provide a reason for cancellation",
+                minLength: {
+                  value: 10,
+                  message: "Reason must be at least 10 characters long",
+                },
+              }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Reason for Cancellation"
+                  multiline
+                  rows={4}
+                  fullWidth
+                  placeholder="Explain why you need to cancel this contract"
+                  error={!!errors.reason}
+                  helperText={errors.reason?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Box>
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={isSubmitting}
-            sx={{ minWidth: 120 }}
-          >
-            {isSubmitting ? (
-              <CircularProgress size={24} />
-            ) : (
-              "Submit Cancellation Request"
-            )}
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={isSubmitting}
+              sx={{ minWidth: 120 }}
+            >
+              {isSubmitting ? (
+                <CircularProgress size={24} />
+              ) : (
+                "Submit Cancellation Request"
+              )}
+            </Button>
+          </Stack>
         </form>
       )}
     </Paper>

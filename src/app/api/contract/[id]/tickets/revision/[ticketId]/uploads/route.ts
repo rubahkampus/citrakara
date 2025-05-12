@@ -11,7 +11,8 @@ export async function GET(
   { params }: { params: { id: string; ticketId: string } }
 ) {
   try {
-    const ticketId = params.ticketId;
+    const param = await params
+    const ticketId = param.ticketId;
 
     return withAuth(async (session) => {
       // First verify user is part of the contract (implementation needed)

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get role filter from query params
-    const role = req.nextUrl.searchParams.get("role") || "both";
+    const role = await req.nextUrl.searchParams.get("role") || "both";
     if (!["submitter", "counterparty", "both"].includes(role)) {
       return NextResponse.json(
         { error: "Invalid role parameter" },

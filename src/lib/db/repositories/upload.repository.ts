@@ -183,6 +183,7 @@ export async function updateMilestoneUploadStatus(
 // Input for creating a revision upload
 export interface CreateRevisionUploadInput {
   revisionTicketId: string | ObjectId;
+  contractId: string | ObjectId;
   artistId: string | ObjectId;
   images: string[];
   description?: string;
@@ -200,6 +201,7 @@ export async function createRevisionUpload(
   expiresAt.setHours(expiresAt.getHours() + 24);
 
   const upload = new RevisionUpload({
+    contractId: toObjectId(input.contractId),
     revisionTicketId: toObjectId(input.revisionTicketId),
     artistId: toObjectId(input.artistId),
     images: input.images,

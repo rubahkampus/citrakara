@@ -1,4 +1,4 @@
-// src/app/api/contract/[id]/tickets/change/[ticketId]/route.ts
+// src/app/api/contract/[id]/tickets/cancel/[ticketId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api/withAuth";
 import { rotateToken } from "@/lib/api/rotateToken";
@@ -10,8 +10,9 @@ export async function GET(
   { params }: { params: { id: string, ticketId: string } }
 ) {
   try {
-    const contractId = params.id;
-    const ticketId = params.ticketId
+    const param = await params
+    const contractId = param.id;
+    const ticketId = param.ticketId
     
     if (!ticketId) {
       return NextResponse.json(

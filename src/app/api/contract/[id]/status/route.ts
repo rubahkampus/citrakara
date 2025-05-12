@@ -12,7 +12,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const contractId = params.id;
+    const param = await params
+    const contractId = param.id;
     const { status, workPercentage } = await req.json();
 
     return withAuth(async (session) => {

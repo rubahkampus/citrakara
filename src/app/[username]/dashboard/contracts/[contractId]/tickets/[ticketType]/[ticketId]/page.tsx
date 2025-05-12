@@ -12,6 +12,8 @@ import CancelTicketDetails from "@/components/dashboard/contracts/tickets/Cancel
 import RevisionTicketDetails from "@/components/dashboard/contracts/tickets/RevisionTicketDetails";
 import ChangeTicketDetails from "@/components/dashboard/contracts/tickets/ChangeTicketDetails";
 import ResolutionTicketDetails from "@/components/dashboard/contracts/tickets/ResolutionTicketDetails";
+import { IContract } from "@/lib/db/models/contract.model";
+import { IResolutionTicket } from "@/lib/db/models/ticket.model";
 
 interface TicketDetailsPageProps {
   params: { 
@@ -71,7 +73,7 @@ export default async function TicketDetailsPage({ params }: TicketDetailsPagePro
   }
 
   // Serialize for client components
-  const serializedContract = JSON.parse(JSON.stringify(contract));
+  const serializedContract = JSON.parse(JSON.stringify(contract)) as IContract;
   const serializedTicket = JSON.parse(JSON.stringify(ticket));
 
   return (
@@ -116,7 +118,7 @@ export default async function TicketDetailsPage({ params }: TicketDetailsPagePro
 
       {ticketType === "resolution" && (
         <ResolutionTicketDetails 
-          contract={serializedContract} 
+          contractId={(serializedTicket as IResolutionTicket).contractId.toString()} 
           ticket={serializedTicket} 
           userId={(session as Session).id} 
           isArtist={isArtist} 

@@ -19,7 +19,6 @@ import ProgressUploadDetails from "@/components/dashboard/contracts/uploads/Prog
 import MilestoneUploadDetails from "@/components/dashboard/contracts/uploads/MilestoneUploadDetails";
 import RevisionUploadDetails from "@/components/dashboard/contracts/uploads/RevisionUploadDetails";
 import FinalUploadDetails from "@/components/dashboard/contracts/uploads/FinalUploadDetails";
-import UploadReviewForm from "@/components/dashboard/contracts/uploads/UploadReviewForm";
 
 interface UploadDetailsPageProps {
   params: {
@@ -28,19 +27,13 @@ interface UploadDetailsPageProps {
     uploadType: "progress" | "milestone" | "revision" | "final";
     uploadId: string;
   };
-  searchParams: {
-    review?: string; // If "true", show the review form instead of just details
-  };
 }
 
 export default async function UploadDetailsPage({
   params,
-  searchParams,
 }: UploadDetailsPageProps) {
-  const param = await params
-  const searchParam = await searchParams
+  const param = await params;
   const { username, contractId, uploadType, uploadId } = param;
-  const showReview = searchParam.review === "true";
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
@@ -100,166 +93,62 @@ export default async function UploadDetailsPage({
     "expiresAt" in upload &&
     upload.status === "submitted";
 
-  // If review mode is requested but not allowed, show an error
-  if (showReview && !canReview) {
-    return <Alert severity="error">You cannot review this upload</Alert>;
+  if (uploadType === "progress") {
+    return (
+      <ProgressUploadDetails
+        contract={serializedContract}
+        upload={serializedUpload}
+        userId={(session as Session).id}
+        isArtist={isArtist}
+        isClient={isClient}
+      />
+    );
   }
 
-  // Check if the upload is past the review deadline
-  const isPastDeadline =
-    uploadType === "progress" ||
-    ("expiresAt" in upload &&
-      upload.expiresAt &&
-      new Date(upload.expiresAt) < new Date());
+  // If review mode is requested but not allowed, show an error
+  if (!canReview) {
+    return <Alert severity="error">You cannot review this upload</Alert>;
+  }
 
   return (
     <Box>
       <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        {showReview ? "Review " : ""}
-        {uploadType === "progress" && "Progress Upload"}
         {uploadType === "milestone" && "Milestone Progress Upload"}
         {uploadType === "revision" && "Revision Upload"}
         {uploadType === "final" && "Final Delivery"}
       </Typography>
 
-      {/* If in review mode and the upload is past deadline, show warning */}
-      {uploadType === "progress" && showReview && isPastDeadline && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          This upload is past its review deadline and may be automatically
-          accepted if not reviewed.
-        </Alert>
+      {uploadType === "milestone" && (
+        <MilestoneUploadDetails
+          contract={serializedContract}
+          upload={serializedUpload}
+          userId={(session as Session).id}
+          isArtist={isArtist}
+          isClient={isClient}
+          canReview={canReview}
+        />
       )}
 
-      {/* Show review form or details based on mode */}
-      {showReview && uploadType !== "progress" ? (
-        // Review Form Mode
-        <Box>
-          <UploadReviewForm
-            contract={serializedContract}
-            upload={serializedUpload}
-            uploadType={uploadType}
-            userId={(session as Session).id}
-            isPastDeadline={isPastDeadline}
-          />
-          <Box>
-            <Typography>Upload review form would be displayed here</Typography>
-            <Typography>
-              This is for {uploadType} upload with ID {uploadId}
-            </Typography>
-            {isPastDeadline && (
-              <Typography color="error">
-                Review deadline expired on{" "}
-                {"expiresAt" in upload && upload.expiresAt
-                  ? new Date(upload.expiresAt).toLocaleString()
-                  : "No expiration date"}
-              </Typography>
-            )}
-          </Box>
-        </Box>
-      ) : (
-        // Details View Mode
-        <Box>
-          {/* These would be implemented separately */}
-          {uploadType === "progress" && (
-            <ProgressUploadDetails
-              contract={serializedContract}
-              upload={serializedUpload}
-              userId={(session as Session).id}
-              isArtist={isArtist}
-              isClient={isClient}
-            />
-          )}
+      {uploadType === "revision" && (
+        <RevisionUploadDetails
+          contract={serializedContract}
+          upload={serializedUpload}
+          userId={(session as Session).id}
+          isArtist={isArtist}
+          isClient={isClient}
+          canReview={canReview}
+        />
+      )}
 
-          {uploadType === "milestone" && (
-            <Box>
-              <Typography>
-                Milestone upload details would be displayed here
-              </Typography>
-              {canReview && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography color="primary" sx={{ mb: 1 }}>
-                    This upload requires your review
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    href={`/dashboard/${username}/contracts/${contractId}/uploads/${uploadType}/${uploadId}?review=true`}
-                  >
-                    Review Upload
-                  </Button>
-                </Box>
-              )}
-              <MilestoneUploadDetails
-                contract={serializedContract}
-                upload={serializedUpload}
-                userId={(session as Session).id}
-                isArtist={isArtist}
-                isClient={isClient}
-                canReview={canReview}
-              />
-            </Box>
-          )}
-
-          {uploadType === "revision" && (
-            <Box>
-              <Typography>
-                Revision upload details would be displayed here
-              </Typography>
-              {canReview && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography color="primary" sx={{ mb: 1 }}>
-                    This upload requires your review
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    href={`/dashboard/${username}/contracts/${contractId}/uploads/${uploadType}/${uploadId}?review=true`}
-                  >
-                    Review Upload
-                  </Button>
-                </Box>
-              )}
-              <RevisionUploadDetails
-                contract={serializedContract}
-                upload={serializedUpload}
-                userId={(session as Session).id}
-                isArtist={isArtist}
-                isClient={isClient}
-                canReview={canReview}
-              />
-            </Box>
-          )}
-
-          {uploadType === "final" && (
-            <Box>
-              <Typography>
-                Final upload details would be displayed here
-              </Typography>
-              {canReview && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography color="primary" sx={{ mb: 1 }}>
-                    This upload requires your review
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    href={`/dashboard/${username}/contracts/${contractId}/uploads/${uploadType}/${uploadId}?review=true`}
-                  >
-                    Review Upload
-                  </Button>
-                </Box>
-              )}
-              <FinalUploadDetails
-                contract={serializedContract}
-                upload={serializedUpload}
-                userId={(session as Session).id}
-                isArtist={isArtist}
-                isClient={isClient}
-                canReview={canReview}
-              />
-            </Box>
-          )}
-        </Box>
+      {uploadType === "final" && (
+        <FinalUploadDetails
+          contract={serializedContract}
+          upload={serializedUpload}
+          userId={(session as Session).id}
+          isArtist={isArtist}
+          isClient={isClient}
+          canReview={canReview}
+        />
       )}
     </Box>
   );

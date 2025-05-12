@@ -10,8 +10,9 @@ export async function GET(
   { params }: { params: { id: string, ticketId: string } }
 ) {
   try {
-    const contractId = params.id;
-    const ticketId = params.ticketId
+    const param = await params
+    const contractId = param.id;
+    const ticketId = param.ticketId
     
     if (!ticketId) {
       return NextResponse.json(

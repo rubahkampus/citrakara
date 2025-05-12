@@ -14,7 +14,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const contractId = params.id;
+    const param = await params
+    const contractId = param.id;
 
     return withAuth(async (session) => {
       const contract = await getContractById(contractId, session.id);
@@ -34,7 +35,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const contractId = params.id;
+    const param = await params
+    const contractId = param.id;
     const body = await req.json();
 
     return withAuth(async (session) => {

@@ -211,17 +211,17 @@ export async function createContractFromProposal(
             status: idx === 0 ? "inProgress" : "pending",
             revisionPolicy: m.policy,
           })
-        )
+        );
       } else {
         contractInput.milestones = proposal.listingSnapshot.milestones.map(
           (m: any, idx: number) => ({
             index: idx,
             title: m.title,
             percent: m.percent,
-            status: idx === 0 ? "inProgress" : "pending"
+            status: idx === 0 ? "inProgress" : "pending",
           })
-        )
-      } 
+        );
+      }
     }
 
     // Add revision policy if standard
@@ -621,20 +621,46 @@ export async function claimFunds(
 }
 
 /**
- * Add a ticket to a contract
+ * Add a ticket reference to a contract
  */
 export async function addTicketToContract(
   contractId: string | ObjectId,
   ticketType: "cancel" | "revision" | "change" | "resolution",
   ticketId: string | ObjectId,
   session?: ClientSession
-): Promise<any> {
-  return contractRepo.addTicketToContract(
-    contractId,
-    ticketType,
-    ticketId,
-    session
-  );
+): Promise<IContract | null> {
+  await connectDB();
+
+  // Get the contract
+  const contract = await contractRepo.findContractById(contractId, { session });
+  if (!contract) {
+    throw new Error("Contract not found");
+  }
+
+  // Map ticket type to the appropriate contract field
+  let updateField;
+  switch (ticketType) {
+    case "cancel":
+      updateField = "cancelTickets";
+      break;
+    case "revision":
+      updateField = "revisionTickets";
+      break;
+    case "change":
+      updateField = "changeTickets";
+      break;
+    case "resolution":
+      updateField = "resolutionTickets";
+      break;
+    default:
+      throw new Error(`Invalid ticket type: ${ticketType}`);
+  }
+
+  // Create update object
+  const update = { $push: { [updateField]: toObjectId(ticketId) } };
+
+  // Update the contract
+  return contractRepo.addTicketToContract(contractId, ticketType, toObjectId(ticketId), session);
 }
 
 /**
@@ -713,12 +739,16 @@ export async function calculatePayouts(
 }
 
 /**
- * Check if a contract is late (past deadline)
+ * Determine if a contract is late based on its deadline
  */
-export function isContractLate(contract: any): boolean {
-  return new Date(contract.deadlineAt) < new Date();
+export function isContractLate(contract: IContract): boolean {
+  // Check if there's a deadline and if current date is past it
+  if (contract.deadlineAt) {
+    const now = new Date();
+    return now > new Date(contract.deadlineAt);
+  }
+  return false;
 }
-
 /**
  * Check if a contract is past grace period
  */

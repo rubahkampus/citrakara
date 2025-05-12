@@ -11,7 +11,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const contractId = params.id;
+    const param = await params
+    const contractId = param.id;
 
     return withAuth(async (session) => {
       const result = await claimFunds(contractId, session.id);

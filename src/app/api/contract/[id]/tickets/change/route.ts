@@ -11,7 +11,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const contractId = params.id;
+    const param = await params
+    const contractId = param.id;
 
     // Parse the form data from the request
     const formData = await req.formData();

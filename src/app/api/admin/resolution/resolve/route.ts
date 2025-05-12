@@ -12,6 +12,7 @@ export async function POST(
   { params }: { params: { ticketId: string } }
 ) {
   try {
+    const param = await params
     const session = await getAuthSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +28,7 @@ export async function POST(
     }
 
     // Get the ticket to validate status
-    const ticket = await findResolutionTicketById(params.ticketId);
+    const ticket = await findResolutionTicketById(param.ticketId);
     if (!ticket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
@@ -61,7 +62,7 @@ export async function POST(
 
     // Process the resolution
     const resolvedTicket = await resolveDispute(
-      params.ticketId,
+      param.ticketId,
       (session as Session).id,
       decision,
       resolutionNote

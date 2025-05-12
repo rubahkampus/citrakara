@@ -17,11 +17,31 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Link,
+  Stack,
+  Grid,
+  Card,
+  CardMedia,
+  CardContent,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { IContract } from "@/lib/db/models/contract.model";
 import { IRevisionTicket } from "@/lib/db/models/ticket.model";
+import { axiosClient } from "@/lib/utils/axiosClient";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
+import ThumbDownIcon from "@mui/icons-material/ThumbDown";
+import WarningIcon from "@mui/icons-material/Warning";
+import ImageIcon from "@mui/icons-material/Image";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import HistoryIcon from "@mui/icons-material/History";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import UniversalPaymentDialog from "@/components/UniversalPaymentDialog";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import InfoIcon from "@mui/icons-material/Info";
+import PaymentIcon from "@mui/icons-material/Payment";
+import UploadIcon from "@mui/icons-material/Upload";
 
 interface RevisionTicketDetailsProps {
   contract: IContract;
@@ -57,7 +77,32 @@ export default function RevisionTicketDetails({
   // Format price for display
   const formatPrice = (amount?: number) => {
     if (amount === undefined) return "N/A";
-    return new Intl.NumberFormat("en-US").format(amount);
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Calculate time remaining until expiry
+  const calculateTimeRemaining = () => {
+    if (!ticket.expiresAt) return null;
+
+    const expiryDate = new Date(ticket.expiresAt);
+    const now = new Date();
+    const diffMs = expiryDate.getTime() - now.getTime();
+
+    if (diffMs <= 0) return "Expired";
+
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (diffHrs > 24) {
+      const days = Math.floor(diffHrs / 24);
+      return `${days} day${days > 1 ? "s" : ""} remaining`;
+    }
+
+    return `${diffHrs}h ${diffMins}m remaining`;
   };
 
   // Determine if this is a paid revision
@@ -65,7 +110,7 @@ export default function RevisionTicketDetails({
 
   // Determine if user can respond to this ticket (artist only)
   const canRespond = () => {
-    return isArtist && ticket.status === "pending";
+    return isArtist && ticket.status === "pending" && !isPastExpiry;
   };
 
   // Determine if client can pay for this revision
@@ -109,23 +154,14 @@ export default function RevisionTicketDetails({
       // Prepare request body
       const requestBody = {
         response,
-        reason: response === "reject" ? rejectionReason : undefined,
+        rejectionReason: response === "reject" ? rejectionReason : undefined,
       };
 
-      // Submit to API
-      const apiResponse = await fetch(
+      // Submit to API using axios
+      await axiosClient.post(
         `/api/contract/${contract._id}/tickets/revision/${ticket._id}/respond`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-        }
+        requestBody
       );
-
-      if (!apiResponse.ok) {
-        const data = await apiResponse.json();
-        throw new Error(data.error || `Failed to submit response`);
-      }
 
       setSuccess(true);
 
@@ -133,9 +169,9 @@ export default function RevisionTicketDetails({
       setTimeout(() => {
         router.refresh();
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err.response?.data?.error || err.message || "An unknown error occurred"
       );
     } finally {
       setIsSubmitting(false);
@@ -143,24 +179,16 @@ export default function RevisionTicketDetails({
   };
 
   // Handle payment submission (for client)
-  const handlePayment = async () => {
+  const handlePayment = async (paymentData: any) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Submit payment to API
-      const apiResponse = await fetch(
+      // Submit payment to API using the universal payment data
+      await axiosClient.post(
         `/api/contract/${contract._id}/tickets/revision/${ticket._id}/pay`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
+        paymentData
       );
-
-      if (!apiResponse.ok) {
-        const data = await apiResponse.json();
-        throw new Error(data.error || `Failed to process payment`);
-      }
 
       setSuccess(true);
       setShowPaymentDialog(false);
@@ -169,9 +197,9 @@ export default function RevisionTicketDetails({
       setTimeout(() => {
         router.refresh();
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err.response?.data?.error || err.message || "An unknown error occurred"
       );
     } finally {
       setIsSubmitting(false);
@@ -212,12 +240,47 @@ export default function RevisionTicketDetails({
     }
   };
 
+  // Get status label (more user-friendly than raw status)
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Pending Artist Response";
+      case "accepted":
+        return "Accepted";
+      case "forcedAcceptedArtist":
+        return "Accepted (Admin)";
+      case "paid":
+        return "Paid - In Progress";
+      case "rejected":
+        return "Rejected";
+      case "disputed":
+        return "In Dispute";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
+
   // Check if ticket is past expiration
   const isPastExpiry =
     ticket.expiresAt && new Date(ticket.expiresAt) < new Date();
 
+  // Check if approaching expiry (less than 12 hours remaining)
+  const isApproachingExpiry = () => {
+    if (!ticket.expiresAt) return false;
+
+    const expiryDate = new Date(ticket.expiresAt);
+    const now = new Date();
+    const diffMs = expiryDate.getTime() - now.getTime();
+    const diffHrs = diffMs / (1000 * 60 * 60);
+
+    return diffHrs > 0 && diffHrs < 12;
+  };
+
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
+      {/* Header Section with Status */}
       <Box
         sx={{
           mb: 3,
@@ -227,47 +290,106 @@ export default function RevisionTicketDetails({
         }}
       >
         <Box>
-          <Typography variant="h6">Revision Request</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Created: {formatDate(ticket.createdAt)}
+          <Typography variant="h5" gutterBottom fontWeight="medium">
+            Revision Request
+            {ticket.milestoneIdx !== undefined && (
+              <Typography
+                component="span"
+                variant="subtitle1"
+                color="text.secondary"
+                sx={{ ml: 1 }}
+              >
+                for{" "}
+                {contract.milestones?.[ticket.milestoneIdx]?.title ||
+                  `Milestone #${ticket.milestoneIdx + 1}`}
+              </Typography>
+            )}
           </Typography>
-          {ticket.resolvedAt && (
-            <Typography variant="body2" color="text.secondary">
-              Resolved: {formatDate(ticket.resolvedAt)}
-            </Typography>
-          )}
-          {ticket.milestoneIdx !== undefined && (
-            <Typography variant="body2" color="text.secondary">
-              For Milestone:{" "}
-              {contract.milestones?.[ticket.milestoneIdx]?.title ||
-                `#${ticket.milestoneIdx + 1}`}
-            </Typography>
-          )}
+
+          <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <CalendarTodayIcon
+                sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                Created: {formatDate(ticket.createdAt)}
+              </Typography>
+            </Box>
+
+            {ticket.resolvedAt && (
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <CheckCircleIcon
+                  sx={{ fontSize: 18, mr: 0.5, color: "success.main" }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Resolved: {formatDate(ticket.resolvedAt)}
+                </Typography>
+              </Box>
+            )}
+
+            {ticket.status === "pending" && ticket.expiresAt && (
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <AccessTimeIcon
+                  sx={{
+                    fontSize: 18,
+                    mr: 0.5,
+                    color: isPastExpiry
+                      ? "error.main"
+                      : isApproachingExpiry()
+                      ? "warning.main"
+                      : "info.main",
+                  }}
+                />
+                <Typography
+                  variant="body2"
+                  color={
+                    isPastExpiry
+                      ? "error"
+                      : isApproachingExpiry()
+                      ? "warning.main"
+                      : "text.secondary"
+                  }
+                >
+                  {calculateTimeRemaining()}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
         </Box>
+
         <Chip
-          label={ticket.status}
+          label={getStatusLabel(ticket.status)}
           color={getStatusColor(ticket.status)}
-          variant="outlined"
+          sx={{ fontWeight: "medium", px: 1 }}
         />
       </Box>
 
-      {/* Show warning if approaching expiry */}
-      {ticket.status === "pending" && !isPastExpiry && ticket.expiresAt && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          This revision request will expire on {formatDate(ticket.expiresAt)}.
-        </Alert>
-      )}
+      {/* Alert Messages */}
+      {ticket.status === "pending" &&
+        !isPastExpiry &&
+        ticket.expiresAt &&
+        isApproachingExpiry() && (
+          <Alert severity="warning" sx={{ mb: 3 }} icon={<AccessTimeIcon />}>
+            <Typography variant="body2">
+              This revision request will expire soon - on{" "}
+              {formatDate(ticket.expiresAt)}.
+              {isArtist && " Please respond as soon as possible."}
+            </Typography>
+          </Alert>
+        )}
 
-      {/* Show warning if past expiry */}
       {ticket.status === "pending" && isPastExpiry && ticket.expiresAt && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          This revision request has expired. You may need to submit a new
-          request or escalate to resolution.
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="body2">
+            This revision request has expired on {formatDate(ticket.expiresAt)}.
+            {isClient &&
+              " You may need to submit a new request or escalate to resolution."}
+          </Typography>
         </Alert>
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 3 }}>
+        <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
           Your action has been processed successfully.
         </Alert>
       )}
@@ -280,269 +402,375 @@ export default function RevisionTicketDetails({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Ticket Details */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-          Revision Request Details
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 2, whiteSpace: "pre-line" }}>
-          {ticket.description}
-        </Typography>
+      {/* Main Content Area */}
+      <Grid container spacing={3}>
+        {/* Left Column: Revision Details */}
+        <Grid item xs={12} md={7}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom fontWeight="medium">
+              Revision Request Details
+            </Typography>
 
-        {isPaidRevision && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="body2" fontWeight="bold">
-              This is a paid revision request.
-            </Typography>
-            <Typography variant="body2">
-              Fee: {formatPrice(ticket.paidFee)}
-            </Typography>
-            {ticket.escrowTxnId ? (
-              <Typography variant="body2">Payment Status: Paid</Typography>
-            ) : (
-              <Typography variant="body2">
-                Payment Status: Pending payment
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, borderRadius: 1, bgcolor: "background.paper", mb: 2 }}
+            >
+              <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
+                {ticket.description}
               </Typography>
-            )}
-          </Alert>
-        )}
-      </Box>
+            </Paper>
 
-      {/* Reference Images */}
-      {ticket.referenceImages && ticket.referenceImages.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-            Reference Images
-          </Typography>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-            {ticket.referenceImages.map((url, index) => (
-              <Box
-                key={index}
-                component="a"
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
+            {isPaidRevision && (
+              <Paper
+                variant="outlined"
                 sx={{
-                  display: "block",
-                  width: {
-                    xs: "100%",
-                    sm: "calc(50% - 8px)",
-                    md: "calc(33.33% - 11px)",
-                  },
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: ticket.escrowTxnId ? "success.50" : "warning.50",
+                  borderColor: ticket.escrowTxnId
+                    ? "success.200"
+                    : "warning.200",
+                  mb: 2,
                 }}
               >
-                <Box
-                  component="img"
-                  src={url}
-                  alt={`Reference ${index + 1}`}
-                  sx={{
-                    width: "100%",
-                    height: "auto",
-                    maxHeight: 300,
-                    objectFit: "contain",
-                    borderRadius: 1,
-                    border: "1px solid #eee",
-                  }}
-                />
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      )}
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                  {ticket.escrowTxnId
+                    ? "Paid Revision"
+                    : "Paid Revision - Payment Required"}
+                </Typography>
+                <Typography variant="body2">
+                  Fee: {formatPrice(ticket.paidFee)}
+                </Typography>
+                <Typography variant="body2">
+                  Payment Status:{" "}
+                  {ticket.escrowTxnId ? "Paid" : "Pending payment"}
+                </Typography>
+              </Paper>
+            )}
 
-      {/* Rejection Reason - if rejected */}
-      {ticket.status === "rejected" && ticket.artistRejectionReason && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-            Rejection Reason
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            {ticket.artistRejectionReason}
-          </Typography>
-        </Box>
-      )}
-
-      {/* Response Form - Only shown if user is artist and ticket is pending */}
-      {canRespond() && (
-        <Box sx={{ mb: 3 }}>
-          <Divider sx={{ mb: 3 }} />
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-            Your Response
-          </Typography>
-
-          <Box sx={{ mb: 3, display: "flex", gap: 2 }}>
-            <Button
-              variant={response === "accept" ? "contained" : "outlined"}
-              color="success"
-              onClick={() => setResponse("accept")}
-              disabled={isSubmitting}
-            >
-              Accept Revision
-            </Button>
-            <Button
-              variant={response === "reject" ? "contained" : "outlined"}
-              color="error"
-              onClick={() => setResponse("reject")}
-              disabled={isSubmitting}
-            >
-              Reject Revision
-            </Button>
+            {/* Rejection Reason - if rejected */}
+            {ticket.status === "rejected" && ticket.artistRejectionReason && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: "error.50",
+                  borderColor: "error.200",
+                  mt: 2,
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                  Rejection Reason
+                </Typography>
+                <Typography variant="body1">
+                  {ticket.artistRejectionReason}
+                </Typography>
+              </Paper>
+            )}
           </Box>
 
-          {response === "accept" && (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <Typography variant="body2">
-                By accepting this revision request, you are agreeing to make the
-                requested changes.
-                {isPaidRevision &&
-                  " The client will need to pay the revision fee before you can upload your work."}
+          {/* Response Form - Only shown if user is artist and ticket is pending */}
+          {canRespond() && (
+            <Box sx={{ mb: 3 }}>
+              <Divider sx={{ mb: 3 }} />
+              <Typography variant="h6" fontWeight="medium" gutterBottom>
+                Your Response
               </Typography>
-            </Alert>
+
+              <Box sx={{ mb: 3 }}>
+                <Stack direction="row" spacing={2}>
+                  <Button
+                    variant={response === "accept" ? "contained" : "outlined"}
+                    color="success"
+                    onClick={() => setResponse("accept")}
+                    disabled={isSubmitting}
+                    startIcon={<ThumbUpIcon />}
+                    sx={{ flexGrow: 1 }}
+                    size="large"
+                  >
+                    Accept Revision
+                  </Button>
+                  <Button
+                    variant={response === "reject" ? "contained" : "outlined"}
+                    color="error"
+                    onClick={() => setResponse("reject")}
+                    disabled={isSubmitting}
+                    startIcon={<ThumbDownIcon />}
+                    sx={{ flexGrow: 1 }}
+                    size="large"
+                  >
+                    Reject Revision
+                  </Button>
+                </Stack>
+              </Box>
+
+              {response === "accept" && (
+                <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
+                  <Typography variant="body2">
+                    By accepting this revision request, you are agreeing to make
+                    the requested changes.
+                    {isPaidRevision &&
+                      " The client will need to pay the revision fee before you can upload your work."}
+                  </Typography>
+                </Alert>
+              )}
+
+              {response === "reject" && (
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                    label="Reason for Rejection"
+                    multiline
+                    rows={3}
+                    fullWidth
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Explain why you are rejecting this revision request"
+                    required
+                    disabled={isSubmitting}
+                    error={
+                      response === "reject" && rejectionReason.trim() === ""
+                    }
+                    helperText={
+                      response === "reject" && rejectionReason.trim() === ""
+                        ? "Rejection reason is required"
+                        : ""
+                    }
+                    sx={{ mb: 2 }}
+                  />
+                </Box>
+              )}
+
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmit}
+                disabled={
+                  !response ||
+                  (response === "reject" && !rejectionReason.trim()) ||
+                  isSubmitting
+                }
+                sx={{ minWidth: 120 }}
+              >
+                {isSubmitting ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  "Submit Response"
+                )}
+              </Button>
+            </Box>
           )}
 
-          {response === "reject" && (
+          {/* Payment Button - Only shown if user is client and ticket is accepted and requires payment */}
+          {canPay() && (
             <Box sx={{ mb: 3 }}>
-              <TextField
-                label="Reason for Rejection"
-                multiline
-                rows={3}
-                fullWidth
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Explain why you are rejecting this revision request"
-                required
+              <Divider sx={{ mb: 3 }} />
+              <Typography variant="h6" fontWeight="medium" gutterBottom>
+                Payment Required
+              </Typography>
+
+              <Alert severity="info" sx={{ mb: 2 }} icon={<PaymentIcon />}>
+                <Typography variant="body2">
+                  This revision requires payment before the artist can begin
+                  work.
+                </Typography>
+                <Typography variant="body2">
+                  Fee: {formatPrice(ticket.paidFee)}
+                </Typography>
+              </Alert>
+
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setShowPaymentDialog(true)}
                 disabled={isSubmitting}
-                sx={{ mb: 2 }}
+                startIcon={<PaymentIcon />}
+              >
+                Pay Revision Fee
+              </Button>
+
+              {/* Universal Payment Dialog */}
+              <UniversalPaymentDialog
+                open={showPaymentDialog}
+                onClose={() => setShowPaymentDialog(false)}
+                title="Pay Revision Fee"
+                totalAmount={ticket.paidFee || 0}
+                onSubmit={handlePayment}
+                description={`Payment for revision request on ${
+                  contract.milestones?.[ticket.milestoneIdx || 0]?.title ||
+                  "this contract"
+                }.`}
               />
             </Box>
           )}
 
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSubmit}
-            disabled={
-              !response ||
-              (response === "reject" && !rejectionReason.trim()) ||
-              isSubmitting
-            }
-          >
-            {isSubmitting ? <CircularProgress size={24} /> : "Submit Response"}
-          </Button>
-        </Box>
-      )}
+          {/* Upload Revision Button - Only shown if artist can upload revision */}
+          {canUploadRevision() && (
+            <Box sx={{ mb: 3 }}>
+              <Divider sx={{ mb: 3 }} />
+              <Typography variant="h6" fontWeight="medium" gutterBottom>
+                Next Steps
+              </Typography>
 
-      {/* Payment Button - Only shown if user is client and ticket is accepted and requires payment */}
-      {canPay() && (
-        <Box sx={{ mb: 3 }}>
-          <Divider sx={{ mb: 3 }} />
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-            Payment Required
-          </Typography>
+              <Alert
+                severity="success"
+                sx={{ mb: 2 }}
+                icon={<CheckCircleIcon />}
+              >
+                <Typography variant="body2">
+                  You can now upload your revision based on the client's
+                  feedback.
+                </Typography>
+              </Alert>
 
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              This revision requires payment before the artist can begin work.
-            </Typography>
-            <Typography variant="body2">
-              Fee: {formatPrice(ticket.paidFee)}
-            </Typography>
-          </Alert>
+              <Button
+                variant="contained"
+                color="primary"
+                component={Link}
+                href={`/dashboard/${userId}/contracts/${contract._id}/uploads/revision/new?ticketId=${ticket._id}`}
+                startIcon={<UploadIcon />}
+              >
+                Upload Revision
+              </Button>
+            </Box>
+          )}
 
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setShowPaymentDialog(true)}
-            disabled={isSubmitting}
-          >
-            Pay Revision Fee
-          </Button>
-        </Box>
-      )}
+          {/* Escalate to Resolution section */}
+          {(isClient || isArtist) &&
+            ticket.status !== "paid" &&
+            ticket.status !== "cancelled" && (
+              <Box sx={{ mt: 4 }}>
+                <Divider sx={{ mb: 3 }} />
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="medium"
+                  gutterBottom
+                >
+                  Not satisfied with the process?
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  onClick={handleEscalation}
+                  disabled={isSubmitting}
+                  startIcon={<WarningIcon />}
+                >
+                  Escalate to Resolution
+                </Button>
 
-      {/* Upload Revision Button - Only shown if artist can upload revision */}
-      {canUploadRevision() && (
-        <Box sx={{ mb: 3 }}>
-          <Divider sx={{ mb: 3 }} />
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-            Next Steps
-          </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mt: 1 }}
+                >
+                  Escalation will be reviewed by our support team to help
+                  resolve any issues.
+                </Typography>
+              </Box>
+            )}
+        </Grid>
 
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            You can now upload your revision based on the client's feedback.
-          </Typography>
-
-          <Button
-            variant="contained"
-            color="primary"
-            component={Link}
-            href={`/dashboard/${userId}/contracts/${contract._id}/uploads/revision/new?ticketId=${ticket._id}`}
-          >
-            Upload Revision
-          </Button>
-        </Box>
-      )}
-
-      {/* Escalate to Resolution section */}
-      {ticket.status !== "paid" && ticket.status !== "cancelled" && (
-        <Box sx={{ mt: 3 }}>
-          <Divider sx={{ mb: 3 }} />
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-            Not satisfied?
-          </Typography>
-          <Button
-            variant="outlined"
-            color="warning"
-            onClick={handleEscalation}
-            disabled={isSubmitting}
-          >
-            Escalate to Resolution
-          </Button>
-        </Box>
-      )}
+        {/* Right Column: Reference Images */}
+        <Grid item xs={12} md={5}>
+          {ticket.referenceImages && ticket.referenceImages.length > 0 ? (
+            <Box>
+              <Typography variant="h6" gutterBottom fontWeight="medium">
+                Reference Images
+              </Typography>
+              <Grid container spacing={2}>
+                {ticket.referenceImages.map((url, index) => (
+                  <Grid item xs={12} sm={6} key={index}>
+                    <Card variant="outlined" sx={{ height: "100%" }}>
+                      <CardMedia
+                        component="img"
+                        image={url}
+                        alt={`Reference ${index + 1}`}
+                        sx={{
+                          height: 200,
+                          objectFit: "cover",
+                        }}
+                        onClick={() => window.open(url, "_blank")}
+                      />
+                      <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Reference Image {index + 1}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          ) : (
+            <Box sx={{ mt: { xs: 0, md: 4 } }}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 3,
+                  borderRadius: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  bgcolor: "background.paper",
+                  minHeight: 200,
+                }}
+              >
+                <ImageIcon
+                  sx={{ fontSize: 48, color: "text.disabled", mb: 2 }}
+                />
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  align="center"
+                >
+                  No reference images were provided with this revision request.
+                </Typography>
+              </Paper>
+            </Box>
+          )}
+        </Grid>
+      </Grid>
 
       {/* Escalation Dialog */}
       <Dialog
         open={showEscalateDialog}
         onClose={() => setShowEscalateDialog(false)}
+        maxWidth="sm"
+        fullWidth
       >
-        <DialogTitle>Escalate to Resolution?</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <WarningIcon sx={{ mr: 1, color: "warning.main" }} />
+            Escalate to Resolution?
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
             Escalating this issue will create a resolution ticket for admin
             review. You will need to provide evidence and explain your position.
-            Do you want to proceed with escalation?
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+              When should you escalate?
+            </Typography>
+            <Typography variant="body2">
+              • If communication has broken down
+              <br />
+              • If there's a disagreement about contract terms
+              <br />• If you believe the other party isn't fulfilling their
+              obligations
+            </Typography>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowEscalateDialog(false)}>Cancel</Button>
-          <Button onClick={confirmEscalation} color="warning">
-            Proceed to Resolution
+          <Button onClick={() => setShowEscalateDialog(false)} color="inherit">
+            Cancel
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Payment Dialog */}
-      <Dialog
-        open={showPaymentDialog}
-        onClose={() => setShowPaymentDialog(false)}
-      >
-        <DialogTitle>Pay Revision Fee</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            You are about to pay {formatPrice(ticket.paidFee)} for this
-            revision. This amount will be deducted from your wallet balance. Do
-            you want to proceed with payment?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
           <Button
-            onClick={handlePayment}
-            color="primary"
-            disabled={isSubmitting}
+            onClick={confirmEscalation}
+            color="warning"
+            variant="contained"
           >
-            {isSubmitting ? <CircularProgress size={24} /> : "Confirm Payment"}
+            Proceed to Resolution
           </Button>
         </DialogActions>
       </Dialog>

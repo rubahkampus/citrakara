@@ -263,7 +263,7 @@ export const TemplateSection: React.FC = () => {
         "deadline",
         "generalOptions",
         "subjectOptions",
-        "description",
+        "generalDescription",
         "referenceImages",
       ],
       generalOptions: {

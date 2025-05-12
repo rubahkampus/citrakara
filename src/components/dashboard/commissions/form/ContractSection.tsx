@@ -20,7 +20,7 @@ const changeableKeys = [
   "deadline",
   "generalOptions",
   "subjectOptions",
-  "description",
+  "generalDescription",
   "referenceImages",
 ];
 

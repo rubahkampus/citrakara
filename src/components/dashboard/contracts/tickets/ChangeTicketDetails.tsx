@@ -108,12 +108,12 @@ export default function ChangeTicketDetails({
   };
 
   // Determine if this is a paid change
-  const isPaidChange = ticket.isPaidChange;
+  const isPaidChange = (ticket.paidFee ?? 0) > 0;
 
   // Determine if user can respond to this ticket
   const canRespond = () => {
     // Artist can respond to pendingArtist tickets
-    if (isArtist && ticket.status === "pendingArtist" && !isPastExpiry)
+    if (isArtist && (ticket.status === "pendingArtist" || ticket.status === "rejectedClient") && !isPastExpiry)
       return true;
 
     // Client can respond to pendingClient tickets (when artist proposes a fee)
@@ -122,6 +122,11 @@ export default function ChangeTicketDetails({
 
     return false;
   };
+
+  console.log(isClient)
+  console.log(ticket.status === "pendingClient")
+  console.log(isPaidChange)
+  console.log(!ticket.escrowTxnId)
 
   // Determine if client can pay for this change
   const canPay = () => {
@@ -585,7 +590,7 @@ export default function ChangeTicketDetails({
           </Box>
 
           {/* Artist Response Form - Only shown if user is artist and ticket is pendingArtist */}
-          {canRespond() && isArtist && ticket.status === "pendingArtist" && (
+          {canRespond() && isArtist && (ticket.status === "pendingArtist" || ticket.status === "rejectedClient")  && (
             <Box sx={{ mb: 3 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="h6" fontWeight="medium" gutterBottom>

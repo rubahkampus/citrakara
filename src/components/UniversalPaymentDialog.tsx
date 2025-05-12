@@ -169,7 +169,7 @@ export default function UniversalPaymentDialog({
             ? "wallet"
             : useWallet && needsSecondaryPayment
             ? "combo"
-            : paymentMethod,
+            : "card", // Always use "card" for non-wallet methods
         secondaryMethod: useWallet && needsSecondaryPayment ? "card" : null,
         walletAmount,
         remainingAmount,

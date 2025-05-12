@@ -89,7 +89,7 @@ export interface IChangeTicket extends Document {
   status:
     | "pendingArtist" // waiting on artist action
     | "pendingClient" // artist proposed surcharge, waiting on client
-    | "acceptedArtist" // artist OK -> if no surcharge proposed, it's auto to finalizedFree, if surcharge proposed, move to pendingClient
+    | "acceptedArtist" // artist OK -> if no surcharge proposed, it's auto to paid, if surcharge proposed, move to pendingClient
     | "rejectedArtist" // EOL except disputed before expired | artist said no
     | "rejectedClient" //  can be disputed before expired | client declined surcharge -> practically back at pendingArtist
     | "forcedAcceptedClient" // admin forced client to pay the artist proposed surcharge

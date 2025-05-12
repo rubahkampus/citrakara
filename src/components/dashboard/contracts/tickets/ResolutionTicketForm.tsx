@@ -29,6 +29,7 @@ import { IContract } from "@/lib/db/models/contract.model";
 interface ResolutionTicketFormProps {
   contract: IContract;
   userId: string;
+  username: string;
   isArtist: boolean;
   isClient: boolean;
 }
@@ -50,6 +51,7 @@ interface TargetItem {
 export default function ResolutionTicketForm({
   contract,
   userId,
+  username,
   isArtist,
   isClient,
 }: ResolutionTicketFormProps) {
@@ -383,7 +385,7 @@ export default function ResolutionTicketForm({
 
       // Redirect after successful submission
       setTimeout(() => {
-        router.push(`/dashboard/${userId}/resolution`);
+        router.push(`/dashboard/${username}/`);
         router.refresh();
       }, 1500);
     } catch (err) {

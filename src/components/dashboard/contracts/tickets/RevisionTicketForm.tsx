@@ -29,6 +29,7 @@ import { IContract } from "@/lib/db/models/contract.model";
 interface RevisionTicketFormProps {
   contract: IContract;
   userId: string;
+  username: string;
   isClient: boolean;
 }
 
@@ -40,6 +41,7 @@ interface FormValues {
 export default function RevisionTicketForm({
   contract,
   userId,
+  username,
   isClient,
 }: RevisionTicketFormProps) {
   const router = useRouter();

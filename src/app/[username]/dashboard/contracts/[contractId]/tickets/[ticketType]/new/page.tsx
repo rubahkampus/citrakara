@@ -84,6 +84,7 @@ export default async function CreateTicketPage({
         <CancelTicketForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
           isArtist={isArtist}
           isClient={isClient}
         />
@@ -93,6 +94,7 @@ export default async function CreateTicketPage({
         <RevisionTicketForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
           isClient={isClient}
         />
       )}
@@ -101,6 +103,7 @@ export default async function CreateTicketPage({
         <ChangeTicketForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
           isClient={isClient}
         />
       )}
@@ -109,6 +112,7 @@ export default async function CreateTicketPage({
         <ResolutionTicketForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
           isArtist={isArtist}
           isClient={isClient}
         />

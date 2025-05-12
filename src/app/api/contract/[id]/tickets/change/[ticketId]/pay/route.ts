@@ -28,11 +28,12 @@ export async function POST(
       const result = await payChangeFee(
         contractId,
         ticketId,
-        session.idpaymentMethod,
-        secondaryMethod,
+        session.id,
+        paymentMethod,
         walletAmount,
+        paymentAmount,
+        secondaryMethod,
         remainingAmount,
-        paymentAmount
       );
 
       const response = NextResponse.json({

@@ -724,9 +724,10 @@ export async function updateContractTerms(
  */
 export async function updateContractFinance(
   contractId: string | ObjectId,
-  runtimeFees: number
+  runtimeFees: number,
+  session: ClientSession
 ): Promise<any> {
-  return contractRepo.updateContractFinance(contractId, runtimeFees);
+  return contractRepo.updateContractFinance(contractId, runtimeFees, session);
 }
 
 /**

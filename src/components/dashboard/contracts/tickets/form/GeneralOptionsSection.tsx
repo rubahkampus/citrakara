@@ -60,6 +60,23 @@ export default function GeneralOptionsSection({
   const includeGeneralOptions = watch("includeGeneralOptions");
   const watchedOptions = watch("generalOptions") || {};
 
+  // Initialize form structure if it doesn't exist
+  useEffect(() => {
+    // Ensure generalOptions structure exists to prevent undefined errors
+    if (!watchedOptions || Object.keys(watchedOptions).length === 0) {
+      // Initialize with empty objects for each section
+      setValue(
+        "generalOptions",
+        {
+          optionGroups: {},
+          addons: {},
+          answers: {},
+        },
+        { shouldValidate: false }
+      );
+    }
+  }, [setValue, watchedOptions]);
+
   // Initialize default values on component mount
   useEffect(() => {
     // Only set default values if general options change is included
@@ -113,11 +130,10 @@ export default function GeneralOptionsSection({
 
     // Initialize answers with current values from contract terms
     if (
-      (listingGeneralOptions?.questions?.length ?? 0) > 0 &&
-      Object.keys(watchedOptions.answers || {}).length === 0
+      (listingGeneralOptions?.questions?.length ?? 0) > 0
     ) {
       const defaultAnswers: Record<string, string> = {};
-
+      console.log("T");
       // Set current answers from contract terms
       if (currentGeneralOptions.answers) {
         currentGeneralOptions.answers.forEach((answer) => {
@@ -129,6 +145,8 @@ export default function GeneralOptionsSection({
           defaultAnswers[question.id.toString()] = "";
         });
       }
+
+      console.log("defaultAnswers", defaultAnswers);
 
       if (Object.keys(defaultAnswers).length > 0) {
         setValue("generalOptions.answers", defaultAnswers, {
@@ -504,8 +522,17 @@ const QuestionField = React.memo(function QuestionField({
   const { field } = useController({
     name: `generalOptions.answers.${questionId.toString()}`,
     control,
+    // Fix: Initialize with empty string explicitly rather than undefined
     defaultValue: "",
   });
+
+  // Fix: Ensure initial value is properly set
+  React.useEffect(() => {
+    if (inputRef.current) {
+      // Ensure the value is never undefined or null
+      inputRef.current.value = field.value || "";
+    }
+  }, [field.value]);
 
   // Use uncontrolled input pattern with refs for performance
   const inputRef = React.useRef<HTMLInputElement | null>(null);

@@ -21,6 +21,7 @@ import { IContract } from "@/lib/db/models/contract.model";
 interface CancelTicketFormProps {
   contract: IContract;
   userId: string;
+  username: string;
   isArtist: boolean;
   isClient: boolean;
 }
@@ -32,6 +33,7 @@ interface FormValues {
 export default function CancelTicketForm({
   contract,
   userId,
+  username,
   isArtist,
   isClient,
 }: CancelTicketFormProps) {

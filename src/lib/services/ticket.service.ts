@@ -446,7 +446,7 @@ export async function payRevisionFee(
     );
 
     // Update contract runtime fees
-    await contractService.updateContractFinance(contractId, feeAmount);
+    await contractService.updateContractFinance(contractId, feeAmount, session);
 
     await session.commitTransaction();
     return { ticket, transaction };
@@ -566,17 +566,32 @@ export async function createChangeTicket(
     }
 
     // Get image blobs from form data
+    const existingReferenceImages = form
+      .getAll("existingReferenceImages[]")
+      .filter((v) => typeof v === "string") as string[];
+
+    console.log(form.get("existingReferenceImages[]"));
+    console.log(existingReferenceImages);
+
+    // Get image blobs from form data
     const referenceImageBlobs = form
       .getAll("referenceImages[]")
       .filter((v) => v instanceof Blob) as Blob[];
 
     // Upload reference images
     if (referenceImageBlobs && referenceImageBlobs.length > 0) {
-      changeSet.referenceImages = await uploadGalleryImagesToR2(
+      const uploadedReferenceImages = await uploadGalleryImagesToR2(
         referenceImageBlobs,
         userId,
         contractId.toString()
       );
+
+      changeSet.referenceImages = [
+        ...existingReferenceImages,
+        ...uploadedReferenceImages,
+      ];
+    } else {
+      changeSet.referenceImages = [...existingReferenceImages];
     }
 
     // Create change ticket
@@ -644,11 +659,12 @@ export async function respondToChangeTicket(
 
     // Verify user is the artist or admin
     const isArtist = contract.artistId.toString() === userId;
+    const isClient = contract.clientId.toString() === userId;
     const isAdmin = await isAdminById(userId);
 
-    if (!isArtist && !isAdmin) {
+    if (!isClient && !isArtist && !isAdmin) {
       throw new HttpError(
-        "Only the artist can respond to change requests",
+        "Only the artist or client can respond to change requests",
         403
       );
     }
@@ -657,15 +673,28 @@ export async function respondToChangeTicket(
     let newStatus: any;
     const updates: any = {};
 
-    if (response === "accept") {
+    console.log("Response:", response);
+    console.log(
+      "User Role - isArtist:",
+      isArtist,
+      "isClient:",
+      isClient,
+      "isAdmin:",
+      isAdmin
+    );
+    console.log("Paid Fee:", paidFee);
+
+    if (response === "accept" && isArtist) {
       newStatus = "acceptedArtist";
       if (paidFee !== undefined && paidFee > 0) {
         updates.isPaidChange = true;
         updates.paidFee = paidFee;
         newStatus = "pendingClient"; // Client needs to pay
       }
-    } else if (response === "reject") {
+    } else if (response === "reject" && isArtist) {
       newStatus = "rejectedArtist";
+    } else if (response === "reject" && isClient) {
+      newStatus = "rejectedClient";
     } else if (response === "propose") {
       if (paidFee === undefined || paidFee <= 0) {
         throw new HttpError("Fee amount is required for fee proposal", 400);
@@ -688,6 +717,9 @@ export async function respondToChangeTicket(
     } else {
       throw new HttpError("Invalid response", 400);
     }
+
+    console.log("New Status:", newStatus);
+    console.log("Updates:", updates);
 
     const updatedTicket = await ticketRepo.updateChangeTicketStatus(
       ticketId,
@@ -742,10 +774,16 @@ export async function payChangeFee(
       throw new HttpError("Ticket not found", 404);
     }
 
+    console.log(contract.clientId.toString());
+    console.log(userId);
+
     // Verify user is the client
     if (contract.clientId.toString() !== userId) {
       throw new HttpError("Only the client can pay for changes", 403);
     }
+
+    console.log(ticket.status);
+    console.log(ticket.isPaidChange);
 
     // Verify ticket is in pendingClient status and isPaidChange is true
     if (ticket.status !== "pendingClient" || !ticket.isPaidChange) {
@@ -762,9 +800,16 @@ export async function payChangeFee(
       throw new HttpError("Payment does not match fee", 400);
     }
 
+    console.log("Payment Method:", paymentMethod);
+    console.log("Wallet Amount:", walletAmount);
+    console.log("Payment Amount:", paymentAmount);
+    console.log("Secondary Method:", secondaryMethod);
+    console.log("Remaining Amount:", remainingAmount);
+
     // Handle payment based on method
     switch (paymentMethod) {
       case "wallet":
+        console.log("Wallet");
         // Check if user has sufficient funds
         const hasFunds = await checkSufficientFunds(userId, paymentAmount);
         if (!hasFunds) {
@@ -773,12 +818,14 @@ export async function payChangeFee(
         break;
 
       case "card":
+        console.log("Card");
         // For card payments, we'd normally process the payment with a payment gateway
         // Here we'll simulate by adding funds to the wallet first, then proceeding
         await addFundsToWallet(userId, paymentAmount, session);
         break;
 
       case "combo":
+        console.log("Combo");
         // Check if user has sufficient funds for wallet portion
         const hasPartialFunds = await checkSufficientFunds(
           userId,
@@ -800,6 +847,7 @@ export async function payChangeFee(
         }
         break;
     }
+    console.log("Starting escrow transaction creation...");
 
     // Create escrow transaction
     const transaction = await escrowService.createChangeFeeTransaction(
@@ -809,6 +857,7 @@ export async function payChangeFee(
       `Change fee for ticket ${ticketId}`,
       session
     );
+    console.log("Escrow transaction created:", transaction);
 
     // Update ticket
     const updates = {
@@ -816,21 +865,26 @@ export async function payChangeFee(
       contractVersionBefore: contract.contractVersion,
     };
 
+    console.log("Updating ticket status to 'paid'...");
     await ticketRepo.updateChangeTicketStatus(
       ticketId,
       "paid",
       updates,
       session
     );
+    console.log("Ticket status updated to 'paid'.");
 
     // Apply contract changes
+    console.log("Applying contract changes...");
     const versionAfter = await applyContractChanges(
       contractId,
       ticket.changeSet,
       session
     );
+    console.log("Contract changes applied. New version:", versionAfter);
 
     // Update ticket with version after
+    console.log("Updating ticket with new contract version...");
     await ticketRepo.updateChangeTicketStatus(
       ticketId,
       "paid",
@@ -839,16 +893,26 @@ export async function payChangeFee(
       },
       session
     );
+    console.log("Ticket updated with new contract version.");
 
     // Update contract runtime fees
-    await contractService.updateContractFinance(contractId, ticket.paidFee);
+    console.log("Updating contract runtime fees...");
+    await contractService.updateContractFinance(
+      contractId,
+      ticket.paidFee,
+      session
+    );
+    console.log("Contract runtime fees updated.");
 
     await session.commitTransaction();
+    console.log("Transaction committed successfully.");
     return { ticket, transaction };
   } catch (error) {
+    console.error("Error occurred:", error);
     await session.abortTransaction();
     throw error;
   } finally {
+    console.log("Ending session...");
     session.endSession();
   }
 }

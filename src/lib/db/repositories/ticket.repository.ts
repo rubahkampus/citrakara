@@ -234,6 +234,7 @@ export async function updateChangeTicketStatus(
   status: IChangeTicket["status"],
   updates?: {
     paidFee?: number;
+    isPaidChange?: boolean;
     escrowTxnId?: string | ObjectId;
     contractVersionBefore?: number;
     contractVersionAfter?: number;
@@ -248,6 +249,10 @@ export async function updateChangeTicketStatus(
   if (updates) {
     if (updates.paidFee !== undefined) {
       update.paidFee = updates.paidFee;
+    }
+
+    if (updates.isPaidChange !== undefined) {
+      update.isPaidChange = updates.isPaidChange;
     }
 
     if (updates.escrowTxnId) {
@@ -265,7 +270,7 @@ export async function updateChangeTicketStatus(
 
   // If status is terminal, set resolved timestamp
   if (
-    ["paid", "cancelled", "rejectedArtist", "rejectedClient"].includes(status)
+    ["paid", "cancelled", "rejectedArtist"].includes(status)
   ) {
     update.resolvedAt = new Date();
   }

@@ -14,6 +14,8 @@ import {
   CardMedia,
   Tooltip,
   Alert,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import {
   CloudUpload as CloudUploadIcon,
@@ -43,6 +45,9 @@ export default function ReferenceImagesSection({
 }: ReferenceImagesSectionProps) {
   const { control, setValue } = useFormContext<ChangeTicketFormValues>();
 
+  // Local state for toggle to ensure reliable UI control
+  const [includeReferenceImages, setIncludeReferenceImages] = useState(false);
+
   // Use controller to properly handle form state
   const { field } = useController({
     name: "referenceImages",
@@ -60,6 +65,9 @@ export default function ReferenceImagesSection({
 
   // Initialize on component mount
   useEffect(() => {
+    // Initialize the toggle state in form
+    setValue("includeReferenceImages", false, { shouldValidate: false });
+
     // Convert existing images from contract to ImageItems
     if (currentReferenceImages && currentReferenceImages.length > 0) {
       const existingImageItems = currentReferenceImages.map((url, index) => ({
@@ -70,10 +78,13 @@ export default function ReferenceImagesSection({
 
       setImageItems(existingImageItems);
     }
-  }, [currentReferenceImages]);
+  }, [currentReferenceImages, setValue]);
 
   // Update form value when imageItems change
   useEffect(() => {
+    // Only update form values if toggle is on
+    if (!includeReferenceImages) return;
+
     // For form submission, we need to include both new files and existing URLs
     const files = imageItems
       .filter((item) => !item.isExisting && item.file)
@@ -96,7 +107,16 @@ export default function ReferenceImagesSection({
         }
       });
     };
-  }, [imageItems, setValue]);
+  }, [imageItems, setValue, includeReferenceImages]);
+
+  // Toggle handler for include reference images
+  const handleIncludeReferenceImages = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const newValue = e.target.checked;
+    setIncludeReferenceImages(newValue);
+    setValue("includeReferenceImages", newValue, { shouldValidate: true });
+  };
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -169,110 +189,140 @@ export default function ReferenceImagesSection({
 
   return (
     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-      <Typography variant="h6" color="primary" fontWeight="medium">
-        Reference Images
-      </Typography>
-      <Divider sx={{ mb: 3, mt: 2 }} />
-
-      <Box>
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          Upload up to {MAX_FILES} reference images to help the artist
-          understand your vision.
-          {!isReferenceImagesChangeAllowed &&
-            " (Your contract does not specify this as changeable, but it's generally acceptable to provide additional references.)"}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Typography variant="h6" color="primary" fontWeight="medium">
+          Reference Images
         </Typography>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        <Button
-          variant="outlined"
-          component="label"
-          startIcon={<CloudUploadIcon />}
-          fullWidth
-          disabled={disabled || imageItems.length >= MAX_FILES}
-          sx={{ mb: 3 }}
-        >
-          {imageItems.length === 0 ? "Upload Images" : "Upload More Images"} (
-          {imageItems.length}/{MAX_FILES})
-          <input
-            type="file"
-            hidden
-            multiple
-            accept="image/*"
-            onChange={handleFiles}
-            disabled={disabled}
-          />
-        </Button>
-
-        {imageItems.length > 0 ? (
-          <Grid container spacing={2}>
-            {imageItems.map((item) => (
-              <Grid item xs={6} sm={4} md={3} key={item.id}>
-                <Card sx={{ position: "relative" }}>
-                  <CardMedia
-                    component="img"
-                    height={140}
-                    image={item.url}
-                    alt="Reference image"
-                    sx={{ objectFit: "cover" }}
-                  />
-                  {!disabled && (
-                    <IconButton
-                      size="small"
-                      onClick={() => removeImage(item.id)}
-                      sx={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        bgcolor: "rgba(255, 255, 255, 0.9)",
-                        "&:hover": { bgcolor: "rgba(255, 255, 255, 1)" },
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                  {item.isExisting && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        bgcolor: "rgba(0, 0, 0, 0.6)",
-                        color: "white",
-                        fontSize: "0.75rem",
-                        padding: "2px 8px",
-                        textAlign: "center",
-                      }}
-                    >
-                      Existing
-                    </Box>
-                  )}
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Box
-            sx={{
-              p: 3,
-              border: "2px dashed",
-              borderColor: "divider",
-              borderRadius: 1,
-              textAlign: "center",
-              bgcolor: "background.default",
-            }}
-          >
-            <Typography color="text.secondary">
-              No reference images uploaded yet
-            </Typography>
-          </Box>
-        )}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={includeReferenceImages}
+              onChange={handleIncludeReferenceImages}
+              disabled={disabled}
+            />
+          }
+          label="Include changes"
+          sx={{ mr: 0 }}
+        />
       </Box>
+      <Divider sx={{ mb: 3 }} />
+
+      {includeReferenceImages ? (
+        <Box>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Upload up to {MAX_FILES} reference images to help the artist
+            understand your vision.
+            {!isReferenceImagesChangeAllowed &&
+              " (Your contract does not specify this as changeable, but it's generally acceptable to provide additional references.)"}
+          </Typography>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Button
+            variant="outlined"
+            component="label"
+            startIcon={<CloudUploadIcon />}
+            fullWidth
+            disabled={disabled || imageItems.length >= MAX_FILES}
+            sx={{ mb: 3 }}
+          >
+            {imageItems.length === 0 ? "Upload Images" : "Upload More Images"} (
+            {imageItems.length}/{MAX_FILES})
+            <input
+              type="file"
+              hidden
+              multiple
+              accept="image/*"
+              onChange={handleFiles}
+              disabled={disabled}
+            />
+          </Button>
+
+          {imageItems.length > 0 ? (
+            <Grid container spacing={2}>
+              {imageItems.map((item) => (
+                <Grid item xs={6} sm={4} md={3} key={item.id}>
+                  <Card sx={{ position: "relative" }}>
+                    <CardMedia
+                      component="img"
+                      height={140}
+                      image={item.url}
+                      alt="Reference image"
+                      sx={{ objectFit: "cover" }}
+                    />
+                    {!disabled && (
+                      <IconButton
+                        size="small"
+                        onClick={() => removeImage(item.id)}
+                        sx={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          bgcolor: "rgba(255, 255, 255, 0.9)",
+                          "&:hover": { bgcolor: "rgba(255, 255, 255, 1)" },
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    {item.isExisting && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          bgcolor: "rgba(0, 0, 0, 0.6)",
+                          color: "white",
+                          fontSize: "0.75rem",
+                          padding: "2px 8px",
+                          textAlign: "center",
+                        }}
+                      >
+                        Existing
+                      </Box>
+                    )}
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Box
+              sx={{
+                p: 3,
+                border: "2px dashed",
+                borderColor: "divider",
+                borderRadius: 1,
+                textAlign: "center",
+                bgcolor: "background.default",
+              }}
+            >
+              <Typography color="text.secondary">
+                No reference images uploaded yet
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      ) : (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ fontStyle: "italic", mt: 2 }}
+        >
+          Switch the toggle to include changes to reference images.
+        </Typography>
+      )}
     </Paper>
   );
 }

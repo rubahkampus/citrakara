@@ -47,7 +47,9 @@ export async function addFundsToWallet(
   const session = clientSession ? clientSession : await startSession();
 
   try {
-    session.startTransaction();
+    if (!clientSession) {
+      session.startTransaction();
+    }
 
     // Verify amount is positive
     if (amount <= 0) {
@@ -61,14 +63,21 @@ export async function addFundsToWallet(
     }
 
     // In a real implementation, you would process payment here
+    if (!clientSession) {
+      await session.commitTransaction();
+    }
 
-    await session.commitTransaction();
     return wallet;
   } catch (error) {
-    await session.abortTransaction();
+    if (!clientSession) {
+      await session.abortTransaction();
+    }
+
     throw error;
   } finally {
-    session.endSession();
+    if (!clientSession) {
+      session.endSession();
+    }
   }
 }
 

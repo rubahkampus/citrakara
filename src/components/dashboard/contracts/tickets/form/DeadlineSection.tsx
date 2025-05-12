@@ -1,6 +1,6 @@
-// src/components/dashboard/contracts/tickets/form/DeadlineSection.tsx
+// In the DeadlineSection component, replace the current implementation with this solution
 
-import React, { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import {
   Box,
@@ -28,27 +28,34 @@ export default function DeadlineSection({
   contract,
   disabled,
 }: DeadlineSectionProps) {
+  // Get form context
   const {
     control,
-    watch,
     setValue,
     formState: { errors },
   } = useFormContext<ChangeTicketFormValues>();
 
-  const includeDeadline = watch("includeDeadline");
+  // NEW APPROACH: Use local state to control the toggle directly
+  const [localIncludeDeadline, setLocalIncludeDeadline] = useState(false);
 
-  // Calculate minimum allowed date (baseDate + 24h or tomorrow + 24h if baseDate has passed)
+  // Calculate minimum allowed date
   const minDate = useMemo(() => {
     const baseDate = new Date(contract.proposalSnapshot.baseDate);
-    const minAllowedDate = addDays(baseDate, 1); // baseDate + 24 hours
-    const tomorrow = addDays(new Date(), 1); // tomorrow
-    const tomorrowPlus24h = addDays(tomorrow, 1); // tomorrow + 24 hours
+    const minAllowedDate = addDays(baseDate, 1);
+    const tomorrow = addDays(new Date(), 1);
+    const tomorrowPlus24h = addDays(tomorrow, 1);
 
-    // If baseDate + 24h has already passed, use tomorrow + 24h as minimum
     return isAfter(minAllowedDate, new Date())
       ? minAllowedDate
       : tomorrowPlus24h;
   }, [contract.proposalSnapshot.baseDate]);
+
+  // Initialize the deadline value once on component mount
+  useEffect(() => {
+    setValue("deadlineAt", new Date(contract.deadlineAt), {
+      shouldValidate: false,
+    });
+  }, [contract.deadlineAt, setValue]);
 
   // Check if deadline changes are allowed
   if (
@@ -57,13 +64,19 @@ export default function DeadlineSection({
     return null;
   }
 
-  // Toggle inclusion of deadline change
+  // NEW APPROACH: Handle toggle with local state instead of form state
   const handleIncludeDeadline = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue("includeDeadline", e.target.checked);
+    const newValue = e.target.checked;
 
-    // If toggled on and no deadline is set, set a default value (min date + 7 days)
-    if (e.target.checked && !watch("deadlineAt")) {
-      setValue("deadlineAt", addDays(minDate, 7));
+    // Update local state
+    setLocalIncludeDeadline(newValue);
+
+    // Update form value
+    setValue("includeDeadline", newValue, { shouldValidate: true });
+
+    // If turning on, ensure deadlineAt has a valid value
+    if (newValue) {
+      setValue("deadlineAt", addDays(minDate, 7), { shouldValidate: true });
     }
   };
 
@@ -80,10 +93,11 @@ export default function DeadlineSection({
         <Typography variant="h6" color="primary" fontWeight="medium">
           Deadline
         </Typography>
+        {/* NEW APPROACH: Use local state for the switch */}
         <FormControlLabel
           control={
             <Switch
-              checked={includeDeadline}
+              checked={localIncludeDeadline}
               onChange={handleIncludeDeadline}
               disabled={disabled}
             />
@@ -94,7 +108,8 @@ export default function DeadlineSection({
       </Box>
       <Divider sx={{ mb: 3 }} />
 
-      {includeDeadline ? (
+      {/* NEW APPROACH: Use local state for conditional rendering */}
+      {localIncludeDeadline ? (
         <Box sx={{ mb: 2 }}>
           <Typography variant="body2" sx={{ mb: 2 }}>
             Select a new deadline date for the contract. The deadline must be at

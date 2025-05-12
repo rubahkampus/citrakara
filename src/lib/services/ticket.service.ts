@@ -51,6 +51,7 @@ export async function createCancelTicket(
     // Create cancel ticket
     const requestedBy = isClient ? "client" : "artist";
     const ticket = await ticketRepo.createCancelTicket(
+      toObjectId(contractId),
       requestedBy,
       reason,
       session
@@ -105,7 +106,7 @@ export async function respondToCancelTicket(
     // Verify user is part of the contract
     const isClient = contract.clientId.toString() === userId;
     const isArtist = contract.artistId.toString() === userId;
-    const isAdmin = await isAdminById(userId); 
+    const isAdmin = await isAdminById(userId);
 
     if (!isClient && !isArtist && !isAdmin) {
       throw new HttpError("Not authorized to respond to this ticket", 403);
@@ -215,6 +216,7 @@ export async function createRevisionTicket(
     // Create revision ticket
     const ticket = await ticketRepo.createRevisionTicket(
       {
+        contractId: toObjectId(contractId),
         description,
         referenceImages: imageUrls,
         milestoneIdx,
@@ -272,7 +274,7 @@ export async function respondToRevisionTicket(
 
     // Verify user is the artist or admin
     const isArtist = contract.artistId.toString() === userId;
-    const isAdmin = await isAdminById(userId); 
+    const isAdmin = await isAdminById(userId);
 
     if (!isArtist && !isAdmin) {
       throw new HttpError(
@@ -323,7 +325,12 @@ export async function respondToRevisionTicket(
 export async function payRevisionFee(
   contractId: string | ObjectId,
   ticketId: string | ObjectId,
-  userId: string
+  userId: string,
+  paymentMethod: "wallet" | "card" | "combo",
+  walletAmount: number,
+  paymentAmount: number,
+  secondaryMethod?: "card" | undefined,
+  remainingAmount?: number
 ): Promise<any> {
   await connectDB();
   const session = await startSession();
@@ -368,6 +375,51 @@ export async function payRevisionFee(
 
     if (feeAmount <= 0) {
       throw new HttpError("No fee required for this revision", 400);
+    }
+
+    if (feeAmount !== paymentAmount) {
+      console.log(feeAmount);
+      console.log(paymentAmount);
+      throw new HttpError("Payment does not match fee", 400);
+    }
+
+    // Handle payment based on method
+    switch (paymentMethod) {
+      case "wallet":
+        // Check if user has sufficient funds
+        const hasFunds = await checkSufficientFunds(userId, paymentAmount);
+        if (!hasFunds) {
+          throw new HttpError("Insufficient funds in wallet", 400);
+        }
+        break;
+
+      case "card":
+        // For card payments, we'd normally process the payment with a payment gateway
+        // Here we'll simulate by adding funds to the wallet first, then proceeding
+        await addFundsToWallet(userId, paymentAmount, session);
+        break;
+
+      case "combo":
+        // Check if user has sufficient funds for wallet portion
+        const hasPartialFunds = await checkSufficientFunds(
+          userId,
+          walletAmount
+        );
+        if (!hasPartialFunds) {
+          throw new HttpError(
+            "Insufficient funds in wallet for partial payment",
+            400
+          );
+        }
+
+        // Process secondary payment method for remaining amount
+        if (secondaryMethod === "card" && remainingAmount !== undefined) {
+          // Simulate card payment by adding the remaining amount to wallet
+          await addFundsToWallet(userId, remainingAmount, session);
+        } else {
+          throw new HttpError("Unsupported secondary payment method", 400);
+        }
+        break;
     }
 
     // Create escrow transaction
@@ -526,6 +578,7 @@ export async function createChangeTicket(
     // Create change ticket
     const ticket = await ticketRepo.createChangeTicket(
       {
+        contractId: toObjectId(contractId),
         reason,
         changeSet,
         isPaidChange: false, // Artist will determine this later
@@ -587,7 +640,7 @@ export async function respondToChangeTicket(
 
     // Verify user is the artist or admin
     const isArtist = contract.artistId.toString() === userId;
-    const isAdmin = await isAdminById(userId); 
+    const isAdmin = await isAdminById(userId);
 
     if (!isArtist && !isAdmin) {
       throw new HttpError(
@@ -659,7 +712,12 @@ export async function respondToChangeTicket(
 export async function payChangeFee(
   contractId: string | ObjectId,
   ticketId: string | ObjectId,
-  userId: string
+  userId: string,
+  paymentMethod: "wallet" | "card" | "combo",
+  walletAmount: number,
+  paymentAmount: number,
+  secondaryMethod?: "card" | undefined,
+  remainingAmount?: number
 ): Promise<any> {
   await connectDB();
   const session = await startSession();
@@ -692,6 +750,51 @@ export async function payChangeFee(
 
     if (!ticket.paidFee || ticket.paidFee <= 0) {
       throw new HttpError("No fee amount set for this ticket", 400);
+    }
+
+    if (ticket.paidFee !== paymentAmount) {
+      console.log(ticket.paidFee);
+      console.log(paymentAmount);
+      throw new HttpError("Payment does not match fee", 400);
+    }
+
+    // Handle payment based on method
+    switch (paymentMethod) {
+      case "wallet":
+        // Check if user has sufficient funds
+        const hasFunds = await checkSufficientFunds(userId, paymentAmount);
+        if (!hasFunds) {
+          throw new HttpError("Insufficient funds in wallet", 400);
+        }
+        break;
+
+      case "card":
+        // For card payments, we'd normally process the payment with a payment gateway
+        // Here we'll simulate by adding funds to the wallet first, then proceeding
+        await addFundsToWallet(userId, paymentAmount, session);
+        break;
+
+      case "combo":
+        // Check if user has sufficient funds for wallet portion
+        const hasPartialFunds = await checkSufficientFunds(
+          userId,
+          walletAmount
+        );
+        if (!hasPartialFunds) {
+          throw new HttpError(
+            "Insufficient funds in wallet for partial payment",
+            400
+          );
+        }
+
+        // Process secondary payment method for remaining amount
+        if (secondaryMethod === "card" && remainingAmount !== undefined) {
+          // Simulate card payment by adding the remaining amount to wallet
+          await addFundsToWallet(userId, remainingAmount, session);
+        } else {
+          throw new HttpError("Unsupported secondary payment method", 400);
+        }
+        break;
     }
 
     // Create escrow transaction
@@ -958,7 +1061,7 @@ export async function resolveDispute(
     session.startTransaction();
 
     // Verify user is admin (to be implemented)
-    const isAdmin = await isAdminById(adminId); 
+    const isAdmin = await isAdminById(adminId);
     if (!isAdmin) {
       throw new HttpError("Only administrators can resolve disputes", 403);
     }
@@ -1036,7 +1139,7 @@ export async function getResolutionTicketsByUser(
  * Check if revision is allowed based on contract policy
  */
 async function checkRevisionAllowed(
-  contract: any,
+  contract: IContract,
   milestoneIdx?: number
 ): Promise<{
   allowed: boolean;
@@ -1045,35 +1148,56 @@ async function checkRevisionAllowed(
   fee?: number;
 }> {
   // Check revision type
-  if (contract.revisions?.type === "none") {
+  if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
     return {
       allowed: false,
       message: "This contract does not allow revisions",
     };
   }
 
-  // For milestone revisions
-  if (contract.revisions?.type === "milestone" && milestoneIdx !== undefined) {
+  console.log("Checking revision allowance for milestone revisions...");
+  if (
+    contract.proposalSnapshot.listingSnapshot.revisions?.type === "milestone" &&
+    milestoneIdx !== undefined
+  ) {
+    console.log("Milestone index provided:", milestoneIdx);
+
     if (!contract.milestones || !contract.milestones[milestoneIdx]) {
+      console.log("Milestone not found for index:", milestoneIdx);
       return { allowed: false, message: "Milestone not found" };
     }
 
     const milestone = contract.milestones[milestoneIdx];
     const policy = milestone.revisionPolicy;
 
+    if (!policy) {
+      console.log("Policy not found for milestone index:", milestoneIdx);
+      return { allowed: false, message: "Milestone policy not found" };
+    }
+
     // Count revisions done for this milestone
     const revisionsDone = milestone.revisionDone || 0;
+    console.log("Revisions done for this milestone:", revisionsDone);
 
     // Check if limit reached
     if (policy.limit && revisionsDone >= policy.free) {
+      console.log(
+        `Revision limit reached (${policy.free}) for this milestone. Checking if extra revisions are allowed...`
+      );
+
       // Check if extra is allowed
       if (!policy.extraAllowed) {
+        console.log("Extra revisions are not allowed for this milestone.");
         return {
           allowed: false,
           message: `Revision limit reached (${policy.free}) for this milestone`,
         };
       }
 
+      console.log(
+        "Extra revisions are allowed, but payment is required. Fee:",
+        policy.fee
+      );
       // Extra is allowed, but needs payment
       return {
         allowed: true,
@@ -1082,14 +1206,22 @@ async function checkRevisionAllowed(
       };
     }
 
+    console.log("Within free revision limit for this milestone.");
     // Within free revision limit
     return { allowed: true, isPaid: false };
   }
 
   // For standard revisions
-  if (contract.revisions?.type === "standard") {
+  if (
+    contract.proposalSnapshot.listingSnapshot.revisions?.type === "standard"
+  ) {
     const policy = contract.revisionPolicy;
     const revisionsDone = contract.revisionDone || 0;
+
+    if (!policy) {
+      console.log("Policy not found for the contract");
+      return { allowed: false, message: "Global policy not found" };
+    }
 
     // Check if limit reached
     if (policy.limit && revisionsDone >= policy.free) {

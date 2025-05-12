@@ -1,7 +1,10 @@
 // src/lib/db/models/ticket.model.ts
 import { Schema, Document, model, models } from "mongoose";
 import type { ObjectId, ISODate, Cents } from "@/types/common";
-import { ProposalGeneralOptionsSchema, ProposalSubjectSchema } from "./proposal.model";
+import {
+  ProposalGeneralOptionsSchema,
+  ProposalSubjectSchema,
+} from "./proposal.model";
 
 /* ---------------------------------------------------------------------------
    CancelTicket – client‑or‑artist request to terminate the contract early.
@@ -10,6 +13,8 @@ import { ProposalGeneralOptionsSchema, ProposalSubjectSchema } from "./proposal.
 --------------------------------------------------------------------------- */
 export interface ICancelTicket extends Document {
   _id: ObjectId;
+
+  contractId: ObjectId;
 
   requestedBy: "client" | "artist"; // who opened the ticket
   reason: string; // free‑text justification
@@ -32,6 +37,8 @@ export interface ICancelTicket extends Document {
 --------------------------------------------------------------------------- */
 export interface IRevisionTicket extends Document {
   _id: ObjectId;
+
+  contractId: ObjectId;
 
   milestoneIdx?: number | undefined; // if we're using flow == milestone and revision.type == milestone, undefined if revision type == standard
   description: string; // what client wants changed
@@ -63,6 +70,8 @@ export interface IRevisionTicket extends Document {
 --------------------------------------------------------------------------- */
 export interface IChangeTicket extends Document {
   _id: ObjectId;
+
+  contractId: ObjectId;
 
   createdAt: ISODate; // ticket opened
   expiresAt?: ISODate; // Change is void if it does not end the reach the EOL in 48H  and becomes uninteractable other than dispute escalation
@@ -157,6 +166,11 @@ interface ProposalSubjectOptions {
 // Schema for CancelTicket
 const CancelTicketSchema = new Schema<ICancelTicket>(
   {
+    contractId: {
+      type: Schema.Types.ObjectId,
+      ref: "Contract",
+      required: true,
+    },
     requestedBy: {
       type: String,
       enum: ["client", "artist"],
@@ -186,6 +200,11 @@ const CancelTicketSchema = new Schema<ICancelTicket>(
 // Schema for RevisionTicket
 const RevisionTicketSchema = new Schema<IRevisionTicket>(
   {
+    contractId: {
+      type: Schema.Types.ObjectId,
+      ref: "Contract",
+      required: true,
+    },
     milestoneIdx: {
       type: Number,
     },
@@ -238,6 +257,11 @@ const RevisionTicketSchema = new Schema<IRevisionTicket>(
 // Schema for ChangeTicket
 const ChangeTicketSchema = new Schema<IChangeTicket>(
   {
+    contractId: {
+      type: Schema.Types.ObjectId,
+      ref: "Contract",
+      required: true,
+    },
     reason: {
       type: String,
       required: true,

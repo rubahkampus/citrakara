@@ -88,6 +88,9 @@ export async function createProgressUploadMilestone(
 ): Promise<IProgressUploadMilestone> {
   await connectDB();
 
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + (input.isFinal ? 24 : 999));
+
   const upload = new ProgressUploadMilestone({
     kind: "progressMilestone",
     contractId: toObjectId(input.contractId),
@@ -96,12 +99,11 @@ export async function createProgressUploadMilestone(
     isFinal: input.isFinal,
     images: input.images,
     description: input.description || "",
+    expiresAt,
   });
 
   // If it's a final milestone upload, add status and expiration
   if (input.isFinal) {
-    // TODO - Change the status at og milestone
-    
     upload.status = "submitted";
 
     // Set expiration date to 24 hours from now

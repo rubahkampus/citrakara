@@ -19,6 +19,7 @@ import { toObjectId } from "@/lib/utils/toObjectId";
 
 // Create a cancel ticket
 export async function createCancelTicket(
+  contractId: ObjectId,
   requestedBy: "client" | "artist",
   reason: string,
   session?: ClientSession
@@ -29,6 +30,7 @@ export async function createCancelTicket(
   expiresAt.setHours(expiresAt.getHours() + 48); // 48-hour expiration
 
   const ticket = new CancelTicket({
+    contractId: contractId,
     requestedBy,
     reason,
     status: "pending",
@@ -86,6 +88,7 @@ export async function findPendingCancelTickets(
 
 // Create a revision ticket
 export interface CreateRevisionTicketInput {
+  contractId: ObjectId;
   description: string;
   referenceImages?: string[];
   milestoneIdx?: number;
@@ -101,6 +104,7 @@ export async function createRevisionTicket(
   expiresAt.setHours(expiresAt.getHours() + 48); // 48-hour expiration
 
   const ticket = new RevisionTicket({
+    contractId: input.contractId,
     description: input.description,
     referenceImages: input.referenceImages || [],
     milestoneIdx: input.milestoneIdx,
@@ -181,6 +185,7 @@ export async function findActiveRevisionTickets(
 
 // Input interface for creating a change ticket
 export interface CreateChangeTicketInput {
+  contractId: ObjectId;
   reason: string;
   changeSet: {
     deadlineAt?: ISODate;
@@ -203,6 +208,7 @@ export async function createChangeTicket(
   expiresAt.setHours(expiresAt.getHours() + 48); // 48-hour expiration
 
   const ticket = new ChangeTicket({
+    contractId: input.contractId,
     reason: input.reason,
     changeSet: input.changeSet,
     status: "pendingArtist",

@@ -14,7 +14,9 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { IProposal } from "@/lib/db/models/proposal.model";
-import ProposalPaymentDialog from "./ProposalPaymentDialog";
+import UniversalPaymentDialog from "@/components/UniversalPaymentDialog";
+import { useRouter } from "next/navigation";
+import { axiosClient } from "@/lib/utils/axiosClient";
 
 interface ClientRespondFormProps {
   proposal: IProposal;
@@ -30,6 +32,8 @@ export default function ClientRespondForm({
   onSubmit,
   loading = false,
 }: ClientRespondFormProps) {
+  const router = useRouter();
+
   const [activeView, setActiveView] = useState<"main" | "cancel" | "reject">(
     "main"
   );
@@ -276,13 +280,35 @@ export default function ClientRespondForm({
             </Button>
           )}
 
-          <ProposalPaymentDialog
+          <UniversalPaymentDialog
             open={paymentDialogOpen}
             onClose={() => setPaymentDialogOpen(false)}
-            proposalId={proposal._id.toString()}
-            totalAmount={proposal.calculatedPrice.total}
-            proposalTitle={proposal.generalDescription.substring(0, 50) + "..."}
-            artistName="Artist Name" // You'll need to get this from the proposal or context
+            title="Pembayaran Proposal"
+            totalAmount={finalPrice}
+            description={`Pembayaran untuk: ${proposal.generalDescription.substring(
+              0,
+              50
+            )}...`}
+            onSubmit={async (paymentData) => {
+              try {
+                const response = await axiosClient.post(
+                  "/api/contract/create-from-proposal",
+                  {
+                    ...paymentData,
+                    proposalId: proposal._id.toString(),
+                  }
+                );
+
+                // Handle success (you can add additional logic here)
+                // For example, redirecting to the contract page
+                if (response.data.contractId) {
+                  router.push(`/contracts/${response.data.contractId}`);
+                }
+              } catch (err: any) {
+                console.error("Error creating contract:", err);
+                // The error handling is now done within the dialog component
+              }
+            }}
           />
         </CardContent>
       </Card>

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api/withAuth";
 import { rotateToken } from "@/lib/api/rotateToken";
 import { handleError } from "@/lib/utils/errorHandler";
-import { createRevisionTicket } from "@/lib/services/ticket.service";
+import { createRevisionTicket, getRevisionTicketById } from "@/lib/services/ticket.service";
 
 // Create a new revision ticket
 export async function POST(

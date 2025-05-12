@@ -10,6 +10,10 @@ import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
 import { ClientSession, startSession } from "mongoose";
 import { connectDB } from "../db/connection";
 import { isAdminById } from "../db/repositories/user.repository";
+import { addFundsToWallet, checkSufficientFunds } from "./wallet.service";
+import { IContract } from "../db/models/contract.model";
+import { toObjectId } from "@/lib/utils/toObjectId";
+import { ICancelTicket, IChangeTicket, IRevisionTicket } from "../db/models/ticket.model";
 
 /**
  * Create a cancellation ticket
@@ -1388,4 +1392,22 @@ async function applyMilestoneResolution(
       session
     );
   }
+}
+
+export async function getRevisionTicketById(id: string): Promise<IRevisionTicket | null> {
+  // Call the repository function to find the ticket
+  const ticket = await ticketRepo.findRevisionTicketById(id);
+  return ticket;
+}
+
+export async function getCancelTicketById(id: string): Promise<ICancelTicket | null> {
+  // Call the repository function to find the ticket
+  const ticket = await ticketRepo.findCancelTicketById(id);
+  return ticket;
+}
+
+export async function getChangeTicketById(id: string): Promise<IChangeTicket | null> {
+  // Call the repository function to find the ticket
+  const ticket = await ticketRepo.findChangeTicketById(id);
+  return ticket;
 }

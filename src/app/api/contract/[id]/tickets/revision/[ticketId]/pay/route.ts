@@ -14,8 +14,17 @@ export async function POST(
     const contractId = params.id;
     const ticketId = params.ticketId;
 
+    // Parse request body
+    const {
+      paymentMethod,
+      secondaryMethod,
+      walletAmount,
+      remainingAmount,
+      paymentAmount,
+    } = await req.json();
+
     return withAuth(async (session) => {
-      const result = await payRevisionFee(contractId, ticketId, session.id);
+      const result = await payRevisionFee(contractId, ticketId, session.id, paymentMethod, secondaryMethod, walletAmount, remainingAmount, paymentAmount);
 
       const response = NextResponse.json({
         message: "Revision fee paid successfully",

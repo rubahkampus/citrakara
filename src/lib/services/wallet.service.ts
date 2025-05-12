@@ -1,5 +1,5 @@
 // src/lib/services/wallet.service.ts
-import { startSession } from "mongoose";
+import { ClientSession, startSession } from "mongoose";
 import type { ObjectId, Cents } from "@/types/common";
 import * as walletRepo from "@/lib/db/repositories/wallet.repository";
 import * as escrowTransactionRepo from "@/lib/db/repositories/escrowTransaction.repository";
@@ -40,10 +40,11 @@ export async function getWalletSummary(userId: string): Promise<{
  */
 export async function addFundsToWallet(
   userId: string,
-  amount: Cents
+  amount: Cents,
+  clientSession?: ClientSession
 ): Promise<any> {
   await connectDB();
-  const session = await startSession();
+  const session = clientSession ? clientSession : await startSession();
 
   try {
     session.startTransaction();

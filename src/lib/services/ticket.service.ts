@@ -16,6 +16,7 @@ import { toObjectId } from "@/lib/utils/toObjectId";
 import {
   ICancelTicket,
   IChangeTicket,
+  IResolutionTicket,
   IRevisionTicket,
 } from "../db/models/ticket.model";
 
@@ -1765,4 +1766,209 @@ export async function getChangeTicketById(
   // Call the repository function to find the ticket
   const ticket = await ticketRepo.findChangeTicketById(id);
   return ticket;
+}
+
+/**
+ * Find unresolved cancel tickets
+ * @param contractId Contract ID to check
+ * @returns Array of unresolved cancel tickets
+ */
+export async function getUnresolvedCancelTickets(
+  contractId: string | ObjectId
+): Promise<ICancelTicket[]> {
+  await connectDB();
+
+  const tickets = await ticketRepo.findCancelTicketsByContract(contractId);
+  return tickets.filter(
+    (ticket) => ticket.status === "pending" || ticket.status === "disputed"
+  );
+}
+
+/**
+ * Find unresolved change tickets
+ * @param contractId Contract ID to check
+ * @returns Array of unresolved change tickets
+ */
+export async function getUnresolvedChangeTickets(
+  contractId: string | ObjectId
+): Promise<IChangeTicket[]> {
+  await connectDB();
+
+  const tickets = await ticketRepo.findChangeTicketsByContract(contractId);
+  return tickets.filter(
+    (ticket) =>
+      ticket.status === "pendingArtist" ||
+      ticket.status === "pendingClient" ||
+      ticket.status === "acceptedArtist" ||
+      ticket.status === "rejectedClient"
+  );
+}
+
+/**
+ * Find unresolved resolution tickets
+ * @param contractId Contract ID to check
+ * @returns Array of unresolved resolution tickets
+ */
+export async function getUnresolvedResolutionTickets(
+  contractId: string | ObjectId
+): Promise<IResolutionTicket[]> {
+  await connectDB();
+
+  const tickets = await ticketRepo.findResolutionTicketsByContract(contractId);
+  return tickets.filter(
+    (ticket) => ticket.status === "open" || ticket.status === "awaitingReview"
+  );
+}
+
+/**
+ * Find unresolved revision tickets
+ * @param contractId Contract ID to check
+ * @returns Array of unresolved revision tickets
+ */
+export async function getUnresolvedRevisionTickets(
+  contractId: string | ObjectId
+): Promise<IRevisionTicket[]> {
+  await connectDB();
+
+  const tickets = await ticketRepo.findRevisionTicketsByContract(contractId);
+  return tickets.filter(
+    (ticket) =>
+      ticket.status === "disputed" ||
+      ticket.status === "forcedAcceptedArtist" ||
+      ticket.status === "accepted" ||
+      ticket.status === "pending"
+  );
+}
+
+/**
+ * Find revision tickets that need an upload
+ * @param contractId Contract ID to check
+ * @returns Array of revision tickets that need uploads
+ */
+export async function getUnfinishedRevisionTickets(
+  contractId: string | ObjectId
+): Promise<IRevisionTicket[]> {
+  await connectDB();
+
+  const tickets = await ticketRepo.findRevisionTicketsByContract(contractId);
+  const result: IRevisionTicket[] = [];
+
+  for (const ticket of tickets) {
+    // Check if ticket is in a state requiring upload
+    if (
+      ticket.status === "paid" ||
+      ticket.status === "forcedAcceptedArtist" ||
+      (ticket.status === "accepted" && ticket.paidFee === undefined)
+    ) {
+      // Look for an accepted upload for this ticket
+      const uploads = await uploadRepo.findRevisionUploadsByTicket(ticket._id);
+      const hasAcceptedUpload = uploads.some(
+        (upload) =>
+          upload.status === "accepted" || upload.status === "forcedAccepted"
+      );
+
+      // If no accepted upload found, this is unresolved
+      if (!hasAcceptedUpload) {
+        result.push(ticket);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Find cancel tickets that need a final upload
+ * @param contractId Contract ID to check
+ * @returns Array of cancel tickets that need final uploads
+ */
+export async function getUnfinishedCancelTickets(
+  contractId: string | ObjectId
+): Promise<ICancelTicket[]> {
+  await connectDB();
+
+  const tickets = await ticketRepo.findCancelTicketsByContract(contractId);
+  const result: ICancelTicket[] = [];
+
+  for (const ticket of tickets) {
+    // Check if ticket is in a state requiring upload
+    if (ticket.status === "accepted" || ticket.status === "forcedAccepted") {
+      // Look for an accepted final upload that references this ticket
+      const uploads = await uploadRepo.findFinalUploadsByContract(contractId);
+      const hasAcceptedUpload = uploads.some(
+        (upload) =>
+          (upload.status === "accepted" ||
+            upload.status === "forcedAccepted") &&
+          upload.cancelTicketId &&
+          upload.cancelTicketId.toString() === ticket._id.toString()
+      );
+
+      // If no accepted upload found, this is unresolved
+      if (!hasAcceptedUpload) {
+        result.push(ticket);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Check if there are unresolved cancel tickets
+ */
+export async function hasUnresolvedCancelTicket(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const tickets = await getUnresolvedCancelTickets(contractId);
+  return tickets.length > 0;
+}
+
+/**
+ * Check if there are unresolved change tickets
+ */
+export async function hasUnresolvedChangeTicket(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const tickets = await getUnresolvedChangeTickets(contractId);
+  return tickets.length > 0;
+}
+
+/**
+ * Check if there are unresolved resolution tickets
+ */
+export async function hasUnresolvedResolutionTicket(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const tickets = await getUnresolvedResolutionTickets(contractId);
+  return tickets.length > 0;
+}
+
+/**
+ * Check if there are unresolved revision tickets
+ */
+export async function hasUnresolvedRevisionTicket(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const tickets = await getUnresolvedRevisionTickets(contractId);
+  return tickets.length > 0;
+}
+
+/**
+ * Check if there are revision tickets that need uploads
+ */
+export async function hasUnfinishedRevisionTicket(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const tickets = await getUnfinishedRevisionTickets(contractId);
+  return tickets.length > 0;
+}
+
+/**
+ * Check if there are cancel tickets that need final uploads
+ */
+export async function hasUnfinishedCancelTicket(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const tickets = await getUnfinishedCancelTickets(contractId);
+  return tickets.length > 0;
 }

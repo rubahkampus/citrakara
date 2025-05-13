@@ -467,10 +467,10 @@ export async function getUpload(
   uploadType: "milestone" | "revision" | "final",
   uploadId: string | ObjectId,
   contractId: string | ObjectId,
-  userId: string,
+  userId: string
 ): Promise<any> {
   await connectDB();
-  
+
   try {
     // Verify contract exists and user has access
     const contract = await contractRepo.findContractById(contractId);
@@ -508,7 +508,10 @@ export async function getUpload(
     // Verify the upload belongs to the specified contract
     const uploadContractId = upload.contractId.toString();
     if (uploadContractId !== contractId.toString()) {
-      throw new HttpError("Upload does not belong to the specified contract", 400);
+      throw new HttpError(
+        "Upload does not belong to the specified contract",
+        400
+      );
     }
 
     return upload;
@@ -814,4 +817,101 @@ export async function autoAcceptExpiredUpload(
   } finally {
     session.endSession();
   }
+}
+
+/**
+ * Find unfinished revision uploads
+ * @param contractId Contract ID to check
+ * @returns Array of unfinished revision uploads
+ */
+export async function getUnfinishedRevisionUploads(
+  contractId: string | ObjectId
+): Promise<IRevisionUpload[]> {
+  await connectDB();
+
+  const revisionUploads = await uploadRepo.findRevisionUploadsByContract(
+    contractId
+  );
+
+  // Filter for uploads in submitted or disputed status
+  return revisionUploads.filter(
+    (upload) => upload.status === "submitted" || upload.status === "disputed"
+  );
+}
+
+/**
+ * Find unfinished final uploads
+ * @param contractId Contract ID to check
+ * @returns Array of unfinished final uploads
+ */
+export async function getUnfinishedFinalUploads(
+  contractId: string | ObjectId
+): Promise<IFinalUpload[]> {
+  await connectDB();
+
+  const finalUploads = await uploadRepo.findFinalUploadsByContract(contractId);
+
+  // Filter for uploads in submitted or disputed status
+  return finalUploads.filter(
+    (upload) => upload.status === "submitted" || upload.status === "disputed"
+  );
+}
+
+/**
+ * Find unfinished final milestone uploads
+ * @param contractId Contract ID to check
+ * @param milestoneIdx Optional milestone index to check specifically
+ * @returns Array of unfinished final milestone uploads
+ */
+export async function getUnfinishedFinalMilestoneUploads(
+  contractId: string | ObjectId,
+  milestoneIdx?: number
+): Promise<IProgressUploadMilestone[]> {
+  await connectDB();
+
+  const uploads = await uploadRepo.findProgressUploadMilestoneByContract(
+    contractId
+  );
+
+  // Filter for final milestone uploads that are in submitted or disputed status
+  return uploads.filter(
+    (upload) =>
+      upload.isFinal &&
+      (upload.status === "submitted" || upload.status === "disputed") &&
+      (milestoneIdx === undefined || upload.milestoneIdx === milestoneIdx)
+  );
+}
+
+/**
+ * Check if there are unfinished revision uploads
+ */
+export async function hasUnfinishedRevisionUpload(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const uploads = await getUnfinishedRevisionUploads(contractId);
+  return uploads.length > 0;
+}
+
+/**
+ * Check if there are unfinished final uploads
+ */
+export async function hasUnfinishedFinalUpload(
+  contractId: string | ObjectId
+): Promise<boolean> {
+  const uploads = await getUnfinishedFinalUploads(contractId);
+  return uploads.length > 0;
+}
+
+/**
+ * Check if there are unfinished final milestone uploads
+ */
+export async function hasUnfinishedFinalMilestoneUpload(
+  contractId: string | ObjectId,
+  milestoneIdx?: number
+): Promise<boolean> {
+  const uploads = await getUnfinishedFinalMilestoneUploads(
+    contractId,
+    milestoneIdx
+  );
+  return uploads.length > 0;
 }

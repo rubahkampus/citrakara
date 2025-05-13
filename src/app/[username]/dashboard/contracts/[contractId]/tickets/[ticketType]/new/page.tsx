@@ -1,7 +1,20 @@
 // src/app/[username]/dashboard/contracts/[contractId]/tickets/[ticketType]/new/page.tsx
-import { Box, Alert, Typography } from "@mui/material";
+import { Box, Alert, Typography, Paper } from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getContractById } from "@/lib/services/contract.service";
+import {
+  getUnresolvedCancelTickets,
+  getUnresolvedChangeTickets,
+  getUnresolvedResolutionTickets,
+  getUnresolvedRevisionTickets,
+  getUnfinishedRevisionTickets,
+  getUnfinishedCancelTickets,
+} from "@/lib/services/ticket.service";
+import {
+  getUnfinishedRevisionUploads,
+  getUnfinishedFinalUploads,
+  getUnfinishedFinalMilestoneUploads,
+} from "@/lib/services/upload.service";
 
 // These components would be created in src/components/dashboard/contracts/tickets/
 import CancelTicketForm from "@/components/dashboard/contracts/tickets/CancelTicketForm";
@@ -20,7 +33,7 @@ interface CreateTicketPageProps {
 export default async function CreateTicketPage({
   params,
 }: CreateTicketPageProps) {
-  const param = await params
+  const param = await params;
   const { username, contractId, ticketType } = param;
   const session = await getAuthSession();
 
@@ -63,12 +76,154 @@ export default async function CreateTicketPage({
     );
   }
 
-  if (ticketType === "change" && !contract.proposalSnapshot.listingSnapshot) {
+  if (
+    ticketType === "change" &&
+    !contract.proposalSnapshot.listingSnapshot.allowContractChange
+  ) {
     return <Alert severity="error">This contract does not allow changes</Alert>;
+  }
+
+  // Check for active tickets and uploads
+  const [
+    unresolvedCancelTickets,
+    unresolvedChangeTickets,
+    unresolvedResolutionTickets,
+    unresolvedRevisionTickets,
+    unfinishedRevisionTickets,
+    unfinishedCancelTickets,
+    unfinishedRevisionUploads,
+    unfinishedFinalUploads,
+    unfinishedFinalMilestoneUploads,
+  ] = await Promise.all([
+    getUnresolvedCancelTickets(contractId),
+    getUnresolvedChangeTickets(contractId),
+    getUnresolvedResolutionTickets(contractId),
+    getUnresolvedRevisionTickets(contractId),
+    getUnfinishedRevisionTickets(contractId),
+    getUnfinishedCancelTickets(contractId),
+    getUnfinishedRevisionUploads(contractId),
+    getUnfinishedFinalUploads(contractId),
+    getUnfinishedFinalMilestoneUploads(contractId),
+  ]);
+
+  // Collect warnings based on active tickets and uploads
+  const warnings = [];
+
+  // Only check for conflicts with the current ticket type
+  // For cancel tickets
+  if (ticketType === "cancel" && unresolvedCancelTickets.length > 0) {
+    warnings.push({
+      type: "error",
+      message:
+        "There is already an active cancellation request for this contract. Please wait for it to be resolved before creating a new one.",
+    });
+  }
+
+  // For revision tickets
+  if (ticketType === "revision" && unresolvedRevisionTickets.length > 0) {
+    warnings.push({
+      type: "error",
+      message:
+        "There are already active revision requests for this contract. Please wait for them to be resolved before creating a new one.",
+    });
+  }
+
+  // For change tickets
+  if (ticketType === "change" && unresolvedChangeTickets.length > 0) {
+    warnings.push({
+      type: "error",
+      message:
+        "There is already an active change request for this contract. Please wait for it to be resolved before creating a new one.",
+    });
+  }
+
+  // For resolution tickets
+  if (ticketType === "resolution" && unresolvedResolutionTickets.length > 0) {
+    warnings.push({
+      type: "error",
+      message:
+        "There is already an active resolution case for this contract. Please wait for it to be resolved before creating a new one.",
+    });
+  }
+
+  // Add warnings for other active tickets (not blocking, just informational)
+  // if (ticketType !== "cancel" && unresolvedCancelTickets.length > 0) {
+  //   warnings.push({
+  //     type: "warning",
+  //     message: "There is an active cancellation request for this contract.",
+  //   });
+  // }
+
+  // if (ticketType !== "revision" && unresolvedRevisionTickets.length > 0) {
+  //   warnings.push({
+  //     type: "warning",
+  //     message: "There are active revision requests for this contract.",
+  //   });
+  // }
+
+  // if (ticketType !== "change" && unresolvedChangeTickets.length > 0) {
+  //   warnings.push({
+  //     type: "warning",
+  //     message: "There is an active change request for this contract.",
+  //   });
+  // }
+
+  // if (ticketType !== "resolution" && unresolvedResolutionTickets.length > 0) {
+  //   warnings.push({
+  //     type: "warning",
+  //     message: "There are active resolution cases for this contract.",
+  //   });
+  // }
+
+  // Add warnings for unfinished uploads (always informational)
+  if (isArtist && unfinishedRevisionTickets.length > 0) {
+    warnings.push({
+      type: "info",
+      message: "You have revision tickets that need uploads.",
+    });
+  }
+
+  if (isArtist && unfinishedCancelTickets.length > 0) {
+    warnings.push({
+      type: "info",
+      message:
+        "You have an accepted cancellation request that needs a final proof of work upload.",
+    });
+  }
+
+  if (unfinishedRevisionUploads.length > 0) {
+    warnings.push({
+      type: "info",
+      message: "There are revision uploads waiting for review.",
+    });
+  }
+
+  if (unfinishedFinalUploads.length > 0) {
+    warnings.push({
+      type: "info",
+      message: "There is a final upload waiting for review.",
+    });
+  }
+
+  if (unfinishedFinalMilestoneUploads.length > 0) {
+    warnings.push({
+      type: "info",
+      message: "There are milestone uploads waiting for review.",
+    });
   }
 
   // Serialize for client components
   const serializedContract = JSON.parse(JSON.stringify(contract));
+
+  // Check if there's a blocker error that should prevent form display
+  const hasBlockingError = warnings.some(
+    (warning) =>
+      warning.type === "error" &&
+      ((ticketType === "cancel" && warning.message.includes("cancellation")) ||
+        (ticketType === "revision" && warning.message.includes("revision")) ||
+        (ticketType === "change" && warning.message.includes("change")) ||
+        (ticketType === "resolution" && warning.message.includes("resolution")))
+  );
 
   return (
     <Box>
@@ -79,44 +234,75 @@ export default async function CreateTicketPage({
         {ticketType === "resolution" && "Request Resolution"}
       </Typography>
 
-      {/* This would be implemented separately */}
-      {ticketType === "cancel" && (
-        <CancelTicketForm
-          contract={serializedContract}
-          userId={(session as Session).id}
-          username={(session as Session).username}
-          isArtist={isArtist}
-          isClient={isClient}
-        />
+      {/* Display warnings */}
+      {warnings.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          {warnings.map((warning, index) => (
+            <Alert
+              key={index}
+              severity={
+                warning.type as "error" | "warning" | "info" | "success"
+              }
+              sx={{ mb: 1 }}
+            >
+              {warning.message}
+            </Alert>
+          ))}
+        </Box>
       )}
 
-      {ticketType === "revision" && (
-        <RevisionTicketForm
-          contract={serializedContract}
-          userId={(session as Session).id}
-          username={(session as Session).username}
-          isClient={isClient}
-        />
+      {/* Only display the form if there's no blocking error */}
+      {!hasBlockingError && (
+        <>
+          {ticketType === "cancel" && (
+            <CancelTicketForm
+              contract={serializedContract}
+              userId={(session as Session).id}
+              username={(session as Session).username}
+              isArtist={isArtist}
+              isClient={isClient}
+            />
+          )}
+
+          {ticketType === "revision" && (
+            <RevisionTicketForm
+              contract={serializedContract}
+              userId={(session as Session).id}
+              username={(session as Session).username}
+              isClient={isClient}
+            />
+          )}
+
+          {ticketType === "change" && (
+            <ChangeTicketForm
+              contract={serializedContract}
+              userId={(session as Session).id}
+              username={(session as Session).username}
+              isClient={isClient}
+            />
+          )}
+
+          {ticketType === "resolution" && (
+            <ResolutionTicketForm
+              contract={serializedContract}
+              userId={(session as Session).id}
+              username={(session as Session).username}
+              isArtist={isArtist}
+              isClient={isClient}
+            />
+          )}
+        </>
       )}
 
-      {ticketType === "change" && (
-        <ChangeTicketForm
-          contract={serializedContract}
-          userId={(session as Session).id}
-          username={(session as Session).username}
-          isClient={isClient}
-        />
-      )}
-
-      {ticketType === "resolution" && (
-        <ResolutionTicketForm
-          contract={serializedContract}
-          userId={(session as Session).id}
-          username={(session as Session).username}
-          isArtist={isArtist}
-          isClient={isClient}
-        />
-      )}
+      {/* For blocking errors, display a message explaining why the form is not shown */}
+      {/* {hasBlockingError && (
+        <Paper sx={{ p: 3, bgcolor: "#f5f5f5" }}>
+          <Typography variant="body1" color="error">
+            You cannot create a new {ticketType} ticket at this time. Please
+            address the issues mentioned above first.
+          </Typography>
+        </Paper>
+      )} */}
     </Box>
   );
 }

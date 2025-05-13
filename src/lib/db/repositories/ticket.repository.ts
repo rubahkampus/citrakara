@@ -269,9 +269,7 @@ export async function updateChangeTicketStatus(
   }
 
   // If status is terminal, set resolved timestamp
-  if (
-    ["paid", "cancelled", "rejectedArtist"].includes(status)
-  ) {
+  if (["paid", "cancelled", "rejectedArtist"].includes(status)) {
     update.resolvedAt = new Date();
   }
 
@@ -492,12 +490,60 @@ export async function findActiveCancelTickets(
   contractId: string | ObjectId
 ): Promise<ICancelTicket[]> {
   await connectDB();
-  
+
   // Find cancel tickets with status accepted or forcedAccepted
   const tickets = await CancelTicket.find({
     contractId: toObjectId(contractId),
-    status: { $in: ["accepted", "forcedAccepted"] }
+    status: { $in: ["accepted", "forcedAccepted"] },
   }).sort({ createdAt: -1 });
-  
+
   return tickets;
+}
+
+/**
+ * Find all cancel tickets for a contract
+ */
+export async function findCancelTicketsByContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<ICancelTicket[]> {
+  await connectDB();
+
+  return CancelTicket.find({
+    contractId: toObjectId(contractId),
+  })
+    .sort({ createdAt: -1 })
+    .session(session || null);
+}
+
+/**
+ * Find all change tickets for a contract
+ */
+export async function findChangeTicketsByContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<IChangeTicket[]> {
+  await connectDB();
+
+  return ChangeTicket.find({
+    contractId: toObjectId(contractId),
+  })
+    .sort({ createdAt: -1 })
+    .session(session || null);
+}
+
+/**
+ * Find all revision tickets for a contract
+ */
+export async function findRevisionTicketsByContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<IRevisionTicket[]> {
+  await connectDB();
+
+  return RevisionTicket.find({
+    contractId: toObjectId(contractId),
+  })
+    .sort({ createdAt: -1 })
+    .session(session || null);
 }

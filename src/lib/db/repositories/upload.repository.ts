@@ -341,3 +341,99 @@ export async function updateFinalUploadStatus(
     session,
   });
 }
+
+/**
+ * Check if a revision ticket has any accepted uploads
+ */
+export async function hasAcceptedRevisionUpload(
+  revisionTicketId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const count = await RevisionUpload.countDocuments({
+    revisionTicketId: toObjectId(revisionTicketId),
+    status: { $in: ["accepted", "forcedAccepted"] },
+  }).session(session || null);
+
+  return count > 0;
+}
+
+/**
+ * Check if there are any active final uploads for a contract
+ */
+export async function hasActiveContractFinalUploads(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const count = await FinalUpload.countDocuments({
+    contractId: toObjectId(contractId),
+    status: "submitted",
+  }).session(session || null);
+
+  return count > 0;
+}
+
+/**
+ * Check if a cancellation has a corresponding final upload
+ */
+export async function hasCancellationFinalUpload(
+  contractId: string | ObjectId,
+  cancelTicketId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const count = await FinalUpload.countDocuments({
+    contractId: toObjectId(contractId),
+    cancelTicketId: toObjectId(cancelTicketId),
+    status: { $in: ["submitted", "accepted", "forcedAccepted"] },
+  }).session(session || null);
+
+  return count > 0;
+}
+
+/**
+ * Check if there are any active final milestone uploads for a contract or specific milestone
+ */
+export async function hasActiveFinalMilestoneUploads(
+  contractId: string | ObjectId,
+  milestoneIdx?: number,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const query: any = {
+    contractId: toObjectId(contractId),
+    isFinal: true,
+    status: "submitted",
+  };
+
+  if (milestoneIdx !== undefined) {
+    query.milestoneIdx = milestoneIdx;
+  }
+
+  const count = await ProgressUploadMilestone.countDocuments(query).session(
+    session || null
+  );
+
+  return count > 0;
+}
+
+/**
+ * Find all revision uploads for a contract
+ */
+export async function findRevisionUploadsByContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<IRevisionUpload[]> {
+  await connectDB();
+
+  return RevisionUpload.find({
+    contractId: toObjectId(contractId),
+  })
+    .sort({ createdAt: -1 })
+    .session(session || null);
+}

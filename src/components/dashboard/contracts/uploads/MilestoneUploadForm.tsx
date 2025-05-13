@@ -29,6 +29,7 @@ interface MilestoneUploadFormProps {
   userId: string;
   username: string;
   milestoneIdx: number;
+  isAllowedFinal: boolean
 }
 
 interface FormValues {
@@ -41,6 +42,7 @@ export default function MilestoneUploadForm({
   userId,
   username,
   milestoneIdx,
+  isAllowedFinal
 }: MilestoneUploadFormProps) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
@@ -321,10 +323,10 @@ export default function MilestoneUploadForm({
                       {...field}
                       checked={field.value}
                       onChange={(e) => field.onChange(e.target.checked)}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isAllowedFinal}
                     />
                   }
-                  label="This is the final delivery for this milestone (requires client review)"
+                  label="This is the final delivery for this milestone (all revisions must be finished first)"
                 />
               )}
             />

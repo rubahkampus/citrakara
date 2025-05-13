@@ -47,6 +47,7 @@ interface MilestoneUploadDetailsProps {
   isArtist: boolean;
   isClient: boolean;
   canReview: boolean;
+  username: string
 }
 
 export default function MilestoneUploadDetails({
@@ -56,6 +57,7 @@ export default function MilestoneUploadDetails({
   isArtist,
   isClient,
   canReview,
+  username
 }: MilestoneUploadDetailsProps) {
   const router = useRouter();
   const [rejectionReason, setRejectionReason] = useState("");
@@ -215,7 +217,7 @@ export default function MilestoneUploadDetails({
   const confirmEscalation = () => {
     setShowEscalateDialog(false);
     router.push(
-      `/dashboard/${userId}/resolution/new?contractId=${contract._id}&targetType=milestone&targetId=${upload._id}`
+      `/${username}/dashboard/contracts/${contract._id}/resolution/new?targetType=milestone&targetId=${upload._id}`
     );
   };
 

@@ -38,7 +38,14 @@ interface ResolutionTicket {
   contractId: string;
   submittedBy: "client" | "artist";
   submittedById: string;
-  targetType: "cancel" | "revision" | "final" | "milestone";
+  targetType:
+    | "cancel"
+    | "revision"
+    | "change"
+    | "final"
+    | "milestone"
+    | "progressMilestone"
+    | "revisionUpload";
   targetId: string;
   description: string;
   proofImages?: string[];
@@ -193,6 +200,45 @@ export default function AdminResolutionListPage({
     }
   };
 
+  // Get type display name
+  const getTypeDisplayName = (type: string) => {
+    switch (type) {
+      case "cancelTicket":
+        return "Cancellation";
+      case "revisionTicket":
+        return "Revision";
+      case "changeTicket":
+        return "Change Request";
+      case "finalUpload":
+        return "Final Delivery";
+      case "progressMilestoneUpload":
+        return "Progress Upload";
+      case "revisionUpload":
+        return "Revision Upload";
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
+  // Get chip color for target type
+  const getTypeChipColor = (type: string) => {
+    switch (type) {
+      case "cancelTicket":
+        return "error";
+      case "revisionTicket":
+      case "revisionUpload":
+        return "info";
+      case "changeTicket":
+        return "secondary";
+      case "finalUpload":
+        return "success";
+      case "progressMilestoneUpload":
+        return "warning";
+      default:
+        return "default";
+    }
+  };
+
   return (
     <Box>
       {error && (
@@ -243,8 +289,11 @@ export default function AdminResolutionListPage({
             <MenuItem value="all">All Types</MenuItem>
             <MenuItem value="cancel">Cancellation</MenuItem>
             <MenuItem value="revision">Revision</MenuItem>
+            <MenuItem value="change">Change Request</MenuItem>
             <MenuItem value="final">Final Delivery</MenuItem>
             <MenuItem value="milestone">Milestone</MenuItem>
+            <MenuItem value="progressMilestone">Progress Upload</MenuItem>
+            <MenuItem value="revisionUpload">Revision Upload</MenuItem>
           </Select>
         </FormControl>
 
@@ -292,21 +341,10 @@ export default function AdminResolutionListPage({
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={
-                        ticket.targetType.charAt(0).toUpperCase() +
-                        ticket.targetType.slice(1)
-                      }
+                      label={getTypeDisplayName(ticket.targetType)}
                       size="small"
                       variant="outlined"
-                      color={
-                        ticket.targetType === "cancel"
-                          ? "error"
-                          : ticket.targetType === "revision"
-                          ? "info"
-                          : ticket.targetType === "final"
-                          ? "success"
-                          : "warning"
-                      }
+                      color={getTypeChipColor(ticket.targetType)}
                     />
                   </TableCell>
                   <TableCell>

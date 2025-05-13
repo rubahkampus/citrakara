@@ -50,6 +50,7 @@ interface FinalUploadDetailsProps {
   isArtist: boolean;
   isClient: boolean;
   canReview: boolean;
+  username: string
 }
 
 interface ReviewFormData {
@@ -63,6 +64,7 @@ export default function FinalUploadDetails({
   isArtist,
   isClient,
   canReview,
+  username
 }: FinalUploadDetailsProps) {
   const router = useRouter();
   const [cancelTicket, setCancelTicket] = useState<ICancelTicket | null>(null);
@@ -253,7 +255,7 @@ export default function FinalUploadDetails({
   const confirmEscalation = () => {
     setShowEscalateDialog(false);
     router.push(
-      `/dashboard/${userId}/resolution/new?contractId=${contract._id}&targetType=final&targetId=${upload._id}`
+      `/${username}/dashboard/contracts/${contract._id}/resolution/new?targetType=final&targetId=${upload._id}`
     );
   };
 

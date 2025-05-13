@@ -16,7 +16,7 @@ import { IContract } from "@/lib/db/models/contract.model";
 import { IResolutionTicket } from "@/lib/db/models/ticket.model";
 
 interface TicketDetailsPageProps {
-  params: { 
+  params: {
     username: string;
     contractId: string;
     ticketType: "cancel" | "revision" | "change" | "resolution";
@@ -24,11 +24,13 @@ interface TicketDetailsPageProps {
   };
 }
 
-export default async function TicketDetailsPage({ params }: TicketDetailsPageProps) {
-  const param = await params
+export default async function TicketDetailsPage({
+  params,
+}: TicketDetailsPageProps) {
+  const param = await params;
   const { username, contractId, ticketType, ticketId } = param;
   const session = await getAuthSession();
-  
+
   if (!session || !isUserOwner(session as Session, username)) {
     return <Alert severity="error">You do not have access to this page</Alert>;
   }
@@ -87,42 +89,35 @@ export default async function TicketDetailsPage({ params }: TicketDetailsPagePro
 
       {/* These would be implemented separately */}
       {ticketType === "cancel" && (
-        <CancelTicketDetails 
-          contract={serializedContract} 
-          ticket={serializedTicket} 
-          userId={(session as Session).id} 
-          isArtist={isArtist} 
-          isClient={isClient} 
+        <CancelTicketDetails
+          contract={serializedContract}
+          ticket={serializedTicket}
+          userId={(session as Session).id}
+          isArtist={isArtist}
+          isClient={isClient}
+          username={(session as Session).username}
         />
       )}
 
       {ticketType === "revision" && (
-        <RevisionTicketDetails 
-          contract={serializedContract} 
-          ticket={serializedTicket} 
-          userId={(session as Session).id} 
-          isArtist={isArtist} 
-          isClient={isClient} 
+        <RevisionTicketDetails
+          contract={serializedContract}
+          ticket={serializedTicket}
+          userId={(session as Session).id}
+          isArtist={isArtist}
+          isClient={isClient}
+          username={(session as Session).username}
         />
       )}
 
       {ticketType === "change" && (
-        <ChangeTicketDetails 
-          contract={serializedContract} 
-          ticket={serializedTicket} 
-          userId={(session as Session).id} 
-          isArtist={isArtist} 
-          isClient={isClient} 
-        />
-      )}
-
-      {ticketType === "resolution" && (
-        <ResolutionTicketDetails 
-          contractId={(serializedTicket as IResolutionTicket).contractId.toString()} 
-          ticket={serializedTicket} 
-          userId={(session as Session).id} 
-          isArtist={isArtist} 
-          isClient={isClient} 
+        <ChangeTicketDetails
+          contract={serializedContract}
+          ticket={serializedTicket}
+          userId={(session as Session).id}
+          isArtist={isArtist}
+          isClient={isClient}
+          username={(session as Session).username}
         />
       )}
     </Box>

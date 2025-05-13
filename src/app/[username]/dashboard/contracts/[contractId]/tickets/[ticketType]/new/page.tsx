@@ -146,35 +146,6 @@ export default async function CreateTicketPage({
     });
   }
 
-  // Add warnings for other active tickets (not blocking, just informational)
-  // if (ticketType !== "cancel" && unresolvedCancelTickets.length > 0) {
-  //   warnings.push({
-  //     type: "warning",
-  //     message: "There is an active cancellation request for this contract.",
-  //   });
-  // }
-
-  // if (ticketType !== "revision" && unresolvedRevisionTickets.length > 0) {
-  //   warnings.push({
-  //     type: "warning",
-  //     message: "There are active revision requests for this contract.",
-  //   });
-  // }
-
-  // if (ticketType !== "change" && unresolvedChangeTickets.length > 0) {
-  //   warnings.push({
-  //     type: "warning",
-  //     message: "There is an active change request for this contract.",
-  //   });
-  // }
-
-  // if (ticketType !== "resolution" && unresolvedResolutionTickets.length > 0) {
-  //   warnings.push({
-  //     type: "warning",
-  //     message: "There are active resolution cases for this contract.",
-  //   });
-  // }
-
   // Add warnings for unfinished uploads (always informational)
   if (isArtist && unfinishedRevisionTickets.length > 0) {
     warnings.push({
@@ -281,28 +252,8 @@ export default async function CreateTicketPage({
               isClient={isClient}
             />
           )}
-
-          {ticketType === "resolution" && (
-            <ResolutionTicketForm
-              contract={serializedContract}
-              userId={(session as Session).id}
-              username={(session as Session).username}
-              isArtist={isArtist}
-              isClient={isClient}
-            />
-          )}
         </>
       )}
-
-      {/* For blocking errors, display a message explaining why the form is not shown */}
-      {/* {hasBlockingError && (
-        <Paper sx={{ p: 3, bgcolor: "#f5f5f5" }}>
-          <Typography variant="body1" color="error">
-            You cannot create a new {ticketType} ticket at this time. Please
-            address the issues mentioned above first.
-          </Typography>
-        </Paper>
-      )} */}
     </Box>
   );
 }

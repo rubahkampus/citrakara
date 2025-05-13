@@ -122,6 +122,7 @@ export async function findRevisionTicketById(
   session?: ClientSession
 ): Promise<IRevisionTicket | null> {
   await connectDB();
+  console.log("id: ", JSON.stringify(id));
   return RevisionTicket.findById(toObjectId(id)).session(session || null);
 }
 
@@ -300,7 +301,13 @@ export interface CreateResolutionTicketInput {
   contractId: string | ObjectId;
   submittedBy: "client" | "artist";
   submittedById: string | ObjectId;
-  targetType: "cancel" | "revision" | "final" | "milestone";
+  targetType:
+    | "cancelTicket" // CancelTicket
+    | "revisionTicket" // RevisionTicket
+    | "changeTicket" // ChangeTicket
+    | "finalUpload" // FinalUpload
+    | "progressMilestoneUpload" // ProgressUploadMilestone
+    | "revisionUpload"; // RevisionUpload
   targetId: string | ObjectId;
   description: string;
   proofImages?: string[];

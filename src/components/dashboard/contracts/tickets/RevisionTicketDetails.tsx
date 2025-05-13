@@ -49,6 +49,7 @@ interface RevisionTicketDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
+  username: string
 }
 
 export default function RevisionTicketDetails({
@@ -57,6 +58,7 @@ export default function RevisionTicketDetails({
   userId,
   isArtist,
   isClient,
+  username
 }: RevisionTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<"accept" | "reject" | "">("");
@@ -215,7 +217,7 @@ export default function RevisionTicketDetails({
   const confirmEscalation = () => {
     setShowEscalateDialog(false);
     router.push(
-      `/dashboard/${userId}/resolution/new?contractId=${contract._id}&targetType=revision&targetId=${ticket._id}`
+      `/${username}/dashboard/contracts/${contract._id}/resolution/new?targetType=revision&targetId=${ticket._id}`
     );
   };
 

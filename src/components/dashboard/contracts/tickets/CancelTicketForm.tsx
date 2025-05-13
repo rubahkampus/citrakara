@@ -56,10 +56,62 @@ export default function CancelTicketForm({
     },
   });
 
+  // Check if this is a milestone contract
+  const isMilestoneContract =
+    contract.proposalSnapshot?.listingSnapshot?.flow === "milestone";
+  console.log("Is milestone contract:", isMilestoneContract);
+
+  // Check milestone status for milestone contracts
+  const incompleteMilestones =
+    isMilestoneContract && contract.milestones
+      ? contract.milestones.filter(
+          (milestone) => milestone.status !== "accepted"
+        )
+      : [];
+  console.log("Incomplete milestones:", incompleteMilestones);
+
+  const allMilestonesComplete =
+    isMilestoneContract && incompleteMilestones.length === 0;
+  console.log("All milestones complete:", allMilestonesComplete);
+
+  // Calculate default work progress based on contract type
+  const calculateDefaultWorkProgress = (): number => {
+    console.log("Calculating default work progress...");
+    // For cancellation with milestone flow
+    if (
+      isMilestoneContract &&
+      contract.milestones &&
+      contract.milestones.length > 0
+    ) {
+      // Sum up percentages from completed milestones
+      const progress = contract.milestones.reduce((total, milestone) => {
+        if (milestone.status === "accepted") {
+          return total + milestone.percent;
+        }
+        return total;
+      }, 0);
+      console.log("Default work progress (milestone cancellation):", progress);
+      return progress;
+    }
+    return 0;
+  };
+
   // Format price for display
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("id-ID").format(amount);
   };
+
+  function hasDatePassed(dateToCheck: Date) {
+    // Create a Date object for the date you want to check
+    const checkDate = new Date(dateToCheck);
+
+    // Create a Date object for today, set to beginning of day (midnight)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Return true if the date is before today (has passed)
+    return checkDate < todayStart;
+  }
 
   // Calculate approximate refund based on contract policy and status
   const calculateApproximateOutcome = () => {
@@ -68,6 +120,10 @@ export default function CancelTicketForm({
 
     let artistAmount = 0;
     let clientAmount = 0;
+    let workProgress = calculateDefaultWorkProgress();
+    const latePenalty =
+      contract.proposalSnapshot.listingSnapshot.latePenaltyPercent || 0;
+    const isLate = hasDatePassed(contract.deadlineAt);
 
     if (isClient) {
       // Client cancellation
@@ -80,9 +136,17 @@ export default function CancelTicketForm({
                 ?.amount) /
             100;
 
-      // Assuming 0% work progress for new cancellation
-      artistAmount = cancellationFee;
-      clientAmount = totalAmount - cancellationFee;
+      if (isLate) {
+        artistAmount =
+          totalAmount * (workProgress / 100) -
+          totalAmount * (latePenalty / 100);
+        clientAmount =
+          totalAmount * (workProgress / 100) +
+          totalAmount * (latePenalty / 100);
+      } else {
+        artistAmount = totalAmount * (workProgress / 100) + cancellationFee;
+        clientAmount = totalAmount * (workProgress / 100) - cancellationFee;
+      }
     } else {
       // Artist cancellation
       const cancellationFee =
@@ -94,9 +158,20 @@ export default function CancelTicketForm({
                 ?.amount) /
             100;
 
-      // Assuming 0% work progress for new cancellation
-      artistAmount = 0;
-      clientAmount = totalAmount;
+      if (isLate) {
+        artistAmount =
+          totalAmount * (workProgress / 100) -
+          totalAmount * (latePenalty / 100) -
+          cancellationFee;
+        clientAmount =
+          totalAmount * (workProgress / 100) +
+          totalAmount * (latePenalty / 100) +
+          cancellationFee;
+      } else {
+        artistAmount = totalAmount * (workProgress / 100) - cancellationFee;
+        clientAmount =
+          totalAmount - totalAmount * (workProgress / 100) + cancellationFee;
+      }
     }
 
     return {
@@ -242,7 +317,7 @@ export default function CancelTicketForm({
 
             <Alert severity="warning" sx={{ mb: 2 }}>
               <Typography variant="body2" fontWeight="bold">
-                Estimated outcome if accepted with no work done:
+                Estimated outcome if {isMilestoneContract ? "all finsihed milestones are accounted:" : "accepted with no work done:"}
               </Typography>
               <Typography variant="body2">
                 Artist receives: {formatPrice(outcome.artistAmount)}

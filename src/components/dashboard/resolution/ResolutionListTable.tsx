@@ -68,16 +68,39 @@ export default function ResolutionListTable({
     }
   };
 
+  // Get target type display name
+  const getTargetTypeDisplay = (type: string): string => {
+    switch (type) {
+      case "cancelTicket":
+        return "Cancellation";
+      case "revisionTicket":
+        return "Revision";
+      case "changeTicket":
+        return "Change Request";
+      case "finalUpload":
+        return "Final Delivery";
+      case "progressMilestoneUpload":
+        return "Progress Upload";
+      case "revisionUpload":
+        return "Revision Upload";
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
   // Get target type chip color
   const getTargetTypeColor = (targetType: string) => {
     switch (targetType) {
-      case "cancel":
+      case "cancelTicket":
         return "error";
-      case "revision":
+      case "revisionTicket":
+      case "revisionUpload":
         return "info";
-      case "final":
+      case "changeTicket":
+        return "secondary";
+      case "finalUpload":
         return "success";
-      case "milestone":
+      case "progressMilestone":
         return "warning";
       default:
         return "default";
@@ -155,10 +178,7 @@ export default function ResolutionListTable({
               </TableCell>
               <TableCell>
                 <Chip
-                  label={
-                    ticket.targetType.charAt(0).toUpperCase() +
-                    ticket.targetType.slice(1)
-                  }
+                  label={getTargetTypeDisplay(ticket.targetType)}
                   size="small"
                   variant="outlined"
                   color={getTargetTypeColor(ticket.targetType) as any}

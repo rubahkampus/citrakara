@@ -42,6 +42,7 @@ interface CancelTicketDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
+  username: string
 }
 
 interface FormValues {
@@ -54,6 +55,7 @@ export default function CancelTicketDetails({
   userId,
   isArtist,
   isClient,
+  username
 }: CancelTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<"accept" | "reject" | "">("");
@@ -212,7 +214,7 @@ export default function CancelTicketDetails({
   const confirmEscalation = () => {
     setShowEscalateDialog(false);
     router.push(
-      `/dashboard/${userId}/resolution/new?contractId=${contract._id}&targetType=cancel&targetId=${ticket._id}`
+      `/${username}/dashboard/contracts/${contract._id}/resolution/new?targetType=cancel&targetId=${ticket._id}`
     );
   };
 

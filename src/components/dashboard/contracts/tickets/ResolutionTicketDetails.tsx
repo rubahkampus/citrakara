@@ -280,16 +280,38 @@ export default function ResolutionTicketDetails({
   // Get target type display name
   const getTargetTypeDisplay = (type: string) => {
     switch (type) {
-      case "cancel":
+      case "cancelTicket":
         return "Cancellation Request";
-      case "revision":
+      case "revisionTicket":
         return "Revision Request";
-      case "final":
+      case "changeTicket":
+        return "Change Request";
+      case "finalUpload":
         return "Final Delivery";
-      case "milestone":
-        return "Milestone Upload";
+      case "progressMilestoneUpload":
+        return "Milestone Progress Upload";
+      case "revisionUpload":
+        return "Revision Upload";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
+  // Get target URL for viewing the disputed item
+  const getTargetUrl = () => {
+    switch (ticket.targetType) {
+      case "cancelTicket":
+      case "revisionTicket":
+      case "changeTicket":
+        return `/dashboard/${userId}/contracts/${contractId}/tickets/${ticket.targetType}/${ticket.targetId}`;
+      case "finalUpload":
+        return `/dashboard/${userId}/contracts/${contractId}/uploads/final/${ticket.targetId}`
+      case "progressMilestoneUpload":
+        return `/dashboard/${userId}/contracts/${contractId}/uploads/milestone/${ticket.targetId}`;
+      case "revisionUpload":
+        return `/dashboard/${userId}/contracts/${contractId}/uploads/revision/${ticket.targetId}`;
+      default:
+        return `/dashboard/${userId}/contracts/${contractId}`;
     }
   };
 
@@ -824,7 +846,7 @@ export default function ResolutionTicketDetails({
                       variant="text"
                       size="small"
                       component={Link}
-                      href={`/dashboard/${userId}/contracts/${contractId}/${ticket.targetType}s/${ticket.targetId}`}
+                      href={getTargetUrl()}
                     >
                       View {getTargetTypeDisplay(ticket.targetType)}
                     </Button>

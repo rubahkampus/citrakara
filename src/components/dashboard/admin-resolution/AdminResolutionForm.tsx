@@ -97,16 +97,38 @@ export default function AdminResolutionForm({
   // Get target type display name
   const getTargetTypeDisplay = (type: string) => {
     switch (type) {
-      case "cancel":
+      case "cancelTicket":
         return "Cancellation Request";
-      case "revision":
+      case "revisionTicket":
         return "Revision Request";
-      case "final":
+      case "changeTicket":
+        return "Change Request";
+      case "finalUpload":
         return "Final Delivery";
-      case "milestone":
-        return "Milestone Upload";
+      case "progressMilestoneUpload":
+        return "Milestone Progress Upload";
+      case "revisionUpload":
+        return "Revision Upload";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
+  // Get target URL for viewing the disputed item
+  const getTargetUrl = () => {
+    switch (ticket.targetType) {
+      case "cancelTicket":
+      case "revisionTicket":
+      case "changeTicket":
+        return `/dashboard/${userId}/contracts/${ticket.contractId}/tickets/${ticket.targetType}/${ticket.targetId}`;
+      case "finalUpload":
+        return `/dashboard/${userId}/contracts/${ticket.contractId}/uploads/final/${ticket.targetId}`;
+      case "progressMilestoneUpload":
+        return `/dashboard/${userId}/contracts/${ticket.contractId}/uploads/milestone/${ticket.targetId}`;
+      case "revisionUpload":
+        return `/dashboard/${userId}/contracts/${ticket.contractId}/uploads/revision/${ticket.targetId}`;
+      default:
+        return `/dashboard/${userId}/contracts/${ticket.contractId}`;
     }
   };
 
@@ -134,6 +156,64 @@ export default function AdminResolutionForm({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Helper to generate a consequence message based on the target type and decision
+  const getDecisionConsequenceMessage = (decision: string) => {
+    if (!decision) return "";
+
+    // Base message based on who is favored
+    const favoredParty = decision === "favorClient" ? "Client" : "Artist";
+    let baseMessage = `This decision will rule in favor of the ${favoredParty}.`;
+
+    // Additional details based on target type
+    switch (ticket.targetType) {
+      case "cancel":
+        return `${baseMessage} ${
+          decision === "favorClient"
+            ? "The cancellation will be accepted and the contract will be marked as cancelled with appropriate compensation based on work completed."
+            : "The cancellation will be rejected and the contract will continue."
+        }`;
+
+      case "revision":
+        return `${baseMessage} ${
+          decision === "favorClient"
+            ? "The artist will be required to make the requested revisions."
+            : "The artist will not be required to make the requested revisions."
+        }`;
+
+      case "change":
+        return `${baseMessage} ${
+          decision === "favorClient"
+            ? "The requested changes to the contract will be applied without additional fees."
+            : "The changes will not be required or the artist's proposed fees will be enforced."
+        }`;
+
+      case "final":
+        return `${baseMessage} ${
+          decision === "favorClient"
+            ? "The final delivery will be rejected and the artist must make adjustments."
+            : "The final delivery will be forcibly accepted and the contract marked as completed."
+        }`;
+
+      case "milestone":
+      case "progressMilestone":
+        return `${baseMessage} ${
+          decision === "favorClient"
+            ? "The milestone upload will be rejected and the artist must address the issues."
+            : "The milestone will be forcibly accepted and the contract will progress to the next phase."
+        }`;
+
+      case "revisionUpload":
+        return `${baseMessage} ${
+          decision === "favorClient"
+            ? "The revision upload will be rejected and the artist must address the issues."
+            : "The revision will be forcibly accepted."
+        }`;
+
+      default:
+        return baseMessage;
     }
   };
 
@@ -286,7 +366,7 @@ export default function AdminResolutionForm({
           </Button>
           <Button
             component={Link}
-            href={`/dashboard/${userId}/contracts/${ticket.contractId}/${ticket.targetType}s/${ticket.targetId}`}
+            href={getTargetUrl()}
             variant="text"
             size="small"
             sx={{ ml: 2 }}
@@ -670,7 +750,9 @@ export default function AdminResolutionForm({
               <Typography variant="body2">
                 As an administrator, you need to decide which party's position
                 to uphold. Consider all evidence provided by both parties before
-                making your decision.
+                making your decision. The outcome of this resolution will affect
+                the disputed{" "}
+                {getTargetTypeDisplay(ticket.targetType).toLowerCase()}.
               </Typography>
             </Alert>
 
@@ -703,6 +785,21 @@ export default function AdminResolutionForm({
                 )}
               />
             </Box>
+
+            {/* Show consequence of decision */}
+            {watchedDecision && (
+              <Alert
+                severity={
+                  watchedDecision === "favorClient" ? "info" : "warning"
+                }
+                sx={{ mb: 3 }}
+                icon={<GavelIcon />}
+              >
+                <Typography variant="body2">
+                  {getDecisionConsequenceMessage(watchedDecision)}
+                </Typography>
+              </Alert>
+            )}
 
             <Box sx={{ mb: 3 }}>
               <Controller

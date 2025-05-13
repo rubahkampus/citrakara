@@ -953,13 +953,23 @@ export async function createResolutionTicket(
 
     // Get target info from form data
     const targetType = form.get("targetType")?.toString() as
-      | "cancel"
-      | "revision"
-      | "final"
-      | "milestone";
+    | "cancelTicket" // CancelTicket
+    | "revisionTicket" // RevisionTicket
+    | "changeTicket" // ChangeTicket
+    | "finalUpload" // FinalUpload
+    | "progressMilestoneUpload" // ProgressUploadMilestone
+    | "revisionUpload"; // RevisionUpload
+
     if (
       !targetType ||
-      !["cancel", "revision", "final", "milestone"].includes(targetType)
+      ![
+        "cancelTicket",
+        "revisionTicket",
+        "changeTicket",
+        "finalUpload",
+        "progressMilestoneUpload",
+        "revisionUpload",
+      ].includes(targetType)
     ) {
       throw new HttpError("Valid target type is required", 400);
     }
@@ -980,34 +990,33 @@ export async function createResolutionTicket(
     // Determine if user is client or artist
     const submittedBy = isClient ? "client" : "artist";
 
-    // // Validate the resolution ticket request
-    // const validation = validateResolutionTicketRequest(
-    //   contract,
-    //   targetType,
-    //   targetId,
-    //   submittedBy
-    // );
+    // Validate the resolution ticket request
+    const validation = validateResolutionTicketRequest(
+      contract,
+      targetType,
+      targetId,
+      submittedBy
+    );
 
-    // if (!validation.valid) {
-    //   throw new HttpError(
-    //     validation.error || "Invalid resolution ticket request",
-    //     400
-    //   );
-    // }
+    if (!validation) {
+      throw new HttpError(
+        validation || "Invalid resolution ticket request",
+        400
+      );
+    }
 
-    // // Check for existing open resolutions for this target
-    // const hasExistingResolution = await hasOpenResolutionForTarget(
-    //   contractId,
-    //   targetType,
-    //   targetId
-    // );
+    // Check for existing open resolutions for this target
+    // Check for existing open resolutions for this target
+    const hasExistingResolution = await hasUnresolvedResolutionTicket(
+      contractId
+    );
 
-    // if (hasExistingResolution) {
-    //   throw new HttpError(
-    //     "A resolution ticket already exists for this item. Please use the existing resolution.",
-    //     400
-    //   );
-    // }
+    if (hasExistingResolution) {
+      throw new HttpError(
+        "A resolution ticket already exists for this item. Please use the existing resolution.",
+        400
+      );
+    }
 
     // Get image blobs from form data
     const proofImageBlobs = form
@@ -1434,11 +1443,27 @@ async function applyResolutionDecision(
     case "revision":
       await applyRevisionResolution(contractId, targetId, decision, session);
       break;
+    case "change":
+      await applyChangeResolution(contractId, targetId, decision, session);
+      break;
     case "final":
       await applyFinalUploadResolution(contractId, targetId, decision, session);
       break;
-    case "milestone":
-      await applyMilestoneResolution(contractId, targetId, decision, session);
+    case "progressMilestone":
+      await applyProgressMilestoneResolution(
+        contractId,
+        targetId,
+        decision,
+        session
+      );
+      break;
+    case "revisionUpload":
+      await applyRevisionUploadResolution(
+        contractId,
+        targetId,
+        decision,
+        session
+      );
       break;
     default:
       throw new Error(`Unknown target type: ${targetType}`);
@@ -1603,48 +1628,6 @@ async function applyFinalUploadResolution(
   }
 }
 
-/**
- * Apply resolution to a milestone upload
- */
-async function applyMilestoneResolution(
-  contractId: string | ObjectId,
-  uploadId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  const upload = await uploadRepo.findProgressUploadMilestoneById(
-    uploadId,
-    session
-  );
-  if (!upload) {
-    throw new Error("Milestone upload not found");
-  }
-
-  if (!upload.isFinal) {
-    throw new Error("Only final milestone uploads can have resolutions");
-  }
-
-  if (decision === "favorClient") {
-    // Reject upload in favor of client
-    await uploadRepo.updateMilestoneUploadStatus(uploadId, "rejected", session);
-  } else {
-    // Force acceptance in favor of artist
-    await uploadRepo.updateMilestoneUploadStatus(
-      uploadId,
-      "forcedAccepted",
-      session
-    );
-
-    // Update milestone status
-    await contractService.updateMilestoneStatus(
-      contractId,
-      upload.milestoneIdx,
-      "accepted",
-      uploadId,
-      session
-    );
-  }
-}
 
 /**
  * Cancel a resolution ticket if the underlying issue is resolved
@@ -1911,6 +1894,216 @@ export async function getUnfinishedCancelTickets(
   }
 
   return result;
+}
+
+// In src/lib/services/ticket.service.ts (add these new functions)
+
+/**
+ * Apply resolution to a change ticket
+ */
+async function applyChangeResolution(
+  contractId: string | ObjectId,
+  ticketId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const ticket = await ticketRepo.findChangeTicketById(ticketId, session);
+  if (!ticket) {
+    throw new Error("Change ticket not found");
+  }
+
+  if (decision === "favorClient") {
+    // Force artist to accept change
+    if (ticket.status === "pendingArtist") {
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "forcedAcceptedArtist",
+        { isPaidChange: false }, // No fee for forced acceptance
+        session
+      );
+
+      // Apply contract changes
+      await applyContractChanges(contractId, ticket.changeSet, session);
+    } else if (ticket.status === "pendingClient") {
+      // If artist proposed a fee but admin favors client, force client acceptance but without fee
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "forcedAcceptedClient",
+        { isPaidChange: false }, // Remove fee
+        session
+      );
+
+      // Apply contract changes
+      await applyContractChanges(contractId, ticket.changeSet, session);
+    }
+  } else {
+    // Favor artist - reject the change or enforce fee
+    if (ticket.status === "pendingArtist") {
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "rejectedArtist",
+        {},
+        session
+      );
+    } else if (ticket.status === "pendingClient" && ticket.isPaidChange) {
+      // If artist proposed a fee, enforce it
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "forcedAcceptedClient",
+        {},
+        session
+      );
+    }
+  }
+}
+
+/**
+ * Apply resolution to a progress milestone upload
+ */
+async function applyProgressMilestoneResolution(
+  contractId: string | ObjectId,
+  uploadId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const upload = await uploadRepo.findProgressUploadMilestoneById(
+    uploadId,
+    session
+  );
+  if (!upload) {
+    throw new Error("Progress milestone upload not found");
+  }
+
+  if (!upload.isFinal) {
+    throw new Error("Only final milestone uploads can have resolutions");
+  }
+
+  if (decision === "favorClient") {
+    // Reject upload in favor of client
+    await uploadRepo.updateMilestoneUploadStatus(uploadId, "rejected", session);
+  } else {
+    // Force acceptance in favor of artist
+    await uploadRepo.updateMilestoneUploadStatus(
+      uploadId,
+      "forcedAccepted",
+      session
+    );
+
+    // Update milestone status
+    await contractService.updateMilestoneStatus(
+      contractId,
+      upload.milestoneIdx,
+      "accepted",
+      uploadId,
+      session
+    );
+  }
+}
+
+/**
+ * Apply resolution to a revision upload
+ */
+async function applyRevisionUploadResolution(
+  contractId: string | ObjectId,
+  uploadId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const upload = await uploadRepo.findRevisionUploadById(uploadId, session);
+  if (!upload) {
+    throw new Error("Revision upload not found");
+  }
+
+  if (decision === "favorClient") {
+    // Reject upload in favor of client
+    await uploadRepo.updateRevisionUploadStatus(uploadId, "rejected", session);
+  } else {
+    // Force acceptance in favor of artist
+    await uploadRepo.updateRevisionUploadStatus(
+      uploadId,
+      "forcedAccepted",
+      session
+    );
+
+    // Mark the revision ticket as resolved
+    const ticket = await ticketRepo.findRevisionTicketById(
+      upload.revisionTicketId,
+      session
+    );
+    if (ticket && !ticket.resolved) {
+      await ticketRepo.updateRevisionTicketStatus(
+        upload.revisionTicketId,
+        ticket.status, // Keep current status
+        undefined,
+        undefined,
+        undefined,
+        session
+      );
+    }
+  }
+}
+
+// In src/lib/services/ticket.service.ts (add this validation function)
+
+/**
+ * Validate that the target exists and the user can create a resolution for it
+ */
+async function validateResolutionTicketRequest(
+  contract: IContract,
+  targetType: string,
+  targetId: string | ObjectId,
+  submittedBy: "client" | "artist",
+  session?: ClientSession
+): Promise<{ valid: boolean; error?: string }> {
+  try {
+    // Check that the target exists based on type
+    switch (targetType) {
+      case "cancel":
+        const cancelTicket = await ticketRepo.findCancelTicketById(targetId, session);
+        if (!cancelTicket) return { valid: false, error: "Cancel ticket not found" };
+        break;
+        
+      case "revision":
+        const revisionTicket = await ticketRepo.findRevisionTicketById(targetId, session);
+        if (!revisionTicket) return { valid: false, error: "Revision ticket not found" };
+        break;
+        
+      case "change":
+        const changeTicket = await ticketRepo.findChangeTicketById(targetId, session);
+        if (!changeTicket) return { valid: false, error: "Change ticket not found" };
+        break;
+        
+      case "final":
+        const finalUpload = await uploadRepo.findFinalUploadById(targetId, session);
+        if (!finalUpload) return { valid: false, error: "Final upload not found" };
+        break;
+        
+      case "milestone":
+        // For milestones, we need to check if the milestone exists in the contract
+        const milestoneIdx = Number(targetId);
+        if (isNaN(milestoneIdx) || !contract.milestones || !contract.milestones[milestoneIdx]) {
+          return { valid: false, error: "Milestone not found" };
+        }
+        break;
+        
+      case "progressMilestone":
+        const progressUpload = await uploadRepo.findProgressUploadMilestoneById(targetId, session);
+        if (!progressUpload) return { valid: false, error: "Progress milestone upload not found" };
+        break;
+        
+      case "revisionUpload":
+        const revisionUpload = await uploadRepo.findRevisionUploadById(targetId, session);
+        if (!revisionUpload) return { valid: false, error: "Revision upload not found" };
+        break;
+        
+      default:
+        return { valid: false, error: "Invalid target type" };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: `Validation error` };
+  }
 }
 
 /**

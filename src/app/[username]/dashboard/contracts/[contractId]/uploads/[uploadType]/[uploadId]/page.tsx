@@ -160,6 +160,7 @@ export default async function UploadDetailsPage({
           isArtist={isArtist}
           isClient={isClient}
           canReview={canReview}
+          username={(session as Session).username}
         />
       )}
 
@@ -182,6 +183,7 @@ export default async function UploadDetailsPage({
           isArtist={isArtist}
           isClient={isClient}
           canReview={canReview}
+          username={(session as Session).username}
         />
       )}
     </Box>

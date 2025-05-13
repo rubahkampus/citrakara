@@ -1,8 +1,8 @@
 // src/components/dashboard/contracts/tickets/ResolutionTicketForm.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import axios from "axios";
 import {
@@ -14,13 +14,10 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  IconButton,
   Stack,
   Grid,
+  IconButton,
+  Chip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
@@ -32,20 +29,18 @@ interface ResolutionTicketFormProps {
   username: string;
   isArtist: boolean;
   isClient: boolean;
+  initialTargetType:
+    | "cancelTicket"
+    | "revisionTicket"
+    | "changeTicket"
+    | "finalUpload"
+    | "progressMilestoneUpload"
+    | "revisionUpload";
+  initialTargetId: string;
 }
 
 interface FormValues {
-  targetType: "cancel" | "revision" | "final" | "milestone" | "";
-  targetId: string;
   description: string;
-}
-
-interface TargetItem {
-  id: string;
-  type: "cancel" | "revision" | "final" | "milestone";
-  label: string;
-  date: string;
-  status: string;
 }
 
 export default function ResolutionTicketForm({
@@ -54,59 +49,36 @@ export default function ResolutionTicketForm({
   username,
   isArtist,
   isClient,
+  initialTargetType,
+  initialTargetId,
 }: ResolutionTicketFormProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const fetchedRef = useRef(false);
 
-  // Check if we have preset params from URL
-  const presetTargetType = searchParams.get("targetType") as
-    | "cancel"
-    | "revision"
-    | "final"
-    | "milestone"
-    | null;
-  const presetTargetId = searchParams.get("targetId");
+  // Validate MongoDB ObjectID
+  const validateMongoId = (id: string): boolean => {
+    return /^[0-9a-fA-F]{24}$/.test(id);
+  };
 
   // Form state with react-hook-form
   const {
     control,
     handleSubmit,
     formState: { errors },
-    watch,
-    setValue,
   } = useForm<FormValues>({
     defaultValues: {
-      targetType: presetTargetType || "",
-      targetId: presetTargetId || "",
       description: "",
     },
   });
-
-  const watchTargetType = watch("targetType");
-  const watchTargetId = watch("targetId");
 
   // Files state
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-  // Available targets for resolution
-  const [availableTargets, setAvailableTargets] = useState<{
-    cancel: TargetItem[];
-    revision: TargetItem[];
-    final: TargetItem[];
-    milestone: TargetItem[];
-  }>({
-    cancel: [],
-    revision: [],
-    final: [],
-    milestone: [],
-  });
-
-  // Target details - for displaying more information about the selected target
+  // Target details - for displaying information about the selected target
   const [targetDetails, setTargetDetails] = useState<any>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-
-  // Process status
+  const [targetLabel, setTargetLabel] = useState<string>("");
+  const [loadingDetails, setLoadingDetails] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,196 +88,138 @@ export default function ResolutionTicketForm({
     baseURL: process.env.NEXT_PUBLIC_API_URL || "",
   });
 
-  // Fetch available targets for resolution
+  // Get display name for target type
+  const getTargetTypeDisplay = (type: string): string => {
+    switch (type) {
+      case "cancelTicket":
+        return "Cancellation Request";
+      case "revisionTicket":
+        return "Revision Request";
+      case "changeTicket":
+        return "Change Request";
+      case "finalUpload":
+        return "Final Delivery";
+      case "progressMilestone":
+        return "Milestone Progress Upload";
+      case "revisionUpload":
+        return "Revision Upload";
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
+  // Determine API endpoint based on target type
+  const getApiEndpoint = (targetType: string, targetId: string): string => {
+    switch (targetType) {
+      case "cancelTicket":
+      case "revisionTicket":
+      case "changeTicket":
+        return `/api/contract/${contract._id}/tickets/${targetType}/${targetId}`;
+      case "finalUpload":
+      case "progressMilestoneUpload":
+        return `/api/contract/${contract._id}/uploads/milestone/${targetId}`;
+      case "revisionUpload":
+        return `/api/contract/${contract._id}/uploads/revision/${targetId}`;
+      default:
+        return `/api/contract/${contract._id}/tickets/${targetType}/${targetId}`;
+    }
+  };
+
+  // Fetch target details when component mounts - using a ref to prevent multiple fetches
   useEffect(() => {
-    const fetchTargets = async () => {
-      setIsLoading(true);
+    // Skip if we've already fetched
+    if (fetchedRef.current) return;
+
+    const fetchTargetDetails = async () => {
+      // Validate inputs
+      if (!initialTargetType || !initialTargetId) {
+        setError("Missing target information");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!validateMongoId(initialTargetId)) {
+        setError("Invalid target ID format");
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        // Initialize the arrays for each target type
-        const cancelTickets: TargetItem[] = [];
-        const revisionTickets: TargetItem[] = [];
-        const finalUploads: TargetItem[] = [];
-        const milestoneUploads: TargetItem[] = [];
+        // Mark as fetched before the actual fetch to prevent additional calls
+        fetchedRef.current = true;
 
-        // Fetch cancel tickets
-        if (contract.cancelTickets && contract.cancelTickets.length > 0) {
-          for (const ticketId of contract.cancelTickets) {
-            try {
-              const response = await axiosClient.get(
-                `/api/contract/${contract._id}/tickets/cancel/${ticketId}`
-              );
+        // Get the appropriate API endpoint
+        const apiUrl = getApiEndpoint(initialTargetType, initialTargetId);
+        console.log(`Fetching details from: ${apiUrl}`);
 
-              if (response.data && response.data.ticket) {
-                const ticket = response.data.ticket;
-                cancelTickets.push({
-                  id: ticket._id.toString(),
-                  type: "cancel",
-                  label: `Cancel Request - ${
-                    ticket.requestedBy === "client" ? "Client" : "Artist"
-                  } Initiated`,
-                  date: new Date(ticket.createdAt).toLocaleDateString(),
-                  status: ticket.status,
-                });
+        const response = await axiosClient.get(apiUrl);
+
+        if (response && response.data) {
+          // Determine if we're dealing with a ticket or upload
+          const isTicket = ["cancel", "revision", "change"].includes(
+            initialTargetType
+          );
+          const data = isTicket ? response.data.ticket : response.data.upload;
+
+          setTargetDetails(data);
+
+          // Set a descriptive label based on the target type and data
+          let label = getTargetTypeDisplay(initialTargetType);
+
+          switch (initialTargetType) {
+            case "cancelTicket":
+              label += ` - ${
+                data.requestedBy === "client" ? "Client" : "Artist"
+              } Initiated`;
+              break;
+            case "revisionTicket":
+              if (data.milestoneIdx !== undefined) {
+                label += ` - Milestone ${data.milestoneIdx + 1}`;
               }
-            } catch (err) {
-              console.error("Error fetching cancel ticket:", err);
-            }
-          }
-        }
-
-        // Fetch revision tickets
-        if (contract.revisionTickets && contract.revisionTickets.length > 0) {
-          for (const ticketId of contract.revisionTickets) {
-            try {
-              const response = await axiosClient.get(
-                `/api/contract/${contract._id}/tickets/revision/${ticketId}`
-              );
-
-              if (response.data && response.data.ticket) {
-                const ticket = response.data.ticket;
-                revisionTickets.push({
-                  id: ticket._id.toString(),
-                  type: "revision",
-                  label: `Revision Request ${
-                    ticket.milestoneIdx !== undefined
-                      ? `- Milestone ${ticket.milestoneIdx + 1}`
-                      : ""
-                  }`,
-                  date: new Date(ticket.createdAt).toLocaleDateString(),
-                  status: ticket.status,
-                });
+              break;
+            case "changeTicket":
+              label += data.isPaidChange ? " - Paid Change" : "";
+              break;
+            case "finalUpload":
+              label += ` - ${data.workProgress}% Complete`;
+              break;
+            case "progressMilestoneUpload":
+              const pmIndex =
+                data.milestoneIdx !== undefined ? data.milestoneIdx : 0;
+              const pmTitle =
+                contract.milestones && contract.milestones[pmIndex]
+                  ? contract.milestones[pmIndex].title
+                  : `Milestone ${pmIndex + 1}`;
+              label = `${pmTitle} Progress Upload`;
+              break;
+            case "revisionUpload":
+              label = "Revision Upload";
+              if (data.revisionTicketId) {
+                // If we wanted to be fancy, we could make another API call to get revision ticket details
+                // but for simplicity, we'll just use the revision ID
+                label += ` #${data.revisionTicketId.substring(0, 6)}`;
               }
-            } catch (err) {
-              console.error("Error fetching revision ticket:", err);
-            }
+              break;
           }
+
+          setTargetLabel(label);
+        } else {
+          setError("Could not find the item to dispute");
         }
-
-        // Fetch final uploads
-        if (contract.finalUploads && contract.finalUploads.length > 0) {
-          for (const uploadId of contract.finalUploads) {
-            try {
-              const response = await axiosClient.get(
-                `/api/contract/${contract._id}/uploads/final/${uploadId}`
-              );
-
-              if (response.data && response.data.upload) {
-                const upload = response.data.upload;
-                finalUploads.push({
-                  id: upload._id.toString(),
-                  type: "final",
-                  label: `Final Delivery - ${upload.workProgress}% Complete`,
-                  date: new Date(upload.createdAt).toLocaleDateString(),
-                  status: upload.status,
-                });
-              }
-            } catch (err) {
-              console.error("Error fetching final upload:", err);
-            }
-          }
-        }
-
-        // Fetch milestone uploads
-        if (
-          contract.progressUploadsMilestone &&
-          contract.progressUploadsMilestone.length > 0
-        ) {
-          for (const uploadId of contract.progressUploadsMilestone) {
-            try {
-              const response = await axiosClient.get(
-                `/api/contract/${contract._id}/uploads/milestone/${uploadId}`
-              );
-
-              if (response.data && response.data.upload) {
-                const upload = response.data.upload;
-                const milestoneIndex = upload.milestoneIdx;
-                const milestoneTitle =
-                  contract.milestones && contract.milestones[milestoneIndex]
-                    ? contract.milestones[milestoneIndex].title
-                    : `Milestone ${milestoneIndex + 1}`;
-
-                milestoneUploads.push({
-                  id: upload._id.toString(),
-                  type: "milestone",
-                  label: `${milestoneTitle} Upload`,
-                  date: new Date(upload.createdAt).toLocaleDateString(),
-                  status: upload.status,
-                });
-              }
-            } catch (err) {
-              console.error("Error fetching milestone upload:", err);
-            }
-          }
-        }
-
-        setAvailableTargets({
-          cancel: cancelTickets,
-          revision: revisionTickets,
-          final: finalUploads,
-          milestone: milestoneUploads,
-        });
       } catch (err) {
-        setError("Failed to load resolution targets");
-        console.error(err);
+        console.error("Error fetching target details:", err);
+        setError("Could not load details for the selected item");
       } finally {
+        setLoadingDetails(false);
         setIsLoading(false);
       }
     };
 
-    fetchTargets();
-  }, [contract, axiosClient]);
-
-  // Fetch target details when target ID changes
-  useEffect(() => {
-    const fetchTargetDetails = async () => {
-      if (!watchTargetType || !watchTargetId) {
-        setTargetDetails(null);
-        return;
-      }
-
-      setLoadingDetails(true);
-      try {
-        let response;
-        switch (watchTargetType) {
-          case "cancel":
-            response = await axiosClient.get(
-              `/api/contract/${contract._id}/tickets/cancel/${watchTargetId}`
-            );
-            break;
-          case "revision":
-            response = await axiosClient.get(
-              `/api/contract/${contract._id}/tickets/revision/${watchTargetId}`
-            );
-            break;
-          case "final":
-            response = await axiosClient.get(
-              `/api/contract/${contract._id}/uploads/final/${watchTargetId}`
-            );
-            break;
-          case "milestone":
-            response = await axiosClient.get(
-              `/api/contract/${contract._id}/uploads/milestone/${watchTargetId}`
-            );
-            break;
-        }
-
-        if (response && response.data) {
-          const data =
-            watchTargetType === "cancel" || watchTargetType === "revision"
-              ? response.data.ticket
-              : response.data.upload;
-
-          setTargetDetails(data);
-        }
-      } catch (err) {
-        console.error("Error fetching target details:", err);
-      } finally {
-        setLoadingDetails(false);
-      }
-    };
-
     fetchTargetDetails();
-  }, [watchTargetType, watchTargetId, contract._id, axiosClient]);
+
+    // The dependency array is kept empty because we're using fetchedRef to control execution
+    // This ensures the effect only runs once when the component mounts
+  }, []);
 
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -337,7 +251,6 @@ export default function ResolutionTicketForm({
   // Remove a file and its preview
   const removeFile = (index: number) => {
     URL.revokeObjectURL(previewUrls[index]);
-
     setFiles(files.filter((_, i) => i !== index));
     setPreviewUrls(previewUrls.filter((_, i) => i !== index));
   };
@@ -353,19 +266,15 @@ export default function ResolutionTicketForm({
         throw new Error("Please provide a detailed description of the issue");
       }
 
-      if (!data.targetType) {
-        throw new Error("Please select what you are disputing");
-      }
-
-      if (!data.targetId) {
-        throw new Error("Please select the specific item you are disputing");
+      if (!initialTargetType || !initialTargetId) {
+        throw new Error("Missing target information");
       }
 
       // Create FormData
       const formData = new FormData();
       formData.append("description", data.description);
-      formData.append("targetType", data.targetType);
-      formData.append("targetId", data.targetId);
+      formData.append("targetType", initialTargetType);
+      formData.append("targetId", initialTargetId);
 
       // Add proof images
       files.forEach((file) => {
@@ -412,25 +321,23 @@ export default function ResolutionTicketForm({
     );
   }
 
-  // Check if there are any items available for resolution
-  const hasAvailableTargets =
-    availableTargets.cancel.length > 0 ||
-    availableTargets.revision.length > 0 ||
-    availableTargets.final.length > 0 ||
-    availableTargets.milestone.length > 0;
-
-  if (!hasAvailableTargets) {
+  // Show error if there's an issue loading target details
+  if (error && !targetDetails) {
     return (
       <Paper elevation={2} sx={{ p: 3 }}>
-        <Alert severity="info">
+        <Alert severity="error">
           <Typography variant="body1" fontWeight="bold">
-            No Items to Dispute
+            Error Loading Item
           </Typography>
-          <Typography variant="body2">
-            There are currently no items in this contract that can be disputed.
-            Resolution tickets can only be created for cancel requests, revision
-            requests, final deliveries, or milestone uploads.
-          </Typography>
+          <Typography variant="body2">{error}</Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => router.back()}
+            sx={{ mt: 2 }}
+          >
+            Go Back
+          </Button>
         </Alert>
       </Paper>
     );
@@ -466,140 +373,53 @@ export default function ResolutionTicketForm({
               What are you disputing?
             </Typography>
 
-            <Box sx={{ mb: 3 }}>
-              <Controller
-                name="targetType"
-                control={control}
-                rules={{ required: "Please select what you are disputing" }}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.targetType}>
-                    <InputLabel id="target-type-label">Dispute Type</InputLabel>
-                    <Select
-                      {...field}
-                      labelId="target-type-label"
-                      id="target-type"
-                      label="Dispute Type"
-                      disabled={isSubmitting || !!presetTargetType}
-                    >
-                      <MenuItem value="">
-                        Select what you are disputing
-                      </MenuItem>
-                      <MenuItem
-                        value="cancel"
-                        disabled={availableTargets.cancel.length === 0}
-                      >
-                        Cancellation Request
-                      </MenuItem>
-                      <MenuItem
-                        value="revision"
-                        disabled={availableTargets.revision.length === 0}
-                      >
-                        Revision Request
-                      </MenuItem>
-                      <MenuItem
-                        value="final"
-                        disabled={availableTargets.final.length === 0}
-                      >
-                        Final Delivery
-                      </MenuItem>
-                      <MenuItem
-                        value="milestone"
-                        disabled={availableTargets.milestone.length === 0}
-                      >
-                        Milestone Upload
-                      </MenuItem>
-                    </Select>
-                    {errors.targetType && (
-                      <Typography variant="caption" color="error">
-                        {errors.targetType.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                )}
-              />
-            </Box>
-
-            {watchTargetType && (
-              <Box sx={{ mb: 3 }}>
-                <Controller
-                  name="targetId"
-                  control={control}
-                  rules={{ required: "Please select a specific item" }}
-                  render={({ field }) => (
-                    <FormControl fullWidth error={!!errors.targetId}>
-                      <InputLabel id="target-id-label">
-                        Specific Item
-                      </InputLabel>
-                      <Select
-                        {...field}
-                        labelId="target-id-label"
-                        id="target-id"
-                        label="Specific Item"
-                        disabled={isSubmitting || !!presetTargetId}
-                      >
-                        <MenuItem value="">Select specific item</MenuItem>
-                        {availableTargets[watchTargetType].map((target) => (
-                          <MenuItem key={target.id} value={target.id}>
-                            {target.label} - {target.date}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {errors.targetId && (
-                        <Typography variant="caption" color="error">
-                          {errors.targetId.message}
-                        </Typography>
-                      )}
-                    </FormControl>
-                  )}
-                />
-              </Box>
-            )}
-
-            {/* Display target details when selected */}
-            {watchTargetId && (
-              <Box
-                sx={{
-                  p: 2,
-                  mb: 2,
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  bgcolor: "background.paper",
-                }}
+            <Box
+              sx={{
+                p: 2,
+                mb: 2,
+                borderRadius: 1,
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                sx={{ mb: 2 }}
               >
-                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Selected Item Details
+                <Typography variant="subtitle1" fontWeight="medium">
+                  {targetLabel}
                 </Typography>
+                <Chip
+                  label={targetDetails?.status || "Unknown"}
+                  size="small"
+                  color={
+                    targetDetails?.status === "pending" ? "warning" : "default"
+                  }
+                />
+              </Stack>
 
-                {loadingDetails ? (
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
-                    <Typography variant="body2">Loading details...</Typography>
-                  </Box>
-                ) : targetDetails ? (
-                  <Stack spacing={1}>
-                    <Typography variant="body2">
-                      <strong>Status:</strong> {targetDetails.status}
+              {targetDetails && (
+                <Stack spacing={1}>
+                  {targetDetails.description && (
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      <strong>Description:</strong>{" "}
+                      {targetDetails.description.substring(0, 100)}
+                      {targetDetails.description.length > 100 && "..."}
                     </Typography>
-                    {targetDetails.description && (
-                      <Typography variant="body2">
-                        <strong>Description:</strong>{" "}
-                        {targetDetails.description.substring(0, 100)}
-                        {targetDetails.description.length > 100 && "..."}
-                      </Typography>
-                    )}
-                    <Typography variant="body2">
-                      <strong>Created:</strong>{" "}
-                      {new Date(targetDetails.createdAt).toLocaleDateString()}
-                    </Typography>
-                  </Stack>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No details available
+                  )}
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    <strong>Created:</strong>{" "}
+                    {new Date(targetDetails.createdAt).toLocaleDateString()}
                   </Typography>
-                )}
-              </Box>
-            )}
+                </Stack>
+              )}
+            </Box>
           </Box>
 
           <Divider sx={{ mb: 3 }} />

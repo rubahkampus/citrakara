@@ -123,7 +123,14 @@ export interface IResolutionTicket extends Document {
   submittedById: ObjectId; // user id of opener
 
   /* the object being challenged */
-  targetType: "cancel" | "revision" | "final" | "milestone"; // entity class
+  /* the object being challenged */
+  targetType:
+    | "cancelTicket" // CancelTicket
+    | "revisionTicket" // RevisionTicket
+    | "changeTicket" // ChangeTicket
+    | "finalUpload" // FinalUpload
+    | "progressMilestoneUpload" // ProgressUploadMilestone
+    | "revisionUpload"; // RevisionUpload
   targetId: ObjectId; // id of that entity
 
   /* ----- initiator proof ----- */

@@ -23,15 +23,23 @@ import {
   Tooltip,
   IconButton,
   SelectChangeEvent,
+  Button,
+  Breadcrumbs,
+  Link as MuiLink,
+  Alert,
 } from "@mui/material";
 import {
   Search,
   FilterList,
   NorthEast,
   SouthWest,
-  Circle,
   Info,
+  ArrowBack,
+  LocalAtm,
+  Home,
+  NavigateNext,
 } from "@mui/icons-material";
+import Link from "next/link";
 
 // Types
 interface Transaction {
@@ -62,6 +70,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   // State for filters
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
 
   // Format date
   const formatDate = (dateString: string): string => {
@@ -114,11 +123,43 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   // Get transaction direction icon
   const getTransactionIcon = (type: string, from: string, to: string) => {
     if (from === "client") {
-      return <SouthWest fontSize="small" />;
+      return <SouthWest fontSize="small" color="warning" />;
     } else if (to === "client") {
-      return <NorthEast fontSize="small" />;
+      return <NorthEast fontSize="small" color="success" />;
+    } else if (to === "artist") {
+      return <NorthEast fontSize="small" color="success" />;
     } else {
-      return <Circle fontSize="small" />;
+      return <Info fontSize="small" color="info" />;
+    }
+  };
+
+  // Apply date filter
+  const applyDateFilter = (
+    transaction: Transaction,
+    filter: string
+  ): boolean => {
+    if (filter === "all") return true;
+
+    const txnDate = new Date(transaction.createdAt);
+    const now = new Date();
+
+    switch (filter) {
+      case "today":
+        return txnDate.toDateString() === now.toDateString();
+      case "week":
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 7);
+        return txnDate >= oneWeekAgo;
+      case "month":
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(now.getMonth() - 1);
+        return txnDate >= oneMonthAgo;
+      case "year":
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(now.getFullYear() - 1);
+        return txnDate >= oneYearAgo;
+      default:
+        return true;
     }
   };
 
@@ -138,9 +179,24 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       const matchesType =
         typeFilter === "all" || transaction.type === typeFilter;
 
-      return matchesSearch && matchesType;
+      const matchesDate = applyDateFilter(transaction, dateFilter);
+
+      return matchesSearch && matchesType && matchesDate;
     });
-  }, [transactions, searchTerm, typeFilter]);
+  }, [transactions, searchTerm, typeFilter, dateFilter]);
+
+  // Get total amounts
+  const totalIncoming = useMemo(() => {
+    return filteredTransactions
+      .filter((tx) => tx.to === "client" || tx.to === "artist")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [filteredTransactions]);
+
+  const totalOutgoing = useMemo(() => {
+    return filteredTransactions
+      .filter((tx) => tx.from === "client")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [filteredTransactions]);
 
   // Handle pagination changes
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -165,12 +221,101 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     setPage(0);
   };
 
+  const handleDateFilterChange = (event: SelectChangeEvent<string>) => {
+    setDateFilter(event.target.value);
+    setPage(0);
+  };
+
   return (
     <Box>
+      {/* Navigation */}
+      <Box sx={{ mb: 3 }}>
+        <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+          <Link href={`/${username}/dashboard`} passHref>
+            <MuiLink
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </MuiLink>
+          </Link>
+          <Link href={`/${username}/dashboard/wallet`} passHref>
+            <MuiLink
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
+              Wallet
+            </MuiLink>
+          </Link>
+          <Typography
+            color="text.primary"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            Transactions
+          </Typography>
+        </Breadcrumbs>
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: 2,
+          }}
+        >
+          <Typography variant="h5" fontWeight="500">
+            Transaction History
+          </Typography>
+          <Link href={`/${username}/dashboard/wallet`} passHref>
+            <Button variant="outlined" startIcon={<ArrowBack />} size="small">
+              Back to Wallet
+            </Button>
+          </Link>
+        </Box>
+      </Box>
+
+      {/* Summary */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: "success.light",
+              color: "white",
+            }}
+          >
+            <Typography variant="subtitle2">Total Incoming</Typography>
+            <Typography variant="h5" fontWeight="bold">
+              {formatCurrency(totalIncoming)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: "warning.light",
+              color: "white",
+            }}
+          >
+            <Typography variant="subtitle2">Total Outgoing</Typography>
+            <Typography variant="h5" fontWeight="bold">
+              {formatCurrency(totalOutgoing)}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
       {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={5}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               label="Search transactions"
@@ -188,7 +333,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
               size="small"
             />
           </Grid>
-          <Grid item xs={12} md={5}>
+          <Grid item xs={12} md={3}>
             <FormControl fullWidth variant="outlined" size="small">
               <InputLabel id="type-filter-label">Transaction Type</InputLabel>
               <Select
@@ -211,6 +356,23 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
               </Select>
             </FormControl>
           </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth variant="outlined" size="small">
+              <InputLabel id="date-filter-label">Time Period</InputLabel>
+              <Select
+                labelId="date-filter-label"
+                value={dateFilter}
+                onChange={handleDateFilterChange}
+                label="Time Period"
+              >
+                <MenuItem value="all">All Time</MenuItem>
+                <MenuItem value="today">Today</MenuItem>
+                <MenuItem value="week">Last 7 Days</MenuItem>
+                <MenuItem value="month">Last 30 Days</MenuItem>
+                <MenuItem value="year">Last Year</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
           <Grid
             item
             xs={12}
@@ -218,40 +380,60 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             sx={{
               display: "flex",
               justifyContent: { xs: "flex-start", md: "flex-end" },
+              alignItems: "center",
             }}
           >
-            <Typography>
-              {filteredTransactions.length} transaction(s)
-            </Typography>
+            <Chip
+              label={`${filteredTransactions.length} transaction(s)`}
+              color="primary"
+              variant="outlined"
+            />
           </Grid>
         </Grid>
       </Paper>
 
+      {/* No data state */}
+      {filteredTransactions.length === 0 && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="body1">
+            No transactions found matching your criteria.
+          </Typography>
+          <Typography variant="body2">
+            Try adjusting your search or filters to see more results.
+          </Typography>
+        </Alert>
+      )}
+
       {/* Transactions table */}
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="transactions table">
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Flow</TableCell>
-              <TableCell align="right">Amount</TableCell>
-              <TableCell>Contract</TableCell>
-              <TableCell>Note</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredTransactions.length === 0 ? (
+      {filteredTransactions.length > 0 && (
+        <TableContainer
+          component={Paper}
+          sx={{ borderRadius: 2, mb: 2, overflow: "hidden" }}
+        >
+          <Table sx={{ minWidth: 650 }} aria-label="transactions table">
+            <TableHead sx={{ bgcolor: "action.hover" }}>
               <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <Typography sx={{ py: 2 }}>No transactions found</Typography>
+                <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Flow</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }} align="right">
+                  Amount
                 </TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Contract</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Note</TableCell>
               </TableRow>
-            ) : (
-              filteredTransactions
+            </TableHead>
+            <TableBody>
+              {filteredTransactions
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((transaction) => (
-                  <TableRow key={transaction._id} hover>
+                  <TableRow
+                    key={transaction._id}
+                    hover
+                    sx={{
+                      "&:nth-of-type(odd)": { bgcolor: "rgba(0, 0, 0, 0.02)" },
+                    }}
+                  >
                     <TableCell>{formatDate(transaction.createdAt)}</TableCell>
                     <TableCell>
                       <Chip
@@ -275,24 +457,28 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="body2">
-                          {transaction.from} → {transaction.to}
+                        <Typography variant="body2" fontWeight="medium">
+                          {transaction.from}
                         </Typography>
                         {getTransactionIcon(
                           transaction.type,
                           transaction.from,
                           transaction.to
                         )}
+                        <Typography variant="body2" fontWeight="medium">
+                          {transaction.to}
+                        </Typography>
                       </Stack>
                     </TableCell>
                     <TableCell align="right">
                       <Typography
                         fontWeight="bold"
                         color={
-                          transaction.to === "artist"
+                          transaction.to === "artist" ||
+                          transaction.to === "client"
                             ? "success.main"
-                            : transaction.to === "client"
-                            ? "success.main"
+                            : transaction.from === "client"
+                            ? "warning.main"
                             : "text.primary"
                         }
                       >
@@ -301,19 +487,23 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     </TableCell>
                     <TableCell>
                       {transaction.contractId ? (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            maxWidth: 150,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
+                        <Tooltip
+                          title={`Contract ID: ${transaction.contractId}`}
                         >
-                          {transaction.contractId.substring(0, 8)}...
-                        </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              maxWidth: 150,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {transaction.contractId.substring(0, 8)}...
+                          </Typography>
+                        </Tooltip>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
-                          -
+                          —
                         </Typography>
                       )}
                     </TableCell>
@@ -328,7 +518,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {transaction.note || "-"}
+                          {transaction.note || "—"}
                         </Typography>
                         {transaction.note && (
                           <Tooltip title={transaction.note}>
@@ -340,22 +530,24 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                       </Box>
                     </TableCell>
                   </TableRow>
-                ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* Pagination */}
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={filteredTransactions.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
+      {filteredTransactions.length > 0 && (
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={filteredTransactions.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      )}
     </Box>
   );
 };

@@ -68,6 +68,7 @@ interface ChangeTicketDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
+  username: string
 }
 
 export default function ChangeTicketDetails({
@@ -76,6 +77,7 @@ export default function ChangeTicketDetails({
   userId,
   isArtist,
   isClient,
+  username
 }: ChangeTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<
@@ -261,7 +263,7 @@ export default function ChangeTicketDetails({
   const confirmEscalation = () => {
     setShowEscalateDialog(false);
     router.push(
-      `/dashboard/${userId}/resolution/new?contractId=${contract._id}&targetType=change&targetId=${ticket._id}`
+      `/${username}/dashboard/contracts/${contract._id}/resolution/new?targetType=change&targetId=${ticket._id}`
     );
   };
 
@@ -813,14 +815,14 @@ export default function ChangeTicketDetails({
   };
 
   // Determine what changes have been requested
-  const hasDescriptionChange = !!ticket.changeSet.generalDescription;
-  const hasDeadlineChange = !!ticket.changeSet.deadlineAt;
+  const hasDescriptionChange = !!ticket.changeSet.generalDescription && ticket.changeSet.generalDescription !== currentContractTerms.generalDescription;
+  const hasDeadlineChange = !!ticket.changeSet.deadlineAt && JSON.stringify(ticket.changeSet.deadlineAt) !== JSON.stringify(contract.deadlineAt);
   const hasGeneralOptionsChange =
     ticket.changeSet.generalOptions &&
-    Object.keys(ticket.changeSet.generalOptions).length > 0;
+    Object.keys(ticket.changeSet.generalOptions).length > 0 && JSON.stringify(ticket.changeSet.generalOptions) !== JSON.stringify(currentContractTerms.generalOptions);
   const hasSubjectOptionsChange =
     ticket.changeSet.subjectOptions &&
-    Object.keys(ticket.changeSet.subjectOptions).length > 0;
+    Object.keys(ticket.changeSet.subjectOptions).length > 0 && JSON.stringify(ticket.changeSet.subjectOptions) !== JSON.stringify(currentContractTerms.subjectOptions);
   const hasReferenceImagesChange =
     ticket.changeSet.referenceImages &&
     ticket.changeSet.referenceImages.length > 0;

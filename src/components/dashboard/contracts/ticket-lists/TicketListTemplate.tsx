@@ -70,7 +70,7 @@ const TicketListTemplate: React.FC<TicketListTemplateProps> = ({
         >
           <ListItem
             component={Link}
-            href={`/${username}/dashboard/contracts/${contractId}/tickets/${ticket.type || ticketType}/${ticket._id}`}
+            href={ticketType === "resolution" ? `/${username}/dashboard/contracts/${contractId}/resolution/${ticket._id}` : `/${username}/dashboard/contracts/${contractId}/tickets/${ticket.type || ticketType}/${ticket._id}`}
             sx={{
               display: "block",
               textDecoration: "none",

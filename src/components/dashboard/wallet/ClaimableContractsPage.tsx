@@ -1,5 +1,5 @@
 // components/dashboard/wallet/ClaimableContractsPage.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -21,16 +21,36 @@ import {
   DialogContentText,
   DialogActions,
   Snackbar,
+  Stack,
+  Tooltip,
+  IconButton,
+  Breadcrumbs,
+  Link as MuiLink,
+  Badge,
+  LinearProgress,
+  Avatar,
 } from "@mui/material";
 import {
   MonetizationOn,
-  ArrowDownward,
   Info,
   CheckCircle,
-  Warning,
+  LocalAtm,
+  Home,
+  NavigateNext,
+  ArrowBack,
+  CalendarToday,
+  Assignment,
+  Error,
+  HelpOutline,
+  WarningAmber,
+  DoneAll,
+  Cancel,
+  Person,
+  Launch,
 } from "@mui/icons-material";
 import { useRouter } from "next/router";
 import { axiosClient } from "@/lib/utils/axiosClient";
+import Link from "next/link";
 
 // Types
 interface Finance {
@@ -56,7 +76,8 @@ interface Contract {
     | "cancelledClientLate"
     | "cancelledArtist"
     | "cancelledArtistLate"
-    | "notCompleted";
+    | "notCompleted"
+    | "active"; // Added active status
   clientId: string;
   artistId: string;
   workPercentage: number;
@@ -75,6 +96,7 @@ interface Contract {
     workPercentage: number;
     artistPayout: number;
     clientPayout: number;
+    escrowTxnIds?: string[];
   };
   createdAt: string;
   updatedAt: string;
@@ -107,8 +129,81 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
   // State for snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
-    "success"
+  const [snackbarSeverity, setSnackbarSeverity] = useState<
+    "success" | "error" | "info" | "warning"
+  >("success");
+
+  // Filter active contracts
+  const activeArtistContracts = useMemo(
+    () => asArtist.filter((c) => c.status === "active"),
+    [asArtist]
+  );
+  const activeClientContracts = useMemo(
+    () => asClient.filter((c) => c.status === "active"),
+    [asClient]
+  );
+
+  // Filter claimable contracts
+  const claimableArtistContracts = useMemo(
+    () =>
+      asArtist.filter(
+        (c) =>
+          c.status !== "active" &&
+          (!c.cancelSummary || !c.cancelSummary.escrowTxnIds)
+      ),
+    [asArtist]
+  );
+
+  const claimableClientContracts = useMemo(
+    () =>
+      asClient.filter(
+        (c) =>
+          c.status !== "active" &&
+          (!c.cancelSummary || !c.cancelSummary.escrowTxnIds)
+      ),
+    [asClient]
+  );
+
+  // Filter completed/claimed contracts
+  const completedArtistContracts = useMemo(
+    () =>
+      asArtist.filter(
+        (c) =>
+          c.status !== "active" &&
+          c.cancelSummary &&
+          c.cancelSummary.escrowTxnIds
+      ),
+    [asArtist]
+  );
+
+  const completedClientContracts = useMemo(
+    () =>
+      asClient.filter(
+        (c) =>
+          c.status !== "active" &&
+          c.cancelSummary &&
+          c.cancelSummary.escrowTxnIds
+      ),
+    [asClient]
+  );
+
+  // Calculate totals for display
+  const totalClaimableAsArtist = useMemo(
+    () =>
+      claimableArtistContracts.reduce(
+        (sum, contract) => sum + contract.finance.totalOwnedByArtist,
+        0
+      ),
+    [claimableArtistContracts]
+  );
+
+  const totalClaimableAsClient = useMemo(
+    () =>
+      claimableClientContracts.reduce(
+        (sum, contract) => sum + contract.finance.totalOwnedByClient,
+        0
+      ),
+    [claimableClientContracts]
   );
 
   // Handle tab change
@@ -135,9 +230,28 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     });
   };
 
+  // Is contract claimable by current user
+  const isClaimable = (
+    contract: Contract,
+    role: "artist" | "client"
+  ): boolean => {
+    if (contract.status === "active") return false;
+    if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds)
+      return false;
+
+    const amount =
+      role === "artist"
+        ? contract.finance.totalOwnedByArtist
+        : contract.finance.totalOwnedByClient;
+
+    return amount > 0;
+  };
+
   // Get status label
   const getStatusLabel = (status: Contract["status"]): string => {
     switch (status) {
+      case "active":
+        return "Active";
       case "completed":
         return "Completed";
       case "completedLate":
@@ -160,12 +274,19 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
   // Get status color
   const getStatusColor = (status: Contract["status"]): string => {
     switch (status) {
+      case "active":
+        return "info";
       case "completed":
         return "success";
       case "completedLate":
         return "warning";
       case "notCompleted":
         return "error";
+      case "cancelledClient":
+      case "cancelledClientLate":
+      case "cancelledArtist":
+      case "cancelledArtistLate":
+        return "warning";
       default:
         return "default";
     }
@@ -191,15 +312,25 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     const isLate = contract.status.includes("Late");
     const isCancelled = contract.status.includes("cancelled");
 
+    if (contract.status === "active") {
+      return "Contract is still active";
+    }
+
+    if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds) {
+      return "Funds already claimed";
+    }
+
     if (role === "artist") {
       if (contract.status === "completed") {
         return `Full payment for completed work.`;
       } else if (contract.status === "completedLate") {
-        return `Payment minus late penalty (${
+        return `Payment minus late penalty (${formatCurrency(
           contract.finance.total - contract.finance.totalOwnedByArtist
-        } IDR).`;
+        )}).`;
       } else if (isCancelled) {
         return `Partial payment based on ${contract.workPercentage}% work completed.`;
+      } else if (contract.status === "notCompleted") {
+        return "No payment due to incomplete work.";
       }
     } else {
       // Client role
@@ -209,10 +340,37 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
         return `Full refund for incomplete work.`;
       } else if (isCancelled) {
         return `Partial refund for cancelled contract.`;
+      } else if (contract.status === "completed") {
+        return "No refund for completed work.";
       }
     }
 
     return `Claimable amount based on contract terms.`;
+  };
+
+  // Get contract state chip
+  const getContractStateChip = (contract: Contract) => {
+    if (contract.status === "active") {
+      return (
+        <Chip label="In Progress" color="info" size="small" icon={<Info />} />
+      );
+    }
+
+    if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds) {
+      return (
+        <Chip label="Claimed" color="default" size="small" icon={<DoneAll />} />
+      );
+    }
+
+    return (
+      <Chip
+        label="Claimable"
+        color="success"
+        size="small"
+        icon={<MonetizationOn />}
+        variant="outlined"
+      />
+    );
   };
 
   // Handle claim button click
@@ -248,13 +406,17 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
       setTimeout(() => {
         router.push(`/${username}/dashboard/wallet`);
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error claiming funds:", error);
 
       // Show error message
-      setSnackbarMessage("Failed to claim funds. Please try again later.");
+      setSnackbarMessage(
+        error.response?.data?.message ||
+          "Failed to claim funds. Please try again later."
+      );
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
+      setClaimDialogOpen(false);
     } finally {
       setIsProcessing(false);
     }
@@ -262,6 +424,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
 
   // Handle dialog close
   const handleDialogClose = () => {
+    if (isProcessing) return; // Prevent closing during processing
     setClaimDialogOpen(false);
     setContractToClaim(null);
   };
@@ -272,168 +435,451 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
   };
 
   // Determine if there are any claimable contracts
-  const hasArtistClaims = asArtist.length > 0;
-  const hasClientClaims = asClient.length > 0;
-  const hasNoClaims = !hasArtistClaims && !hasClientClaims;
+  const hasArtistContracts = asArtist.length > 0;
+  const hasClientContracts = asClient.length > 0;
+  const hasClaimableArtistContracts = claimableArtistContracts.length > 0;
+  const hasClaimableClientContracts = claimableClientContracts.length > 0;
+  const hasNoContracts = !hasArtistContracts && !hasClientContracts;
 
   return (
     <Box>
+      {/* Navigation */}
+      <Box sx={{ mb: 3 }}>
+        <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+          <Link href={`/${username}/dashboard`} passHref>
+            <MuiLink
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </MuiLink>
+          </Link>
+          <Link href={`/${username}/dashboard/wallet`} passHref>
+            <MuiLink
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
+              Wallet
+            </MuiLink>
+          </Link>
+          <Typography
+            color="text.primary"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            Claimable Contracts
+          </Typography>
+        </Breadcrumbs>
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: 2,
+          }}
+        >
+          <Typography variant="h5" fontWeight="500">
+            Contract Payments
+          </Typography>
+          <Link href={`/${username}/dashboard/wallet`} passHref>
+            <Button variant="outlined" startIcon={<ArrowBack />} size="small">
+              Back to Wallet
+            </Button>
+          </Link>
+        </Box>
+      </Box>
+
       {/* Info banner */}
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <Typography variant="body2">
-          When a contract reaches its end-of-lifecycle status, you can claim the
-          funds owed to you. The claimed amount will be added to your available
-          wallet balance.
-        </Typography>
+      <Alert
+        severity="info"
+        icon={<Info />}
+        sx={{
+          mb: 3,
+          borderRadius: 2,
+          "& .MuiAlert-message": { width: "100%" },
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2">
+            When a contract reaches its end-of-lifecycle status, you can claim
+            the funds owed to you. The claimed amount will be added to your
+            available wallet balance.
+          </Typography>
+          <Tooltip title="Learn more about contract payments">
+            <IconButton size="small" color="info">
+              <HelpOutline fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Alert>
 
-      {/* No claims message */}
-      {hasNoClaims && (
-        <Paper sx={{ p: 3, textAlign: "center" }}>
-          <Info color="action" sx={{ fontSize: 48, mb: 2 }} />
-          <Typography variant="h6">No Claimable Contracts</Typography>
-          <Typography variant="body2" color="text.secondary">
-            You don't have any contracts with claimable funds at the moment.
-            When a contract is completed or cancelled, you'll be able to claim
-            any funds owed to you here.
+      {/* Summary cards for claimable amounts */}
+      {(hasClaimableArtistContracts || hasClaimableClientContracts) && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {hasClaimableArtistContracts && (
+            <Grid item xs={12} md={6}>
+              <Paper
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  bgcolor: "success.light",
+                  color: "white",
+                }}
+              >
+                <MonetizationOn sx={{ fontSize: 40, mr: 2 }} />
+                <Box>
+                  <Typography variant="body2">Claimable as Artist</Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {formatCurrency(totalClaimableAsArtist)}
+                  </Typography>
+                </Box>
+                <Box sx={{ ml: "auto" }}>
+                  <Chip
+                    label={`${claimableArtistContracts.length} contract(s)`}
+                    sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "white" }}
+                  />
+                </Box>
+              </Paper>
+            </Grid>
+          )}
+
+          {hasClaimableClientContracts && (
+            <Grid item xs={12} md={hasClaimableArtistContracts ? 6 : 12}>
+              <Paper
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  bgcolor: "info.light",
+                  color: "white",
+                }}
+              >
+                <LocalAtm sx={{ fontSize: 40, mr: 2 }} />
+                <Box>
+                  <Typography variant="body2">Claimable as Client</Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {formatCurrency(totalClaimableAsClient)}
+                  </Typography>
+                </Box>
+                <Box sx={{ ml: "auto" }}>
+                  <Chip
+                    label={`${claimableClientContracts.length} contract(s)`}
+                    sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "white" }}
+                  />
+                </Box>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
+      )}
+
+      {/* No contracts message */}
+      {hasNoContracts && (
+        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
+          <Info color="action" sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
+          <Typography variant="h6">No Contracts Found</Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 1, maxWidth: 500, mx: "auto" }}
+          >
+            You don't have any contracts yet. When you participate in a contract
+            as either an artist or client, you'll be able to manage and claim
+            payments here.
           </Typography>
         </Paper>
       )}
 
       {/* Tabs for artist/client views */}
-      {(hasArtistClaims || hasClientClaims) && (
+      {(hasArtistContracts || hasClientContracts) && (
         <>
-          <Tabs
-            value={tabValue}
-            onChange={handleTabChange}
-            sx={{ mb: 2 }}
-            variant="fullWidth"
-          >
-            <Tab
-              label={`As Artist (${asArtist.length})`}
-              disabled={!hasArtistClaims}
-            />
-            <Tab
-              label={`As Client (${asClient.length})`}
-              disabled={!hasClientClaims}
-            />
-          </Tabs>
+          <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              variant="fullWidth"
+              sx={{
+                borderBottom: 1,
+                borderColor: "divider",
+                "& .MuiTab-root": { py: 2 },
+              }}
+            >
+              <Tab
+                label={
+                  <Badge
+                    badgeContent={claimableArtistContracts.length}
+                    color="success"
+                    showZero={false}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <Person sx={{ mr: 1 }} />
+                      <Typography>As Artist ({asArtist.length})</Typography>
+                    </Box>
+                  </Badge>
+                }
+                disabled={!hasArtistContracts}
+                sx={{ textTransform: "none" }}
+              />
+              <Tab
+                label={
+                  <Badge
+                    badgeContent={claimableClientContracts.length}
+                    color="success"
+                    showZero={false}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <Person sx={{ mr: 1 }} />
+                      <Typography>As Client ({asClient.length})</Typography>
+                    </Box>
+                  </Badge>
+                }
+                disabled={!hasClientContracts}
+                sx={{ textTransform: "none" }}
+              />
+            </Tabs>
 
-          {/* Artist claims */}
-          {tabValue === 0 && (
-            <Grid container spacing={2}>
-              {asArtist.map((contract) => (
-                <Grid item xs={12} key={contract._id}>
-                  <Card>
-                    <CardContent>
+            {/* Contract sections */}
+            <Box sx={{ p: { xs: 2, md: 3 } }}>
+              {/* Artist view */}
+              {tabValue === 0 && (
+                <>
+                  {/* Claimable contracts section */}
+                  {claimableArtistContracts.length > 0 && (
+                    <Box sx={{ mb: 4 }}>
                       <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          mb: 2,
-                        }}
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
                       >
-                        <Box>
-                          <Typography variant="h6">
-                            {contract.proposalSnapshot.listingSnapshot.title}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Contract ID: {contract._id.substring(0, 8)}...
-                          </Typography>
-                        </Box>
-                        <Chip
-                          label={getStatusLabel(contract.status)}
-                          color={
-                            getStatusColor(contract.status) as
-                              | "default"
-                              | "primary"
-                              | "secondary"
-                              | "error"
-                              | "info"
-                              | "success"
-                              | "warning"
-                          }
-                          size="small"
-                        />
-                      </Box>
-
-                      <Divider sx={{ my: 2 }} />
-
-                      <Grid container spacing={2}>
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">
-                            Contract Total
-                          </Typography>
-                          <Typography variant="body1" fontWeight="medium">
-                            {formatCurrency(contract.finance.total)}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">
-                            Work Completed
-                          </Typography>
-                          <Typography variant="body1" fontWeight="medium">
-                            {contract.workPercentage}%
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">
-                            Deadline
-                          </Typography>
-                          <Typography variant="body1" fontWeight="medium">
-                            {formatDate(contract.deadlineAt)}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6} md={3}>
-                          <Typography variant="body2" color="text.secondary">
-                            Claimable Amount
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            fontWeight="bold"
-                            color="success.main"
-                          >
-                            {formatCurrency(getClaimAmount(contract, "artist"))}
-                          </Typography>
-                        </Grid>
-                      </Grid>
-
-                      <Box
-                        sx={{
-                          mt: 2,
-                          p: 1,
-                          bgcolor: "action.hover",
-                          borderRadius: 1,
-                        }}
-                      >
-                        <Typography variant="body2">
-                          <Info
-                            fontSize="small"
-                            color="action"
-                            sx={{ mr: 1, verticalAlign: "middle" }}
-                          />
-                          {getClaimExplanation(contract, "artist")}
+                        <MonetizationOn color="success" sx={{ mr: 1 }} />
+                        <Typography variant="h6" fontWeight="500">
+                          Claimable Contracts
                         </Typography>
                       </Box>
-                    </CardContent>
-                    <CardActions>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<MonetizationOn />}
-                        onClick={() => handleClaimClick(contract)}
-                        fullWidth
+                      <Grid container spacing={2}>
+                        {claimableArtistContracts.map((contract) => (
+                          <Grid item xs={12} key={contract._id}>
+                            <ContractCard
+                              contract={contract}
+                              role="artist"
+                              userId={userId}
+                              onClaimClick={handleClaimClick}
+                              isClaimable={isClaimable(contract, "artist")}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStatusLabel={getStatusLabel}
+                              getStatusColor={getStatusColor}
+                              getClaimAmount={getClaimAmount}
+                              getClaimExplanation={getClaimExplanation}
+                              getContractStateChip={getContractStateChip}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* Active contracts section */}
+                  {activeArtistContracts.length > 0 && (
+                    <Box sx={{ mb: 4 }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
                       >
-                        Claim{" "}
-                        {formatCurrency(getClaimAmount(contract, "artist"))}
-                      </Button>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
+                        <Assignment color="info" sx={{ mr: 1 }} />
+                        <Typography variant="h6" fontWeight="500">
+                          Active Contracts
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {activeArtistContracts.map((contract) => (
+                          <Grid item xs={12} key={contract._id}>
+                            <ContractCard
+                              contract={contract}
+                              role="artist"
+                              userId={userId}
+                              onClaimClick={handleClaimClick}
+                              isClaimable={false}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStatusLabel={getStatusLabel}
+                              getStatusColor={getStatusColor}
+                              getClaimAmount={getClaimAmount}
+                              getClaimExplanation={getClaimExplanation}
+                              getContractStateChip={getContractStateChip}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* Completed contracts section */}
+                  {completedArtistContracts.length > 0 && (
+                    <Box>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
+                      >
+                        <DoneAll color="action" sx={{ mr: 1 }} />
+                        <Typography variant="h6" fontWeight="500">
+                          Completed Contracts
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {completedArtistContracts.map((contract) => (
+                          <Grid item xs={12} key={contract._id}>
+                            <ContractCard
+                              contract={contract}
+                              role="artist"
+                              userId={userId}
+                              onClaimClick={handleClaimClick}
+                              isClaimable={false}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStatusLabel={getStatusLabel}
+                              getStatusColor={getStatusColor}
+                              getClaimAmount={getClaimAmount}
+                              getClaimExplanation={getClaimExplanation}
+                              getContractStateChip={getContractStateChip}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {asArtist.length === 0 && (
+                    <Alert severity="info">
+                      You don't have any contracts as an artist.
+                    </Alert>
+                  )}
+                </>
+              )}
+
+              {/* Client view */}
+              {tabValue === 1 && (
+                <>
+                  {/* Claimable contracts section */}
+                  {claimableClientContracts.length > 0 && (
+                    <Box sx={{ mb: 4 }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
+                      >
+                        <MonetizationOn color="success" sx={{ mr: 1 }} />
+                        <Typography variant="h6" fontWeight="500">
+                          Claimable Contracts
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {claimableClientContracts.map((contract) => (
+                          <Grid item xs={12} key={contract._id}>
+                            <ContractCard
+                              contract={contract}
+                              role="client"
+                              userId={userId}
+                              onClaimClick={handleClaimClick}
+                              isClaimable={isClaimable(contract, "client")}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStatusLabel={getStatusLabel}
+                              getStatusColor={getStatusColor}
+                              getClaimAmount={getClaimAmount}
+                              getClaimExplanation={getClaimExplanation}
+                              getContractStateChip={getContractStateChip}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* Active contracts section */}
+                  {activeClientContracts.length > 0 && (
+                    <Box sx={{ mb: 4 }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
+                      >
+                        <Assignment color="info" sx={{ mr: 1 }} />
+                        <Typography variant="h6" fontWeight="500">
+                          Active Contracts
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {activeClientContracts.map((contract) => (
+                          <Grid item xs={12} key={contract._id}>
+                            <ContractCard
+                              contract={contract}
+                              role="client"
+                              userId={userId}
+                              onClaimClick={handleClaimClick}
+                              isClaimable={false}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStatusLabel={getStatusLabel}
+                              getStatusColor={getStatusColor}
+                              getClaimAmount={getClaimAmount}
+                              getClaimExplanation={getClaimExplanation}
+                              getContractStateChip={getContractStateChip}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* Completed contracts section */}
+                  {completedClientContracts.length > 0 && (
+                    <Box>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
+                      >
+                        <DoneAll color="action" sx={{ mr: 1 }} />
+                        <Typography variant="h6" fontWeight="500">
+                          Completed Contracts
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {completedClientContracts.map((contract) => (
+                          <Grid item xs={12} key={contract._id}>
+                            <ContractCard
+                              contract={contract}
+                              role="client"
+                              userId={userId}
+                              onClaimClick={handleClaimClick}
+                              isClaimable={false}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              getStatusLabel={getStatusLabel}
+                              getStatusColor={getStatusColor}
+                              getClaimAmount={getClaimAmount}
+                              getClaimExplanation={getClaimExplanation}
+                              getContractStateChip={getContractStateChip}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {asClient.length === 0 && (
+                    <Alert severity="info">
+                      You don't have any contracts as a client.
+                    </Alert>
+                  )}
+                </>
+              )}
+            </Box>
+          </Paper>
         </>
       )}
 
@@ -443,38 +889,79 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
         onClose={handleDialogClose}
         aria-labelledby="claim-dialog-title"
         aria-describedby="claim-dialog-description"
+        PaperProps={{
+          sx: { borderRadius: 2 },
+        }}
       >
-        <DialogTitle id="claim-dialog-title">Confirm Fund Claim</DialogTitle>
+        <DialogTitle id="claim-dialog-title" sx={{ pb: 1 }}>
+          Confirm Fund Claim
+        </DialogTitle>
         <DialogContent>
+          {isProcessing && <LinearProgress sx={{ mb: 2 }} />}
           <DialogContentText id="claim-dialog-description">
             {contractToClaim && (
               <>
+                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                  {contractToClaim.proposalSnapshot.listingSnapshot.title}
+                </Typography>
+
                 <Typography sx={{ mb: 2 }}>
                   You are about to claim
-                  <strong>
+                  <Typography
+                    component="span"
+                    fontWeight="bold"
+                    color="success.main"
+                  >
                     {" "}
                     {formatCurrency(
                       contractToClaim.artistId === userId
                         ? contractToClaim.finance.totalOwnedByArtist
                         : contractToClaim.finance.totalOwnedByClient
                     )}{" "}
-                  </strong>
+                  </Typography>
                   from this contract.
                 </Typography>
+
+                <Box
+                  sx={{ bgcolor: "action.hover", p: 2, borderRadius: 1, mb: 2 }}
+                >
+                  <Typography variant="body2">
+                    <InfoRow
+                      label="Contract Status"
+                      value={getStatusLabel(contractToClaim.status)}
+                    />
+                    <InfoRow
+                      label="Work Completed"
+                      value={`${contractToClaim.workPercentage}%`}
+                    />
+                    <InfoRow
+                      label="Contract Total"
+                      value={formatCurrency(contractToClaim.finance.total)}
+                    />
+                  </Typography>
+                </Box>
+
                 <Typography sx={{ mb: 2 }}>
                   This amount will be added to your available wallet balance
                   immediately.
                 </Typography>
+
                 <Alert severity="warning" sx={{ mt: 2 }}>
-                  This action cannot be undone. Once claimed, the contract will
-                  be considered fully resolved.
+                  <Typography variant="body2">
+                    This action cannot be undone. Once claimed, the contract
+                    will be considered fully resolved.
+                  </Typography>
                 </Alert>
               </>
             )}
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose} disabled={isProcessing}>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={handleDialogClose}
+            disabled={isProcessing}
+            variant="outlined"
+          >
             Cancel
           </Button>
           <Button
@@ -496,7 +983,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
         open={snackbarOpen}
         autoHideDuration={6000}
         onClose={handleSnackbarClose}
-        message={snackbarMessage}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
         <Alert
           onClose={handleSnackbarClose}
@@ -510,5 +997,228 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     </Box>
   );
 };
+
+// Helper component for contract cards
+interface ContractCardProps {
+  contract: Contract;
+  role: "artist" | "client";
+  userId: string;
+  onClaimClick: (contract: Contract) => void;
+  isClaimable: boolean;
+  formatCurrency: (amount: number) => string;
+  formatDate: (dateString: string) => string;
+  getStatusLabel: (status: Contract["status"]) => string;
+  getStatusColor: (status: Contract["status"]) => string;
+  getClaimAmount: (contract: Contract, role: "artist" | "client") => number;
+  getClaimExplanation: (
+    contract: Contract,
+    role: "artist" | "client"
+  ) => string;
+  getContractStateChip: (contract: Contract) => React.ReactNode;
+}
+
+const ContractCard: React.FC<ContractCardProps> = ({
+  contract,
+  role,
+  userId,
+  onClaimClick,
+  isClaimable,
+  formatCurrency,
+  formatDate,
+  getStatusLabel,
+  getStatusColor,
+  getClaimAmount,
+  getClaimExplanation,
+  getContractStateChip,
+}) => {
+  const claimAmount = getClaimAmount(contract, role);
+  const explanation = getClaimExplanation(contract, role);
+  const isClaimed =
+    contract.cancelSummary && contract.cancelSummary.escrowTxnIds;
+  const isActive = contract.status === "active";
+
+  return (
+    <Card
+      sx={{
+        borderRadius: 2,
+        transition: "transform 0.2s, box-shadow 0.2s",
+        "&:hover": {
+          transform: isClaimable ? "translateY(-2px)" : "none",
+          boxShadow: isClaimable ? 4 : 1,
+        },
+        opacity: isClaimable ? 1 : 0.8,
+        border: isClaimable ? "1px solid" : "none",
+        borderColor: "success.main",
+      }}
+    >
+      <CardContent>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            mb: 2,
+          }}
+        >
+          <Box>
+            <Typography variant="h6">
+              {contract.proposalSnapshot.listingSnapshot.title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Contract ID: {contract._id.substring(0, 8)}...
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {getContractStateChip(contract)}
+            <Chip
+              label={getStatusLabel(contract.status)}
+              color={getStatusColor(contract.status) as any}
+              size="small"
+              variant="outlined"
+            />
+          </Stack>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Grid container spacing={2}>
+          <Grid item xs={6} md={3}>
+            <Typography variant="body2" color="text.secondary">
+              Contract Total
+            </Typography>
+            <Typography variant="body1" fontWeight="medium">
+              {formatCurrency(contract.finance.total)}
+            </Typography>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Typography variant="body2" color="text.secondary">
+              Work Completed
+            </Typography>
+            <Typography variant="body1" fontWeight="medium">
+              {contract.workPercentage}%
+            </Typography>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Typography variant="body2" color="text.secondary">
+              Deadline
+            </Typography>
+            <Typography variant="body1" fontWeight="medium">
+              {formatDate(contract.deadlineAt)}
+            </Typography>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Typography variant="body2" color="text.secondary">
+              {isActive ? "Current Balance" : "Claimable Amount"}
+            </Typography>
+            <Typography
+              variant="body1"
+              fontWeight="bold"
+              color={isClaimable ? "success.main" : "text.primary"}
+            >
+              {formatCurrency(claimAmount)}
+            </Typography>
+          </Grid>
+        </Grid>
+
+        <Box
+          sx={{
+            mt: 2,
+            p: 1.5,
+            bgcolor: "action.hover",
+            borderRadius: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            {isActive ? (
+              <Info color="info" fontSize="small" sx={{ mr: 1 }} />
+            ) : isClaimed ? (
+              <DoneAll color="action" fontSize="small" sx={{ mr: 1 }} />
+            ) : isClaimable ? (
+              <MonetizationOn color="success" fontSize="small" sx={{ mr: 1 }} />
+            ) : (
+              <Cancel color="disabled" fontSize="small" sx={{ mr: 1 }} />
+            )}
+            <Typography variant="body2">{explanation}</Typography>
+          </Box>
+
+          {isActive && (
+            <Link href={`/dashboard/contracts/${contract._id}`} passHref>
+              <Button
+                variant="outlined"
+                size="small"
+                endIcon={<Launch />}
+                sx={{ ml: 2 }}
+              >
+                View Contract
+              </Button>
+            </Link>
+          )}
+        </Box>
+      </CardContent>
+
+      {isClaimable && claimAmount > 0 && (
+        <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<MonetizationOn />}
+            onClick={() => onClaimClick(contract)}
+            fullWidth
+          >
+            Claim {formatCurrency(claimAmount)}
+          </Button>
+        </CardActions>
+      )}
+
+      {!isClaimable && !isActive && (
+        <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            disabled
+            fullWidth
+            startIcon={isClaimed ? <DoneAll /> : <Cancel />}
+          >
+            {isClaimed
+              ? `Funds Claimed on ${formatDate(
+                  contract.cancelSummary?.at || contract.updatedAt
+                )}`
+              : claimAmount <= 0
+              ? "No Funds to Claim"
+              : "Not Claimable"}
+          </Button>
+        </CardActions>
+      )}
+
+      {isActive && (
+        <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+          <Button variant="outlined" color="primary" disabled fullWidth>
+            Claimable After Completion
+          </Button>
+        </CardActions>
+      )}
+    </Card>
+  );
+};
+
+// Helper component for info rows
+interface InfoRowProps {
+  label: string;
+  value: string | React.ReactNode;
+}
+
+const InfoRow: React.FC<InfoRowProps> = ({ label, value }) => (
+  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+    <Typography variant="body2" color="text.secondary">
+      {label}:
+    </Typography>
+    <Typography variant="body2" fontWeight="medium">
+      {value}
+    </Typography>
+  </Box>
+);
 
 export default ClaimableContractsPage;

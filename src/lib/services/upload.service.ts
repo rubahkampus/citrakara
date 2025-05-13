@@ -594,6 +594,14 @@ export async function reviewUpload(
             uploadId,
             session
           );
+        } else {
+          await contractService.updateMilestoneStatus(
+            contractId,
+            (upload as IProgressUploadMilestone).milestoneIdx,
+            "inProgress",
+            undefined,
+            session
+          );
         }
         break;
 

@@ -1,70 +1,64 @@
-// src/lib/db/connection.ts
 import mongoose from "mongoose";
-// Import the function that ensures all models are registered
 import { ensureModelsRegistered } from "./models";
 
-const MONGO_URI = process.env.MONGO_URI;
-if (!MONGO_URI) {
-  throw new Error(
-    "Please define the MONGO_URI environment variable inside .env"
-  );
+// Cache mongoose connection across hot reloads in development
+declare global {
+  var _mongoose: {
+    conn: typeof mongoose.connection | null;
+    promise: Promise<typeof mongoose.connection> | null;
+  };
+}
+
+if (!global._mongoose) {
+  global._mongoose = { conn: null, promise: null };
 }
 
 /**
- * Global is used here to maintain a cached connection across hot reloads
- * in development. This prevents connections from growing exponentially.
+ * Connects to MongoDB using the MONGO_URI env var.
+ * Caches the connection promise for reuse.
  */
-let globalWithMongoose = global as typeof global & {
-  mongoose: {
-    conn: mongoose.Connection | null;
-    promise: Promise<mongoose.Connection> | null;
-  };
-};
+export async function connectDB(): Promise<typeof mongoose.connection> {
+  const uri = process.env.MONGO_URI;
+  if (!uri) {
+    throw new Error(
+      "Please define the MONGO_URI environment variable inside .env or your test setup"
+    );
+  }
 
-// Initialize the cached connection
-if (!globalWithMongoose.mongoose) {
-  globalWithMongoose.mongoose = {
-    conn: null,
-    promise: null,
-  };
+  // Reuse existing connection
+  if (global._mongoose.conn && global._mongoose.conn.readyState === 1) {
+    ensureModelsRegistered();
+    return global._mongoose.conn;
+  }
+
+  // Wait for in-flight connection
+  if (global._mongoose.promise) {
+    await global._mongoose.promise;
+    ensureModelsRegistered();
+    return global._mongoose.conn!;
+  }
+
+  // Establish a new connection
+  global._mongoose.promise = mongoose
+    .connect(uri, { dbName: "komis" })
+    .then((mongooseInstance) => {
+      global._mongoose.conn = mongooseInstance.connection;
+      return mongooseInstance.connection;
+    })
+    .catch((err) => {
+      global._mongoose.promise = null;
+      throw err;
+    });
+
+  const conn = await global._mongoose.promise;
+  ensureModelsRegistered();
+  return conn;
 }
 
-export async function connectDB() {
-  // If already connected, ensure models are registered and return
-  if (
-    mongoose.connection.readyState === 1 ||
-    (globalWithMongoose.mongoose.conn &&
-      globalWithMongoose.mongoose.conn.readyState === 1)
-  ) {
-    // Make sure all models are registered even when reusing the connection
-    ensureModelsRegistered();
-    return mongoose.connection;
-  }
-
-  // If connection is in progress, wait for it
-  if (globalWithMongoose.mongoose.promise) {
-    await globalWithMongoose.mongoose.promise;
-    // Ensure models are registered after connection
-    ensureModelsRegistered();
-    return mongoose.connection;
-  }
-
-  // Otherwise, create a new connection
-  await mongoose.connect(MONGO_URI as string, {
-    dbName: "komis", // ✅ Explicitly specify database name
-  });
-
-  try {
-    await globalWithMongoose.mongoose.promise;
-    globalWithMongoose.mongoose.conn = mongoose.connection;
-
-    // Ensure all models are registered after establishing connection
-    ensureModelsRegistered();
-
-    return mongoose.connection;
-  } catch (e) {
-    console.error("MongoDB connection error:", e);
-    globalWithMongoose.mongoose.promise = null;
-    throw e;
-  }
+/**
+ * Disconnects from MongoDB and clears cached connection.
+ */
+export async function disconnectDB(): Promise<void> {
+  await mongoose.disconnect();
+  global._mongoose = { conn: null, promise: null };
 }

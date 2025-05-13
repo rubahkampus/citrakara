@@ -109,7 +109,7 @@ export default function RevisionUploadDetails({
 
     try {
       await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/revision/${upload._id}/review`,
+        `/api/contract/${contract._id}/uploads/revision/${upload._id}`,
         { action: reviewAction },
         { headers: { "Content-Type": "application/json" } }
       );

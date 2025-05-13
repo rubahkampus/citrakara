@@ -84,6 +84,24 @@ export default async function UploadDetailsPage({
   const serializedUpload = JSON.parse(JSON.stringify(upload));
 
   // Check if the client can review this upload
+  console.log("isClient:", isClient);
+  console.log("uploadType:", uploadType);
+  console.log("upload:", upload);
+  console.log(
+    "upload.isFinal (if milestone):",
+    uploadType === "milestone"
+      ? (upload as IProgressUploadMilestone).isFinal
+      : undefined
+  );
+  console.log(
+    "upload.expiresAt:",
+    "expiresAt" in upload ? upload.expiresAt : undefined
+  );
+  console.log(
+    "upload.status:",
+    (upload as IProgressUploadMilestone | IFinalUpload | IRevisionUpload).status
+  );
+
   const canReview =
     isClient &&
     ((uploadType === "milestone" &&
@@ -91,7 +109,23 @@ export default async function UploadDetailsPage({
       uploadType === "revision" ||
       uploadType === "final") &&
     "expiresAt" in upload &&
+    "status" in upload &&
     upload.status === "submitted";
+
+  console.log(isClient);
+  console.log(
+    (uploadType === "milestone" &&
+      (upload as IProgressUploadMilestone).isFinal) ||
+      uploadType === "revision" ||
+      uploadType === "final"
+  );
+  console.log("expiresAt" in upload);
+  console.log("status" in upload);
+  console.log(
+    (upload as IProgressUploadMilestone | IFinalUpload | IRevisionUpload)
+      .status === "submitted"
+  );
+  console.log("canReview:", canReview);
 
   if (uploadType === "progress") {
     return (
@@ -106,9 +140,9 @@ export default async function UploadDetailsPage({
   }
 
   // If review mode is requested but not allowed, show an error
-  if (!canReview) {
-    return <Alert severity="error">You cannot review this upload</Alert>;
-  }
+  // if (!canReview) {
+  //   return <Alert severity="error">You cannot review this upload</Alert>;
+  // }
 
   return (
     <Box>

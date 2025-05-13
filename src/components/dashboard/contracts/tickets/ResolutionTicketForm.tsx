@@ -385,7 +385,7 @@ export default function ResolutionTicketForm({
 
       // Redirect after successful submission
       setTimeout(() => {
-        router.push(`/dashboard/${username}/`);
+        router.push(`/dashboard/${username}/resolution`);
         router.refresh();
       }, 1500);
     } catch (err) {

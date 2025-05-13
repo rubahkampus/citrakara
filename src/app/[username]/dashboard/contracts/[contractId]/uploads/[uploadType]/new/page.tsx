@@ -93,6 +93,7 @@ export default async function CreateUploadPage({
         <ProgressUploadForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
         />
       )}
 
@@ -100,6 +101,7 @@ export default async function CreateUploadPage({
         <MilestoneUploadForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
           milestoneIdx={parseInt(milestoneIdx || "0")}
         />
       )}
@@ -108,6 +110,7 @@ export default async function CreateUploadPage({
         <RevisionUploadForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
           ticketId={ticketId}
         />
       )}
@@ -116,6 +119,7 @@ export default async function CreateUploadPage({
         <FinalUploadForm
           contract={serializedContract}
           userId={(session as Session).id}
+          username={(session as Session).username}
           cancelTicketId={ticketId}
         />
       )}

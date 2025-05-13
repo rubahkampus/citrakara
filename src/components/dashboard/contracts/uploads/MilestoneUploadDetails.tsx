@@ -155,7 +155,7 @@ export default function MilestoneUploadDetails({
 
     try {
       await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/milestone/${upload._id}/review`,
+        `/api/contract/${contract._id}/uploads/milestone/${upload._id}`,
         { action: "accept" }
       );
 
@@ -184,7 +184,7 @@ export default function MilestoneUploadDetails({
       }
 
       await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/milestone/${upload._id}/review`,
+        `/api/contract/${contract._id}/uploads/milestone/${upload._id}`,
         {
           action: "reject",
           rejectionReason,

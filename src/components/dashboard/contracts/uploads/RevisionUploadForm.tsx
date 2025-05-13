@@ -25,6 +25,7 @@ import { IRevisionTicket } from "@/lib/db/models/ticket.model";
 interface RevisionUploadFormProps {
   contract: IContract;
   userId: string;
+  username: string
   ticketId: string;
 }
 
@@ -35,6 +36,7 @@ interface FormValues {
 export default function RevisionUploadForm({
   contract,
   userId,
+  username,
   ticketId,
 }: RevisionUploadFormProps) {
   const router = useRouter();
@@ -152,9 +154,7 @@ export default function RevisionUploadForm({
 
       // Redirect after successful submission
       setTimeout(() => {
-        router.push(
-          `/dashboard/${contract.artistId}/contracts/${contract._id}/uploads`
-        );
+        router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
         router.refresh();
       }, 1500);
     } catch (err) {

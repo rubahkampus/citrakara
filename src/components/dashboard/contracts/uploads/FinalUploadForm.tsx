@@ -32,6 +32,7 @@ import { ICancelTicket } from "@/lib/db/models/ticket.model";
 interface FinalUploadFormProps {
   contract: IContract;
   userId: string;
+  username: string;
   cancelTicketId?: string;
 }
 
@@ -44,6 +45,7 @@ interface FormValues {
 export default function FinalUploadForm({
   contract,
   userId,
+  username,
   cancelTicketId,
 }: FinalUploadFormProps) {
   const router = useRouter();
@@ -355,7 +357,7 @@ export default function FinalUploadForm({
 
       // Redirect after successful submission
       setTimeout(() => {
-        router.push(`/dashboard/${userId}/contracts/${contract._id}/uploads`);
+        router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
         router.refresh();
       }, 1500);
     } catch (err) {

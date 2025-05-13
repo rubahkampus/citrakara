@@ -35,8 +35,26 @@ const AllTicketsList: React.FC<AllTicketsListProps> = ({
   );
 
   // Define ticket type colors for visual distinction
-  const getTypeColor = (type: string): "default" | "primary" | "secondary" | "error" | "success" | "warning" | "info" => {
-    const typeColorMap: Record<string, "default" | "primary" | "secondary" | "error" | "success" | "warning" | "info"> = {
+  const getTypeColor = (
+    type: string
+  ):
+    | "default"
+    | "primary"
+    | "secondary"
+    | "error"
+    | "success"
+    | "warning"
+    | "info" => {
+    const typeColorMap: Record<
+      string,
+      | "default"
+      | "primary"
+      | "secondary"
+      | "error"
+      | "success"
+      | "warning"
+      | "info"
+    > = {
       cancel: "error",
       revision: "primary",
       change: "info",

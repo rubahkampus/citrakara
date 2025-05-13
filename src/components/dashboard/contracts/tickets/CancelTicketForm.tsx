@@ -132,7 +132,7 @@ export default function CancelTicketForm({
 
       // Redirect after successful submission
       setTimeout(() => {
-        router.push(`/dashboard/${userId}/contracts/${contract._id}/tickets`);
+        router.push(`/${username}/dashboard/contracts/${contract._id}/tickets`);
         router.refresh();
       }, 1500);
     } catch (err) {

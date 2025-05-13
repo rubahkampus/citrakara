@@ -24,6 +24,7 @@ import { IContract } from "@/lib/db/models/contract.model";
 interface ProgressUploadFormProps {
   contract: IContract;
   userId: string;
+  username: string;
 }
 
 interface FormValues {
@@ -33,6 +34,7 @@ interface FormValues {
 export default function ProgressUploadForm({
   contract,
   userId,
+  username,
 }: ProgressUploadFormProps) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
@@ -122,9 +124,7 @@ export default function ProgressUploadForm({
 
       // Redirect after successful submission
       setTimeout(() => {
-        router.push(
-          `/dashboard/${contract.artistId}/contracts/${contract._id}/uploads`
-        );
+        router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
         router.refresh();
       }, 1500);
     } catch (err) {

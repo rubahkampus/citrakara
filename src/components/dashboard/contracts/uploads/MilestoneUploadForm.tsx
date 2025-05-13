@@ -27,6 +27,7 @@ import { IContract } from "@/lib/db/models/contract.model";
 interface MilestoneUploadFormProps {
   contract: IContract;
   userId: string;
+  username: string;
   milestoneIdx: number;
 }
 
@@ -38,6 +39,7 @@ interface FormValues {
 export default function MilestoneUploadForm({
   contract,
   userId,
+  username,
   milestoneIdx,
 }: MilestoneUploadFormProps) {
   const router = useRouter();
@@ -141,9 +143,7 @@ export default function MilestoneUploadForm({
 
       // Redirect after successful submission
       setTimeout(() => {
-        router.push(
-          `/dashboard/${contract.artistId}/contracts/${contract._id}/uploads`
-        );
+        router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
         router.refresh();
       }, 1500);
     } catch (err) {

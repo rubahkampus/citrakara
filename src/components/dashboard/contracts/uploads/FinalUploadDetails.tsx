@@ -198,7 +198,7 @@ export default function FinalUploadDetails({
 
     try {
       await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/final/${upload._id}/review`,
+        `/api/contract/${contract._id}/uploads/final/${upload._id}`,
         { action: "accept" }
       );
 
@@ -222,7 +222,7 @@ export default function FinalUploadDetails({
 
     try {
       await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/final/${upload._id}/review`,
+        `/api/contract/${contract._id}/uploads/final/${upload._id}`,
         {
           action: "reject",
           rejectionReason: data.rejectionReason,

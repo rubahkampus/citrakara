@@ -1,32 +1,46 @@
-// src/app/[username]/dashboard/contracts/page.tsx
 import { Suspense } from "react";
-import { Box, Typography, Alert } from "@mui/material";
+import { Box, Typography, Alert, Container, Paper } from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getUserContracts } from "@/lib/services/contract.service";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 
-// This component would be created in src/components/dashboard/contracts/
+// Import the components we created
 import ContractListingPage from "@/components/dashboard/contracts/ContractListingPage";
+import ContractListingSkeleton from "@/components/dashboard/contracts/ContractListingSkeleton";
 
 interface ContractsPageProps {
   params: { username: string };
 }
 
 export default async function ContractsPage({ params }: ContractsPageProps) {
-  const param = params
-  const username = param.username;
+  const username = params.username;
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
-    return <Alert severity="error">You do not have access to this page</Alert>;
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Alert
+          severity="error"
+          sx={{
+            borderRadius: 1,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+          }}
+        >
+          You do not have access to this page. Please log in with the correct
+          account.
+        </Alert>
+      </Container>
+    );
   }
 
   let contracts;
+  let error = null;
+
   try {
     contracts = await getUserContracts((session as Session).id);
   } catch (err) {
     console.error("Error fetching contracts:", err);
-    return <Alert severity="error">Failed to load your contracts</Alert>;
+    error = "Failed to load your contracts. Please try refreshing the page.";
   }
 
   const asArtist = contracts?.asArtist ?? [];
@@ -37,20 +51,36 @@ export default async function ContractsPage({ params }: ContractsPageProps) {
   const serializedAsClient = JSON.parse(JSON.stringify(asClient));
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        My Contracts
-      </Typography>
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Paper
+        sx={{
+          p: 3,
+          borderRadius: 2,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+        }}
+      >
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          sx={{
+            mb: 4,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            pb: 2,
+          }}
+        >
+          My Contracts
+        </Typography>
 
-      <Suspense fallback={<DashboardLoadingSkeleton />}>
-        {/* This component would be implemented separately */}
-        <ContractListingPage
-          username={username}
-          asArtist={serializedAsArtist}
-          asClient={serializedAsClient}
-        />
-        <Typography>Contract listing component would be here</Typography>
-      </Suspense>
-    </Box>
+        <Suspense fallback={<ContractListingSkeleton />}>
+          <ContractListingPage
+            username={username}
+            asArtist={serializedAsArtist}
+            asClient={serializedAsClient}
+            error={error ?? undefined}
+          />
+        </Suspense>
+      </Paper>
+    </Container>
   );
 }

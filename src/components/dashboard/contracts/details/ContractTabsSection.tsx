@@ -1,6 +1,10 @@
 // src/components/dashboard/contracts/ContractTabsSection.tsx
 import React, { useState } from "react";
-import { Box, Tabs, Tab } from "@mui/material";
+import { Box, Tabs, Tab, Paper } from "@mui/material";
+import DescriptionIcon from "@mui/icons-material/Description";
+import HistoryIcon from "@mui/icons-material/History";
+import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { IContract } from "@/lib/db/models/contract.model";
 import ContractTermsTab from "./tabs/ContractTermsTab";
 import StatusHistoryTab from "./tabs/StatusHistoryTab";
@@ -23,13 +27,33 @@ const ContractTabsSection: React.FC<ContractTabsSectionProps> = ({
   };
 
   return (
-    <>
-      <Tabs value={tabValue} onChange={handleTabChange}>
-        <Tab label="Terms" />
-        <Tab label="Status History" />
-        <Tab label="Tickets" />
-        <Tab label="Uploads" />
-      </Tabs>
+    <Paper elevation={0} sx={{ borderRadius: 1 }}>
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="fullWidth"
+          indicatorColor="primary"
+          textColor="primary"
+        >
+          <Tab icon={<DescriptionIcon />} iconPosition="start" label="Terms" />
+          <Tab
+            icon={<HistoryIcon />}
+            iconPosition="start"
+            label="Status History"
+          />
+          <Tab
+            icon={<ConfirmationNumberIcon />}
+            iconPosition="start"
+            label="Tickets"
+          />
+          <Tab
+            icon={<CloudUploadIcon />}
+            iconPosition="start"
+            label="Uploads"
+          />
+        </Tabs>
+      </Box>
 
       <Box p={3}>
         {tabValue === 0 && <ContractTermsTab contract={contract} />}
@@ -43,7 +67,7 @@ const ContractTabsSection: React.FC<ContractTabsSectionProps> = ({
           <UploadsTab contract={contract} username={username} />
         )}
       </Box>
-    </>
+    </Paper>
   );
 };
 

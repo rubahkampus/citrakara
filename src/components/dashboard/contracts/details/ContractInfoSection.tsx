@@ -1,6 +1,6 @@
 // src/components/dashboard/contracts/ContractInfoSection.tsx
 import React from "react";
-import { Box, Grid } from "@mui/material";
+import { Box, Grid, Typography, Divider } from "@mui/material";
 import { IContract } from "@/lib/db/models/contract.model";
 import ContractInfoTable from "./ContractInfoTable";
 import ContractFinancialsTable from "./ContractFinancialsTable";
@@ -23,15 +23,38 @@ const ContractInfoSection: React.FC<ContractInfoSectionProps> = ({
     <>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
+          <Typography
+            variant="subtitle1"
+            gutterBottom
+            sx={{ fontWeight: "medium" }}
+          >
+            Contract Information
+          </Typography>
           <ContractInfoTable contract={contract} />
         </Grid>
 
         <Grid item xs={12} md={6}>
+          <Typography
+            variant="subtitle1"
+            gutterBottom
+            sx={{ fontWeight: "medium" }}
+          >
+            Financial Details
+          </Typography>
           <ContractFinancialsTable finance={contract.finance} />
         </Grid>
       </Grid>
 
-      <Box mt={3}>
+      <Divider sx={{ my: 3 }} />
+
+      <Box>
+        <Typography
+          variant="subtitle1"
+          gutterBottom
+          sx={{ fontWeight: "medium" }}
+        >
+          Actions
+        </Typography>
         <ContractActionButtons
           username={username}
           contract={contract}

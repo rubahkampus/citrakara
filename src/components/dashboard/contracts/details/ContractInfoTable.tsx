@@ -6,7 +6,16 @@ import {
   TableBody,
   TableCell,
   TableRow,
+  Paper,
+  Typography,
+  Box,
+  Chip,
+  LinearProgress,
 } from "@mui/material";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import TimerIcon from "@mui/icons-material/Timer";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import BusinessIcon from "@mui/icons-material/Business";
 import { IContract } from "@/lib/db/models/contract.model";
 
 interface ContractInfoTableProps {
@@ -25,55 +34,114 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
     const deadlineDate = new Date(deadline);
 
     if (deadlineDate < now) {
-      return "Passed";
+      return { text: "Passed", color: "error" };
     }
 
     const diffTime = Math.abs(deadlineDate.getTime() - now.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    return `${diffDays} days`;
+    if (diffDays <= 3) {
+      return { text: `${diffDays} days`, color: "error" };
+    } else if (diffDays <= 7) {
+      return { text: `${diffDays} days`, color: "warning" };
+    } else {
+      return { text: `${diffDays} days`, color: "success" };
+    }
   };
 
+  const timeRemaining = getTimeRemaining(contract.deadlineAt);
+
   return (
-    <TableContainer>
+    <TableContainer
+      component={Paper}
+      elevation={0}
+      sx={{ border: "1px solid #e0e0e0" }}
+    >
       <Table size="small">
         <TableBody>
           <TableRow>
-            <TableCell component="th" scope="row">
-              Contract ID
+            <TableCell component="th" scope="row" sx={{ width: "40%" }}>
+              <Box display="flex" alignItems="center">
+                <BusinessIcon
+                  fontSize="small"
+                  sx={{ mr: 1, color: "text.secondary" }}
+                />
+                Contract ID
+              </Box>
             </TableCell>
-            <TableCell>{contract._id.toString()}</TableCell>
+            <TableCell>
+              <Typography variant="body2" fontFamily="monospace">
+                {contract._id.toString().substring(0, 10)}...
+              </Typography>
+            </TableCell>
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
-              Client
+              <Box display="flex" alignItems="center">
+                <AccountCircleIcon
+                  fontSize="small"
+                  sx={{ mr: 1, color: "text.secondary" }}
+                />
+                Client
+              </Box>
             </TableCell>
             <TableCell>{contract.clientId.toString()}</TableCell>
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
-              Artist
+              <Box display="flex" alignItems="center">
+                <AccountCircleIcon
+                  fontSize="small"
+                  sx={{ mr: 1, color: "text.secondary" }}
+                />
+                Artist
+              </Box>
             </TableCell>
             <TableCell>{contract.artistId.toString()}</TableCell>
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
-              Created At
+              <Box display="flex" alignItems="center">
+                <CalendarTodayIcon
+                  fontSize="small"
+                  sx={{ mr: 1, color: "text.secondary" }}
+                />
+                Created At
+              </Box>
             </TableCell>
             <TableCell>{formatDate(contract.createdAt)}</TableCell>
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
-              Deadline
+              <Box display="flex" alignItems="center">
+                <TimerIcon
+                  fontSize="small"
+                  sx={{ mr: 1, color: "text.secondary" }}
+                />
+                Deadline
+              </Box>
             </TableCell>
             <TableCell>
-              {formatDate(contract.deadlineAt)}(
-              {getTimeRemaining(contract.deadlineAt)} remaining)
+              <Box display="flex" alignItems="center">
+                {formatDate(contract.deadlineAt)}
+                <Chip
+                  size="small"
+                  label={timeRemaining.text}
+                  color={timeRemaining.color as any}
+                  sx={{ ml: 1 }}
+                />
+              </Box>
             </TableCell>
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
-              Grace Period Ends
+              <Box display="flex" alignItems="center">
+                <CalendarTodayIcon
+                  fontSize="small"
+                  sx={{ mr: 1, color: "text.secondary" }}
+                />
+                Grace Period Ends
+              </Box>
             </TableCell>
             <TableCell>{formatDate(contract.graceEndsAt)}</TableCell>
           </TableRow>
@@ -82,14 +150,32 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
               Flow Type
             </TableCell>
             <TableCell>
-              {contract.proposalSnapshot.listingSnapshot.flow}
+              <Chip
+                size="small"
+                label={contract.proposalSnapshot.listingSnapshot.flow}
+                color="primary"
+                variant="outlined"
+              />
             </TableCell>
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
               Work Progress
             </TableCell>
-            <TableCell>{contract.workPercentage}%</TableCell>
+            <TableCell>
+              <Box display="flex" alignItems="center">
+                <Box sx={{ width: "60%", mr: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={contract.workPercentage}
+                    sx={{ height: 8, borderRadius: 5 }}
+                  />
+                </Box>
+                <Typography variant="body2" fontWeight="medium">
+                  {contract.workPercentage}%
+                </Typography>
+              </Box>
+            </TableCell>
           </TableRow>
         </TableBody>
       </Table>

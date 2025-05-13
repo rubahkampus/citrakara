@@ -234,10 +234,10 @@ export default function RevisionTicketForm({
       setSuccess(true);
 
       // Redirect after successful submission
-      // setTimeout(() => {
-      //   router.push(`/dashboard//contracts/${contract._id}/tickets`);
-      //   router.refresh();
-      // }, 1500);
+      setTimeout(() => {
+        router.push(`/${username}/dashboard/contracts/${contract._id}/tickets`);
+        router.refresh();
+      }, 1500);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(

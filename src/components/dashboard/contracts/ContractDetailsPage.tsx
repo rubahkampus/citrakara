@@ -1,7 +1,7 @@
 // src/components/dashboard/contracts/ContractDetailsPage.tsx
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Box, Paper } from "@mui/material";
 import { IContract } from "@/lib/db/models/contract.model";
 import ContractHeader from "./details/ContractHeader";
@@ -25,7 +25,15 @@ const ContractDetailsPage: React.FC<ContractDetailsPageProps> = ({
 
   return (
     <Box>
-      <Paper sx={{ p: 3, mb: 3 }} elevation={1}>
+      <Paper
+        sx={{
+          p: 3,
+          mb: 3,
+          borderRadius: 2,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+        }}
+        elevation={1}
+      >
         <ContractHeader contract={contract} />
         <ContractInfoSection
           contract={contract}
@@ -35,13 +43,27 @@ const ContractDetailsPage: React.FC<ContractDetailsPageProps> = ({
         />
       </Paper>
 
-      <Paper sx={{ mb: 3 }} elevation={1}>
+      <Paper
+        sx={{
+          mb: 3,
+          borderRadius: 2,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+        }}
+        elevation={1}
+      >
         <ContractTabsSection contract={contract} username={username} />
       </Paper>
 
       {/* Milestone section, only shown for milestone-flow contracts */}
       {contract.proposalSnapshot.listingSnapshot.flow === "milestone" && (
-        <Paper sx={{ p: 3 }} elevation={1}>
+        <Paper
+          sx={{
+            p: 3,
+            borderRadius: 2,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+          }}
+          elevation={1}
+        >
           <MilestonesList milestones={contract.milestones} />
         </Paper>
       )}

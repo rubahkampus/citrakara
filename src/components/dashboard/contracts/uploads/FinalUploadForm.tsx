@@ -63,6 +63,7 @@ export default function FinalUploadForm({
   // Check if this is a milestone contract
   const isMilestoneContract =
     contract.proposalSnapshot?.listingSnapshot?.flow === "milestone";
+  console.log("Is milestone contract:", isMilestoneContract);
 
   // Check milestone status for milestone contracts
   const incompleteMilestones =
@@ -71,12 +72,15 @@ export default function FinalUploadForm({
           (milestone) => milestone.status !== "accepted"
         )
       : [];
+  console.log("Incomplete milestones:", incompleteMilestones);
 
   const allMilestonesComplete =
     isMilestoneContract && incompleteMilestones.length === 0;
+  console.log("All milestones complete:", allMilestonesComplete);
 
   // Calculate default work progress based on contract type
   const calculateDefaultWorkProgress = (): number => {
+    console.log("Calculating default work progress...");
     // For cancellation with milestone flow
     if (
       (cancelTicketId || activeCancelTicket) &&
@@ -85,21 +89,24 @@ export default function FinalUploadForm({
       contract.milestones.length > 0
     ) {
       // Sum up percentages from completed milestones
-      return contract.milestones.reduce((total, milestone) => {
+      const progress = contract.milestones.reduce((total, milestone) => {
         if (milestone.status === "accepted") {
           return total + milestone.percent;
         }
         return total;
       }, 0);
+      console.log("Default work progress (milestone cancellation):", progress);
+      return progress;
     }
     // For cancellation with standard flow
     if (cancelTicketId || activeCancelTicket) {
+      console.log("Default work progress (standard cancellation): 50");
       return 50; // Default to 50% for standard cancellations
     }
     // For final delivery (not a cancellation)
+    console.log("Default work progress (final delivery): 100");
     return 100;
   };
-
   const {
     control,
     handleSubmit,
@@ -123,9 +130,12 @@ export default function FinalUploadForm({
       if (cancelTicketId) return; // Skip if we already have a cancelTicketId prop
 
       try {
+        console.log("Fetching active cancellation tickets...");
         const response = await axiosClient.get(
           `/api/contract/${contract._id}/tickets/cancel/active`
         );
+
+        console.log("Active cancellation tickets response:", response.data);
 
         if (response.data && response.data.length > 0) {
           // If there's a ticket in accepted or forcedAccepted state
@@ -135,6 +145,7 @@ export default function FinalUploadForm({
           );
 
           if (acceptedTicket) {
+            console.log("Found accepted cancellation ticket:", acceptedTicket);
             setActiveCancelTicket(acceptedTicket);
             // Set form to cancellation mode
             setValue("isForCancellation", true);
@@ -155,9 +166,12 @@ export default function FinalUploadForm({
     if (cancelTicketId) {
       const fetchTicket = async () => {
         try {
+          console.log("Fetching cancellation ticket details...");
           const response = await axiosClient.get(
             `/api/contract/${contract._id}/tickets/cancel/${cancelTicketId}`
           );
+          console.log("Cancellation ticket response:", response.data);
+
           if (response.data) {
             setCancelTicket(response.data);
             // Set form to cancellation mode
@@ -165,6 +179,12 @@ export default function FinalUploadForm({
             setValue("workProgress", calculateDefaultWorkProgress());
           }
         } catch (err) {
+          console.error(
+            "Error fetching cancellation ticket details:",
+            axios.isAxiosError(err) && err.response
+              ? err.response.data.error
+              : err
+          );
           setError(
             axios.isAxiosError(err) && err.response
               ? err.response.data.error
@@ -179,12 +199,24 @@ export default function FinalUploadForm({
 
   // Toggle cancellation mode effect
   useEffect(() => {
+    console.log(
+      "Toggling cancellation mode:",
+      "isForCancellation:",
+      watchIsForCancellation,
+      "workProgress:",
+      watchWorkProgress
+    );
+
     if (watchIsForCancellation && watchWorkProgress === 100) {
+      console.log("Switching to cancellation mode, adjusting work progress...");
       setValue(
         "workProgress",
         cancelTicketId ? calculateDefaultWorkProgress() : 50
       );
     } else if (!watchIsForCancellation && watchWorkProgress < 100) {
+      console.log(
+        "Switching to final delivery mode, setting work progress to 100..."
+      );
       setValue("workProgress", 100);
     }
   }, [watchIsForCancellation, setValue, watchWorkProgress, cancelTicketId]);
@@ -194,11 +226,16 @@ export default function FinalUploadForm({
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
 
+      console.log("Selected files:", selectedFiles);
+
       // Enforce the 5 file limit
       const totalFiles = [...files, ...selectedFiles];
       const limitedFiles = totalFiles.slice(0, 5);
 
       if (totalFiles.length > 5) {
+        console.warn(
+          "Maximum 5 images allowed. Only the first 5 will be used."
+        );
         setError("Maximum 5 images allowed. Only the first 5 will be used.");
         setTimeout(() => setError(null), 3000);
       }
@@ -210,8 +247,13 @@ export default function FinalUploadForm({
         URL.createObjectURL(file)
       );
 
+      console.log("New preview URLs:", newPreviewUrls);
+
       // Revoke previous URLs to avoid memory leaks
-      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      previewUrls.forEach((url) => {
+        console.log("Revoking URL:", url);
+        URL.revokeObjectURL(url);
+      });
       setPreviewUrls(newPreviewUrls);
     }
   };

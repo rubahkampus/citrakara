@@ -35,7 +35,8 @@ interface Props {
 }
 
 export default async function DashboardPage({ params }: Props) {
-  const username = params.username;
+  const param = await params
+  const username = param.username;
   const session = await getAuthSession();
 
   // Check if the current user is the owner of this profile

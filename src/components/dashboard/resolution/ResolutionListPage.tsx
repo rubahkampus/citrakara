@@ -1,4 +1,3 @@
-// src/omponents/dashboard/resolution/ResolutionListPage.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,60 +6,45 @@ import {
   Typography,
   Tabs,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
-  Chip,
-  Button,
   Alert,
   CircularProgress,
+  Badge,
+  useTheme,
+  Divider,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
+import {
+  Gavel as GavelIcon,
+  Send as SentIcon,
+  Inbox as InboxIcon,
+  AccessTime as PendingIcon,
+  Visibility as VisibilityIcon,
+  CheckCircle as ResolvedIcon,
+} from "@mui/icons-material";
+
+import { IResolutionTicket } from "@/lib/db/models/ticket.model";
+import ResolutionListTable from "./ResolutionListTable";
+import ResolutionListSkeleton from "./ResolutionListSkeleton";
 
 // Types for the props passed to this component
 interface ResolutionListPageProps {
   username: string;
-  tickets: ResolutionTicket[];
+  tickets: IResolutionTicket[];
   userId: string;
-}
-
-// Types for the resolution ticket
-interface ResolutionTicket {
-  _id: string;
-  contractId: string;
-  submittedBy: "client" | "artist";
-  submittedById: string;
-  targetType: "cancel" | "revision" | "final" | "milestone";
-  targetId: string;
-  description: string;
-  proofImages?: string[];
-  counterparty: "client" | "artist";
-  counterDescription?: string;
-  counterProofImages?: string[];
-  counterExpiresAt: string;
-  status: "open" | "awaitingReview" | "resolved" | "cancelled";
-  decision?: "favorClient" | "favorArtist";
-  resolutionNote?: string;
-  resolvedBy?: string;
-  resolvedAt?: string;
-  createdAt: string;
+  loading?: boolean;
 }
 
 export default function ResolutionListPage({
   username,
   tickets,
   userId,
+  loading = false,
 }: ResolutionListPageProps) {
-  const router = useRouter();
+  const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
-  const [filteredTickets, setFilteredTickets] = useState<ResolutionTicket[]>(
+  const [filteredTickets, setFilteredTickets] = useState<IResolutionTicket[]>(
     []
   );
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Handle tab change
@@ -76,12 +60,12 @@ export default function ResolutionListPage({
     } else if (tabValue === 1) {
       // Submitted by me
       setFilteredTickets(
-        tickets.filter((ticket) => ticket.submittedById === userId)
+        tickets.filter((ticket) => ticket.submittedById.toString() === userId)
       );
     } else if (tabValue === 2) {
       // Responding to
       setFilteredTickets(
-        tickets.filter((ticket) => ticket.submittedById !== userId)
+        tickets.filter((ticket) => ticket.submittedById.toString() !== userId)
       );
     } else if (tabValue === 3) {
       // Open tickets
@@ -99,35 +83,24 @@ export default function ResolutionListPage({
     }
   }, [tabValue, tickets, userId]);
 
-  // Navigate to ticket details
-  const handleViewTicket = (ticketId: string) => {
-    router.push(`/${username}/dashboard/resolution/${ticketId}`);
+  // Calculate counts for the badges
+  const countByCategory = {
+    all: tickets.length,
+    submitted: tickets.filter(
+      (ticket) => ticket.submittedById.toString() === userId
+    ).length,
+    responding: tickets.filter(
+      (ticket) => ticket.submittedById.toString() !== userId
+    ).length,
+    open: tickets.filter((ticket) => ticket.status === "open").length,
+    awaiting: tickets.filter((ticket) => ticket.status === "awaitingReview")
+      .length,
+    resolved: tickets.filter((ticket) => ticket.status === "resolved").length,
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  // Get status chip color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "open":
-        return "primary";
-      case "awaitingReview":
-        return "warning";
-      case "resolved":
-        return "success";
-      case "cancelled":
-        return "error";
-      default:
-        return "default";
-    }
-  };
+  if (loading) {
+    return <ResolutionListSkeleton />;
+  }
 
   return (
     <Box>
@@ -137,120 +110,143 @@ export default function ResolutionListPage({
         </Alert>
       )}
 
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+      <Paper
+        sx={{
+          borderRadius: 1,
+          overflow: "hidden",
+          mb: 3,
+          boxShadow: theme.shadows[1],
+        }}
+      >
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: "divider" }}
         >
-          <Tab label="All" />
-          <Tab label="Submitted by me" />
-          <Tab label="Responding to" />
-          <Tab label="Open" />
-          <Tab label="Awaiting Review" />
-          <Tab label="Resolved" />
+          <Tab
+            label={
+              <Badge
+                badgeContent={countByCategory.all}
+                color="primary"
+                max={99}
+                showZero
+              >
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <GavelIcon sx={{ mr: 0.5, fontSize: 18 }} />
+                  <span style={{ marginRight: 8 }}>All</span>
+                </Box>
+              </Badge>
+            }
+          />
+          <Tab
+            label={
+              <Badge
+                badgeContent={countByCategory.submitted}
+                color="secondary"
+                max={99}
+                showZero
+              >
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <SentIcon sx={{ mr: 0.5, fontSize: 18 }} />
+                  <span style={{ marginRight: 8 }}>Submitted</span>
+                </Box>
+              </Badge>
+            }
+          />
+          <Tab
+            label={
+              <Badge
+                badgeContent={countByCategory.responding}
+                color="info"
+                max={99}
+                showZero
+              >
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <InboxIcon sx={{ mr: 0.5, fontSize: 18 }} />
+                  <span style={{ marginRight: 8 }}>Responding</span>
+                </Box>
+              </Badge>
+            }
+          />
+          <Tab
+            label={
+              <Badge
+                badgeContent={countByCategory.open}
+                color="primary"
+                max={99}
+                showZero
+              >
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <PendingIcon sx={{ mr: 0.5, fontSize: 18 }} />
+                  <span style={{ marginRight: 8 }}>Open</span>
+                </Box>
+              </Badge>
+            }
+          />
+          <Tab
+            label={
+              <Badge
+                badgeContent={countByCategory.awaiting}
+                color="warning"
+                max={99}
+                showZero
+              >
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <VisibilityIcon sx={{ mr: 0.5, fontSize: 18 }} />
+                  <span style={{ marginRight: 8 }}>Awaiting Review</span>
+                </Box>
+              </Badge>
+            }
+          />
+          <Tab
+            label={
+              <Badge
+                badgeContent={countByCategory.resolved}
+                color="success"
+                max={99}
+                showZero
+              >
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <ResolvedIcon sx={{ mr: 0.5, fontSize: 18 }} />
+                  <span style={{ marginRight: 8 }}>Resolved</span>
+                </Box>
+              </Badge>
+            }
+          />
         </Tabs>
-      </Box>
+      </Paper>
 
-      {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-          <CircularProgress />
-        </Box>
-      ) : filteredTickets.length === 0 ? (
-        <Typography variant="body1" align="center" sx={{ py: 4 }}>
-          No resolution tickets found in this category.
+      <ResolutionListTable
+        tickets={filteredTickets}
+        username={username}
+        userId={userId}
+        emptyMessage={`No resolution tickets found in this category.`}
+      />
+
+      <Paper sx={{ p: 2, borderRadius: 1, mt: 4, bgcolor: "background.paper" }}>
+        <Typography
+          variant="subtitle1"
+          color="primary"
+          gutterBottom
+          fontWeight="medium"
+        >
+          About Dispute Resolution
         </Typography>
-      ) : (
-        <TableContainer component={Paper} sx={{ mb: 4 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Contract</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Submitted By</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Action</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredTickets.map((ticket) => (
-                <TableRow key={ticket._id}>
-                  <TableCell>{formatDate(ticket.createdAt)}</TableCell>
-                  <TableCell>
-                    {/* Truncate contract ID for display */}
-                    {ticket.contractId
-                      ? `${ticket.contractId.substring(0, 8)}...`
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={
-                        ticket.targetType.charAt(0).toUpperCase() +
-                        ticket.targetType.slice(1)
-                      }
-                      size="small"
-                      variant="outlined"
-                      color={
-                        ticket.targetType === "cancel"
-                          ? "error"
-                          : ticket.targetType === "revision"
-                          ? "info"
-                          : ticket.targetType === "final"
-                          ? "success"
-                          : "warning"
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {ticket.submittedById === userId
-                      ? "You"
-                      : ticket.submittedBy}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={
-                        ticket.status === "open"
-                          ? "Open"
-                          : ticket.status === "awaitingReview"
-                          ? "Awaiting Review"
-                          : ticket.status === "resolved"
-                          ? ticket.decision === "favorClient"
-                            ? "Resolved (Client)"
-                            : "Resolved (Artist)"
-                          : "Cancelled"
-                      }
-                      size="small"
-                      color={getStatusColor(ticket.status)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleViewTicket(ticket._id)}
-                    >
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-
-      <Box sx={{ mb: 2 }}>
+        <Divider sx={{ mb: 2 }} />
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Resolution tickets are used to resolve disputes between clients and
-          artists.
+          artists when there's a disagreement about contract deliverables or
+          terms.
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          If you need to escalate an issue with a contract, please use the
-          "Request Resolution" button on the contract page.
+          If you need to escalate an issue with a contract, please use the{" "}
+          <strong>"Open Dispute"</strong> button on the contract's tickets page.
+          Both parties will have 24 hours to provide evidence before an admin
+          reviews the case.
         </Typography>
-      </Box>
+      </Paper>
     </Box>
   );
 }

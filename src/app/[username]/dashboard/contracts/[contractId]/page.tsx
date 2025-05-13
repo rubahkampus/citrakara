@@ -69,60 +69,6 @@ export default async function ContractDetailsPage({
           contract={serializedContract}
           userId={(session as Session).id}
         />
-
-        {/* Basic contract information display */}
-        <Box>
-          <Typography variant="h5" gutterBottom>
-            Contract Details
-          </Typography>
-          <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6">Contract #{contractId}</Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography>
-                <strong>Status:</strong> {contract.status}
-              </Typography>
-              <Typography>
-                <strong>Created:</strong>{" "}
-                {new Date(contract.createdAt).toLocaleDateString()}
-              </Typography>
-              <Typography>
-                <strong>Deadline:</strong>{" "}
-                {new Date(contract.deadlineAt).toLocaleDateString()}
-              </Typography>
-              <Typography>
-                <strong>Total Amount:</strong> {contract.finance.total}
-              </Typography>
-            </Box>
-          </Paper>
-
-          <Typography variant="h6" gutterBottom>
-            Tickets
-          </Typography>
-          <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-            <Typography>
-              Cancel Tickets: {contract.cancelTickets?.length || 0}
-            </Typography>
-            <Typography>
-              Revision Tickets: {contract.revisionTickets?.length || 0}
-            </Typography>
-            <Typography>
-              Change Tickets: {contract.changeTickets?.length || 0}
-            </Typography>
-            <Typography>
-              Resolution Tickets: {contract.resolutionTickets?.length || 0}
-            </Typography>
-          </Paper>
-
-          <Typography variant="h6" gutterBottom>
-            Contract Terms
-          </Typography>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="body1">
-              {contract.contractTerms[0]?.generalDescription ||
-                "No description available"}
-            </Typography>
-          </Paper>
-        </Box>
       </Suspense>
     </Box>
   );

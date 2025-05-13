@@ -24,11 +24,27 @@ import {
   CardContent,
   IconButton,
   Tooltip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Tab,
+  Tabs,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { IContract } from "@/lib/db/models/contract.model";
 import { IChangeTicket } from "@/lib/db/models/ticket.model";
 import { axiosClient } from "@/lib/utils/axiosClient";
+import {
+  IOptionGroup,
+  IAddon,
+  IQuestion,
+} from "@/lib/db/models/commissionListing.model";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import WarningIcon from "@mui/icons-material/Warning";
@@ -40,6 +56,10 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import InfoIcon from "@mui/icons-material/Info";
 import PaymentIcon from "@mui/icons-material/Payment";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DescriptionIcon from "@mui/icons-material/Description";
+import QueryBuilderIcon from "@mui/icons-material/QueryBuilder";
+import SyncAltIcon from "@mui/icons-material/SyncAlt";
 import UniversalPaymentDialog from "@/components/UniversalPaymentDialog";
 
 interface ChangeTicketDetailsProps {
@@ -68,6 +88,10 @@ export default function ChangeTicketDetails({
   const [success, setSuccess] = useState(false);
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string | false>(
+    "description"
+  );
+  const [comparisonTab, setComparisonTab] = useState(0);
 
   // Format date for display
   const formatDate = (date?: string | Date) => {
@@ -84,6 +108,17 @@ export default function ChangeTicketDetails({
       currency: "IDR",
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  // Handle section expansion
+  const handleSectionToggle =
+    (section: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+      setExpandedSection(isExpanded ? section : false);
+    };
+
+  // Handle tab change
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setComparisonTab(newValue);
   };
 
   // Calculate time remaining until expiry
@@ -113,7 +148,12 @@ export default function ChangeTicketDetails({
   // Determine if user can respond to this ticket
   const canRespond = () => {
     // Artist can respond to pendingArtist tickets
-    if (isArtist && (ticket.status === "pendingArtist" || ticket.status === "rejectedClient") && !isPastExpiry)
+    if (
+      isArtist &&
+      (ticket.status === "pendingArtist" ||
+        ticket.status === "rejectedClient") &&
+      !isPastExpiry
+    )
       return true;
 
     // Client can respond to pendingClient tickets (when artist proposes a fee)
@@ -122,11 +162,6 @@ export default function ChangeTicketDetails({
 
     return false;
   };
-
-  console.log(isClient)
-  console.log(ticket.status === "pendingClient")
-  console.log(isPaidChange)
-  console.log(!ticket.escrowTxnId)
 
   // Determine if client can pay for this change
   const canPay = () => {
@@ -295,6 +330,500 @@ export default function ChangeTicketDetails({
 
     return diffHrs > 0 && diffHrs < 12;
   };
+
+  // Get the current contract terms
+  const currentContractTerms =
+    contract.contractTerms[contract.contractTerms.length - 1];
+
+  // Helper functions for option details
+  const findOptionDetails = (options: any, type: string, id: number) => {
+    if (!options) return null;
+
+    if (type === "group") {
+      return options.optionGroups?.find((group: any) => group.id === id);
+    } else if (type === "addon") {
+      return options.addons?.find((addon: any) => addon.id === id);
+    } else if (type === "question") {
+      return options.questions?.find((question: any) => question.id === id);
+    }
+    return null;
+  };
+
+  const findSelectionDetails = (groupDetails: any, selectionId: number) => {
+    if (!groupDetails || !groupDetails.selections) return null;
+    return groupDetails.selections.find(
+      (selection: any) => selection.id === selectionId
+    );
+  };
+
+  const findSubjectDetails = (options: any, subjectId: number) => {
+    if (!options) return null;
+    return options.find((subject: any) => subject.id === subjectId);
+  };
+
+  // Render general options comparison
+  const renderGeneralOptionsComparison = () => {
+    const oldGeneralOptions = currentContractTerms.generalOptions;
+    const newGeneralOptions = ticket.changeSet.generalOptions;
+
+    if (!oldGeneralOptions && !newGeneralOptions) {
+      return <Typography>No general options to compare</Typography>;
+    }
+
+    return (
+      <Box>
+        <Tabs
+          value={comparisonTab}
+          onChange={handleTabChange}
+          aria-label="options comparison tabs"
+          sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
+        >
+          <Tab
+            icon={<DescriptionIcon fontSize="small" />}
+            iconPosition="start"
+            label="Current Options"
+          />
+          <Tab
+            icon={<SyncAltIcon fontSize="small" />}
+            iconPosition="start"
+            label="Changed Options"
+          />
+        </Tabs>
+
+        {comparisonTab === 0 && (
+          <Box>
+            <Typography
+              variant="subtitle1"
+              fontWeight="medium"
+              color="primary.main"
+              gutterBottom
+            >
+              Current General Options
+            </Typography>
+            {renderGeneralOptions(
+              oldGeneralOptions,
+              contract.proposalSnapshot.listingSnapshot.generalOptions
+            )}
+          </Box>
+        )}
+
+        {comparisonTab === 1 && (
+          <Box>
+            <Typography
+              variant="subtitle1"
+              fontWeight="medium"
+              color="primary.main"
+              gutterBottom
+            >
+              New General Options
+            </Typography>
+            {renderGeneralOptions(
+              newGeneralOptions,
+              contract.proposalSnapshot.listingSnapshot.generalOptions
+            )}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
+  // Render subject options comparison
+  const renderSubjectOptionsComparison = () => {
+    const oldSubjectOptions = currentContractTerms.subjectOptions;
+    const newSubjectOptions = ticket.changeSet.subjectOptions;
+
+    if (!oldSubjectOptions && !newSubjectOptions) {
+      return <Typography>No subject options to compare</Typography>;
+    }
+
+    return (
+      <Box>
+        <Tabs
+          value={comparisonTab}
+          onChange={handleTabChange}
+          aria-label="options comparison tabs"
+          sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
+        >
+          <Tab
+            icon={<DescriptionIcon fontSize="small" />}
+            iconPosition="start"
+            label="Current Options"
+          />
+          <Tab
+            icon={<SyncAltIcon fontSize="small" />}
+            iconPosition="start"
+            label="Changed Options"
+          />
+        </Tabs>
+
+        {comparisonTab === 0 && (
+          <Box>
+            <Typography
+              variant="subtitle1"
+              fontWeight="medium"
+              color="primary.main"
+              gutterBottom
+            >
+              Current Subject Options
+            </Typography>
+            {renderSubjectOptions(
+              oldSubjectOptions,
+              contract.proposalSnapshot.listingSnapshot.subjectOptions
+            )}
+          </Box>
+        )}
+
+        {comparisonTab === 1 && (
+          <Box>
+            <Typography
+              variant="subtitle1"
+              fontWeight="medium"
+              color="primary.main"
+              gutterBottom
+            >
+              New Subject Options
+            </Typography>
+            {renderSubjectOptions(
+              newSubjectOptions,
+              contract.proposalSnapshot.listingSnapshot.subjectOptions
+            )}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
+  // Render general options helper
+  const renderGeneralOptions = (generalOptions: any, listingOptions: any) => {
+    if (!generalOptions) {
+      return <Typography>No options selected</Typography>;
+    }
+
+    return (
+      <Card sx={{ mb: 3, overflow: "visible" }}>
+        <CardContent>
+          {/* Option Groups */}
+          {generalOptions.optionGroups &&
+            generalOptions.optionGroups.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
+                >
+                  Option Groups
+                </Typography>
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ borderRadius: 1 }}
+                >
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "background.default" }}>
+                        <TableCell>Option</TableCell>
+                        <TableCell>Selection</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {generalOptions.optionGroups.map((option: any) => {
+                        const groupDetails = findOptionDetails(
+                          listingOptions,
+                          "group",
+                          option.groupId
+                        ) as IOptionGroup;
+
+                        return (
+                          <TableRow key={option.id}>
+                            <TableCell>
+                              {groupDetails?.title ||
+                                `Option Group ${option.groupId}`}
+                            </TableCell>
+                            <TableCell>
+                              {option.selectedSelectionLabel}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+
+          {/* Add-ons */}
+          {generalOptions.addons && generalOptions.addons.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
+              >
+                Add-ons
+              </Typography>
+              <TableContainer
+                component={Paper}
+                variant="outlined"
+                sx={{ borderRadius: 1 }}
+              >
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "background.default" }}>
+                      <TableCell>Add-on</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {generalOptions.addons.map((addon: any) => {
+                      const addonDetails = findOptionDetails(
+                        listingOptions,
+                        "addon",
+                        addon.addonId
+                      ) as IAddon;
+
+                      return (
+                        <TableRow key={addon.id}>
+                          <TableCell>
+                            {addonDetails?.label || `Add-on ${addon.addonId}`}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {/* Answers */}
+          {generalOptions.answers && generalOptions.answers.length > 0 && (
+            <Box>
+              <Typography
+                variant="subtitle1"
+                sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
+              >
+                Client Responses
+              </Typography>
+              {generalOptions.answers.map((answer: any) => {
+                const questionDetails = findOptionDetails(
+                  listingOptions,
+                  "question",
+                  answer.questionId
+                ) as IQuestion;
+
+                return (
+                  <Box
+                    key={answer.id}
+                    sx={{
+                      mb: 2,
+                      bgcolor: "background.default",
+                      p: 2,
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {questionDetails?.text || `Question ${answer.questionId}`}
+                    </Typography>
+                    <Typography variant="body1">{answer.answer}</Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Render subject options helper
+  const renderSubjectOptions = (
+    subjectOptions: any,
+    listingSubjectOptions: any
+  ) => {
+    if (!subjectOptions || subjectOptions.length === 0) {
+      return (
+        <Typography variant="body2">No subject options selected</Typography>
+      );
+    }
+
+    return subjectOptions.map((subject: any) => {
+      const subjectDetails = findSubjectDetails(
+        listingSubjectOptions,
+        subject.subjectId
+      );
+
+      return (
+        <Card key={subject.subjectId} sx={{ mb: 3, overflow: "visible" }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+              {subjectDetails?.title || `Subject ${subject.subjectId}`}
+            </Typography>
+
+            {subject.instances.map((instance: any) => (
+              <Box
+                key={instance.id}
+                sx={{
+                  mb: 3,
+                  pl: 2,
+                  borderLeft: "2px solid",
+                  borderColor: "primary.light",
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  sx={{ mb: 2, fontWeight: "medium" }}
+                >
+                  Instance {instance.id}
+                </Typography>
+
+                {/* Instance Option Groups */}
+                {instance.optionGroups && instance.optionGroups.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 1, color: "primary.main" }}
+                    >
+                      Options
+                    </Typography>
+                    <TableContainer
+                      component={Paper}
+                      variant="outlined"
+                      sx={{ borderRadius: 1 }}
+                    >
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: "background.default" }}>
+                            <TableCell>Option</TableCell>
+                            <TableCell>Selection</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {instance.optionGroups.map((option: any) => {
+                            const groupDetails =
+                              subjectDetails?.optionGroups?.find(
+                                (group: any) => group.id === option.groupId
+                              );
+
+                            return (
+                              <TableRow key={option.id}>
+                                <TableCell>
+                                  {groupDetails?.title ||
+                                    `Option ${option.groupId}`}
+                                </TableCell>
+                                <TableCell>
+                                  {option.selectedSelectionLabel}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
+
+                {/* Instance Add-ons */}
+                {instance.addons && instance.addons.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 1, color: "primary.main" }}
+                    >
+                      Add-ons
+                    </Typography>
+                    <TableContainer
+                      component={Paper}
+                      variant="outlined"
+                      sx={{ borderRadius: 1 }}
+                    >
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: "background.default" }}>
+                            <TableCell>Add-on</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {instance.addons.map((addon: any) => {
+                            const addonDetails = subjectDetails?.addons?.find(
+                              (a: any) => a.id === addon.addonId
+                            );
+
+                            return (
+                              <TableRow key={addon.id}>
+                                <TableCell>
+                                  {addonDetails?.label ||
+                                    `Add-on ${addon.addonId}`}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
+
+                {/* Instance Answers */}
+                {instance.answers && instance.answers.length > 0 && (
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 1, color: "primary.main" }}
+                    >
+                      Client Responses
+                    </Typography>
+                    {instance.answers.map((answer: any) => {
+                      const questionDetails = subjectDetails?.questions?.find(
+                        (q: any) => q.id === answer.questionId
+                      );
+
+                      return (
+                        <Box
+                          key={answer.id}
+                          sx={{
+                            mb: 2,
+                            bgcolor: "background.default",
+                            p: 2,
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            color="text.secondary"
+                            gutterBottom
+                          >
+                            {questionDetails?.text ||
+                              `Question ${answer.questionId}`}
+                          </Typography>
+                          <Typography variant="body1">
+                            {answer.answer}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      );
+    });
+  };
+
+  // Determine what changes have been requested
+  const hasDescriptionChange = !!ticket.changeSet.generalDescription;
+  const hasDeadlineChange = !!ticket.changeSet.deadlineAt;
+  const hasGeneralOptionsChange =
+    ticket.changeSet.generalOptions &&
+    Object.keys(ticket.changeSet.generalOptions).length > 0;
+  const hasSubjectOptionsChange =
+    ticket.changeSet.subjectOptions &&
+    Object.keys(ticket.changeSet.subjectOptions).length > 0;
+  const hasReferenceImagesChange =
+    ticket.changeSet.referenceImages &&
+    ticket.changeSet.referenceImages.length > 0;
 
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
@@ -479,249 +1008,306 @@ export default function ChangeTicketDetails({
             )}
           </Box>
 
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="medium">
-              Requested Changes
-            </Typography>
-
-            {ticket.changeSet.deadlineAt && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  borderRadius: 1,
-                  bgcolor: "background.paper",
-                  mb: 2,
-                }}
-              >
-                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Deadline Change
+          {/* Requested Changes Accordions */}
+          {hasDeadlineChange && (
+            <Accordion
+              expanded={expandedSection === "deadline"}
+              onChange={handleSectionToggle("deadline")}
+              sx={{ mb: 2, borderRadius: 1, overflow: "hidden" }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ display: "flex", alignItems: "center" }}
+                >
+                  <QueryBuilderIcon sx={{ mr: 1 }} fontSize="small" /> Deadline
+                  Change
                 </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Current Deadline:
-                    </Typography>
-                    <Typography variant="body1">
-                      {formatDate(contract.deadlineAt)}
-                    </Typography>
+                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Current Deadline:
+                      </Typography>
+                      <Typography variant="body1">
+                        {formatDate(contract.deadlineAt)}
+                      </Typography>
+                    </Paper>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Requested Deadline:
-                    </Typography>
-                    <Typography variant="body1" fontWeight="medium">
-                      {formatDate(ticket.changeSet.deadlineAt)}
-                    </Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        borderRadius: 1,
+                        bgcolor: "primary.50",
+                        borderColor: "primary.200",
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        Requested Deadline:
+                      </Typography>
+                      <Typography variant="body1" fontWeight="medium">
+                        {formatDate(ticket.changeSet.deadlineAt)}
+                      </Typography>
+                    </Paper>
                   </Grid>
                 </Grid>
-              </Paper>
-            )}
+              </AccordionDetails>
+            </Accordion>
+          )}
 
-            {ticket.changeSet.generalDescription && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  borderRadius: 1,
-                  bgcolor: "background.paper",
-                  mb: 2,
-                }}
-              >
-                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+          {hasDescriptionChange && (
+            <Accordion
+              expanded={expandedSection === "description"}
+              onChange={handleSectionToggle("description")}
+              sx={{ mb: 2, borderRadius: 1, overflow: "hidden" }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ display: "flex", alignItems: "center" }}
+                >
+                  <DescriptionIcon sx={{ mr: 1 }} fontSize="small" />{" "}
                   Description Change
                 </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  New Description:
-                </Typography>
-                <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
-                  {ticket.changeSet.generalDescription}
-                </Typography>
-              </Paper>
-            )}
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      Current Description:
+                    </Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{ p: 2, borderRadius: 1, height: "100%" }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{ whiteSpace: "pre-line" }}
+                      >
+                        {currentContractTerms.generalDescription}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      New Description:
+                    </Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        borderRadius: 1,
+                        bgcolor: "primary.50",
+                        borderColor: "primary.200",
+                        height: "100%",
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{ whiteSpace: "pre-line" }}
+                      >
+                        {ticket.changeSet.generalDescription}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          )}
 
-            {ticket.changeSet.generalOptions &&
-              Object.keys(ticket.changeSet.generalOptions).length > 0 && (
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderRadius: 1,
-                    bgcolor: "background.paper",
-                    mb: 2,
-                  }}
+          {hasGeneralOptionsChange && (
+            <Accordion
+              expanded={expandedSection === "generalOptions"}
+              onChange={handleSectionToggle("generalOptions")}
+              sx={{ mb: 2, borderRadius: 1, overflow: "hidden" }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ display: "flex", alignItems: "center" }}
                 >
-                  <Typography
-                    variant="subtitle2"
-                    fontWeight="bold"
-                    gutterBottom
-                  >
-                    General Options Changes
-                  </Typography>
-                  <Typography variant="body2">
-                    Changes have been requested to the general options.
-                  </Typography>
-                </Paper>
-              )}
+                  <SyncAltIcon sx={{ mr: 1 }} fontSize="small" /> General
+                  Options Changes
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {renderGeneralOptionsComparison()}
+              </AccordionDetails>
+            </Accordion>
+          )}
 
-            {ticket.changeSet.subjectOptions &&
-              Object.keys(ticket.changeSet.subjectOptions).length > 0 && (
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderRadius: 1,
-                    bgcolor: "background.paper",
-                    mb: 2,
-                  }}
+          {hasSubjectOptionsChange && (
+            <Accordion
+              expanded={expandedSection === "subjectOptions"}
+              onChange={handleSectionToggle("subjectOptions")}
+              sx={{ mb: 2, borderRadius: 1, overflow: "hidden" }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ display: "flex", alignItems: "center" }}
                 >
-                  <Typography
-                    variant="subtitle2"
-                    fontWeight="bold"
-                    gutterBottom
-                  >
-                    Subject Options Changes
-                  </Typography>
-                  <Typography variant="body2">
-                    Changes have been requested to the subject options.
-                  </Typography>
-                </Paper>
-              )}
-          </Box>
+                  <SyncAltIcon sx={{ mr: 1 }} fontSize="small" /> Subject
+                  Options Changes
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {renderSubjectOptionsComparison()}
+              </AccordionDetails>
+            </Accordion>
+          )}
 
           {/* Artist Response Form - Only shown if user is artist and ticket is pendingArtist */}
-          {canRespond() && isArtist && (ticket.status === "pendingArtist" || ticket.status === "rejectedClient")  && (
-            <Box sx={{ mb: 3 }}>
-              <Divider sx={{ mb: 3 }} />
-              <Typography variant="h6" fontWeight="medium" gutterBottom>
-                Your Response
-              </Typography>
-
+          {canRespond() &&
+            isArtist &&
+            (ticket.status === "pendingArtist" ||
+              ticket.status === "rejectedClient") && (
               <Box sx={{ mb: 3 }}>
-                <Stack direction="row" spacing={2}>
-                  <Button
-                    variant={response === "accept" ? "contained" : "outlined"}
-                    color="success"
-                    onClick={() => setResponse("accept")}
-                    disabled={isSubmitting}
-                    startIcon={<ThumbUpIcon />}
-                    sx={{ flexGrow: 1 }}
-                    size="large"
-                  >
-                    Accept Without Fee
-                  </Button>
-                  <Button
-                    variant={response === "propose" ? "contained" : "outlined"}
-                    color="primary"
-                    onClick={() => setResponse("propose")}
-                    disabled={isSubmitting}
-                    startIcon={<PaymentIcon />}
-                    sx={{ flexGrow: 1 }}
-                    size="large"
-                  >
-                    Propose Fee
-                  </Button>
-                  <Button
-                    variant={response === "reject" ? "contained" : "outlined"}
-                    color="error"
-                    onClick={() => setResponse("reject")}
-                    disabled={isSubmitting}
-                    startIcon={<ThumbDownIcon />}
-                    sx={{ flexGrow: 1 }}
-                    size="large"
-                  >
-                    Reject Changes
-                  </Button>
-                </Stack>
-              </Box>
+                <Divider sx={{ mb: 3 }} />
+                <Typography variant="h6" fontWeight="medium" gutterBottom>
+                  Your Response
+                </Typography>
 
-              {response === "accept" && (
-                <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
-                  <Typography variant="body2">
-                    By accepting this change request, you are agreeing to modify
-                    the contract as requested without any additional fees.
-                  </Typography>
-                </Alert>
-              )}
-
-              {response === "propose" && (
                 <Box sx={{ mb: 3 }}>
-                  <Typography variant="body2" sx={{ mb: 2 }}>
-                    You can propose a fee for implementing these changes. The
-                    client will need to pay this fee before the changes are
-                    applied.
-                  </Typography>
-                  <TextField
-                    label="Proposed Fee"
-                    type="number"
-                    inputProps={{ min: 0, step: 1000 }}
-                    fullWidth
-                    value={proposedFee}
-                    onChange={(e) => setProposedFee(Number(e.target.value))}
-                    placeholder="Enter fee amount"
-                    required
-                    disabled={isSubmitting}
-                    error={
-                      response === "propose" &&
-                      (proposedFee <= 0 || isNaN(proposedFee))
-                    }
-                    helperText={
-                      response === "propose" &&
-                      (proposedFee <= 0 || isNaN(proposedFee))
-                        ? "Please enter a valid fee amount"
-                        : ""
-                    }
-                    sx={{ mb: 2 }}
-                  />
+                  <Stack direction="row" spacing={2}>
+                    <Button
+                      variant={response === "accept" ? "contained" : "outlined"}
+                      color="success"
+                      onClick={() => setResponse("accept")}
+                      disabled={isSubmitting}
+                      startIcon={<ThumbUpIcon />}
+                      sx={{ flexGrow: 1 }}
+                      size="large"
+                    >
+                      Accept Without Fee
+                    </Button>
+                    <Button
+                      variant={
+                        response === "propose" ? "contained" : "outlined"
+                      }
+                      color="primary"
+                      onClick={() => setResponse("propose")}
+                      disabled={isSubmitting}
+                      startIcon={<PaymentIcon />}
+                      sx={{ flexGrow: 1 }}
+                      size="large"
+                    >
+                      Propose Fee
+                    </Button>
+                    <Button
+                      variant={response === "reject" ? "contained" : "outlined"}
+                      color="error"
+                      onClick={() => setResponse("reject")}
+                      disabled={isSubmitting}
+                      startIcon={<ThumbDownIcon />}
+                      sx={{ flexGrow: 1 }}
+                      size="large"
+                    >
+                      Reject Changes
+                    </Button>
+                  </Stack>
                 </Box>
-              )}
 
-              {response === "reject" && (
-                <Box sx={{ mb: 3 }}>
-                  <TextField
-                    label="Reason for Rejection"
-                    multiline
-                    rows={3}
-                    fullWidth
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Explain why you are rejecting these changes"
-                    required
-                    disabled={isSubmitting}
-                    error={
-                      response === "reject" && rejectionReason.trim() === ""
-                    }
-                    helperText={
-                      response === "reject" && rejectionReason.trim() === ""
-                        ? "Rejection reason is required"
-                        : ""
-                    }
-                    sx={{ mb: 2 }}
-                  />
-                </Box>
-              )}
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSubmit}
-                disabled={
-                  !response ||
-                  (response === "reject" && !rejectionReason.trim()) ||
-                  (response === "propose" &&
-                    (proposedFee <= 0 || isNaN(proposedFee))) ||
-                  isSubmitting
-                }
-                sx={{ minWidth: 120 }}
-              >
-                {isSubmitting ? (
-                  <CircularProgress size={24} />
-                ) : (
-                  "Submit Response"
+                {response === "accept" && (
+                  <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
+                    <Typography variant="body2">
+                      By accepting this change request, you are agreeing to
+                      modify the contract as requested without any additional
+                      fees.
+                    </Typography>
+                  </Alert>
                 )}
-              </Button>
-            </Box>
-          )}
+
+                {response === "propose" && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                      You can propose a fee for implementing these changes. The
+                      client will need to pay this fee before the changes are
+                      applied.
+                    </Typography>
+                    <TextField
+                      label="Proposed Fee"
+                      type="number"
+                      inputProps={{ min: 0, step: 1000 }}
+                      fullWidth
+                      value={proposedFee}
+                      onChange={(e) => setProposedFee(Number(e.target.value))}
+                      placeholder="Enter fee amount"
+                      required
+                      disabled={isSubmitting}
+                      error={
+                        response === "propose" &&
+                        (proposedFee <= 0 || isNaN(proposedFee))
+                      }
+                      helperText={
+                        response === "propose" &&
+                        (proposedFee <= 0 || isNaN(proposedFee))
+                          ? "Please enter a valid fee amount"
+                          : ""
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                  </Box>
+                )}
+
+                {response === "reject" && (
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      label="Reason for Rejection"
+                      multiline
+                      rows={3}
+                      fullWidth
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="Explain why you are rejecting these changes"
+                      required
+                      disabled={isSubmitting}
+                      error={
+                        response === "reject" && rejectionReason.trim() === ""
+                      }
+                      helperText={
+                        response === "reject" && rejectionReason.trim() === ""
+                          ? "Rejection reason is required"
+                          : ""
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                  </Box>
+                )}
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSubmit}
+                  disabled={
+                    !response ||
+                    (response === "reject" && !rejectionReason.trim()) ||
+                    (response === "propose" &&
+                      (proposedFee <= 0 || isNaN(proposedFee))) ||
+                    isSubmitting
+                  }
+                  sx={{ minWidth: 120 }}
+                >
+                  {isSubmitting ? (
+                    <CircularProgress size={24} />
+                  ) : (
+                    "Submit Response"
+                  )}
+                </Button>
+              </Box>
+            )}
 
           {/* Client Response Form - Only shown if user is client and ticket is pendingClient */}
           {canRespond() && isClient && ticket.status === "pendingClient" && (
@@ -857,8 +1443,7 @@ export default function ChangeTicketDetails({
 
         {/* Right Column: Reference Images */}
         <Grid item xs={12} md={5}>
-          {ticket.changeSet.referenceImages &&
-          ticket.changeSet.referenceImages.length > 0 ? (
+          {hasReferenceImagesChange ? (
             <Box>
               <Typography variant="h6" gutterBottom fontWeight="medium">
                 Reference Images

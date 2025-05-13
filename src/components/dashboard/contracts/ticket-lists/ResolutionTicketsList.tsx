@@ -53,7 +53,10 @@ const ResolutionTicketsList: React.FC<ResolutionTicketsListProps> = ({
 
   return (
     <TicketListTemplate
-      tickets={tickets}
+      tickets={tickets.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )}
       username={username}
       contractId={contractId}
       ticketType="resolution"

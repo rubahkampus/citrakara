@@ -69,9 +69,13 @@ const FinalUploadsList: React.FC<FinalUploadsListProps> = ({
     );
   };
 
+  const sortedUpload = uploads.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
     <Grid container spacing={2}>
-      {uploads.map((upload: any) => (
+      {sortedUpload.map((upload: any) => (
         <Grid item xs={12} sm={6} md={4} key={upload._id.toString()}>
           <UploadCard
             upload={upload}

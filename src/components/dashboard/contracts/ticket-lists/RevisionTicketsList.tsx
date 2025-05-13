@@ -57,7 +57,10 @@ const RevisionTicketsList: React.FC<RevisionTicketsListProps> = ({
 
   return (
     <TicketListTemplate
-      tickets={tickets}
+      tickets={tickets.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )}
       username={username}
       contractId={contractId}
       ticketType="revision"

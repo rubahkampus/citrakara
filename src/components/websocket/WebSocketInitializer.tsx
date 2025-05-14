@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useWebSocketStore } from "@/lib/stores/websocketStore";
 import { axiosClient } from "@/lib/utils/axiosClient";
 
@@ -21,6 +21,18 @@ export default function WebSocketInitializer({
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tokenRef = useRef<string | null>(null);
 
+  // Store callback references to prevent re-registrations
+  const onMessageRef = useRef(onMessage);
+  const onTypingRef = useRef(onTyping);
+  const onConnectionChangeRef = useRef(onConnectionChange);
+
+  // Update refs when props change
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+    onTypingRef.current = onTyping;
+    onConnectionChangeRef.current = onConnectionChange;
+  }, [onMessage, onTyping, onConnectionChange]);
+
   const {
     initialize,
     close,
@@ -31,45 +43,48 @@ export default function WebSocketInitializer({
     reconnect,
   } = useWebSocketStore();
 
-  // Fetch token and initialize WebSocket
-  const fetchTokenAndConnect = async (force = false) => {
-    // Prevent multiple fetches
-    if (fetchingToken || (isInitialized.current && !force)) return;
+  // Use useCallback to stabilize function references
+  const fetchTokenAndConnect = useCallback(
+    async (force = false) => {
+      // Prevent multiple fetches
+      if (fetchingToken || (isInitialized.current && !force)) return;
 
-    try {
-      setFetchingToken(true);
-      console.log("Fetching WebSocket token...");
+      try {
+        setFetchingToken(true);
+        console.log("Fetching WebSocket token...");
 
-      const response = await axiosClient.get("/api/auth/websocket-token");
-      const { token } = response.data;
+        const response = await axiosClient.get("/api/auth/websocket-token");
+        const { token } = response.data;
 
-      if (token) {
-        // Store token for reconnects
-        tokenRef.current = token;
+        if (token) {
+          // Store token for reconnects
+          tokenRef.current = token;
 
-        // Set initialization flag
-        isInitialized.current = true;
+          // Set initialization flag
+          isInitialized.current = true;
 
-        console.log("WebSocket token received, connecting...");
-        initialize(token);
-      } else {
-        console.error("No token returned from API");
+          console.log("WebSocket token received, connecting...");
+          initialize(token);
+        } else {
+          console.error("No token returned from API");
+
+          // Schedule retry
+          scheduleRetry();
+        }
+      } catch (error) {
+        console.error("Failed to get WebSocket token:", error);
 
         // Schedule retry
         scheduleRetry();
+      } finally {
+        setFetchingToken(false);
       }
-    } catch (error) {
-      console.error("Failed to get WebSocket token:", error);
-
-      // Schedule retry
-      scheduleRetry();
-    } finally {
-      setFetchingToken(false);
-    }
-  };
+    },
+    [fetchingToken, initialize]
+  );
 
   // Schedule a retry to fetch token
-  const scheduleRetry = () => {
+  const scheduleRetry = useCallback(() => {
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
     }
@@ -78,10 +93,47 @@ export default function WebSocketInitializer({
       console.log("Retrying WebSocket connection...");
       fetchTokenAndConnect(true);
     }, 5000); // Retry after 5 seconds
-  };
+  }, [fetchTokenAndConnect]);
 
-  // Initialize WebSocket on component mount
+  // Initialize WebSocket on component mount - ONCE only
   useEffect(() => {
+    // Only register callbacks once
+    let messageUnsubscribe: (() => void) | null = null;
+    let typingUnsubscribe: (() => void) | null = null;
+    let connectionUnsubscribe: (() => void) | null = null;
+
+    // Setup wrapped callbacks that use the ref values
+    const messageCallback = (data: any) => {
+      if (onMessageRef.current) {
+        onMessageRef.current(data);
+      }
+    };
+
+    const typingCallback = (data: any) => {
+      if (onTypingRef.current) {
+        onTypingRef.current(data);
+      }
+    };
+
+    const connectionCallback = (status: boolean) => {
+      if (onConnectionChangeRef.current) {
+        onConnectionChangeRef.current(status);
+      }
+    };
+
+    // Register callbacks only once
+    if (onMessageRef.current) {
+      messageUnsubscribe = registerMessageCallback(messageCallback);
+    }
+
+    if (onTypingRef.current) {
+      typingUnsubscribe = registerTypingCallback(typingCallback);
+    }
+
+    if (onConnectionChangeRef.current) {
+      connectionUnsubscribe = registerConnectionCallback(connectionCallback);
+    }
+
     // Initial connection
     if (!isInitialized.current) {
       fetchTokenAndConnect();
@@ -137,37 +189,15 @@ export default function WebSocketInitializer({
       window.removeEventListener("online", handleOnline);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
 
-      close();
-    };
-  }, [close, connected, fetchingToken, reconnect]);
-
-  // Register event handlers
-  useEffect(() => {
-    const messageUnsubscribe = onMessage
-      ? registerMessageCallback(onMessage)
-      : null;
-
-    const typingUnsubscribe = onTyping
-      ? registerTypingCallback(onTyping)
-      : null;
-
-    const connectionUnsubscribe = onConnectionChange
-      ? registerConnectionCallback(onConnectionChange)
-      : null;
-
-    return () => {
+      // Unsubscribe from all callbacks
       if (messageUnsubscribe) messageUnsubscribe();
       if (typingUnsubscribe) typingUnsubscribe();
       if (connectionUnsubscribe) connectionUnsubscribe();
+
+      close();
     };
-  }, [
-    onMessage,
-    onTyping,
-    onConnectionChange,
-    registerMessageCallback,
-    registerTypingCallback,
-    registerConnectionCallback,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run ONCE on mount, no dependencies
 
   // This component doesn't render anything
   return null;

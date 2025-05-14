@@ -12,6 +12,7 @@ interface WebSocketState {
   messageCallbacks: MessageCallback[];
   typingCallbacks: TypingCallback[];
   connectionCallbacks: ConnectionCallback[];
+  lastConnectionState: boolean; // Track last connection state to prevent duplicate notifications
 
   // Methods
   initialize: (token: string) => void;
@@ -33,6 +34,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
   let retryTimeout: NodeJS.Timeout | null = null;
   let token: string | null = null;
   let reconnecting = false;
+  let pingInterval: NodeJS.Timeout | null = null;
 
   // Calculate exponential backoff time
   const getRetryDelay = () => {
@@ -44,8 +46,45 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
     return delay + Math.random() * 1000;
   };
 
+  // Helper to update connection state with safeguards against excessive renders
+  const updateConnectionState = (connected: boolean) => {
+    const state = get();
+
+    // Only update state if it's actually changing
+    if (
+      state.connected !== connected ||
+      state.lastConnectionState !== connected
+    ) {
+      set({
+        connected,
+        lastConnectionState: connected,
+      });
+
+      // Notify connection listeners
+      // Use a stable reference to callbacks to prevent closure issues
+      const currentCallbacks = [...state.connectionCallbacks];
+
+      // Use setTimeout to break potential state update cycles
+      setTimeout(() => {
+        currentCallbacks.forEach((callback) => {
+          try {
+            callback(connected);
+          } catch (err) {
+            console.error("Error in connection callback:", err);
+          }
+        });
+      }, 0);
+    }
+  };
+
   // Create websocket with all event handlers
   const createWebSocket = (authToken: string) => {
+    // Clean up any existing resources
+    if (pingInterval) {
+      clearInterval(pingInterval);
+      pingInterval = null;
+    }
+
     // Store token for potential reconnects
     token = authToken;
 
@@ -75,25 +114,45 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
       // Update state
       set({
         socket,
-        connected: true,
         initialized: true,
       });
 
-      // Notify connection listeners
-      get().connectionCallbacks.forEach((callback) => callback(true));
+      // Update connection state (this will notify listeners if needed)
+      updateConnectionState(true);
+
+      // Setup ping to keep the connection alive
+      if (pingInterval) {
+        clearInterval(pingInterval);
+      }
+
+      pingInterval = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          // Send a simple ping message to keep the connection alive
+          try {
+            socket.send(JSON.stringify({ type: "ping" }));
+          } catch (err) {
+            console.error("Error sending ping:", err);
+          }
+        } else {
+          if (pingInterval) {
+            clearInterval(pingInterval);
+            pingInterval = null;
+          }
+        }
+      }, 20000); // Ping every 20 seconds
     };
 
     socket.onclose = (event) => {
       console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
 
-      // Update state
-      set((state) => ({
-        ...state,
-        connected: false,
-      }));
+      // Clean up ping interval
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
 
-      // Notify connection listeners
-      get().connectionCallbacks.forEach((callback) => callback(false));
+      // Update connection state (this will notify listeners if needed)
+      updateConnectionState(false);
 
       // Only attempt to reconnect if not intentionally closed and we have a token
       if (!event.wasClean && token && !reconnecting) {
@@ -141,12 +200,28 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
 
           case "chat_message":
             // Notify message listeners
-            get().messageCallbacks.forEach((callback) => callback(data));
+            get().messageCallbacks.forEach((callback) => {
+              try {
+                callback(data);
+              } catch (err) {
+                console.error("Error in message callback:", err);
+              }
+            });
             break;
 
           case "typing":
             // Notify typing listeners
-            get().typingCallbacks.forEach((callback) => callback(data));
+            get().typingCallbacks.forEach((callback) => {
+              try {
+                callback(data);
+              } catch (err) {
+                console.error("Error in typing callback:", err);
+              }
+            });
+            break;
+
+          case "pong":
+            // Ping response received, connection is alive
             break;
 
           default:
@@ -158,16 +233,6 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
       }
     };
 
-    // Setup ping to keep the connection alive
-    const pingInterval = setInterval(() => {
-      if (socket.readyState === WebSocket.OPEN) {
-        // Send a simple ping message to keep the connection alive
-        socket.send(JSON.stringify({ type: "ping" }));
-      } else {
-        clearInterval(pingInterval);
-      }
-    }, 20000); // Ping every 20 seconds
-
     return socket;
   };
 
@@ -178,6 +243,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
     messageCallbacks: [],
     typingCallbacks: [],
     connectionCallbacks: [],
+    lastConnectionState: false,
 
     initialize: (newToken: string) => {
       const { socket } = get();
@@ -205,13 +271,23 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
         retryTimeout = null;
       }
 
+      // Clear ping interval if active
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+
       // Reset token to prevent auto-reconnect
       token = null;
 
       // Close socket if open
       if (socket) {
         // Use code 1000 (normal closure) with reason
-        socket.close(1000, "Closing connection");
+        try {
+          socket.close(1000, "Closing connection");
+        } catch (err) {
+          console.error("Error closing WebSocket:", err);
+        }
       }
 
       // Reset state
@@ -219,14 +295,22 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
         socket: null,
         connected: false,
         initialized: false,
+        lastConnectionState: false,
       });
     },
 
     onMessage: (callback: MessageCallback) => {
       // Add callback to the list
-      set((state) => ({
-        messageCallbacks: [...state.messageCallbacks, callback],
-      }));
+      set((state) => {
+        // Check if callback already exists to prevent duplicates
+        if (state.messageCallbacks.includes(callback)) {
+          return state;
+        }
+
+        return {
+          messageCallbacks: [...state.messageCallbacks, callback],
+        };
+      });
 
       // Return unsubscribe function
       return () => {
@@ -240,9 +324,16 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
 
     onTyping: (callback: TypingCallback) => {
       // Add callback to the list
-      set((state) => ({
-        typingCallbacks: [...state.typingCallbacks, callback],
-      }));
+      set((state) => {
+        // Check if callback already exists to prevent duplicates
+        if (state.typingCallbacks.includes(callback)) {
+          return state;
+        }
+
+        return {
+          typingCallbacks: [...state.typingCallbacks, callback],
+        };
+      });
 
       // Return unsubscribe function
       return () => {
@@ -256,12 +347,27 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
 
     onConnectionChange: (callback: ConnectionCallback) => {
       // Add callback to the list
-      set((state) => ({
-        connectionCallbacks: [...state.connectionCallbacks, callback],
-      }));
+      set((state) => {
+        // Check if callback already exists to prevent duplicates
+        if (state.connectionCallbacks.includes(callback)) {
+          return state;
+        }
+
+        return {
+          connectionCallbacks: [...state.connectionCallbacks, callback],
+        };
+      });
 
       // Execute callback immediately with current state
-      callback(get().connected);
+      // Use setTimeout to prevent potential React render loop issues
+      const currentState = get().connected;
+      setTimeout(() => {
+        try {
+          callback(currentState);
+        } catch (err) {
+          console.error("Error in initial connection callback:", err);
+        }
+      }, 0);
 
       // Return unsubscribe function
       return () => {
@@ -282,14 +388,18 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
 
       // Only send if socket is connected
       if (socket && connected) {
-        socket.send(
-          JSON.stringify({
-            type: "typing",
-            conversationId,
-            recipientId,
-            isTyping,
-          })
-        );
+        try {
+          socket.send(
+            JSON.stringify({
+              type: "typing",
+              conversationId,
+              recipientId,
+              isTyping,
+            })
+          );
+        } catch (err) {
+          console.error("Error sending typing indicator:", err);
+        }
       }
     },
 
@@ -300,11 +410,26 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => {
       if (currentToken) {
         // Force reconnection
         console.log("Forcing reconnection...");
-        get().close(); // Close existing connection
+
+        const { socket } = get();
+        if (socket) {
+          try {
+            // Close existing connection
+            socket.close(1000, "Manual reconnection");
+          } catch (err) {
+            console.error("Error closing socket for reconnection:", err);
+          }
+        }
 
         // Small delay before reconnecting
         setTimeout(() => {
-          get().initialize(currentToken);
+          // Create new connection
+          const newSocket = createWebSocket(currentToken);
+
+          // Update state
+          set({
+            socket: newSocket,
+          });
         }, 500);
       }
     },

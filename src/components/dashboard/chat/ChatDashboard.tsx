@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Paper, Box, Typography, CircularProgress } from "@mui/material";
 import ChatSidebar from "./ChatSidebar";
 import ChatWindow from "./ChatWindow";
 import { useWebSocketStore } from "@/lib/stores/websocketStore";
 import WebSocketInitializer from "@/components/websocket/WebSocketInitializer";
-import { getCookie } from "@/lib/utils/cookies";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { useSearchParams } from "next/navigation";
 
@@ -20,15 +19,95 @@ export default function ChatDashboard({ profile, userId }: ChatDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const { connected } = useWebSocketStore();
-
+  const [connectionStatus, setConnectionStatus] = useState(true); // Optimistic initial value
   const searchParams = useSearchParams();
   const conversationIdFromUrl = searchParams.get("conversation");
 
-  // Add this effect
+  // Define callbacks with useCallback to maintain stable references
+  const handleConnectionChange = useCallback((connected: boolean) => {
+    console.log("WebSocket connection status:", connected);
+    setConnectionStatus(connected);
+  }, []);
+
+  const handleNewMessage = useCallback(
+    (message: any) => {
+      if (!message) return;
+
+      // Update conversations list if the message belongs to a visible conversation
+      setConversations((prevConversations) => {
+        return prevConversations.map((conv) => {
+          if (conv._id === message.conversationId) {
+            return {
+              ...conv,
+              latestMessage: {
+                content: message.content,
+                createdAt: message.createdAt,
+                sender: message.sender,
+              },
+              lastActivity: message.createdAt,
+              // Add unread count if the sender is not the current user
+              unreadCount:
+                message.sender !== userId
+                  ? (conv.unreadCount || 0) + 1
+                  : conv.unreadCount,
+            };
+          }
+          return conv;
+        });
+      });
+
+      // Update selected conversation if this message belongs to it
+      setSelectedConversation((prev: any) => {
+        if (prev && prev._id === message.conversationId) {
+          // Create a copy of the messages array with the new message
+          const updatedMessages = [
+            ...prev.messages,
+            {
+              sender: message.sender,
+              content: message.content,
+              images: message.images || [],
+              read: false,
+              createdAt: message.createdAt,
+              updatedAt: message.createdAt,
+            },
+          ];
+
+          // Mark as read if it's the current conversation
+          markAsRead(message.conversationId);
+
+          // Return updated conversation
+          return {
+            ...prev,
+            messages: updatedMessages,
+          };
+        }
+        return prev;
+      });
+    },
+    [userId]
+  );
+
+  // Handle typing indicator
+  const handleTypingStatus = useCallback(
+    (data: any) => {
+      if (
+        data &&
+        data.conversationId &&
+        data.senderId &&
+        selectedConversation?._id === data.conversationId
+      ) {
+        // Update typing status for the current conversation
+        console.log("Typing status:", data.isTyping);
+        // You would update your UI state here
+      }
+    },
+    [selectedConversation]
+  );
+
+  // Add this effect for reconnection handling
   useEffect(() => {
     // When reconnected, refresh conversation data
-    if (connected && selectedConversation) {
+    if (connectionStatus && selectedConversation) {
       const refreshCurrentConversation = async () => {
         try {
           const response = await axiosClient.get(
@@ -42,7 +121,7 @@ export default function ChatDashboard({ profile, userId }: ChatDashboardProps) {
 
       refreshCurrentConversation();
     }
-  }, [connected, selectedConversation?._id]);
+  }, [connectionStatus, selectedConversation?._id]);
 
   // Fetch conversations on component mount
   useEffect(() => {
@@ -117,41 +196,7 @@ export default function ChatDashboard({ profile, userId }: ChatDashboardProps) {
     };
 
     fetchConversations();
-  }, [conversationIdFromUrl]);
-
-  // Handle new message reception
-  const handleNewMessage = (message: any) => {
-    if (!message) return;
-
-    // Update conversations list if the message belongs to a visible conversation
-    setConversations((prevConversations) => {
-      return prevConversations.map((conv) => {
-        if (conv._id === message.conversationId) {
-          return {
-            ...conv,
-            latestMessage: {
-              content: message.content,
-              createdAt: message.createdAt,
-              sender: message.sender,
-            },
-            lastActivity: message.createdAt,
-            // Add unread count if the sender is not the current user
-            unreadCount:
-              message.sender !== userId
-                ? (conv.unreadCount || 0) + 1
-                : conv.unreadCount,
-          };
-        }
-        return conv;
-      });
-    });
-
-    // Update selected conversation if this message belongs to it
-    if (selectedConversation?._id === message.conversationId) {
-      // Mark as read if it's the current conversation
-      markAsRead(message.conversationId);
-    }
-  };
+  }, [conversationIdFromUrl, userId]);
 
   // Handle selecting a conversation
   const handleSelectConversation = async (conversation: any) => {
@@ -297,10 +342,14 @@ export default function ChatDashboard({ profile, userId }: ChatDashboardProps) {
         overflow: "hidden",
       }}
     >
-      <WebSocketInitializer onMessage={handleNewMessage} />
+      <WebSocketInitializer
+        onMessage={handleNewMessage}
+        onTyping={handleTypingStatus}
+        onConnectionChange={handleConnectionChange}
+      />
 
       {/* Connection status indicator */}
-      {!connected && (
+      {!connectionStatus && (
         <Box
           sx={{
             bgcolor: "warning.light",

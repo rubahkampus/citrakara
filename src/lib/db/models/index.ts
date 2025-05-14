@@ -42,6 +42,7 @@ export {
   Tos,
   Gallery,
   GalleryPost,
+  User
 };
 
 // Export a function to ensure all models are registered

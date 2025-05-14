@@ -1,4 +1,6 @@
 // components/dashboard/wallet/WalletDashboardPage.tsx
+'use client'
+
 import React from "react";
 import {
   Box,
@@ -145,7 +147,7 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
             sx={{ mt: 3 }}
             justifyContent="center"
           >
-            <Button
+            {/* <Button
               variant="contained"
               disabled
               startIcon={<AddCircle />}
@@ -173,7 +175,7 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
               }}
             >
               Withdraw
-            </Button>
+            </Button> */}
           </Stack>
         </CardContent>
       </Card>

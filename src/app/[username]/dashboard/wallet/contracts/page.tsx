@@ -31,6 +31,8 @@ export default async function WalletClaimableContractsPage({
     return <Alert severity="error">Failed to load contract data</Alert>;
   }
 
+  console.log(contracts)
+
   // Filter for contracts that have claimable funds
   const asArtist = contracts.asArtist.filter(
     (contract) =>
@@ -59,6 +61,9 @@ export default async function WalletClaimableContractsPage({
   // Serialize for client components
   const serializedAsArtist = JSON.parse(JSON.stringify(asArtist));
   const serializedAsClient = JSON.parse(JSON.stringify(asClient));
+
+  console.log(serializedAsArtist)
+  console.log(serializedAsClient)
 
   return (
     <Box>

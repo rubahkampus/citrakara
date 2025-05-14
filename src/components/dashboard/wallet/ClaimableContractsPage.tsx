@@ -1,4 +1,6 @@
 // components/dashboard/wallet/ClaimableContractsPage.tsx
+'use client'
+
 import React, { useState, useMemo } from "react";
 import {
   Box,
@@ -48,7 +50,7 @@ import {
   Person,
   Launch,
 } from "@mui/icons-material";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import Link from "next/link";
 

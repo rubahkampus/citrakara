@@ -95,6 +95,23 @@ export default function ProposalDetailsPage({
       setExpandedSection(isExpanded ? section : false);
     };
 
+  // Check if the proposal is expired
+  const isExpired = () => {
+    if (!proposal.expiresAt) return false;
+
+    // If status is paid or rejectedArtist, never consider expired
+    if (proposal.status === "paid" || proposal.status === "rejectedArtist") {
+      return false;
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(proposal.expiresAt);
+
+    return now > expiresAt;
+  };
+
+  proposal.status = isExpired() ? "expired" : proposal.status;
+
   // Status display mapping
   const statusMap = {
     pendingArtist: {
@@ -191,15 +208,18 @@ export default function ProposalDetailsPage({
 
   // Determine if user can respond based on role and status
   const canArtistRespond =
+    !isExpired() &&
     role === "artist" &&
     ["pendingArtist", "rejectedClient"].includes(proposal.status);
 
   const canClientRespond =
+    !isExpired() &&
     role === "client" &&
     ["pendingClient", "accepted", "pendingArtist"].includes(proposal.status);
 
   // Determine if user can edit the proposal
   const canEditProposal =
+    !isExpired() &&
     role === "client" &&
     !["rejectedArtist", "expired", "accepted", "paid"].includes(
       proposal.status
@@ -713,12 +733,16 @@ export default function ProposalDetailsPage({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          {statusMap[proposal.status]?.icon}
+          {statusMap[isExpired() ? "expired" : proposal.status]?.icon}
           <Typography variant="h5" fontWeight="medium" sx={{ ml: 1 }}>
-            {statusMap[proposal.status]?.text || "Status Tidak Dikenal"}
+            {statusMap[isExpired() ? "expired" : proposal.status]?.text ||
+              "Status Tidak Dikenal"}
           </Typography>
           <Chip
-            label={statusMap[proposal.status]?.text || "Tidak Diketahui"}
+            label={
+              statusMap[isExpired() ? "expired" : proposal.status]?.text ||
+              "Tidak Diketahui"
+            }
             color={
               proposal.status.includes("reject")
                 ? "error"
@@ -731,7 +755,7 @@ export default function ProposalDetailsPage({
         </Box>
 
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-          {statusMap[proposal.status]?.description}
+          {statusMap[isExpired() ? "expired" : proposal.status]?.description}
         </Typography>
 
         <Divider sx={{ my: 2 }} />
@@ -866,7 +890,7 @@ export default function ProposalDetailsPage({
               : "info"
           }
           sx={{ mb: 4 }}
-          icon={statusMap[proposal.status]?.icon}
+          icon={statusMap[isExpired() ? "expired" : proposal.status]?.icon}
         >
           <Typography variant="body1">
             {proposal.status === "accepted"
@@ -895,7 +919,7 @@ export default function ProposalDetailsPage({
               variant="outlined"
               color="error"
               onClick={() => handleClientSubmit({ cancel: true })}
-              disabled={loading}
+              disabled={loading || isExpired()}
               startIcon={<CancelIcon />}
               sx={{ borderRadius: 2 }}
             >

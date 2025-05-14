@@ -12,10 +12,13 @@ import {
   adjustSlotsUsed,
   addQuestion,
   removeQuestion,
+  findBookmarkedListingsWithArtist,
+  searchListingsEnhanced,
   CommissionListingPayload,
 } from "@/lib/db/repositories/commissionListing.repository";
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 import { getUserDefaultTos } from "./tos.service";
+import { Types } from "mongoose";
 
 // Define ID type to match the model
 type ID = number;
@@ -637,4 +640,26 @@ export async function removeQuestionFromListing(
   }
 
   return removeQuestion(listingId, target);
+}
+
+export async function getBookmarkedCommissionsWithArtist(
+  commissionIds: string[]
+) {
+  if (!commissionIds.length) return [];
+
+  const objectIds = commissionIds.map((id) => new Types.ObjectId(id));
+  return findBookmarkedListingsWithArtist(objectIds);
+}
+
+export async function searchCommissionListings(params: {
+  label?: string;
+  tags?: string[];
+  artistId?: string;
+  priceRange?: { min?: number; max?: number };
+  type?: "template" | "custom";
+  flow?: "standard" | "milestone";
+  skip?: number;
+  limit?: number;
+}) {
+  return searchListingsEnhanced(params);
 }

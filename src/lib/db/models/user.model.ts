@@ -31,6 +31,10 @@ export interface IUser extends Document {
   tosEntries: ObjectId[]; // reference to all their TOS documents
   wallet: ObjectId; // reference to user's wallet document
 
+  // Bookmarks
+  commissionBookmarks: ObjectId[]; // reference to bookmarked commission listings
+  artistBookmarks: ObjectId[]; // reference to bookmarked artists
+
   // Stats (read-only)
   rating: { avg: number; count: number };
   completedOrders: number;
@@ -82,6 +86,14 @@ const UserSchema = new Schema<IUser>(
     tosEntries: [{ type: Schema.Types.ObjectId, ref: "Tos", default: [] }],
     wallet: { type: Schema.Types.ObjectId, ref: "Wallet", required: true },
 
+    // Bookmarks
+    commissionBookmarks: [
+      { type: Schema.Types.ObjectId, ref: "CommissionListing", default: [] },
+    ],
+    artistBookmarks: [
+      { type: Schema.Types.ObjectId, ref: "User", default: [] },
+    ],
+
     rating: {
       avg: { type: Number, default: 0 },
       count: { type: Number, default: 0 },
@@ -102,5 +114,7 @@ UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ username: 1 }, { unique: true });
 UserSchema.index({ roles: 1 });
 UserSchema.index({ tags: 1 });
+UserSchema.index({ commissionBookmarks: 1 });
+UserSchema.index({ artistBookmarks: 1 });
 
 export default models.User || model<IUser>("User", UserSchema);

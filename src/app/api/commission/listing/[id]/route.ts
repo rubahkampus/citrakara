@@ -32,7 +32,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const listingId = params.id;
+    const param = await params
+    const listingId = param.id;
     const contentType = req.headers.get("content-type") || "";
 
     return withAuth(async (session) => {

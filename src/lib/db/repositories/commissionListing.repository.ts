@@ -196,9 +196,12 @@ export async function updateCommissionListingComponents(
   if (updates.milestones) {
     // Fetch current milestones to preserve IDs
     const listing = await CommissionListing.findById(id).lean();
-    if (listing && 'milestones' in listing) {
+    if (listing && "milestones" in listing) {
       const currentMilestoneMap = new Map(
-        (listing.milestones as { title: string; id: number }[]).map((m) => [m.title, m.id])
+        (listing.milestones as { title: string; id: number }[]).map((m) => [
+          m.title,
+          m.id,
+        ])
       );
 
       processedUpdates.milestones = updates.milestones.map((m, idx) => ({
@@ -304,8 +307,8 @@ export async function addQuestion(
     newId =
       Math.max(
         0,
-        ...listing.subjectOptions[subjectIndex].questions.map((q: { id: number } | string) =>
-          typeof q === "string" ? 0 : q.id
+        ...listing.subjectOptions[subjectIndex].questions.map(
+          (q: { id: number } | string) => (typeof q === "string" ? 0 : q.id)
         )
       ) + 1;
 
@@ -352,7 +355,8 @@ export async function removeQuestion(
     listing.subjectOptions[subjectIndex].questions = listing.subjectOptions[
       subjectIndex
     ].questions.filter(
-      (q: { id: number } | string) => typeof q === "string" || q.id !== target.questionId
+      (q: { id: number } | string) =>
+        typeof q === "string" || q.id !== target.questionId
     );
 
     return listing.save({ session });
@@ -361,3 +365,79 @@ export async function removeQuestion(
 
 // Similar helper functions could be added for managing other components with IDs
 // such as optionGroups, selections, addons, etc.
+
+/** Find bookmarked listings and populate artist info */
+export async function findBookmarkedListingsWithArtist(
+  listingIds: Types.ObjectId[]
+) {
+  await connectDB();
+
+  return CommissionListing.find({
+    _id: { $in: listingIds },
+    isDeleted: false,
+  })
+    .populate({
+      path: "artistId",
+      select: "username displayName profilePicture",
+    })
+    .lean();
+}
+
+/** Enhanced search with more filtering options */
+export async function searchListingsEnhanced({
+  label,
+  tags,
+  artistId,
+  priceRange,
+  type,
+  flow,
+  skip = 0,
+  limit = 20,
+}: {
+  label?: string;
+  tags?: string[];
+  artistId?: string;
+  priceRange?: { min?: number; max?: number };
+  type?: "template" | "custom";
+  flow?: "standard" | "milestone";
+  skip?: number;
+  limit?: number;
+}) {
+  await connectDB();
+
+  const filter: Record<string, any> = {
+    isActive: true,
+    isDeleted: false,
+  };
+
+  if (artistId) filter.artistId = artistId;
+  if (tags?.length) filter.tags = { $in: tags };
+  if (label) filter.$text = { $search: label };
+  if (type) filter.type = type;
+  if (flow) filter.flow = flow;
+
+  // Price range filtering
+  if (priceRange) {
+    if (priceRange.min !== undefined) {
+      filter["price.min"] = { $gte: priceRange.min };
+    }
+    if (priceRange.max !== undefined) {
+      filter["price.max"] = { $lte: priceRange.max };
+    }
+  }
+
+  // Execute queries in parallel for efficiency
+  const [items, total] = await Promise.all([
+    CommissionListing.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .populate({
+        path: "artistId",
+        select: "username displayName profilePicture",
+      })
+      .lean(),
+    CommissionListing.countDocuments(filter),
+  ]);
+
+  return { items, total };
+}

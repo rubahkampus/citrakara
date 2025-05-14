@@ -6,6 +6,15 @@ import {
   updateUserByUsername,
   isAdminById as repoIsAdminById,
   isAdminByUsername as repoIsAdminByUsername,
+  bookmarkArtist,
+  unbookmarkArtist,
+  bookmarkCommission,
+  unbookmarkCommission,
+  getBookmarkedArtists,
+  getBookmarkedCommissions,
+  hasBookmarkedArtist,
+  hasBookmarkedCommission,
+  searchArtists,
 } from "@/lib/db/repositories/user.repository";
 import { uploadFileToR2 } from "@/lib/utils/cloudflare";
 import { Types } from "mongoose";
@@ -113,4 +122,99 @@ export function requireAdmin(roles: string[] = ["admin"]) {
     if (!isAdmin) throw new HttpError("Forbidden: Admins only", 403);
     next();
   };
+}
+
+export async function toggleArtistBookmark(
+  userId: string,
+  artistId: string,
+  action: "bookmark" | "unbookmark"
+) {
+  if (!userId || !artistId) {
+    throw new HttpError("Missing required parameters", 400);
+  }
+
+  if (userId === artistId) {
+    throw new HttpError("You cannot bookmark yourself", 400);
+  }
+
+  const isBookmarked = await hasBookmarkedArtist(userId, artistId);
+
+  if (action === "bookmark" && isBookmarked) {
+    return { message: "Artist already bookmarked", isBookmarked: true };
+  } else if (action === "unbookmark" && !isBookmarked) {
+    return { message: "Artist not bookmarked", isBookmarked: false };
+  }
+
+  if (action === "bookmark") {
+    await bookmarkArtist(userId, artistId);
+    return { message: "Artist bookmarked successfully", isBookmarked: true };
+  } else {
+    await unbookmarkArtist(userId, artistId);
+    return { message: "Artist unbookmarked successfully", isBookmarked: false };
+  }
+}
+
+export async function toggleCommissionBookmark(
+  userId: string,
+  commissionId: string,
+  action: "bookmark" | "unbookmark"
+) {
+  if (!userId || !commissionId) {
+    throw new HttpError("Missing required parameters", 400);
+  }
+
+  const isBookmarked = await hasBookmarkedCommission(userId, commissionId);
+
+  if (action === "bookmark" && isBookmarked) {
+    return { message: "Commission already bookmarked", isBookmarked: true };
+  } else if (action === "unbookmark" && !isBookmarked) {
+    return { message: "Commission not bookmarked", isBookmarked: false };
+  }
+
+  if (action === "bookmark") {
+    await bookmarkCommission(userId, commissionId);
+    return {
+      message: "Commission bookmarked successfully",
+      isBookmarked: true,
+    };
+  } else {
+    await unbookmarkCommission(userId, commissionId);
+    return {
+      message: "Commission unbookmarked successfully",
+      isBookmarked: false,
+    };
+  }
+}
+
+export async function getUserBookmarkedArtists(userId: string) {
+  return getBookmarkedArtists(userId);
+}
+
+export async function getUserBookmarkedCommissions(userId: string) {
+  return getBookmarkedCommissions(userId);
+}
+
+export async function getArtistBookmarkStatus(
+  userId: string,
+  artistId: string
+) {
+  if (!userId || !artistId) return false;
+  return hasBookmarkedArtist(userId, artistId);
+}
+
+export async function getCommissionBookmarkStatus(
+  userId: string,
+  commissionId: string
+) {
+  if (!userId || !commissionId) return false;
+  return hasBookmarkedCommission(userId, commissionId);
+}
+
+export async function searchArtistsService(params: {
+  query?: string;
+  tags?: string[];
+  limit?: number;
+  skip?: number;
+}) {
+  return searchArtists(params);
 }

@@ -12,10 +12,14 @@ import {
   Tooltip,
   CardHeader,
   CardActionArea,
+  Paper,
+  alpha,
 } from "@mui/material";
 import { IProposal } from "@/lib/db/models/proposal.model";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import PriceCheckIcon from "@mui/icons-material/PriceCheck";
+import EventBusyIcon from "@mui/icons-material/EventBusy";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 interface ProposalListingItemProps {
   proposal: IProposal;
@@ -33,8 +37,8 @@ const statusColors = {
 } as const;
 
 const statusLabels = {
-  pendingArtist: "Menunggu Tanggapan Seniman",
-  pendingClient: "Menunggu Tanggapan Klien",
+  pendingArtist: "Menunggu Seniman",
+  pendingClient: "Menunggu Klien",
   accepted: "Diterima",
   rejectedArtist: "Ditolak oleh Seniman",
   rejectedClient: "Ditolak oleh Klien",
@@ -68,33 +72,65 @@ export default function ProposalListingItem({
     const expiresAt = new Date(proposal.expiresAt);
     const hoursLeft = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    return hoursLeft < 24;
+    return hoursLeft < 24 && hoursLeft > 0;
   };
 
+  // Check if the proposal is expired
+  const isExpired = () => {
+    if (!proposal.expiresAt) return false;
+
+    const now = new Date();
+    const expiresAt = new Date(proposal.expiresAt);
+
+    return now > expiresAt;
+  };
+
+  // Determine the current status, checking for expiration first
+  const currentStatus = isExpired() ? "expired" : proposal.status;
+
   const handleCardClick = () => {
-    if (onView) {
+    if (onView && !isExpired()) {
       onView(proposal._id.toString());
     }
   };
 
   return (
     <Card
-      elevation={3}
+      elevation={isExpired() ? 1 : 3}
       sx={{
         transition: "all 0.3s ease",
         "&:hover": {
-          transform: "translateY(-6px)",
-          boxShadow: 6,
+          transform: isExpired() ? "none" : "translateY(-6px)",
+          boxShadow: isExpired() ? 1 : 6,
         },
         height: "100%",
         display: "flex",
         flexDirection: "column",
         borderRadius: "12px",
         overflow: "hidden",
+        opacity: isExpired() ? 0.7 : 1,
+        filter: isExpired() ? "grayscale(0.8)" : "none",
+        position: "relative",
       }}
     >
+      {isExpired() && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.03)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
       <CardActionArea
         onClick={handleCardClick}
+        disabled={isExpired()}
         sx={{
           height: "100%",
           display: "flex",
@@ -108,8 +144,8 @@ export default function ProposalListingItem({
             pb: 1,
             backgroundColor: (theme) =>
               theme.palette.mode === "dark"
-                ? "rgba(255, 255, 255, 0.05)"
-                : "rgba(0, 0, 0, 0.02)",
+                ? alpha(theme.palette.primary.main, 0.1)
+                : alpha(theme.palette.primary.main, 0.05),
           }}
           title={
             <Typography
@@ -128,15 +164,19 @@ export default function ProposalListingItem({
             </Typography>
           }
           action={
-            <Tooltip title={statusLabels[proposal.status]}>
+            <Tooltip title={statusLabels[currentStatus]}>
               <Chip
-                label={statusLabels[proposal.status]}
-                color={statusColors[proposal.status]}
+                icon={
+                  currentStatus === "expired" ? <EventBusyIcon /> : undefined
+                }
+                label={statusLabels[currentStatus]}
+                color={statusColors[currentStatus]}
                 size="small"
                 sx={{
                   fontWeight: 500,
                   borderRadius: "6px",
                   px: 0.5,
+                  ml: 1,
                 }}
               />
             </Tooltip>
@@ -148,127 +188,197 @@ export default function ProposalListingItem({
             flexGrow: 1,
             display: "flex",
             flexDirection: "column",
-            p: { xs: 1.5, sm: 2 },
+            p: { xs: 2, sm: 2.5 },
           }}
         >
-          <Stack spacing={2} sx={{ height: "100%" }}>
+          <Stack spacing={2.5} sx={{ height: "100%" }}>
             {/* Dates Section */}
             <Box>
-              {/* Jendela Ketersediaan */}
-              <Box sx={{ mb: 2 }}>
+              {/* Jendela Estimasi */}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  mb: 2,
+                  borderRadius: "8px",
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? alpha(theme.palette.background.paper, 0.6)
+                      : alpha(theme.palette.background.paper, 0.8),
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? alpha(theme.palette.divider, 0.3)
+                      : alpha(theme.palette.divider, 0.5),
+                }}
+              >
                 <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                  <AccessTimeIcon
+                  <CalendarMonthIcon
                     fontSize="small"
-                    sx={{ mr: 1, color: "text.secondary" }}
+                    sx={{ mr: 1, color: "primary.main" }}
                   />
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    fontWeight={500}
+                    color="primary.main"
+                    fontWeight={600}
                   >
-                    Jendela Ketersediaan
+                    Estimasi Pengerjaan
                   </Typography>
                 </Box>
-                <Typography
-                  variant="body2"
-                  sx={{ display: "flex", justifyContent: "space-between" }}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mt: 1,
+                  }}
                 >
-                  <span>
-                    Dari:{" "}
-                    <Box component="span" sx={{ fontWeight: 500 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Tercepat
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
                       {formatDate(proposal.availability.earliestDate)}
-                    </Box>
-                  </span>
-                  <span>
-                    Sampai:{" "}
-                    <Box component="span" sx={{ fontWeight: 500 }}>
+                    </Typography>
+                  </Box>
+                  <Divider orientation="vertical" flexItem sx={{ mx: 2 }} />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Terlambat
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
                       {formatDate(proposal.availability.latestDate)}
-                    </Box>
-                  </span>
-                </Typography>
-              </Box>
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
 
               {/* Tenggat Waktu */}
-              <Box
+              <Paper
+                elevation={0}
                 sx={{
-                  p: 1,
-                  borderRadius: "6px",
+                  p: 1.5,
+                  borderRadius: "8px",
                   backgroundColor: (theme) =>
                     theme.palette.mode === "dark"
-                      ? "rgba(0, 127, 255, 0.08)"
-                      : "rgba(0, 127, 255, 0.05)",
+                      ? alpha(theme.palette.primary.main, 0.1)
+                      : alpha(theme.palette.primary.main, 0.05),
                   mb: 2,
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    alpha(theme.palette.primary.main, 0.2),
                 }}
               >
-                <Typography
-                  variant="body2"
-                  fontWeight={600}
-                  color="primary"
-                  sx={{ mb: 0.5 }}
-                >
-                  Tenggat Waktu
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+                  <AccessTimeIcon
+                    fontSize="small"
+                    sx={{ mr: 1, color: "primary.main" }}
+                  />
+                  <Typography
+                    variant="body2"
+                    fontWeight={600}
+                    color="primary.main"
+                  >
+                    Tenggat Waktu
+                  </Typography>
+                </Box>
                 <Typography variant="body2" fontWeight={500}>
                   {formatDate(proposal.deadline)}
                 </Typography>
-              </Box>
+              </Paper>
 
               {/* Pemberitahuan Kedaluwarsa */}
-              {proposal.expiresAt && (
-                <Typography
-                  variant="body2"
-                  color="error"
+              {!isExpired() && proposal.status !== 'rejectedArtist' && proposal.status !== 'paid' && proposal.expiresAt && (
+                <Paper
+                  elevation={0}
                   sx={{
-                    fontWeight: isExpiringSoon() ? 600 : 400,
-                    display: "flex",
-                    alignItems: "center",
-                    backgroundColor: isExpiringSoon()
-                      ? "rgba(211, 47, 47, 0.08)"
-                      : "transparent",
-                    p: isExpiringSoon() ? 0.75 : 0,
-                    borderRadius: isExpiringSoon() ? "6px" : 0,
+                    p: 1.5,
+                    borderRadius: "8px",
+                    backgroundColor: (theme) =>
+                      isExpired()
+                        ? alpha(theme.palette.grey[500], 0.1)
+                        : isExpiringSoon()
+                        ? alpha(theme.palette.error.main, 0.08)
+                        : alpha(theme.palette.warning.main, 0.08),
+                    border: "1px solid",
+                    borderColor: (theme) =>
+                      isExpired()
+                        ? alpha(theme.palette.grey[500], 0.3)
+                        : isExpiringSoon()
+                        ? alpha(theme.palette.error.main, 0.3)
+                        : alpha(theme.palette.warning.main, 0.3),
                   }}
                 >
-                  {isExpiringSoon() && "⚠️ "}
-                  Penawaran berakhir:{" "}
-                  {new Date(proposal.expiresAt).toLocaleString()}
-                </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                    <EventBusyIcon
+                      fontSize="small"
+                      sx={{
+                        mr: 1,
+                        color: isExpired()
+                          ? "text.secondary"
+                          : isExpiringSoon()
+                          ? "error.main"
+                          : "warning.main",
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        color: isExpired()
+                          ? "text.secondary"
+                          : isExpiringSoon()
+                          ? "error.main"
+                          : "warning.main",
+                      }}
+                    >
+                      {isExpired()
+                        ? "Penawaran telah kedaluwarsa"
+                        : isExpiringSoon()
+                        ? "⚠️ Penawaran akan segera berakhir"
+                        : "Waktu penawaran"}
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    fontWeight={500}
+                    sx={{
+                      mt: 0.5,
+                      color: isExpired() ? "text.secondary" : "text.primary",
+                    }}
+                  >
+                    {new Date(proposal.expiresAt).toLocaleString()}
+                  </Typography>
+                </Paper>
               )}
             </Box>
 
-            <Divider
-              sx={{
-                opacity: 0.6,
-                width: "100%",
-                margin: "0 auto",
-              }}
-            />
+            <Divider sx={{ width: "100%", margin: "0 auto" }} />
 
             {/* Price breakdown */}
             <Box sx={{ flexGrow: 1 }}>
-              <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", mb: 1.5 }}>
                 <PriceCheckIcon
                   fontSize="small"
-                  sx={{ mr: 1, color: "text.secondary" }}
+                  sx={{ mr: 1, color: "primary.main" }}
                 />
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  fontWeight={500}
+                  color="primary.main"
+                  fontWeight={600}
                 >
                   Rincian Harga
                 </Typography>
               </Box>
-              <Stack spacing={1}>
+              <Stack spacing={1.5}>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography variant="body2">Harga Dasar:</Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" fontWeight={500}>
                     {formatCurrency(proposal.calculatedPrice.base)}
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography variant="body2">Opsi:</Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" fontWeight={500}>
                     {formatCurrency(proposal.calculatedPrice.optionGroups)}
                   </Typography>
                 </Box>
@@ -276,8 +386,8 @@ export default function ProposalListingItem({
                   <Box
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
-                    <Typography variant="body2">Add-on:</Typography>
-                    <Typography variant="body2">
+                    <Typography variant="body2">Tambahan:</Typography>
+                    <Typography variant="body2" fontWeight={500}>
                       {formatCurrency(proposal.calculatedPrice.addons)}
                     </Typography>
                   </Box>
@@ -287,9 +397,13 @@ export default function ProposalListingItem({
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
                     <Typography variant="body2" color="warning.main">
-                      Biaya Kilat:
+                      Pengerjaan Cepat:
                     </Typography>
-                    <Typography variant="body2" color="warning.main">
+                    <Typography
+                      variant="body2"
+                      color="warning.main"
+                      fontWeight={500}
+                    >
                       {formatCurrency(proposal.calculatedPrice.rush)}
                     </Typography>
                   </Box>
@@ -299,9 +413,13 @@ export default function ProposalListingItem({
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
                     <Typography variant="body2" color="success.main">
-                      Diskon:
+                      Diskon Seniman:
                     </Typography>
-                    <Typography variant="body2" color="success.main">
+                    <Typography
+                      variant="body2"
+                      color="success.main"
+                      fontWeight={500}
+                    >
                       -{formatCurrency(proposal.calculatedPrice.discount)}
                     </Typography>
                   </Box>
@@ -311,24 +429,32 @@ export default function ProposalListingItem({
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
                     <Typography variant="body2" color="error.main">
-                      Biaya Tambahan:
+                      Tambahan Seniman:
                     </Typography>
-                    <Typography variant="body2" color="error.main">
+                    <Typography
+                      variant="body2"
+                      color="error.main"
+                      fontWeight={500}
+                    >
                       +{formatCurrency(proposal.calculatedPrice.surcharge)}
                     </Typography>
                   </Box>
                 )}
                 <Divider sx={{ opacity: 0.6 }} />
-                <Box
+                <Paper
+                  elevation={0}
                   sx={{
                     display: "flex",
                     justifyContent: "space-between",
                     backgroundColor: (theme) =>
                       theme.palette.mode === "dark"
-                        ? "rgba(255, 255, 255, 0.05)"
-                        : "rgba(0, 0, 0, 0.03)",
-                    p: 1,
-                    borderRadius: "6px",
+                        ? alpha(theme.palette.primary.main, 0.1)
+                        : alpha(theme.palette.primary.main, 0.05),
+                    p: 1.5,
+                    borderRadius: "8px",
+                    border: "1px solid",
+                    borderColor: (theme) =>
+                      alpha(theme.palette.primary.main, 0.2),
                   }}
                 >
                   <Typography variant="subtitle1" fontWeight="bold">
@@ -341,7 +467,7 @@ export default function ProposalListingItem({
                   >
                     {formatCurrency(proposal.calculatedPrice.total)}
                   </Typography>
-                </Box>
+                </Paper>
               </Stack>
             </Box>
           </Stack>

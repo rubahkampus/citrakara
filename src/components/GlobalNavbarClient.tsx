@@ -114,7 +114,7 @@ export default function GlobalNavbarClient({ session }: Props) {
           </Link>
 
           {/* Center nav */}
-          {!isMobile && (
+          {/* {!isMobile && (
             <Stack
               direction="row"
               spacing={1}
@@ -141,7 +141,7 @@ export default function GlobalNavbarClient({ session }: Props) {
                 active={pathname === "/how-it-works"}
               />
             </Stack>
-          )}
+          )} */}
 
           {/* Right controls */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -178,9 +178,9 @@ export default function GlobalNavbarClient({ session }: Props) {
           transformOrigin={{ vertical: "top", horizontal: "right" }}
           PaperProps={{ sx: { width: "100%", maxWidth: 300, mt: 5 } }}
         >
-          <MenuItem
+          {/* <MenuItem
             onClick={() => {
-              router.push("/explore");
+              router.push("/");
               setMobileMenuOpen(false);
             }}
           >
@@ -188,7 +188,7 @@ export default function GlobalNavbarClient({ session }: Props) {
           </MenuItem>
           <MenuItem
             onClick={() => {
-              router.push("/artists");
+              router.push("/search/artists");
               setMobileMenuOpen(false);
             }}
           >
@@ -196,12 +196,12 @@ export default function GlobalNavbarClient({ session }: Props) {
           </MenuItem>
           <MenuItem
             onClick={() => {
-              router.push("/commissions");
+              router.push("/search/commissions");
               setMobileMenuOpen(false);
             }}
           >
             Commissions
-          </MenuItem>
+          </MenuItem> */}
           <MenuItem
             onClick={() => {
               router.push("/how-it-works");

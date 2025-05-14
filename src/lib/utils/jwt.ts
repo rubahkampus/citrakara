@@ -19,3 +19,12 @@ export function verifyAccessToken(token: string) {
 export function verifyRefreshToken(token: string) {
   return jwt.verify(token, REFRESH_TOKEN_SECRET);
 }
+
+export function generateWebSocketToken(userId: string, username: string): string {
+  // Using a shorter expiration time as these are just for WebSocket auth
+  return jwt.sign(
+    { id: userId, username },
+    ACCESS_TOKEN_SECRET,
+    { expiresIn: '24h' }
+  );
+}

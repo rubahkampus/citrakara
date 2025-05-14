@@ -15,7 +15,8 @@ export async function GET(
   try {
     return await withAuth(async (session) => {
       const userId = session.id;
-      const conversationId = params.id;
+      const param = await params
+      const conversationId = param.id;
 
       // Check if user is part of this conversation
       const isParticipant = await isUserInConversation(userId, conversationId);

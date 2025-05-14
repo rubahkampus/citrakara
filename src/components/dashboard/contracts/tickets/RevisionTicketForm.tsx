@@ -240,12 +240,12 @@ export default function RevisionTicketForm({
       }, 1500);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(
-          err.response.data.error || "Failed to create revision request"
-        );
+        setError(err.response.data.error || "Gagal membuat permintaan revisi");
       } else {
         setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan yang tidak diketahui"
         );
       }
     } finally {
@@ -253,10 +253,10 @@ export default function RevisionTicketForm({
     }
   };
 
-  // Check if revisions are allowed
+  // Periksa apakah revisi diperbolehkan
   if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
     return (
-      <Alert severity="error">This contract does not allow revisions.</Alert>
+      <Alert severity="error">Kontrak ini tidak mengizinkan revisi.</Alert>
     );
   }
 
@@ -282,7 +282,7 @@ export default function RevisionTicketForm({
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Revision request submitted successfully! Redirecting...
+          Permintaan revisi berhasil diajukan! Mengalihkan...
         </Alert>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -294,14 +294,14 @@ export default function RevisionTicketForm({
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Revision Policy
+              Kebijakan Revisi
             </Typography>
 
             {contract.proposalSnapshot.listingSnapshot.revisions?.type ===
               "standard" && (
               <Box sx={{ p: 2, bgcolor: "background.paper", borderRadius: 1 }}>
                 <Typography variant="body1" gutterBottom>
-                  Standard revision policy applies to the entire contract.
+                  Kebijakan revisi standar berlaku untuk seluruh kontrak.
                 </Typography>
                 <Typography
                   variant="body2"
@@ -311,11 +311,12 @@ export default function RevisionTicketForm({
                       : "text.secondary"
                   }
                 >
-                  Free revisions remaining: <b>{revisionInfo.remainingFree}</b>
+                  Sisa revisi gratis: <b>{revisionInfo.remainingFree}</b>
                 </Typography>
                 {revisionInfo.isPaid && (
                   <Typography variant="body2" color="warning.main">
-                    Paid revisions available for <b>{revisionInfo.fee}</b> each.
+                    Revisi berbayar tersedia seharga <b>{revisionInfo.fee}</b>{" "}
+                    per revisi.
                   </Typography>
                 )}
               </Box>
@@ -325,7 +326,7 @@ export default function RevisionTicketForm({
               "milestone" && (
               <Box sx={{ p: 2, bgcolor: "background.paper", borderRadius: 1 }}>
                 <Typography variant="body1" gutterBottom>
-                  Each milestone has its own revision policy.
+                  Setiap milestone memiliki kebijakan revisinya sendiri.
                 </Typography>
                 {watchMilestoneIdx !== null && (
                   <>
@@ -337,13 +338,12 @@ export default function RevisionTicketForm({
                           : "text.secondary"
                       }
                     >
-                      Free revisions remaining:{" "}
-                      <b>{revisionInfo.remainingFree}</b>
+                      Sisa revisi gratis: <b>{revisionInfo.remainingFree}</b>
                     </Typography>
                     {revisionInfo.isPaid && (
                       <Typography variant="body2" color="warning.main">
-                        Paid revisions available for <b>{revisionInfo.fee}</b>{" "}
-                        each.
+                        Revisi berbayar tersedia seharga{" "}
+                        <b>{revisionInfo.fee}</b> per revisi.
                       </Typography>
                     )}
                   </>
@@ -357,7 +357,7 @@ export default function RevisionTicketForm({
             "milestone" && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                Current Milestone
+                Milestone Saat Ini
               </Typography>
               <Box
                 sx={{
@@ -374,7 +374,7 @@ export default function RevisionTicketForm({
                 {isSubmitting ? (
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <CircularProgress size={20} sx={{ mr: 2 }} />
-                    <Typography>Loading milestone data...</Typography>
+                    <Typography>Memuat data milestone...</Typography>
                   </Box>
                 ) : contract.currentMilestoneIndex !== undefined &&
                   contract.milestones &&
@@ -386,17 +386,17 @@ export default function RevisionTicketForm({
                       color="primary"
                       variant="body2"
                     >
-                      (Current)
+                      (Saat Ini)
                     </Typography>
                   </Typography>
                 ) : (
                   <Typography color="text.secondary">
-                    No active milestone found
+                    Tidak ada milestone aktif ditemukan
                   </Typography>
                 )}
               </Box>
 
-              {/* Hidden field for the form value */}
+              {/* Kolom tersembunyi untuk nilai form */}
               <Controller
                 name="milestoneIdx"
                 control={control}
@@ -414,32 +414,35 @@ export default function RevisionTicketForm({
 
           <Divider sx={{ mb: 3 }} />
 
-          {/* Revision request details */}
+          {/* Detail permintaan revisi */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Revision Request Details
+              Detail Permintaan Revisi
             </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Please describe the changes you need as clearly as possible.
+              Harap jelaskan perubahan yang Anda butuhkan dengan jelas.
             </Typography>
 
             {!revisionInfo.isFree && revisionInfo.isPaid && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 <Typography variant="body2" fontWeight="bold">
-                  This will be a paid revision.
+                  Ini akan menjadi revisi berbayar.
                 </Typography>
-                <Typography variant="body2">Fee: {revisionInfo.fee}</Typography>
                 <Typography variant="body2">
-                  You'll need to approve and pay this fee after the artist
-                  accepts the revision request.
+                  Biaya: {revisionInfo.fee}
+                </Typography>
+                <Typography variant="body2">
+                  Anda harus menyetujui dan membayar biaya ini setelah seniman
+                  menerima permintaan revisi.
                 </Typography>
               </Alert>
             )}
 
             {!revisionInfo.isFree && !revisionInfo.isPaid && (
               <Alert severity="error" sx={{ mb: 2 }}>
-                You have used all available revisions for this{" "}
-                {revisionInfo.type === "standard" ? "contract" : "milestone"}.
+                Anda telah menggunakan semua revisi yang tersedia untuk{" "}
+                {revisionInfo.type === "standard" ? "kontrak" : "milestone"}{" "}
+                ini.
               </Alert>
             )}
           </Box>
@@ -450,20 +453,20 @@ export default function RevisionTicketForm({
               control={control}
               rules={{
                 required:
-                  "Please provide a description of the revision you need",
+                  "Harap berikan deskripsi tentang revisi yang Anda butuhkan",
                 minLength: {
                   value: 10,
-                  message: "Description must be at least 10 characters",
+                  message: "Deskripsi harus memiliki setidaknya 10 karakter",
                 },
               }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Revision Description"
+                  label="Deskripsi Revisi"
                   multiline
                   rows={4}
                   fullWidth
-                  placeholder="Describe the changes you need..."
+                  placeholder="Jelaskan perubahan yang Anda butuhkan..."
                   error={!!errors.description}
                   helperText={errors.description?.message}
                   disabled={
@@ -475,13 +478,13 @@ export default function RevisionTicketForm({
             />
           </Box>
 
-          {/* Reference images */}
+          {/* Gambar referensi */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Reference Images (Optional)
+              Gambar Referensi (Opsional)
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Maximum 5 images. Accepted formats: JPEG, PNG, GIF
+              Maksimal 5 gambar. Format yang diterima: JPEG, PNG, GIF
             </Typography>
 
             <Box sx={{ mb: 2 }}>
@@ -496,7 +499,7 @@ export default function RevisionTicketForm({
                 }
                 sx={{ mt: 1 }}
               >
-                Add Images
+                Tambahkan Gambar
                 <input
                   type="file"
                   accept="image/*"
@@ -512,7 +515,7 @@ export default function RevisionTicketForm({
               </Button>
               {files.length > 0 && (
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {files.length}/5 images selected
+                  {files.length}/5 gambar terpilih
                 </Typography>
               )}
             </Box>
@@ -525,7 +528,7 @@ export default function RevisionTicketForm({
                       <Box
                         component="img"
                         src={url}
-                        alt={`Preview ${index}`}
+                        alt={`Pratinjau ${index}`}
                         sx={{
                           width: "100%",
                           height: 120,
@@ -561,7 +564,7 @@ export default function RevisionTicketForm({
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -575,7 +578,7 @@ export default function RevisionTicketForm({
               {isSubmitting ? (
                 <CircularProgress size={24} />
               ) : (
-                "Submit Revision Request"
+                "Kirim Permintaan Revisi"
               )}
             </Button>
           </Stack>

@@ -34,7 +34,7 @@ const ContractDetailsPage: React.FC<ContractDetailsPageProps> = ({
         }}
         elevation={1}
       >
-        <ContractHeader contract={contract} />
+        <ContractHeader contract={contract} username={username} />
         <ContractInfoSection
           contract={contract}
           isArtist={isArtist}

@@ -58,7 +58,7 @@ export default function ProgressUploadDetails({
       >
         <Box>
           <Typography variant="h5" gutterBottom fontWeight="medium">
-            Progress Update
+            Pembaruan Progres
           </Typography>
 
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
@@ -67,14 +67,14 @@ export default function ProgressUploadDetails({
                 sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Uploaded: {formatDate(upload.createdAt)}
+                Diunggah: {formatDate(upload.createdAt)}
               </Typography>
             </Box>
           </Stack>
         </Box>
 
         <Chip
-          label="Informational Update"
+          label="Pembaruan Informasi"
           color="info"
           sx={{ fontWeight: "medium", px: 1 }}
         />
@@ -82,13 +82,13 @@ export default function ProgressUploadDetails({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Main Content Area */}
+      {/* Area Konten Utama */}
       <Grid container spacing={3}>
-        {/* Left Column: Upload Details */}
+        {/* Kolom Kiri: Detail Unggahan */}
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
-              Progress Details
+              Detail Progres
             </Typography>
 
             <Paper
@@ -97,38 +97,38 @@ export default function ProgressUploadDetails({
             >
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Upload Information
+                  Informasi Unggahan
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Upload Type:
+                      Jenis Unggahan:
                     </Typography>
-                    <Typography variant="body1">Progress Update</Typography>
+                    <Typography variant="body1">Pembaruan Progres</Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Uploaded By:
+                      Diunggah Oleh:
                     </Typography>
                     <Typography variant="body1">
-                      {isArtist ? "You (Artist)" : "Artist"}
+                      {isArtist ? "Anda (Seniman)" : "Seniman"}
                     </Typography>
                   </Grid>
                   <Grid item xs={12}>
                     <Typography variant="body2" color="text.secondary">
-                      Contract Flow:
+                      Alur Kontrak:
                     </Typography>
-                    <Typography variant="body1">Standard Flow</Typography>
+                    <Typography variant="body1">Alur Standar</Typography>
                   </Grid>
                 </Grid>
               </Box>
             </Paper>
 
-            {/* Artist's Description */}
+            {/* Deskripsi Seniman */}
             {upload.description && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Artist's Description
+                  Deskripsi Seniman
                 </Typography>
                 <Paper
                   variant="outlined"
@@ -141,7 +141,7 @@ export default function ProgressUploadDetails({
               </Box>
             )}
 
-            {/* Note for client */}
+            {/* Catatan untuk klien */}
             {isClient && (
               <Box sx={{ mt: 4 }}>
                 <Divider sx={{ mb: 3 }} />
@@ -159,16 +159,17 @@ export default function ProgressUploadDetails({
                     fontSize="small"
                   />
                   <Typography variant="body2" color="text.secondary">
-                    This is an informal progress update shared by the artist to
-                    keep you informed about the project's development. No action
-                    is required on your part. Feel free to contact the artist if
-                    you have any questions or feedback.
+                    Ini adalah pembaruan progres biasa yang dibagikan oleh
+                    seniman untuk memberi Anda informasi tentang perkembangan
+                    proyek. Tidak ada tindakan yang diperlukan dari pihak Anda.
+                    Jangan ragu untuk menghubungi seniman jika Anda memiliki
+                    pertanyaan atau umpan balik.
                   </Typography>
                 </Box>
               </Box>
             )}
 
-            {/* Note for artist */}
+            {/* Catatan untuk seniman */}
             {isArtist && (
               <Box sx={{ mt: 4 }}>
                 <Divider sx={{ mb: 3 }} />
@@ -186,9 +187,10 @@ export default function ProgressUploadDetails({
                     fontSize="small"
                   />
                   <Typography variant="body2" color="text.secondary">
-                    You've shared this progress update with your client. This is
-                    an informational update only and doesn't require client
-                    approval. You can continue working on the project.
+                    Anda telah membagikan pembaruan progres ini dengan klien
+                    Anda. Ini adalah pembaruan informasi saja dan tidak
+                    memerlukan persetujuan klien. Anda dapat melanjutkan
+                    pekerjaan pada proyek ini.
                   </Typography>
                 </Box>
               </Box>
@@ -196,12 +198,12 @@ export default function ProgressUploadDetails({
           </Box>
         </Grid>
 
-        {/* Right Column: Upload Images */}
+        {/* Kolom Kanan: Unggah Gambar */}
         <Grid item xs={12} md={5}>
           {upload.images && upload.images.length > 0 ? (
             <Box>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Progress Images
+                Gambar Progres
               </Typography>
               <Grid container spacing={2}>
                 {upload.images.map((url, index) => (
@@ -211,7 +213,7 @@ export default function ProgressUploadDetails({
                         <CardMedia
                           component="img"
                           image={url}
-                          alt={`Progress ${index + 1}`}
+                          alt={`Progres ${index + 1}`}
                           sx={{
                             height: 200,
                             objectFit: "cover",
@@ -219,7 +221,7 @@ export default function ProgressUploadDetails({
                           }}
                           onClick={() => window.open(url, "_blank")}
                         />
-                        <Tooltip title="Open in new tab">
+                        <Tooltip title="Buka di tab baru">
                           <IconButton
                             size="small"
                             onClick={() => window.open(url, "_blank")}
@@ -239,7 +241,7 @@ export default function ProgressUploadDetails({
                       </Box>
                       <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
                         <Typography variant="caption" color="text.secondary">
-                          Image {index + 1}
+                          Gambar {index + 1}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -270,7 +272,7 @@ export default function ProgressUploadDetails({
                   color="text.secondary"
                   align="center"
                 >
-                  No images were uploaded for this progress update.
+                  Tidak ada gambar yang diunggah untuk pembaruan progres ini.
                 </Typography>
               </Paper>
             </Box>

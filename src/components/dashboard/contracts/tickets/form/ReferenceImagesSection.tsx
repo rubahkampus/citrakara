@@ -127,7 +127,7 @@ export default function ReferenceImagesSection({
     // Check remaining slots
     const remainingSlots = MAX_FILES - imageItems.length;
     if (remainingSlots <= 0) {
-      setError(`You can only upload a maximum of ${MAX_FILES} images.`);
+      setError(`Anda hanya dapat mengunggah maksimal ${MAX_FILES} gambar.`);
       return;
     }
 
@@ -144,7 +144,7 @@ export default function ReferenceImagesSection({
 
     if (oversizedFiles.length > 0) {
       setError(
-        `Some files exceed the 5MB size limit. Please resize and try again.`
+        `Beberapa file melebihi batas ukuran 5MB. Harap ubah ukuran dan coba lagi.`
       );
       return;
     }
@@ -217,8 +217,8 @@ export default function ReferenceImagesSection({
       {includeReferenceImages ? (
         <Box>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            Upload up to {MAX_FILES} reference images to help the artist
-            understand your vision.
+            Unggah hingga {MAX_FILES} gambar referensi untuk membantu seniman
+            memahami visi Anda.
             {!isReferenceImagesChangeAllowed &&
               " (Your contract does not specify this as changeable, but it's generally acceptable to provide additional references.)"}
           </Typography>
@@ -290,7 +290,7 @@ export default function ReferenceImagesSection({
                           textAlign: "center",
                         }}
                       >
-                        Existing
+                        Yang Ada
                       </Box>
                     )}
                   </Card>
@@ -309,7 +309,7 @@ export default function ReferenceImagesSection({
               }}
             >
               <Typography color="text.secondary">
-                No reference images uploaded yet
+                Belum ada gambar referensi yang diunggah
               </Typography>
             </Box>
           )}
@@ -320,7 +320,7 @@ export default function ReferenceImagesSection({
           color="text.secondary"
           sx={{ fontStyle: "italic", mt: 2 }}
         >
-          Switch the toggle to include changes to reference images.
+          Alihkan toggle untuk menyertakan perubahan pada gambar referensi.
         </Typography>
       )}
     </Paper>

@@ -98,17 +98,17 @@ export default function ProposalListingPage({
         <Paper sx={{ textAlign: "center", py: 8, px: 3, mt: 2 }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             {filter
-              ? `No ${filter} proposals found`
-              : `No ${
-                  isIncoming ? "incoming" : "outgoing"
-                } proposals at this time.`}
+              ? `Tidak ada proposal dengan status "${filter}"`
+              : `Tidak ada proposal ${
+                  isIncoming ? "masuk" : "keluar"
+                } saat ini.`}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
             {filter
-              ? "Try changing your filter or check back later."
+              ? "Coba ubah filter Anda atau periksa kembali nanti."
               : isIncoming
-              ? "When artists send you proposals, they'll appear here."
-              : "When you send proposals to artists, they'll appear here."}
+              ? "Ketika artis mengirimkan proposal kepada Anda, proposal tersebut akan muncul di sini."
+              : "Ketika Anda mengirimkan proposal kepada artis, proposal tersebut akan muncul di sini."}
           </Typography>
           {filter && (
             <Button
@@ -116,7 +116,7 @@ export default function ProposalListingPage({
               onClick={() => setFilter(null)}
               startIcon={<FilterIcon />}
             >
-              Clear Filter
+              Hapus Filter
             </Button>
           )}
         </Paper>
@@ -127,10 +127,7 @@ export default function ProposalListingPage({
       <Grid container spacing={3}>
         {filteredProposals.map((proposal) => (
           <Grid item xs={12} sm={6} lg={4} key={proposal._id.toString()}>
-            <ProposalListingItem
-              proposal={proposal}
-              onView={handleView}
-            />
+            <ProposalListingItem proposal={proposal} onView={handleView} />
           </Grid>
         ))}
       </Grid>
@@ -184,7 +181,7 @@ export default function ProposalListingPage({
             label={
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <InboxIcon sx={{ mr: 1 }} fontSize="small" />
-                <span>Incoming</span>
+                <span>Masuk</span>
                 <Chip
                   label={incoming.length}
                   size="small"
@@ -197,7 +194,7 @@ export default function ProposalListingPage({
             label={
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <SendIcon sx={{ mr: 1 }} fontSize="small" />
-                <span>Outgoing</span>
+                <span>Keluar</span>
                 <Chip
                   label={outgoing.length}
                   size="small"

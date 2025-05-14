@@ -899,7 +899,7 @@ const QuestionField = React.memo(
           }
         }}
         error={error}
-        placeholder="Your answer..."
+        placeholder="Jawabanmu..."
       />
     );
   }

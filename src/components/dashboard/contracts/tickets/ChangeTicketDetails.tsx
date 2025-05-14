@@ -186,15 +186,15 @@ export default function ChangeTicketDetails({
     try {
       // Validate input
       if (!response) {
-        throw new Error("Please select a response option");
+        throw new Error("Tolong pilih respon");
       }
 
       if (response === "reject" && !rejectionReason.trim()) {
-        throw new Error("Please provide a reason for rejection");
+        throw new Error("Tolong berikan alasan");
       }
 
       if (response === "propose" && (proposedFee <= 0 || isNaN(proposedFee))) {
-        throw new Error("Please provide a valid fee amount");
+        throw new Error("Tolong masukkan tagihan yang valid");
       }
 
       // Prepare request body
@@ -298,23 +298,23 @@ export default function ChangeTicketDetails({
   const getReadableStatus = (status: string) => {
     switch (status) {
       case "pendingArtist":
-        return "Pending Artist Review";
+        return "Menunggu Tinjauan Seniman";
       case "pendingClient":
-        return "Pending Client Payment";
+        return "Menunggu Pembayaran Klien";
       case "acceptedArtist":
-        return "Accepted by Artist";
+        return "Diterima oleh Seniman";
       case "rejectedArtist":
-        return "Rejected by Artist";
+        return "Ditolak oleh Seniman";
       case "rejectedClient":
-        return "Rejected by Client";
+        return "Ditolak oleh Klien";
       case "forcedAcceptedClient":
-        return "Forced Accept (Client)";
+        return "Penerimaan Paksa (Klien)";
       case "forcedAcceptedArtist":
-        return "Forced Accept (Artist)";
+        return "Penerimaan Paksa (Seniman)";
       case "paid":
-        return "Paid & Applied";
+        return "Dibayar & Diterapkan";
       case "cancelled":
-        return "Cancelled";
+        return "Dibatalkan";
       default:
         return status;
     }
@@ -338,7 +338,11 @@ export default function ChangeTicketDetails({
 
   // Get the current contract terms
   const currentContractTerms =
-    contract.contractTerms[contract.contractTerms.length - 1];
+    contract.contractTerms[
+      ticket.contractVersionBefore !== undefined
+        ? ticket.contractVersionBefore
+        : contract.contractTerms.length - 1
+    ];
 
   // Helper functions for option details
   const findOptionDetails = (options: any, type: string, id: number) => {
@@ -372,7 +376,7 @@ export default function ChangeTicketDetails({
     const newGeneralOptions = ticket.changeSet.generalOptions;
 
     if (!oldGeneralOptions && !newGeneralOptions) {
-      return <Typography>No general options to compare</Typography>;
+      return <Typography>Tidak opsi umum untuk dibandingkan</Typography>;
     }
 
     return (
@@ -403,7 +407,7 @@ export default function ChangeTicketDetails({
               color="primary.main"
               gutterBottom
             >
-              Current General Options
+              Opsi umum saat ini
             </Typography>
             {renderGeneralOptions(
               oldGeneralOptions,
@@ -420,7 +424,7 @@ export default function ChangeTicketDetails({
               color="primary.main"
               gutterBottom
             >
-              New General Options
+              Opsi umum baru
             </Typography>
             {renderGeneralOptions(
               newGeneralOptions,
@@ -438,7 +442,7 @@ export default function ChangeTicketDetails({
     const newSubjectOptions = ticket.changeSet.subjectOptions;
 
     if (!oldSubjectOptions && !newSubjectOptions) {
-      return <Typography>No subject options to compare</Typography>;
+      return <Typography>Tidak ada opsi subjek untuk dibandingkan</Typography>;
     }
 
     return (
@@ -469,7 +473,7 @@ export default function ChangeTicketDetails({
               color="primary.main"
               gutterBottom
             >
-              Current Subject Options
+              Opsi Subjek Saat Ini
             </Typography>
             {renderSubjectOptions(
               oldSubjectOptions,
@@ -486,7 +490,7 @@ export default function ChangeTicketDetails({
               color="primary.main"
               gutterBottom
             >
-              New Subject Options
+              Opsi Subjek Baru
             </Typography>
             {renderSubjectOptions(
               newSubjectOptions,
@@ -501,7 +505,7 @@ export default function ChangeTicketDetails({
   // Render general options helper
   const renderGeneralOptions = (generalOptions: any, listingOptions: any) => {
     if (!generalOptions) {
-      return <Typography>No options selected</Typography>;
+      return <Typography>Tidak ada opsi yang dipilih</Typography>;
     }
 
     return (
@@ -515,7 +519,7 @@ export default function ChangeTicketDetails({
                   variant="subtitle1"
                   sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
                 >
-                  Option Groups
+                  Kelompok Opsi
                 </Typography>
                 <TableContainer
                   component={Paper}
@@ -525,8 +529,8 @@ export default function ChangeTicketDetails({
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ bgcolor: "background.default" }}>
-                        <TableCell>Option</TableCell>
-                        <TableCell>Selection</TableCell>
+                        <TableCell>Opsi</TableCell>
+                        <TableCell>Pilihan</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -541,7 +545,7 @@ export default function ChangeTicketDetails({
                           <TableRow key={option.id}>
                             <TableCell>
                               {groupDetails?.title ||
-                                `Option Group ${option.groupId}`}
+                                `Kelompok Opsi ${option.groupId}`}
                             </TableCell>
                             <TableCell>
                               {option.selectedSelectionLabel}
@@ -562,7 +566,7 @@ export default function ChangeTicketDetails({
                 variant="subtitle1"
                 sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
               >
-                Add-ons
+                Tambahan
               </Typography>
               <TableContainer
                 component={Paper}
@@ -572,7 +576,7 @@ export default function ChangeTicketDetails({
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: "background.default" }}>
-                      <TableCell>Add-on</TableCell>
+                      <TableCell>Tambahan</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -586,7 +590,7 @@ export default function ChangeTicketDetails({
                       return (
                         <TableRow key={addon.id}>
                           <TableCell>
-                            {addonDetails?.label || `Add-on ${addon.addonId}`}
+                            {addonDetails?.label || `Tambahan ${addon.addonId}`}
                           </TableCell>
                         </TableRow>
                       );
@@ -604,7 +608,7 @@ export default function ChangeTicketDetails({
                 variant="subtitle1"
                 sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
               >
-                Client Responses
+                Jawaban Klien
               </Typography>
               {generalOptions.answers.map((answer: any) => {
                 const questionDetails = findOptionDetails(
@@ -628,7 +632,8 @@ export default function ChangeTicketDetails({
                       color="text.secondary"
                       gutterBottom
                     >
-                      {questionDetails?.text || `Question ${answer.questionId}`}
+                      {questionDetails?.text ||
+                        `Pertanyaan ${answer.questionId}`}
                     </Typography>
                     <Typography variant="body1">{answer.answer}</Typography>
                   </Box>
@@ -648,7 +653,9 @@ export default function ChangeTicketDetails({
   ) => {
     if (!subjectOptions || subjectOptions.length === 0) {
       return (
-        <Typography variant="body2">No subject options selected</Typography>
+        <Typography variant="body2">
+          Tidak ada opsi subjek yang dipilih
+        </Typography>
       );
     }
 
@@ -662,7 +669,7 @@ export default function ChangeTicketDetails({
         <Card key={subject.subjectId} sx={{ mb: 3, overflow: "visible" }}>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-              {subjectDetails?.title || `Subject ${subject.subjectId}`}
+              {subjectDetails?.title || `Subjek ${subject.subjectId}`}
             </Typography>
 
             {subject.instances.map((instance: any) => (
@@ -679,7 +686,7 @@ export default function ChangeTicketDetails({
                   variant="subtitle1"
                   sx={{ mb: 2, fontWeight: "medium" }}
                 >
-                  Instance {instance.id}
+                  {subjectDetails?.title} {instance.id}
                 </Typography>
 
                 {/* Instance Option Groups */}
@@ -689,7 +696,7 @@ export default function ChangeTicketDetails({
                       variant="subtitle2"
                       sx={{ mb: 1, color: "primary.main" }}
                     >
-                      Options
+                      Opsi
                     </Typography>
                     <TableContainer
                       component={Paper}
@@ -699,8 +706,8 @@ export default function ChangeTicketDetails({
                       <Table size="small">
                         <TableHead>
                           <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Option</TableCell>
-                            <TableCell>Selection</TableCell>
+                            <TableCell>Opsi</TableCell>
+                            <TableCell>Pilihan</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -714,7 +721,7 @@ export default function ChangeTicketDetails({
                               <TableRow key={option.id}>
                                 <TableCell>
                                   {groupDetails?.title ||
-                                    `Option ${option.groupId}`}
+                                    `Kelompok Opsi ${option.groupId}`}
                                 </TableCell>
                                 <TableCell>
                                   {option.selectedSelectionLabel}
@@ -735,7 +742,7 @@ export default function ChangeTicketDetails({
                       variant="subtitle2"
                       sx={{ mb: 1, color: "primary.main" }}
                     >
-                      Add-ons
+                      Tambahan
                     </Typography>
                     <TableContainer
                       component={Paper}
@@ -745,7 +752,7 @@ export default function ChangeTicketDetails({
                       <Table size="small">
                         <TableHead>
                           <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Add-on</TableCell>
+                            <TableCell>Tambahan</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -758,7 +765,7 @@ export default function ChangeTicketDetails({
                               <TableRow key={addon.id}>
                                 <TableCell>
                                   {addonDetails?.label ||
-                                    `Add-on ${addon.addonId}`}
+                                    `Tambahan ${addon.addonId}`}
                                 </TableCell>
                               </TableRow>
                             );
@@ -776,7 +783,7 @@ export default function ChangeTicketDetails({
                       variant="subtitle2"
                       sx={{ mb: 1, color: "primary.main" }}
                     >
-                      Client Responses
+                      Jawaban Klien
                     </Typography>
                     {instance.answers.map((answer: any) => {
                       const questionDetails = subjectDetails?.questions?.find(
@@ -799,7 +806,7 @@ export default function ChangeTicketDetails({
                             gutterBottom
                           >
                             {questionDetails?.text ||
-                              `Question ${answer.questionId}`}
+                              `Pertanyaan ${answer.questionId}`}
                           </Typography>
                           <Typography variant="body1">
                             {answer.answer}
@@ -853,7 +860,7 @@ export default function ChangeTicketDetails({
       >
         <Box>
           <Typography variant="h5" gutterBottom fontWeight="medium">
-            Contract Change Request
+            Permintaan Perubahan Kontrak
           </Typography>
 
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
@@ -862,7 +869,7 @@ export default function ChangeTicketDetails({
                 sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Created: {formatDate(ticket.createdAt)}
+                Dibuat: {formatDate(ticket.createdAt)}
               </Typography>
             </Box>
 
@@ -872,7 +879,7 @@ export default function ChangeTicketDetails({
                   sx={{ fontSize: 18, mr: 0.5, color: "success.main" }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Resolved: {formatDate(ticket.resolvedAt)}
+                  Diselesaikan: {formatDate(ticket.resolvedAt)}
                 </Typography>
               </Box>
             )}
@@ -914,7 +921,7 @@ export default function ChangeTicketDetails({
                     sx={{ fontSize: 18, mr: 0.5, color: "info.main" }}
                   />
                   <Typography variant="body2" color="text.secondary">
-                    Version {ticket.contractVersionBefore} →{" "}
+                    Versi {ticket.contractVersionBefore} →{" "}
                     {ticket.contractVersionAfter}
                   </Typography>
                 </Box>
@@ -929,7 +936,7 @@ export default function ChangeTicketDetails({
         />
       </Box>
 
-      {/* Alert Messages */}
+      {/* Pesan Peringatan */}
       {(ticket.status === "pendingArtist" ||
         ticket.status === "pendingClient") &&
         !isPastExpiry &&
@@ -937,14 +944,14 @@ export default function ChangeTicketDetails({
         isApproachingExpiry() && (
           <Alert severity="warning" sx={{ mb: 3 }} icon={<AccessTimeIcon />}>
             <Typography variant="body2">
-              This change request will expire soon - on{" "}
+              Permintaan perubahan ini akan segera kedaluwarsa - pada{" "}
               {formatDate(ticket.expiresAt)}.
               {isArtist &&
                 ticket.status === "pendingArtist" &&
-                " Please respond as soon as possible."}
+                " Harap tanggapi sesegera mungkin."}
               {isClient &&
                 ticket.status === "pendingClient" &&
-                " Please pay or reject the fee as soon as possible."}
+                " Harap bayar atau tolak biaya sesegera mungkin."}
             </Typography>
           </Alert>
         )}
@@ -955,16 +962,17 @@ export default function ChangeTicketDetails({
         ticket.expiresAt && (
           <Alert severity="error" sx={{ mb: 3 }}>
             <Typography variant="body2">
-              This change request has expired on {formatDate(ticket.expiresAt)}.
+              Permintaan perubahan ini telah kedaluwarsa pada{" "}
+              {formatDate(ticket.expiresAt)}.
               {isClient &&
-                " You may need to submit a new request or escalate to resolution."}
+                " Anda mungkin perlu mengajukan permintaan baru atau mengeskalasi ke resolusi."}
             </Typography>
           </Alert>
         )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
-          Your action has been processed successfully.
+          Tindakan Anda telah diproses dengan sukses.
         </Alert>
       )}
 
@@ -982,7 +990,7 @@ export default function ChangeTicketDetails({
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
-              Change Request Details
+              Detail Permintaan Perubahan
             </Typography>
 
             <Paper
@@ -1009,15 +1017,15 @@ export default function ChangeTicketDetails({
               >
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                   {ticket.escrowTxnId
-                    ? "Paid Change"
-                    : "Paid Change - Payment Required"}
+                    ? "Perubahan Berbayar"
+                    : "Perubahan Berbayar - Pembayaran Dibutuhman"}
                 </Typography>
                 <Typography variant="body2">
-                  Fee: {formatPrice(ticket.paidFee)}
+                  Tagihan: {formatPrice(ticket.paidFee)}
                 </Typography>
                 <Typography variant="body2">
-                  Payment Status:{" "}
-                  {ticket.escrowTxnId ? "Paid" : "Pending payment"}
+                  Status Pembayaran:{" "}
+                  {ticket.escrowTxnId ? "Telah Dibayar" : "Menunggu Pembayaran"}
                 </Typography>
               </Paper>
             )}
@@ -1036,7 +1044,7 @@ export default function ChangeTicketDetails({
                   sx={{ display: "flex", alignItems: "center" }}
                 >
                   <QueryBuilderIcon sx={{ mr: 1 }} fontSize="small" /> Deadline
-                  Change
+                  Perubahan
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -1044,7 +1052,7 @@ export default function ChangeTicketDetails({
                   <Grid item xs={6}>
                     <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
                       <Typography variant="body2" color="text.secondary">
-                        Current Deadline:
+                        Deadline Lama:
                       </Typography>
                       <Typography variant="body1">
                         {formatDate(contract.deadlineAt)}
@@ -1062,7 +1070,7 @@ export default function ChangeTicketDetails({
                       }}
                     >
                       <Typography variant="body2" color="text.secondary">
-                        Requested Deadline:
+                        Deadline Baru:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {formatDate(ticket.changeSet.deadlineAt)}
@@ -1085,8 +1093,8 @@ export default function ChangeTicketDetails({
                   variant="subtitle1"
                   sx={{ display: "flex", alignItems: "center" }}
                 >
-                  <DescriptionIcon sx={{ mr: 1 }} fontSize="small" />{" "}
-                  Description Change
+                  <DescriptionIcon sx={{ mr: 1 }} fontSize="small" /> Perubahan
+                  Deskripsi
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -1097,7 +1105,7 @@ export default function ChangeTicketDetails({
                       color="text.secondary"
                       gutterBottom
                     >
-                      Current Description:
+                      Deskripsi Lama
                     </Typography>
                     <Paper
                       variant="outlined"
@@ -1117,7 +1125,7 @@ export default function ChangeTicketDetails({
                       color="text.secondary"
                       gutterBottom
                     >
-                      New Description:
+                      Deskripsi Baru:
                     </Typography>
                     <Paper
                       variant="outlined"
@@ -1154,7 +1162,7 @@ export default function ChangeTicketDetails({
                   sx={{ display: "flex", alignItems: "center" }}
                 >
                   <SyncAltIcon sx={{ mr: 1 }} fontSize="small" /> General
-                  Options Changes
+                  Perubahan Opsi
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -1175,7 +1183,7 @@ export default function ChangeTicketDetails({
                   sx={{ display: "flex", alignItems: "center" }}
                 >
                   <SyncAltIcon sx={{ mr: 1 }} fontSize="small" /> Subject
-                  Options Changes
+                  Perubahan Opsi
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -1192,7 +1200,7 @@ export default function ChangeTicketDetails({
               <Box sx={{ mb: 3 }}>
                 <Divider sx={{ mb: 3 }} />
                 <Typography variant="h6" fontWeight="medium" gutterBottom>
-                  Your Response
+                  Respon Anda
                 </Typography>
 
                 <Box sx={{ mb: 3 }}>
@@ -1206,7 +1214,7 @@ export default function ChangeTicketDetails({
                       sx={{ flexGrow: 1 }}
                       size="large"
                     >
-                      Accept Without Fee
+                      Terima Tanpa Tagihan
                     </Button>
                     <Button
                       variant={
@@ -1219,7 +1227,7 @@ export default function ChangeTicketDetails({
                       sx={{ flexGrow: 1 }}
                       size="large"
                     >
-                      Propose Fee
+                      Tawarkan Tagihan
                     </Button>
                     <Button
                       variant={response === "reject" ? "contained" : "outlined"}
@@ -1230,7 +1238,7 @@ export default function ChangeTicketDetails({
                       sx={{ flexGrow: 1 }}
                       size="large"
                     >
-                      Reject Changes
+                      Tolak Perubahan
                     </Button>
                   </Stack>
                 </Box>
@@ -1238,9 +1246,9 @@ export default function ChangeTicketDetails({
                 {response === "accept" && (
                   <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
                     <Typography variant="body2">
-                      By accepting this change request, you are agreeing to
-                      modify the contract as requested without any additional
-                      fees.
+                      Dengan menerima permintaan perubahan ini, Anda setuju
+                      untuk mengubah kontrak seperti yang diminta tanpa biaya
+                      tambahan.
                     </Typography>
                   </Alert>
                 )}
@@ -1248,18 +1256,18 @@ export default function ChangeTicketDetails({
                 {response === "propose" && (
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="body2" sx={{ mb: 2 }}>
-                      You can propose a fee for implementing these changes. The
-                      client will need to pay this fee before the changes are
-                      applied.
+                      Anda dapat mengajukan biaya untuk menerapkan perubahan
+                      ini. Klien harus membayar biaya ini sebelum perubahan
+                      diterapkan.
                     </Typography>
                     <TextField
-                      label="Proposed Fee"
+                      label="Biaya yang Diusulkan"
                       type="number"
                       inputProps={{ min: 0, step: 1000 }}
                       fullWidth
                       value={proposedFee}
                       onChange={(e) => setProposedFee(Number(e.target.value))}
-                      placeholder="Enter fee amount"
+                      placeholder="Masukkan jumlah biaya"
                       required
                       disabled={isAdmin || isSubmitting}
                       error={
@@ -1269,7 +1277,7 @@ export default function ChangeTicketDetails({
                       helperText={
                         response === "propose" &&
                         (proposedFee <= 0 || isNaN(proposedFee))
-                          ? "Please enter a valid fee amount"
+                          ? "Harap masukkan jumlah biaya yang valid"
                           : ""
                       }
                       sx={{ mb: 2 }}
@@ -1280,13 +1288,13 @@ export default function ChangeTicketDetails({
                 {response === "reject" && (
                   <Box sx={{ mb: 3 }}>
                     <TextField
-                      label="Reason for Rejection"
+                      label="Alasan Penolakan"
                       multiline
                       rows={3}
                       fullWidth
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="Explain why you are rejecting these changes"
+                      placeholder="Jelaskan mengapa Anda menolak perubahan ini"
                       required
                       disabled={isAdmin || isSubmitting}
                       error={
@@ -1294,7 +1302,7 @@ export default function ChangeTicketDetails({
                       }
                       helperText={
                         response === "reject" && rejectionReason.trim() === ""
-                          ? "Rejection reason is required"
+                          ? "Alasan penolakan diperlukan"
                           : ""
                       }
                       sx={{ mb: 2 }}
@@ -1319,7 +1327,7 @@ export default function ChangeTicketDetails({
                   {isSubmitting ? (
                     <CircularProgress size={24} />
                   ) : (
-                    "Submit Response"
+                    "Kirim Respon"
                   )}
                 </Button>
               </Box>
@@ -1330,19 +1338,19 @@ export default function ChangeTicketDetails({
             <Box sx={{ mb: 3 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                Your Response
+                Respon Anda
               </Typography>
 
               <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
                 <Typography variant="body2" fontWeight="bold">
-                  The artist has proposed a fee for this change.
+                  Seniman telah mengajukan biaya untuk perubahan ini.
                 </Typography>
                 <Typography variant="body2">
-                  Fee: {formatPrice(ticket.paidFee)}
+                  Biaya: {formatPrice(ticket.paidFee)}
                 </Typography>
                 <Typography variant="body2">
-                  You can pay this fee to proceed with the changes, or reject
-                  the proposal.
+                  Anda dapat membayar biaya ini untuk melanjutkan perubahan,
+                  atau menolak proposal ini.
                 </Typography>
               </Alert>
 
@@ -1356,7 +1364,7 @@ export default function ChangeTicketDetails({
                   sx={{ flexGrow: 1 }}
                   size="large"
                 >
-                  Pay Fee
+                  Bayar Tagihan
                 </Button>
                 <Button
                   variant={response === "reject" ? "contained" : "outlined"}
@@ -1367,7 +1375,7 @@ export default function ChangeTicketDetails({
                   sx={{ flexGrow: 1 }}
                   size="large"
                 >
-                  Reject Fee
+                  Tolak Tagihan
                 </Button>
               </Box>
 
@@ -1435,7 +1443,7 @@ export default function ChangeTicketDetails({
                   fontWeight="medium"
                   gutterBottom
                 >
-                  Not satisfied with the process?
+                  Tidak puas dengan prosesnya?
                 </Typography>
                 <Button
                   variant="outlined"
@@ -1444,7 +1452,7 @@ export default function ChangeTicketDetails({
                   disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
-                  Escalate to Resolution
+                  Tingkatkan ke Resolusi
                 </Button>
 
                 <Typography
@@ -1452,8 +1460,8 @@ export default function ChangeTicketDetails({
                   color="text.secondary"
                   sx={{ display: "block", mt: 1 }}
                 >
-                  Escalation will be reviewed by our support team to help
-                  resolve any issues.
+                  Eskalasi akan ditinjau oleh tim dukungan kami untuk membantu
+                  menyelesaikan masalah.
                 </Typography>
               </Box>
             )}
@@ -1464,7 +1472,7 @@ export default function ChangeTicketDetails({
           {hasReferenceImagesChange ? (
             <Box>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Reference Images
+                Gambar Referensi
               </Typography>
               <Grid container spacing={2}>
                 {ticket.changeSet.referenceImages.map((url, index) => (
@@ -1482,7 +1490,7 @@ export default function ChangeTicketDetails({
                       />
                       <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
                         <Typography variant="caption" color="text.secondary">
-                          Reference Image {index + 1}
+                          Gambar Referensi {index + 1}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -1513,7 +1521,7 @@ export default function ChangeTicketDetails({
                   color="text.secondary"
                   align="center"
                 >
-                  No reference images were provided with this change request.
+                  Tidak ada gambar referensi dalam permintaan Perubahan ini
                 </Typography>
               </Paper>
             </Box>
@@ -1531,35 +1539,34 @@ export default function ChangeTicketDetails({
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <WarningIcon sx={{ mr: 1, color: "warning.main" }} />
-            Escalate to Resolution?
+            Tingkatkan ke Resolusi?
           </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Escalating this issue will create a resolution ticket for admin
-            review. You will need to provide evidence and explain your position.
+            Meningkatkan masalah ini akan membuat tiket resolusi untuk tinjauan
+            admin. Anda perlu memberikan bukti dan menjelaskan posisi Anda.
             <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-              When should you escalate?
+              Kapan Anda harus meningkatkan?
             </Typography>
             <Typography variant="body2">
-              • If communication has broken down
+              • Jika komunikasi terputus
               <br />
-              • If there's a disagreement about contract terms
-              <br />• If you believe the other party isn't fulfilling their
-              obligations
+              • Jika ada ketidaksepakatan tentang syarat kontrak
+              <br />• Jika Anda percaya pihak lain tidak memenuhi kewajibannya
             </Typography>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowEscalateDialog(false)} color="inherit">
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={confirmEscalation}
             color="warning"
             variant="contained"
           >
-            Proceed to Resolution
+            Lanjutkan ke Resolusi
           </Button>
         </DialogActions>
       </Dialog>

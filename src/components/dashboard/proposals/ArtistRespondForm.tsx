@@ -97,7 +97,7 @@ export default function ArtistRespondForm({
       >
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           {activeView === "reject" ? (
-            /* Rejection Form */
+            /* Formulir Penolakan */
             <>
               <Typography
                 variant="h6"
@@ -105,24 +105,24 @@ export default function ArtistRespondForm({
                 color="error.main"
                 sx={{ display: "flex", alignItems: "center", gap: 1 }}
               >
-                <CloseIcon fontSize="small" /> Reject Proposal
+                <CloseIcon fontSize="small" /> Tolak Proposal
               </Typography>
 
               <Divider sx={{ my: 2 }} />
 
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Please provide a reason for rejecting this proposal.
+                Harap berikan alasan untuk menolak proposal ini.
               </Typography>
 
               <TextField
-                label="Rejection reason"
+                label="Alasan Penolakan"
                 multiline
                 rows={3}
                 fullWidth
                 required
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Explain why you're rejecting this proposal"
+                placeholder="Jelaskan mengapa Anda menolak proposal ini"
                 sx={{
                   mb: 3,
                   "& .MuiOutlinedInput-root": {
@@ -132,7 +132,7 @@ export default function ArtistRespondForm({
                 }}
                 error={!rejectionReason}
                 helperText={
-                  !rejectionReason ? "Rejection reason is required" : ""
+                  !rejectionReason ? "Alasan penolakan wajib diisi" : ""
                 }
               />
 
@@ -144,7 +144,7 @@ export default function ArtistRespondForm({
                   disabled={loading}
                   sx={{ borderRadius: 1.5 }}
                 >
-                  Back
+                  Kembali
                 </Button>
                 <Button
                   variant="contained"
@@ -154,19 +154,19 @@ export default function ArtistRespondForm({
                   disabled={loading || !rejectionReason}
                   sx={{ borderRadius: 1.5 }}
                 >
-                  Confirm Rejection
+                  Konfirmasi Penolakan
                 </Button>
               </Stack>
             </>
           ) : activeView === "adjust" ? (
-            /* Adjustment Form */
+            /* Form Penyesuaian */
             <>
               <Typography
                 variant="h6"
                 gutterBottom
                 sx={{ display: "flex", alignItems: "center", gap: 1 }}
               >
-                <PaymentIcon fontSize="small" /> Price Adjustment
+                <PaymentIcon fontSize="small" /> Penyesuaian Harga
               </Typography>
 
               <Divider sx={{ my: 2 }} />
@@ -174,14 +174,14 @@ export default function ArtistRespondForm({
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Add surcharge"
+                    label="Tambahkan biaya tambahan"
                     type="number"
                     fullWidth
                     value={surcharge || ""}
                     onChange={(e) => {
                       const value = Number(e.target.value);
                       setSurcharge(value);
-                      // Clear discount if surcharge is entered
+                      // Hapus diskon jika biaya tambahan dimasukkan
                       if (value > 0) setDiscount(0);
                     }}
                     InputProps={{
@@ -202,7 +202,7 @@ export default function ArtistRespondForm({
                         </InputAdornment>
                       ),
                     }}
-                    helperText="Additional charge for complexity"
+                    helperText="Biaya tambahan untuk kompleksitas"
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: 1.5,
@@ -213,14 +213,14 @@ export default function ArtistRespondForm({
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Offer discount"
+                    label="Tawarkan diskon"
                     type="number"
                     fullWidth
                     value={discount || ""}
                     onChange={(e) => {
                       const value = Number(e.target.value);
                       setDiscount(value);
-                      // Clear surcharge if discount is entered
+                      // Hapus biaya tambahan jika diskon dimasukkan
                       if (value > 0) setSurcharge(0);
                     }}
                     InputProps={{
@@ -241,7 +241,7 @@ export default function ArtistRespondForm({
                         </InputAdornment>
                       ),
                     }}
-                    helperText="Discount to secure the commission"
+                    helperText="Diskon untuk mengamankan komisi"
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: 1.5,
@@ -269,13 +269,13 @@ export default function ArtistRespondForm({
                     color="text.secondary"
                     gutterBottom
                   >
-                    New Total
+                    Total Baru
                   </Typography>
                   <Typography variant="h5" fontWeight="bold" sx={{ mb: 0.5 }}>
                     {formatCurrency(calculateTotal())}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Original: {formatCurrency(proposal.calculatedPrice.total)}
+                    Asli: {formatCurrency(proposal.calculatedPrice.total)}
                     {surcharge > 0 && ` + ${formatCurrency(surcharge)}`}
                     {discount > 0 && ` - ${formatCurrency(discount)}`}
                   </Typography>
@@ -290,7 +290,7 @@ export default function ArtistRespondForm({
                   disabled={loading}
                   sx={{ borderRadius: 1.5 }}
                 >
-                  Back
+                  Kembali
                 </Button>
                 <Button
                   variant="contained"
@@ -300,19 +300,19 @@ export default function ArtistRespondForm({
                   disabled={loading || (surcharge === 0 && discount === 0)}
                   sx={{ borderRadius: 1.5 }}
                 >
-                  Submit Adjustment
+                  Kirim Penyesuaian
                 </Button>
               </Stack>
             </>
           ) : (
-            /* Main Options View */
+            /* Tampilan Opsi Utama */
             <>
               <Typography
                 variant="h6"
                 gutterBottom
                 sx={{ display: "flex", alignItems: "center", gap: 1 }}
               >
-                Your Response
+                Tanggapan Anda
               </Typography>
 
               <Divider sx={{ my: 2 }} />
@@ -333,7 +333,7 @@ export default function ArtistRespondForm({
                   color="text.secondary"
                   gutterBottom
                 >
-                  Project Total
+                  Total Proyek
                 </Typography>
                 <Typography variant="h5" fontWeight="bold">
                   {formatCurrency(proposal.calculatedPrice.total)}
@@ -345,7 +345,8 @@ export default function ArtistRespondForm({
                 color="text.secondary"
                 sx={{ mb: 3, textAlign: "center" }}
               >
-                You can accept as is, adjust the price, or reject the proposal
+                Anda bisa menerima sebagaimana adanya, menyesuaikan harga, atau
+                menolak proposal
               </Typography>
 
               <Stack
@@ -362,7 +363,7 @@ export default function ArtistRespondForm({
                   fullWidth
                   sx={{ borderRadius: 1.5, py: 1 }}
                 >
-                  Reject
+                  Tolak
                 </Button>
 
                 <Button
@@ -374,7 +375,7 @@ export default function ArtistRespondForm({
                   fullWidth
                   sx={{ borderRadius: 1.5, py: 1 }}
                 >
-                  Adjust Price
+                  Sesuaikan Harga
                 </Button>
 
                 <Button
@@ -386,7 +387,7 @@ export default function ArtistRespondForm({
                   fullWidth
                   sx={{ borderRadius: 1.5, py: 1 }}
                 >
-                  Accept As Is
+                  Terima Sebagaimana Adanya
                 </Button>
               </Stack>
             </>

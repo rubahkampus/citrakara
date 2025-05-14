@@ -66,7 +66,7 @@ export default function ProposalFormPage({
       referenceImages: initialData.referenceImages || [],
     });
 
-    console.log("initialDataLoaded from API", JSON.stringify(formData))
+    console.log("initialDataLoaded from API", JSON.stringify(formData));
 
     return formData;
   }, [initialData]);
@@ -102,7 +102,10 @@ export default function ProposalFormPage({
   const onSubmit = async (values: ProposalFormValues) => {
     // console.log("onSubmit function called!");
     // console.log("Edit (before convertToModelFormat function):", JSON.stringify(values));
-    console.log("Form values (before convertToModelFormat function):", JSON.stringify(values));
+    console.log(
+      "Form values (before convertToModelFormat function):",
+      JSON.stringify(values)
+    );
 
     setError(null);
     setLoading(true);
@@ -276,7 +279,7 @@ export default function ProposalFormPage({
                 }
               }}
             >
-              {mode === "create" ? "Create Proposal" : "Save Changes"}
+              {mode === "create" ? "Buat Proposal" : "Simpan Perubahan"}
             </Button>
           </Box>
 
@@ -284,7 +287,9 @@ export default function ProposalFormPage({
           <Snackbar
             open={success}
             message={
-              mode === "create" ? "Proposal created!" : "Proposal updated!"
+              mode === "create"
+                ? "Proposal berhasil dibuat!"
+                : "Proposal berhasil diperbarui!"
             }
             autoHideDuration={2000}
             onClose={() => setSuccess(false)}

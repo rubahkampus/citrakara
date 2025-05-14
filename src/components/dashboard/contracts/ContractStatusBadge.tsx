@@ -37,52 +37,52 @@ const ContractStatusBadge: React.FC<ContractStatusBadgeProps> = ({
       active: {
         color: "primary",
         icon: HourglassEmptyIcon,
-        label: "Active",
-        description: "This contract is currently in progress.",
+        label: "Aktif",
+        description: "Kontrak ini sedang dalam proses.",
       },
       completed: {
         color: "success",
         icon: CheckCircleIcon,
-        label: "Completed",
-        description: "This contract has been successfully completed on time.",
+        label: "Selesai",
+        description: "Kontrak ini telah berhasil diselesaikan tepat waktu.",
       },
       completedLate: {
         color: "success",
         icon: AccessTimeIcon,
-        label: "Completed (Late)",
-        description: "This contract was completed after the original deadline.",
+        label: "Selesai (Terlambat)",
+        description: "Kontrak ini diselesaikan setelah tenggat waktu asli.",
       },
       cancelledClient: {
         color: "error",
         icon: CancelIcon,
-        label: "Cancelled by Client",
-        description: "The client has cancelled this contract.",
+        label: "Dibatalkan oleh Klien",
+        description: "Klien telah membatalkan kontrak ini.",
       },
       cancelledClientLate: {
         color: "error",
         icon: CancelIcon,
-        label: "Cancelled by Client (Late)",
+        label: "Dibatalkan oleh Klien (Terlambat)",
         description:
-          "The client has cancelled this contract after the deadline passed.",
+          "Klien telah membatalkan kontrak ini setelah tenggat waktu berlalu.",
       },
       cancelledArtist: {
         color: "error",
         icon: CancelIcon,
-        label: "Cancelled by Artist",
-        description: "The artist has cancelled this contract.",
+        label: "Dibatalkan oleh Seniman",
+        description: "Seniman telah membatalkan kontrak ini.",
       },
       cancelledArtistLate: {
         color: "error",
         icon: CancelIcon,
-        label: "Cancelled by Artist (Late)",
+        label: "Dibatalkan oleh Seniman (Terlambat)",
         description:
-          "The artist has cancelled this contract after the deadline passed.",
+          "Seniman telah membatalkan kontrak ini setelah tenggat waktu berlalu.",
       },
       notCompleted: {
         color: "error",
         icon: ErrorIcon,
-        label: "Not Completed",
-        description: "This contract was not completed by the deadline.",
+        label: "Tidak Selesai",
+        description: "Kontrak ini tidak diselesaikan pada tenggat waktu.",
       },
     };
 
@@ -91,7 +91,7 @@ const ContractStatusBadge: React.FC<ContractStatusBadgeProps> = ({
         color: "default",
         icon: HourglassEmptyIcon,
         label: status.charAt(0).toUpperCase() + status.slice(1),
-        description: "Contract status",
+        description: "Status kontrak",
       }
     );
   };

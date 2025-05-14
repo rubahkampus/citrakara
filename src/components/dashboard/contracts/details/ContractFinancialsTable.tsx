@@ -31,9 +31,9 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
 }) => {
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("id-ID", {
       style: "currency",
-      currency: "USD",
+      currency: "IDR",
     }).format(amount);
   };
 
@@ -47,7 +47,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
         <TableBody>
           <TableRow>
             <TableCell component="th" scope="row">
-              Base Price
+              Harga Dasar
             </TableCell>
             <TableCell align="right">
               {formatCurrency(finance.basePrice)}
@@ -62,7 +62,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
                     color="success"
                     sx={{ mr: 1 }}
                   />
-                  Option Fees
+                  Opsi
                 </Box>
               </TableCell>
               <TableCell align="right">
@@ -79,7 +79,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
                     color="success"
                     sx={{ mr: 1 }}
                   />
-                  Add-ons
+                  Tambahan
                 </Box>
               </TableCell>
               <TableCell align="right">
@@ -96,7 +96,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
                     color="success"
                     sx={{ mr: 1 }}
                   />
-                  Rush Fee
+                  Biaya Pengerjaan Cepat
                 </Box>
               </TableCell>
               <TableCell align="right">
@@ -113,7 +113,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
                     color="error"
                     sx={{ mr: 1 }}
                   />
-                  Discount
+                  Diskon Seniman
                 </Box>
               </TableCell>
               <TableCell align="right" sx={{ color: "error.main" }}>
@@ -130,7 +130,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
                     color="success"
                     sx={{ mr: 1 }}
                   />
-                  Surcharge
+                  Tambahan Seniman
                 </Box>
               </TableCell>
               <TableCell align="right">
@@ -147,7 +147,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
                     color="success"
                     sx={{ mr: 1 }}
                   />
-                  Runtime Fees
+                  Biaya Berjalan
                 </Box>
               </TableCell>
               <TableCell align="right">
@@ -157,7 +157,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
           )}
           <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
             <TableCell component="th" scope="row">
-              <Typography fontWeight="bold">Total Amount</Typography>
+              <Typography fontWeight="bold">Total Jumlah</Typography>
             </TableCell>
             <TableCell align="right">
               <Typography fontWeight="bold">

@@ -191,15 +191,15 @@ export default function RevisionUploadDetails({
       >
         <Box>
           <Typography variant="h5" fontWeight="medium">
-            Revision Upload
+            Unggahan Revisi
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Uploaded by {isArtist ? "you" : "the artist"} on{" "}
+            Diunggah oleh {isArtist ? "Anda" : "seniman"} pada{" "}
             {formatDate(upload.createdAt)}
           </Typography>
           {ticket?.milestoneIdx !== undefined && (
             <Typography variant="body2" sx={{ mt: 0.5 }}>
-              For Milestone:{" "}
+              Untuk Milestone:{" "}
               <span style={{ fontWeight: "medium" }}>
                 {contract.milestones?.[ticket.milestoneIdx]?.title ||
                   `#${ticket.milestoneIdx}`}
@@ -216,16 +216,16 @@ export default function RevisionUploadDetails({
         />
       </Box>
 
-      {/* Success Message */}
+      {/* Pesan Sukses */}
       {reviewSuccess && (
         <Alert severity="success" sx={{ mb: 3 }}>
-          <AlertTitle>Success</AlertTitle>
-          Revision has been{" "}
-          {reviewAction === "accept" ? "accepted" : "rejected"} successfully!
+          <AlertTitle>Sukses</AlertTitle>
+          Revisi telah {reviewAction === "accept" ? "diterima" : "ditolak"}{" "}
+          dengan sukses!
         </Alert>
       )}
 
-      {/* Error Message */}
+      {/* Pesan Error */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           <AlertTitle>Error</AlertTitle>
@@ -241,21 +241,23 @@ export default function RevisionUploadDetails({
           icon={isPastDeadline ? <AccessTimeIcon /> : <InfoIcon />}
         >
           <AlertTitle>
-            {isPastDeadline ? "Review Deadline Approaching" : "Review Required"}
+            {isPastDeadline
+              ? "Batas Waktu Review Mendekat"
+              : "Review Diperlukan"}
           </AlertTitle>
-          This revision upload requires {isClient ? "your" : "client"} review.
+          Unggahan revisi ini memerlukan review {isClient ? "Anda" : "klien"}.
           {isPastDeadline &&
-            " This upload is past its review deadline and may be automatically accepted."}
+            " Unggahan ini melewati batas waktu review dan dapat diterima secara otomatis."}
         </Alert>
       )}
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Revision Ticket Details */}
+      {/* Detail Tiket Revisi */}
       {ticket && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
-            Revision Request Details
+            Detail Permintaan Revisi
           </Typography>
 
           <Box
@@ -279,7 +281,7 @@ export default function RevisionUploadDetails({
 
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Created:
+                  Dibuat pada:
                 </Typography>
                 <Typography variant="body1">
                   {formatDate(ticket.createdAt)}
@@ -289,10 +291,10 @@ export default function RevisionUploadDetails({
               {ticket.paidFee !== undefined && (
                 <Grid item xs={12} sm={6}>
                   <Typography variant="body2" color="text.secondary">
-                    Paid Revision:
+                    Revisi Berbayar:
                   </Typography>
                   <Typography variant="body1">
-                    Yes (Fee: ${(ticket.paidFee / 100).toFixed(2)})
+                    Ya (Biaya: ${(ticket.paidFee / 100).toFixed(2)})
                   </Typography>
                 </Grid>
               )}
@@ -300,7 +302,7 @@ export default function RevisionUploadDetails({
 
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Client's request:
+                Permintaan klien:
               </Typography>
               <Typography
                 variant="body1"
@@ -323,7 +325,7 @@ export default function RevisionUploadDetails({
                   color="text.secondary"
                   sx={{ mb: 0.5 }}
                 >
-                  Reference images:
+                  Gambar referensi:
                 </Typography>
                 <Grid container spacing={1}>
                   {ticket.referenceImages.map((url, index) => (
@@ -331,7 +333,7 @@ export default function RevisionUploadDetails({
                       <Box
                         component="img"
                         src={url}
-                        alt={`Reference ${index}`}
+                        alt={`Referensi ${index}`}
                         sx={{
                           width: "100%",
                           height: 100,
@@ -351,17 +353,17 @@ export default function RevisionUploadDetails({
                 href={`/dashboard/${userId}/contracts/${contract._id}/tickets/revision/${ticket._id}`}
                 underline="hover"
               >
-                View full revision ticket
+                Lihat tiket revisi lengkap
               </Link>
             </Box>
           </Box>
         </Box>
       )}
 
-      {/* Images */}
+      {/* Gambar */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
-          Revision Images
+          Gambar Revisi
         </Typography>
         <Grid container spacing={2}>
           {upload.images.map((url, index) => (
@@ -385,7 +387,7 @@ export default function RevisionUploadDetails({
                 <Box
                   component="img"
                   src={url}
-                  alt={`Revision ${index + 1}`}
+                  alt={`Revisi ${index + 1}`}
                   sx={{
                     width: "100%",
                     height: 250,
@@ -413,7 +415,7 @@ export default function RevisionUploadDetails({
                   }}
                 >
                   <Typography variant="body2">
-                    Click to view full size
+                    Klik untuk melihat ukuran penuh
                   </Typography>
                 </Box>
               </Box>
@@ -422,11 +424,11 @@ export default function RevisionUploadDetails({
         </Grid>
       </Box>
 
-      {/* Artist's Description */}
+      {/* Deskripsi Seniman */}
       {upload.description && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
-            Artist's Description
+            Deskripsi Seniman
           </Typography>
           <Box
             sx={{
@@ -444,11 +446,11 @@ export default function RevisionUploadDetails({
         </Box>
       )}
 
-      {/* Action Buttons for Client */}
+      {/* Tombol Aksi untuk Klien */}
       {!isAdmin && isClient && canReview && upload.status === "submitted" && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
-            Review Actions
+            Aksi Tinjau
           </Typography>
           <Stack direction="row" spacing={2}>
             <Button
@@ -458,7 +460,7 @@ export default function RevisionUploadDetails({
               onClick={() => handleReview("reject")}
               disabled={isAdmin || isSubmitting}
             >
-              Reject Revision
+              Tolak Revisi
             </Button>
             <Button
               variant="contained"
@@ -467,16 +469,16 @@ export default function RevisionUploadDetails({
               onClick={() => handleReview("accept")}
               disabled={isAdmin || isSubmitting}
             >
-              Accept Revision
+              Terima Revisi
             </Button>
           </Stack>
         </Box>
       )}
 
-      {/* Status History */}
+      {/* Riwayat Status */}
       <Box>
         <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
-          Status Timeline
+          Timeline Status
         </Typography>
         <Box
           sx={{
@@ -490,7 +492,7 @@ export default function RevisionUploadDetails({
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">
-                Created:
+                Dibuat:
               </Typography>
               <Typography variant="body1">
                 {formatDate(upload.createdAt)}
@@ -499,21 +501,21 @@ export default function RevisionUploadDetails({
 
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">
-                Review Deadline:
+                Tenggat Tinjauan:
               </Typography>
               <Typography
                 variant="body1"
                 color={isPastDeadline ? "error.main" : "text.primary"}
               >
                 {formatDate(upload.expiresAt)}
-                {isPastDeadline && " (Passed)"}
+                {isPastDeadline && " (Lewat)"}
               </Typography>
             </Grid>
 
             {upload.resolvedAt && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Resolved:
+                  Diselesaikan:
                 </Typography>
                 <Typography variant="body1">
                   {formatDate(upload.resolvedAt)}
@@ -524,7 +526,7 @@ export default function RevisionUploadDetails({
             {upload.status !== "submitted" && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Final Status:
+                  Status Akhir:
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {upload.status}
@@ -535,19 +537,19 @@ export default function RevisionUploadDetails({
         </Box>
       </Box>
 
-      {/* Confirmation Dialog */}
+      {/* Dialog Konfirmasi */}
       <Dialog
         open={openConfirmDialog}
         onClose={() => setOpenConfirmDialog(false)}
       >
         <DialogTitle>
-          {reviewAction === "accept" ? "Accept Revision" : "Reject Revision"}
+          {reviewAction === "accept" ? "Terima Revisi" : "Tolak Revisi"}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
             {reviewAction === "accept"
-              ? "Are you sure you want to accept this revision? This action cannot be undone."
-              : "Are you sure you want to reject this revision? This action cannot be undone and may require further revisions from the artist."}
+              ? "Apakah Anda yakin ingin menerima revisi ini? Tindakan ini tidak dapat dibatalkan."
+              : "Apakah Anda yakin ingin menolak revisi ini? Tindakan ini tidak dapat dibatalkan dan mungkin memerlukan revisi lebih lanjut dari seniman."}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -555,7 +557,7 @@ export default function RevisionUploadDetails({
             onClick={() => setOpenConfirmDialog(false)}
             disabled={isAdmin || isSubmitting}
           >
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={handleReviewConfirm}
@@ -565,10 +567,10 @@ export default function RevisionUploadDetails({
             startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
           >
             {isSubmitting
-              ? "Processing..."
+              ? "Memproses..."
               : reviewAction === "accept"
-              ? "Yes, Accept"
-              : "Yes, Reject"}
+              ? "Ya, Terima"
+              : "Ya, Tolak"}
           </Button>
         </DialogActions>
       </Dialog>

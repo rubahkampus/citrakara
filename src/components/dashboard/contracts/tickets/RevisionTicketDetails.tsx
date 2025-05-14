@@ -96,17 +96,17 @@ export default function RevisionTicketDetails({
     const now = new Date();
     const diffMs = expiryDate.getTime() - now.getTime();
 
-    if (diffMs <= 0) return "Expired";
+    if (diffMs <= 0) return "Kedaluwarsa";
 
     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (diffHrs > 24) {
       const days = Math.floor(diffHrs / 24);
-      return `${days} day${days > 1 ? "s" : ""} remaining`;
+      return `${days} hari tersisa`;
     }
 
-    return `${diffHrs}h ${diffMins}m remaining`;
+    return `${diffHrs}j ${diffMins}m tersisa`;
   };
 
   // Determine if this is a paid revision
@@ -148,12 +148,12 @@ export default function RevisionTicketDetails({
       // Validate input
       if (!response) {
         throw new Error(
-          "Please select whether to accept or reject this revision request"
+          "Harap pilih apakah Anda menerima atau menolak permintaan revisi ini"
         );
       }
 
       if (response === "reject" && !rejectionReason.trim()) {
-        throw new Error("Please provide a reason for rejection");
+        throw new Error("Harap berikan alasan untuk penolakan");
       }
 
       // Prepare request body
@@ -249,19 +249,19 @@ export default function RevisionTicketDetails({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return "Pending Artist Response";
+        return "Menunggu Respon Seniman";
       case "accepted":
-        return "Accepted";
+        return "Diterima";
       case "forcedAcceptedArtist":
-        return "Accepted (Admin)";
+        return "Diterima (Admin)";
       case "paid":
-        return "Paid - In Progress";
+        return "Dibayar - Sedang Proses";
       case "rejected":
-        return "Rejected";
+        return "Ditolak";
       case "disputed":
-        return "In Dispute";
+        return "Sedang Dipersengketakan";
       case "cancelled":
-        return "Cancelled";
+        return "Dibatalkan";
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
@@ -296,7 +296,7 @@ export default function RevisionTicketDetails({
       >
         <Box>
           <Typography variant="h5" gutterBottom fontWeight="medium">
-            Revision Request
+            Permintaan Revisi
             {ticket.milestoneIdx !== undefined && (
               <Typography
                 component="span"
@@ -304,7 +304,7 @@ export default function RevisionTicketDetails({
                 color="text.secondary"
                 sx={{ ml: 1 }}
               >
-                for{" "}
+                untuk{" "}
                 {contract.milestones?.[ticket.milestoneIdx]?.title ||
                   `Milestone #${ticket.milestoneIdx + 1}`}
               </Typography>
@@ -317,7 +317,7 @@ export default function RevisionTicketDetails({
                 sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Created: {formatDate(ticket.createdAt)}
+                Dibuat: {formatDate(ticket.createdAt)}
               </Typography>
             </Box>
 
@@ -327,7 +327,7 @@ export default function RevisionTicketDetails({
                   sx={{ fontSize: 18, mr: 0.5, color: "success.main" }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Resolved: {formatDate(ticket.resolvedAt)}
+                  Diselesaikan: {formatDate(ticket.resolvedAt)}
                 </Typography>
               </Box>
             )}
@@ -376,9 +376,9 @@ export default function RevisionTicketDetails({
         isApproachingExpiry() && (
           <Alert severity="warning" sx={{ mb: 3 }} icon={<AccessTimeIcon />}>
             <Typography variant="body2">
-              This revision request will expire soon - on{" "}
+              Permintaan revisi ini akan segera kedaluwarsa - pada{" "}
               {formatDate(ticket.expiresAt)}.
-              {isArtist && " Please respond as soon as possible."}
+              {isArtist && " Harap tanggapi sesegera mungkin."}
             </Typography>
           </Alert>
         )}
@@ -386,16 +386,17 @@ export default function RevisionTicketDetails({
       {ticket.status === "pending" && isPastExpiry && ticket.expiresAt && (
         <Alert severity="error" sx={{ mb: 3 }}>
           <Typography variant="body2">
-            This revision request has expired on {formatDate(ticket.expiresAt)}.
+            Permintaan revisi ini telah kedaluwarsa pada{" "}
+            {formatDate(ticket.expiresAt)}.
             {isClient &&
-              " You may need to submit a new request or escalate to resolution."}
+              " Anda mungkin perlu mengajukan permintaan baru atau mengeskalasi ke resolusi."}
           </Typography>
         </Alert>
       )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
-          Your action has been processed successfully.
+          Tindakan Anda telah diproses dengan sukses.
         </Alert>
       )}
 
@@ -413,7 +414,7 @@ export default function RevisionTicketDetails({
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
-              Revision Request Details
+              Detail Permintaan Revisi
             </Typography>
 
             <Paper
@@ -440,20 +441,20 @@ export default function RevisionTicketDetails({
               >
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                   {ticket.escrowTxnId
-                    ? "Paid Revision"
-                    : "Paid Revision - Payment Required"}
+                    ? "Revisi Dibayar"
+                    : "Revisi Dibayar - Pembayaran Diperlukan"}
                 </Typography>
                 <Typography variant="body2">
-                  Fee: {formatPrice(ticket.paidFee)}
+                  Biaya: {formatPrice(ticket.paidFee)}
                 </Typography>
                 <Typography variant="body2">
-                  Payment Status:{" "}
-                  {ticket.escrowTxnId ? "Paid" : "Pending payment"}
+                  Status Pembayaran:{" "}
+                  {ticket.escrowTxnId ? "Dibayar" : "Menunggu pembayaran"}
                 </Typography>
               </Paper>
             )}
 
-            {/* Rejection Reason - if rejected */}
+            {/* Alasan Penolakan - jika ditolak */}
             {ticket.status === "rejected" && ticket.artistRejectionReason && (
               <Paper
                 variant="outlined"
@@ -466,7 +467,7 @@ export default function RevisionTicketDetails({
                 }}
               >
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Rejection Reason
+                  Alasan Penolakan
                 </Typography>
                 <Typography variant="body1">
                   {ticket.artistRejectionReason}
@@ -480,7 +481,7 @@ export default function RevisionTicketDetails({
             <Box sx={{ mb: 3 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                Your Response
+                Respon Anda
               </Typography>
 
               <Box sx={{ mb: 3 }}>
@@ -494,7 +495,7 @@ export default function RevisionTicketDetails({
                     sx={{ flexGrow: 1 }}
                     size="large"
                   >
-                    Accept Revision
+                    Terima Revisi
                   </Button>
                   <Button
                     variant={response === "reject" ? "contained" : "outlined"}
@@ -505,7 +506,7 @@ export default function RevisionTicketDetails({
                     sx={{ flexGrow: 1 }}
                     size="large"
                   >
-                    Reject Revision
+                    Tolak Revisi
                   </Button>
                 </Stack>
               </Box>
@@ -513,10 +514,10 @@ export default function RevisionTicketDetails({
               {response === "accept" && (
                 <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
                   <Typography variant="body2">
-                    By accepting this revision request, you are agreeing to make
-                    the requested changes.
+                    Dengan menerima permintaan revisi ini, Anda setuju untuk
+                    membuat perubahan yang diminta.
                     {isPaidRevision &&
-                      " The client will need to pay the revision fee before you can upload your work."}
+                      " Klien harus membayar biaya revisi sebelum Anda dapat mengunggah karya Anda."}
                   </Typography>
                 </Alert>
               )}
@@ -524,13 +525,13 @@ export default function RevisionTicketDetails({
               {response === "reject" && (
                 <Box sx={{ mb: 3 }}>
                   <TextField
-                    label="Reason for Rejection"
+                    label="Alasan Penolakan"
                     multiline
                     rows={3}
                     fullWidth
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Explain why you are rejecting this revision request"
+                    placeholder="Jelaskan mengapa Anda menolak permintaan revisi ini"
                     required
                     disabled={isAdmin || isSubmitting}
                     error={
@@ -538,7 +539,7 @@ export default function RevisionTicketDetails({
                     }
                     helperText={
                       response === "reject" && rejectionReason.trim() === ""
-                        ? "Rejection reason is required"
+                        ? "Alasan penolakan wajib diisi"
                         : ""
                     }
                     sx={{ mb: 2 }}
@@ -558,11 +559,7 @@ export default function RevisionTicketDetails({
                 }
                 sx={{ minWidth: 120 }}
               >
-                {isSubmitting ? (
-                  <CircularProgress size={24} />
-                ) : (
-                  "Submit Response"
-                )}
+                {isSubmitting ? <CircularProgress size={24} /> : "Kirim Respon"}
               </Button>
             </Box>
           )}
@@ -572,16 +569,16 @@ export default function RevisionTicketDetails({
             <Box sx={{ mb: 3 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                Payment Required
+                Pembayaran Diperlukan
               </Typography>
 
               <Alert severity="info" sx={{ mb: 2 }} icon={<PaymentIcon />}>
                 <Typography variant="body2">
-                  This revision requires payment before the artist can begin
-                  work.
+                  Revisi ini memerlukan pembayaran sebelum seniman dapat mulai
+                  bekerja.
                 </Typography>
                 <Typography variant="body2">
-                  Fee: {formatPrice(ticket.paidFee)}
+                  Biaya: {formatPrice(ticket.paidFee)}
                 </Typography>
               </Alert>
 
@@ -592,19 +589,19 @@ export default function RevisionTicketDetails({
                 disabled={isAdmin || isSubmitting}
                 startIcon={<PaymentIcon />}
               >
-                Pay Revision Fee
+                Bayar Biaya Revisi
               </Button>
 
-              {/* Universal Payment Dialog */}
+              {/* Dialog Pembayaran Universal */}
               <UniversalPaymentDialog
                 open={showPaymentDialog}
                 onClose={() => setShowPaymentDialog(false)}
-                title="Pay Revision Fee"
+                title="Bayar Biaya Revisi"
                 totalAmount={ticket.paidFee || 0}
                 onSubmit={handlePayment}
-                description={`Payment for revision request on ${
+                description={`Pembayaran untuk permintaan revisi pada ${
                   contract.milestones?.[ticket.milestoneIdx || 0]?.title ||
-                  "this contract"
+                  "kontrak ini"
                 }.`}
               />
             </Box>
@@ -615,7 +612,7 @@ export default function RevisionTicketDetails({
             <Box sx={{ mb: 3 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                Next Steps
+                Langkah Selanjutnya
               </Typography>
 
               <Alert
@@ -624,8 +621,8 @@ export default function RevisionTicketDetails({
                 icon={<CheckCircleIcon />}
               >
                 <Typography variant="body2">
-                  You can now upload your revision based on the client's
-                  feedback.
+                  Anda sekarang dapat mengunggah revisi berdasarkan umpan balik
+                  klien.
                 </Typography>
               </Alert>
 
@@ -636,7 +633,7 @@ export default function RevisionTicketDetails({
                 href={`/dashboard/${userId}/contracts/${contract._id}/uploads/revision/new?ticketId=${ticket._id}`}
                 startIcon={<UploadIcon />}
               >
-                Upload Revision
+                Unggah Revisi
               </Button>
             </Box>
           )}
@@ -652,7 +649,7 @@ export default function RevisionTicketDetails({
                   fontWeight="medium"
                   gutterBottom
                 >
-                  Not satisfied with the process?
+                  Tidak puas dengan prosesnya?
                 </Typography>
                 <Button
                   variant="outlined"
@@ -661,7 +658,7 @@ export default function RevisionTicketDetails({
                   disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
-                  Escalate to Resolution
+                  Eskalasi ke Resolusi
                 </Button>
 
                 <Typography
@@ -669,8 +666,8 @@ export default function RevisionTicketDetails({
                   color="text.secondary"
                   sx={{ display: "block", mt: 1 }}
                 >
-                  Escalation will be reviewed by our support team to help
-                  resolve any issues.
+                  Eskalasi akan ditinjau oleh tim dukungan kami untuk membantu
+                  menyelesaikan masalah apapun.
                 </Typography>
               </Box>
             )}
@@ -681,7 +678,7 @@ export default function RevisionTicketDetails({
           {ticket.referenceImages && ticket.referenceImages.length > 0 ? (
             <Box>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Reference Images
+                Gambar Referensi
               </Typography>
               <Grid container spacing={2}>
                 {ticket.referenceImages.map((url, index) => (
@@ -699,7 +696,7 @@ export default function RevisionTicketDetails({
                       />
                       <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
                         <Typography variant="caption" color="text.secondary">
-                          Reference Image {index + 1}
+                          Gambar Referensi {index + 1}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -730,7 +727,8 @@ export default function RevisionTicketDetails({
                   color="text.secondary"
                   align="center"
                 >
-                  No reference images were provided with this revision request.
+                  Tidak ada gambar referensi yang diberikan dengan permintaan
+                  revisi ini.
                 </Typography>
               </Paper>
             </Box>
@@ -748,35 +746,34 @@ export default function RevisionTicketDetails({
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <WarningIcon sx={{ mr: 1, color: "warning.main" }} />
-            Escalate to Resolution?
+            Eskalasi ke Resolusi?
           </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Escalating this issue will create a resolution ticket for admin
-            review. You will need to provide evidence and explain your position.
+            Meningkatkan masalah ini akan membuat tiket resolusi untuk tinjauan
+            admin. Anda perlu memberikan bukti dan menjelaskan posisi Anda.
             <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-              When should you escalate?
+              Kapan Anda harus mengeskalasi?
             </Typography>
             <Typography variant="body2">
-              • If communication has broken down
+              • Jika komunikasi terputus
               <br />
-              • If there's a disagreement about contract terms
-              <br />• If you believe the other party isn't fulfilling their
-              obligations
+              • Jika ada ketidaksepakatan tentang syarat kontrak
+              <br />• Jika Anda percaya pihak lain tidak memenuhi kewajibannya
             </Typography>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowEscalateDialog(false)} color="inherit">
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={confirmEscalation}
             color="warning"
             variant="contained"
           >
-            Proceed to Resolution
+            Lanjutkan ke Resolusi
           </Button>
         </DialogActions>
       </Dialog>

@@ -112,8 +112,9 @@ export default function DeadlineSection({
       {localIncludeDeadline ? (
         <Box sx={{ mb: 2 }}>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            Select a new deadline date for the contract. The deadline must be at
-            least 24 hours from now to give the artist time to respond.
+            Pilih tanggal tenggat waktu baru untuk kontrak. Tenggat waktu harus
+            setidaknya 24 jam dari sekarang untuk memberi waktu kepada seniman
+            untuk merespons.
           </Typography>
 
           <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -121,11 +122,11 @@ export default function DeadlineSection({
               name="deadlineAt"
               control={control}
               rules={{
-                required: "Deadline is required",
+                required: "Tenggat waktu wajib diisi",
                 validate: (value) => {
-                  if (!value) return "Deadline is required";
+                  if (!value) return "Tenggat waktu wajib diisi";
                   if (isBefore(value, minDate)) {
-                    return `Deadline must be after ${minDate.toLocaleDateString()}`;
+                    return `Tenggat waktu harus setelah ${minDate.toLocaleDateString()}`;
                   }
                   return true;
                 },
@@ -149,7 +150,7 @@ export default function DeadlineSection({
                   />
                   {!fieldState.error && (
                     <FormHelperText>
-                      Current deadline:{" "}
+                      Deadline saat ini:{" "}
                       {new Date(contract.deadlineAt).toLocaleDateString()}
                     </FormHelperText>
                   )}
@@ -160,8 +161,8 @@ export default function DeadlineSection({
 
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Note: The artist may apply a rush fee if the new deadline falls
-              outside their standard timeframe.
+              Catatan: Seniman dapat menerapkan biaya tambahan jika tenggat
+              waktu baru berada di luar rentang waktu standar mereka.
             </Typography>
           </Box>
         </Box>
@@ -171,7 +172,7 @@ export default function DeadlineSection({
           color="text.secondary"
           sx={{ fontStyle: "italic", mt: 2 }}
         >
-          Switch the toggle to include changes to the deadline.
+          Alihkan toggle untuk menyertakan perubahan pada tenggat waktu.
         </Typography>
       )}
     </Paper>

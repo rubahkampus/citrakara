@@ -28,7 +28,7 @@ const ContractInfoSection: React.FC<ContractInfoSectionProps> = ({
             gutterBottom
             sx={{ fontWeight: "medium" }}
           >
-            Contract Information
+            Informasi Kontrak
           </Typography>
           <ContractInfoTable contract={contract} />
         </Grid>
@@ -39,7 +39,7 @@ const ContractInfoSection: React.FC<ContractInfoSectionProps> = ({
             gutterBottom
             sx={{ fontWeight: "medium" }}
           >
-            Financial Details
+            Detail Harga
           </Typography>
           <ContractFinancialsTable finance={contract.finance} />
         </Grid>
@@ -53,7 +53,7 @@ const ContractInfoSection: React.FC<ContractInfoSectionProps> = ({
           gutterBottom
           sx={{ fontWeight: "medium" }}
         >
-          Actions
+          Aksi
         </Typography>
         <ContractActionButtons
           username={username}

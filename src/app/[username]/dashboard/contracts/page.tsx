@@ -13,7 +13,7 @@ interface ContractsPageProps {
 }
 
 export default async function ContractsPage({ params }: ContractsPageProps) {
-  const param = await params
+  const param = await params;
   const username = await param.username;
   const session = await getAuthSession();
 
@@ -53,35 +53,27 @@ export default async function ContractsPage({ params }: ContractsPageProps) {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Paper
+      <Typography
+        variant="h5"
+        fontWeight="bold"
         sx={{
-          p: 3,
-          borderRadius: 2,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+          mb: 4,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          pb: 2,
         }}
       >
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          sx={{
-            mb: 4,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            pb: 2,
-          }}
-        >
-          My Contracts
-        </Typography>
+        My Contracts
+      </Typography>
 
-        <Suspense fallback={<ContractListingSkeleton />}>
-          <ContractListingPage
-            username={username}
-            asArtist={serializedAsArtist}
-            asClient={serializedAsClient}
-            error={error ?? undefined}
-          />
-        </Suspense>
-      </Paper>
+      <Suspense fallback={<ContractListingSkeleton />}>
+        <ContractListingPage
+          username={username}
+          asArtist={serializedAsArtist}
+          asClient={serializedAsClient}
+          error={error ?? undefined}
+        />
+      </Suspense>
     </Container>
   );
 }

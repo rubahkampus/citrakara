@@ -151,7 +151,7 @@ export default function SubjectOptionsSection({
         }}
       >
         <Typography variant="h6" color="primary" fontWeight="medium">
-          Subject Options
+          Opsi Subjek
         </Typography>
         <FormControlLabel
           control={
@@ -189,7 +189,7 @@ export default function SubjectOptionsSection({
           color="text.secondary"
           sx={{ fontStyle: "italic", mt: 2 }}
         >
-          Switch the toggle to include changes to subject options.
+          Alihkan toggle untuk menyertakan perubahan pada opsi subjek.
         </Typography>
       )}
     </Paper>
@@ -396,8 +396,8 @@ const SubjectSection = React.memo(
     const remainingSlots = useMemo(
       () =>
         subject.limit === -1
-          ? "Unlimited"
-          : `${subject.limit - fields.length} remaining`,
+          ? "Tidak terbatas"
+          : `${subject.limit - fields.length} tersisa`,
       [subject.limit, fields.length]
     );
 
@@ -422,9 +422,9 @@ const SubjectSection = React.memo(
 
             {subject.discount > 0 && !isSingleInstanceOnly && (
               <Tooltip
-                title={`Get ${
+                title={`Dapatkan diskon ${
                   subject.discount
-                }% discount on additional ${subject.title.toLowerCase()}s (starting from the second one)`}
+                }% untuk ${subject.title.toLowerCase()} tambahan (dimulai dari yang kedua)`}
               >
                 <Chip
                   icon={<InfoIcon />}
@@ -454,7 +454,7 @@ const SubjectSection = React.memo(
                   (subject.limit !== -1 && fields.length >= subject.limit)
                 }
               >
-                Add {subject.title}
+                Tambah {subject.title}
               </Button>
             </Box>
           )}
@@ -489,7 +489,7 @@ const SubjectSection = React.memo(
           >
             <CardContent sx={{ textAlign: "center", py: 4 }}>
               <Typography color="text.secondary" gutterBottom>
-                No {subject.title.toLowerCase()} added yet
+                Belum ada {subject.title.toLowerCase()} yang ditambahkan
               </Typography>
               <Button
                 startIcon={<AddIcon />}
@@ -499,7 +499,7 @@ const SubjectSection = React.memo(
                 sx={{ mt: 1 }}
                 disabled={disabled}
               >
-                Add {subject.title}
+                Tambah {subject.title}
               </Button>
             </CardContent>
           </Card>
@@ -821,7 +821,7 @@ const InstanceCard = React.memo(
                 sx={{ mb: 2 }}
                 fontWeight="medium"
               >
-                Select Options
+                Pilih Opsi
               </Typography>
               <Grid container spacing={2}>
                 {subject.optionGroups.map(
@@ -882,7 +882,6 @@ const InstanceCard = React.memo(
                             </MenuItem>
                           ))}
                         </Select>
-                        {/* ... Error handling (unchanged) ... */}
                       </FormControl>
                     </Grid>
                   )
@@ -899,7 +898,7 @@ const InstanceCard = React.memo(
                 sx={{ mb: 2 }}
                 fontWeight="medium"
               >
-                Additional Services
+                Layanan Tambahan
               </Typography>
 
               <Box
@@ -998,7 +997,7 @@ const InstanceCard = React.memo(
                 sx={{ mb: 2 }}
                 fontWeight="medium"
               >
-                Additional Information
+                Informasi Tambahan
               </Typography>
               <Card variant="outlined">
                 <CardContent>
@@ -1089,7 +1088,7 @@ const QuestionField = React.memo(
           }
         }}
         error={error}
-        placeholder="Your answer..."
+        placeholder="Jawabanmu..."
         disabled={disabled}
       />
     );

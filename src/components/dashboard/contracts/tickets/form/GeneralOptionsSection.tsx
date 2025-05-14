@@ -129,9 +129,7 @@ export default function GeneralOptionsSection({
     }
 
     // Initialize answers with current values from contract terms
-    if (
-      (listingGeneralOptions?.questions?.length ?? 0) > 0
-    ) {
+    if ((listingGeneralOptions?.questions?.length ?? 0) > 0) {
       const defaultAnswers: Record<string, string> = {};
       console.log("T");
       // Set current answers from contract terms
@@ -260,7 +258,7 @@ export default function GeneralOptionsSection({
         }}
       >
         <Typography variant="h6" color="primary" fontWeight="medium">
-          General Options
+          Opsi Umum
         </Typography>
         <FormControlLabel
           control={
@@ -287,7 +285,7 @@ export default function GeneralOptionsSection({
                   sx={{ mb: 2 }}
                   fontWeight="medium"
                 >
-                  Select Options
+                  Pilih Opsi
                 </Typography>
 
                 <Card variant="outlined" sx={{ height: "100%", pb: 2, pr: 2 }}>
@@ -344,7 +342,7 @@ export default function GeneralOptionsSection({
                                 >
                               )[group.id.toString()] && (
                                 <FormHelperText error>
-                                  This field is required
+                                  Field ini wajib diisi
                                 </FormHelperText>
                               )}
                           </FormControl>
@@ -368,7 +366,7 @@ export default function GeneralOptionsSection({
                   paddingBottom: 1,
                 }}
               >
-                Additional Services
+                Layanan Tambahan
               </Typography>
 
               <Card
@@ -463,7 +461,7 @@ export default function GeneralOptionsSection({
                 sx={{ mb: 2 }}
                 fontWeight="medium"
               >
-                Additional Information
+                Informasi Tambahan
               </Typography>
 
               {(listingGeneralOptions.questions ?? []).map((question) => {
@@ -494,7 +492,7 @@ export default function GeneralOptionsSection({
           color="text.secondary"
           sx={{ fontStyle: "italic", mt: 2 }}
         >
-          Switch the toggle to include changes to general options.
+          Alihkan toggle untuk menyertakan perubahan pada opsi umum.
         </Typography>
       )}
     </Paper>
@@ -577,7 +575,7 @@ const QuestionField = React.memo(function QuestionField({
       }}
       error={!!error}
       helperText={error?.message}
-      placeholder="Your answer..."
+      placeholder="Jawabanmu..."
       disabled={disabled}
     />
   );

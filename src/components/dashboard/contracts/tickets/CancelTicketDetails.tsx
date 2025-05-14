@@ -296,7 +296,7 @@ export default function CancelTicketDetails({
       >
         <Box>
           <Typography variant="h5" gutterBottom fontWeight="medium">
-            Cancellation Request
+            Permintaan Pembatalan
           </Typography>
 
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
@@ -305,7 +305,7 @@ export default function CancelTicketDetails({
                 sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Created: {formatDate(ticket.createdAt)}
+                Dibuat: {formatDate(ticket.createdAt)}
               </Typography>
             </Box>
 
@@ -315,7 +315,7 @@ export default function CancelTicketDetails({
                   sx={{ fontSize: 18, mr: 0.5, color: "success.main" }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Resolved: {formatDate(ticket.resolvedAt)}
+                  Terselesaikan: {formatDate(ticket.resolvedAt)}
                 </Typography>
               </Box>
             )}
@@ -364,9 +364,9 @@ export default function CancelTicketDetails({
         isApproachingExpiry() && (
           <Alert severity="warning" sx={{ mb: 3 }} icon={<AccessTimeIcon />}>
             <Typography variant="body2">
-              This cancellation request will expire soon - on{" "}
+              Permintaan pembatalan ini akan segera kedaluwarsa - pada{" "}
               {formatDate(ticket.expiresAt)}.
-              {canRespond() && " Please respond as soon as possible."}
+              {canRespond() && " Mohon berikan tanggapan sesegera mungkin."}
             </Typography>
           </Alert>
         )}
@@ -374,16 +374,16 @@ export default function CancelTicketDetails({
       {ticket.status === "pending" && isPastExpiry && ticket.expiresAt && (
         <Alert severity="error" sx={{ mb: 3 }}>
           <Typography variant="body2">
-            This cancellation request has expired on{" "}
-            {formatDate(ticket.expiresAt)}. You may need to submit a new request
-            or escalate to resolution.
+            Permintaan pembatalan ini telah kedaluwarsa pada{" "}
+            {formatDate(ticket.expiresAt)}. Anda mungkin perlu mengajukan
+            permintaan baru atau eskalasi untuk penyelesaian.
           </Typography>
         </Alert>
       )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
-          Your response has been submitted successfully.
+          Tanggapan Anda telah berhasil diajukan.
         </Alert>
       )}
 
@@ -401,7 +401,7 @@ export default function CancelTicketDetails({
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
-              Cancellation Details
+              Detail Pembatalan
             </Typography>
 
             <Paper
@@ -415,7 +415,7 @@ export default function CancelTicketDetails({
 
             <Alert severity="info" sx={{ mb: 2 }} icon={<InfoIcon />}>
               <Typography variant="subtitle2" fontWeight="bold">
-                Cancellation Fee:
+                Biaya Pembatalan:
               </Typography>
               <Typography variant="body2">
                 {contract.proposalSnapshot.listingSnapshot.cancelationFee
@@ -424,33 +424,34 @@ export default function CancelTicketDetails({
                       contract.proposalSnapshot.listingSnapshot.cancelationFee
                         .amount
                     )
-                  : `${contract.proposalSnapshot.listingSnapshot.cancelationFee?.amount}% of total`}
+                  : `${contract.proposalSnapshot.listingSnapshot.cancelationFee?.amount}% dari total`}
               </Typography>
               <Typography variant="body2">
                 {ticket.requestedBy === "client"
-                  ? "Client will pay this fee to the artist even if no work has been started."
-                  : "Artist will forfeit this fee to the client if cancelation is accepted."}
+                  ? "Klien akan membayar biaya ini kepada seniman meskipun belum ada pekerjaan yang dimulai."
+                  : "Seniman akan menyerahkan biaya ini kepada klien jika pembatalan diterima."}
               </Typography>
             </Alert>
           </Box>
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
-              Estimated Financial Outcome
+              Estimasi Hasil Keuangan
             </Typography>
             <Alert severity="warning" sx={{ mb: 2 }}>
               <Typography variant="subtitle2" fontWeight="bold">
-                If accepted with no work done:
+                Jika diterima tanpa pekerjaan yang dilakukan:
               </Typography>
               <Typography variant="body2">
-                Artist receives: {formatPrice(outcome.artistAmount)}
+                Seniman menerima: {formatPrice(outcome.artistAmount)}
               </Typography>
               <Typography variant="body2">
-                Client receives: {formatPrice(outcome.clientAmount)}
+                Klien menerima: {formatPrice(outcome.clientAmount)}
               </Typography>
               <Typography variant="body2" fontStyle="italic" sx={{ mt: 1 }}>
-                Note: Final amounts will be calculated based on actual work
-                completed and will require final proof submission by the artist.
+                Catatan: Jumlah akhir akan dihitung berdasarkan pekerjaan aktual
+                yang diselesaikan dan memerlukan pengajuan bukti akhir oleh
+                seniman.
               </Typography>
             </Alert>
           </Box>
@@ -460,7 +461,7 @@ export default function CancelTicketDetails({
             <Box sx={{ mb: 3 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                Your Response
+                Tanggapan Anda
               </Typography>
 
               <form onSubmit={handleSubmit(onSubmit)}>
@@ -476,7 +477,7 @@ export default function CancelTicketDetails({
                       size="large"
                       type="button"
                     >
-                      Accept Cancellation
+                      Terima Pembatalan
                     </Button>
                     <Button
                       variant={response === "reject" ? "contained" : "outlined"}
@@ -488,7 +489,7 @@ export default function CancelTicketDetails({
                       size="large"
                       type="button"
                     >
-                      Reject Cancellation
+                      Tolak Pembatalan
                     </Button>
                   </Stack>
                 </Box>
@@ -496,11 +497,11 @@ export default function CancelTicketDetails({
                 {response === "accept" && (
                   <Alert severity="warning" sx={{ mb: 3 }} icon={<InfoIcon />}>
                     <Typography variant="body2">
-                      By accepting this cancellation request, you are agreeing
-                      to terminate the contract.
+                      Dengan menerima permintaan pembatalan ini, Anda menyetujui
+                      untuk mengakhiri kontrak.
                       {ticket.requestedBy === "client"
-                        ? " You (the artist) will need to upload proof of work completed to determine the final payment split."
-                        : " The artist will need to upload proof of work completed to determine the final payment split."}
+                        ? " Anda (seniman) perlu mengunggah bukti pekerjaan yang telah diselesaikan untuk menentukan pembagian pembayaran akhir."
+                        : " Seniman perlu mengunggah bukti pekerjaan yang telah diselesaikan untuk menentukan pembagian pembayaran akhir."}
                     </Typography>
                   </Alert>
                 )}
@@ -511,20 +512,20 @@ export default function CancelTicketDetails({
                       name="rejectionReason"
                       control={control}
                       rules={{
-                        required: "Rejection reason is required",
+                        required: "Alasan penolakan diperlukan",
                         minLength: {
                           value: 10,
-                          message: "Please provide at least 10 characters",
+                          message: "Harap berikan minimal 10 karakter",
                         },
                       }}
                       render={({ field }) => (
                         <TextField
                           {...field}
-                          label="Reason for Rejection"
+                          label="Alasan Penolakan"
                           multiline
                           rows={3}
                           fullWidth
-                          placeholder="Explain why you are rejecting this cancellation request"
+                          placeholder="Jelaskan mengapa Anda menolak permintaan pembatalan ini"
                           required
                           disabled={isAdmin || isSubmitting}
                           error={!!errors.rejectionReason}
@@ -552,7 +553,7 @@ export default function CancelTicketDetails({
                   {isSubmitting ? (
                     <CircularProgress size={24} />
                   ) : (
-                    "Submit Response"
+                    "Kirim Tanggapan"
                   )}
                 </Button>
               </form>
@@ -565,15 +566,16 @@ export default function CancelTicketDetails({
             <Box sx={{ mb: 3 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                Next Steps
+                Langkah Selanjutnya
               </Typography>
 
               {shouldUploadCancellationProof() ? (
                 <Box>
                   <Alert severity="info" sx={{ mb: 2 }} icon={<UploadIcon />}>
                     <Typography variant="body2">
-                      As the artist, you need to upload proof of your current
-                      work progress to determine the final payment split.
+                      Sebagai seniman, Anda perlu mengunggah bukti kemajuan
+                      pekerjaan saat ini untuk menentukan pembagian pembayaran
+                      akhir.
                     </Typography>
                   </Alert>
 
@@ -584,14 +586,14 @@ export default function CancelTicketDetails({
                     href={`/dashboard/${userId}/contracts/${contract._id}/uploads/final/new?cancelTicketId=${ticket._id}`}
                     startIcon={<UploadIcon />}
                   >
-                    Upload Cancellation Proof
+                    Unggah Bukti Pembatalan
                   </Button>
                 </Box>
               ) : (
                 <Alert severity="info" sx={{ mb: 2 }}>
                   <Typography variant="body2">
-                    The artist needs to upload proof of work completed. Once
-                    uploaded, you'll be notified to review it.
+                    Seniman perlu mengunggah bukti pekerjaan yang diselesaikan.
+                    Setelah diunggah, Anda akan diberi tahu untuk mereviewnya.
                   </Typography>
                 </Alert>
               )}
@@ -608,7 +610,7 @@ export default function CancelTicketDetails({
                   fontWeight="medium"
                   gutterBottom
                 >
-                  Not satisfied with the process?
+                  Tidak puas dengan prosesnya?
                 </Typography>
                 <Button
                   variant="outlined"
@@ -617,7 +619,7 @@ export default function CancelTicketDetails({
                   disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
-                  Escalate to Resolution
+                  Eskalasi ke Penyelesaian
                 </Button>
 
                 <Typography
@@ -625,8 +627,8 @@ export default function CancelTicketDetails({
                   color="text.secondary"
                   sx={{ display: "block", mt: 1 }}
                 >
-                  Escalation will be reviewed by our support team to help
-                  resolve any issues.
+                  Eskalasi akan ditinjau oleh tim dukungan kami untuk membantu
+                  menyelesaikan masalah apa pun.
                 </Typography>
               </Box>
             )}
@@ -644,20 +646,20 @@ export default function CancelTicketDetails({
               }}
             >
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Contract Information
+                Informasi Kontrak
               </Typography>
 
               <Stack spacing={2}>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Contract Status
+                    Status Kontrak
                   </Typography>
                   <Typography variant="body1">{contract.status}</Typography>
                 </Box>
 
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Total Amount
+                    Jumlah Total
                   </Typography>
                   <Typography variant="body1" fontWeight="medium">
                     {formatPrice(contract.finance.total)}
@@ -667,7 +669,7 @@ export default function CancelTicketDetails({
                 {contract.deadlineAt && (
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Deadline
+                      Tenggat Waktu
                     </Typography>
                     <Typography variant="body1">
                       {formatDate(contract.deadlineAt)}
@@ -677,23 +679,23 @@ export default function CancelTicketDetails({
 
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Requested By
+                    Diminta Oleh
                   </Typography>
                   <Typography variant="body1">
                     {ticket.requestedBy === "client"
                       ? isClient
-                        ? "You (Client)"
-                        : "Client"
+                        ? "Anda (Klien)"
+                        : "Klien"
                       : isArtist
-                      ? "You (Artist)"
-                      : "Artist"}
+                      ? "Anda (Seniman)"
+                      : "Seniman"}
                   </Typography>
                 </Box>
 
                 {ticket.expiresAt && (
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Request Expires
+                      Permintaan Kedaluwarsa
                     </Typography>
                     <Typography
                       variant="body1"
@@ -709,17 +711,21 @@ export default function CancelTicketDetails({
 
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary">
-                  When a contract is cancelled:
+                  Ketika kontrak dibatalkan:
                 </Typography>
                 <Typography
                   variant="body2"
                   component="ul"
                   sx={{ mt: 1, pl: 2 }}
                 >
-                  <li>The artist must submit proof of completed work</li>
-                  <li>Final payment is based on % of work completed</li>
-                  <li>Cancellation fee applies as per contract terms</li>
-                  <li>Both parties will be notified of the final outcome</li>
+                  <li>
+                    Seniman harus menyerahkan bukti pekerjaan yang diselesaikan
+                  </li>
+                  <li>
+                    Pembayaran akhir berdasarkan % pekerjaan yang diselesaikan
+                  </li>
+                  <li>Biaya pembatalan berlaku sesuai ketentuan kontrak</li>
+                  <li>Kedua belah pihak akan diberitahu tentang hasil akhir</li>
                 </Typography>
               </Box>
             </Paper>
@@ -737,35 +743,36 @@ export default function CancelTicketDetails({
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <WarningIcon sx={{ mr: 1, color: "warning.main" }} />
-            Escalate to Resolution?
+            Eskalasi ke Penyelesaian?
           </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Escalating this issue will create a resolution ticket for admin
-            review. You will need to provide evidence and explain your position.
+            Eskalasi masalah ini akan membuat tiket penyelesaian untuk
+            peninjauan admin. Anda perlu memberikan bukti dan menjelaskan posisi
+            Anda.
             <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-              When should you escalate?
+              Kapan Anda harus melakukan eskalasi?
             </Typography>
             <Typography variant="body2">
-              • If communication has broken down
+              • Jika komunikasi telah terputus
               <br />
-              • If there's a disagreement about contract terms
-              <br />• If you believe the other party isn't fulfilling their
-              obligations
+              • Jika ada perselisihan mengenai persyaratan kontrak
+              <br />• Jika Anda percaya pihak lain tidak memenuhi kewajiban
+              mereka
             </Typography>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowEscalateDialog(false)} color="inherit">
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={confirmEscalation}
             color="warning"
             variant="contained"
           >
-            Proceed to Resolution
+            Lanjutkan ke Penyelesaian
           </Button>
         </DialogActions>
       </Dialog>

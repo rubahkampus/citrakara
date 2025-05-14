@@ -129,7 +129,9 @@ export default function ResolutionTicketDetails({
       const limitedFiles = totalFiles.slice(0, 5);
 
       if (totalFiles.length > 5) {
-        setError("Maximum 5 images allowed. Only the first 5 will be used.");
+        setError(
+          "Maksimal 5 gambar diperbolehkan. Hanya 5 gambar pertama yang akan digunakan."
+        );
         setTimeout(() => setError(null), 3000);
       }
 
@@ -259,19 +261,19 @@ export default function ResolutionTicketDetails({
     }
   };
 
-  // Get readable status
+  // Mendapatkan status yang mudah dibaca
   const getReadableStatus = (status: string) => {
     switch (status) {
       case "open":
-        return "Open - Awaiting Counterproof";
+        return "Terbuka - Menunggu Bukti Tandingan";
       case "awaitingReview":
-        return "Awaiting Admin Review";
+        return "Menunggu Tinjauan Admin";
       case "resolved":
         return ticket.decision === "favorClient"
-          ? "Resolved in Favor of Client"
-          : "Resolved in Favor of Artist";
+          ? "Diselesaikan Mendukung Klien"
+          : "Diselesaikan Mendukung Seniman";
       case "cancelled":
-        return "Cancelled";
+        return "Dibatalkan";
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
@@ -281,17 +283,17 @@ export default function ResolutionTicketDetails({
   const getTargetTypeDisplay = (type: string) => {
     switch (type) {
       case "cancelTicket":
-        return "Cancellation Request";
+        return "Permintaan Pembatalan";
       case "revisionTicket":
-        return "Revision Request";
+        return "Permintaan Revisi";
       case "changeTicket":
-        return "Change Request";
+        return "Permintaan Perubahan";
       case "finalUpload":
-        return "Final Delivery";
+        return "Pengiriman Final";
       case "progressMilestoneUpload":
-        return "Milestone Progress Upload";
+        return "Unggahan Progres Milestone";
       case "revisionUpload":
-        return "Revision Upload";
+        return "Unggahan Revisi";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
@@ -305,7 +307,7 @@ export default function ResolutionTicketDetails({
       case "changeTicket":
         return `/dashboard/${userId}/contracts/${contractId}/tickets/${ticket.targetType}/${ticket.targetId}`;
       case "finalUpload":
-        return `/dashboard/${userId}/contracts/${contractId}/uploads/final/${ticket.targetId}`
+        return `/dashboard/${userId}/contracts/${contractId}/uploads/final/${ticket.targetId}`;
       case "progressMilestoneUpload":
         return `/dashboard/${userId}/contracts/${contractId}/uploads/milestone/${ticket.targetId}`;
       case "revisionUpload":
@@ -328,7 +330,7 @@ export default function ResolutionTicketDetails({
       >
         <Box>
           <Typography variant="h5" gutterBottom fontWeight="medium">
-            Resolution Request: {getTargetTypeDisplay(ticket.targetType)}
+            Permintaan Resolusi: {getTargetTypeDisplay(ticket.targetType)}
           </Typography>
 
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
@@ -337,7 +339,7 @@ export default function ResolutionTicketDetails({
                 sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Created: {formatDate(ticket.createdAt)}
+                Dibuat: {formatDate(ticket.createdAt)}
               </Typography>
             </Box>
 
@@ -354,8 +356,8 @@ export default function ResolutionTicketDetails({
                   variant="body2"
                   color={isPastCounterDeadline ? "error" : "text.secondary"}
                 >
-                  Counterproof:{" "}
-                  {isPastCounterDeadline ? "Expired" : timeRemaining}
+                  Bukti tandingan:{" "}
+                  {isPastCounterDeadline ? "Kedaluwarsa" : timeRemaining}
                 </Typography>
               </Box>
             )}
@@ -366,7 +368,7 @@ export default function ResolutionTicketDetails({
                   sx={{ fontSize: 18, mr: 0.5, color: "success.main" }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Resolved: {formatDate(ticket.resolvedAt)}
+                  Diselesaikan: {formatDate(ticket.resolvedAt)}
                 </Typography>
               </Box>
             )}
@@ -380,13 +382,13 @@ export default function ResolutionTicketDetails({
         />
       </Box>
 
-      {/* Alert Messages */}
+      {/* Pesan Peringatan */}
       {ticket.status === "open" && !isPastCounterDeadline && isCounterparty && (
         <Alert severity="info" sx={{ mb: 3 }} icon={<AccessTimeIcon />}>
           <Typography variant="body2">
-            You have until {formatDate(ticket.counterExpiresAt)} to submit your
-            counterproof. After this deadline, the resolution will proceed to
-            admin review.
+            Anda memiliki waktu hingga {formatDate(ticket.counterExpiresAt)}{" "}
+            untuk mengajukan bukti tandingan. Setelah tenggat waktu ini,
+            resolusi akan dilanjutkan ke tinjauan admin.
           </Typography>
         </Alert>
       )}
@@ -394,8 +396,8 @@ export default function ResolutionTicketDetails({
       {ticket.status === "open" && isPastCounterDeadline && (
         <Alert severity="warning" sx={{ mb: 3 }}>
           <Typography variant="body2">
-            The counterproof deadline has passed. This resolution will now go to
-            admin review.
+            Tenggat waktu bukti tandingan telah lewat. Resolusi ini sekarang
+            akan dilanjutkan ke tinjauan admin.
           </Typography>
         </Alert>
       )}
@@ -404,8 +406,8 @@ export default function ResolutionTicketDetails({
         <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
           <Typography variant="body2">
             {isSubmitting
-              ? "Processing your request..."
-              : "Your request has been processed successfully."}
+              ? "Memproses permintaan Anda..."
+              : "Permintaan Anda telah diproses dengan sukses."}
           </Typography>
         </Alert>
       )}
@@ -418,19 +420,18 @@ export default function ResolutionTicketDetails({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Main Content Area */}
+      {/* Area Konten Utama */}
       <Grid container spacing={3}>
-        {/* Left Column: Resolution Details */}
+        {/* Kolom Kiri: Detail Resolusi */}
         <Grid item xs={12} md={7}>
-          {/* Submitter's Position */}
+          {/* Posisi Pengirim */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
               {isSubmitter
-                ? "Your"
+                ? "Posisi Anda"
                 : ticket.submittedBy === "client"
-                ? "Client's"
-                : "Artist's"}{" "}
-              Position
+                ? "Posisi Klien"
+                : "Posisi Seniman"}{" "}
             </Typography>
 
             <Paper
@@ -442,7 +443,7 @@ export default function ResolutionTicketDetails({
               </Typography>
             </Paper>
 
-            {/* Proof Images */}
+            {/* Gambar Bukti */}
             {ticket.proofImages && ticket.proofImages.length > 0 && (
               <Grid container spacing={2}>
                 {ticket.proofImages.map((url, index) => (
@@ -451,7 +452,7 @@ export default function ResolutionTicketDetails({
                       <CardMedia
                         component="img"
                         image={url}
-                        alt={`Evidence ${index + 1}`}
+                        alt={`Bukti ${index + 1}`}
                         sx={{
                           height: 200,
                           objectFit: "cover",
@@ -460,7 +461,7 @@ export default function ResolutionTicketDetails({
                       />
                       <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
                         <Typography variant="caption" color="text.secondary">
-                          Evidence Image {index + 1}
+                          Gambar Bukti {index + 1}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -470,16 +471,15 @@ export default function ResolutionTicketDetails({
             )}
           </Box>
 
-          {/* Counterparty's Response - only shown if provided */}
+          {/* Respon Pihak Lawan - hanya ditampilkan jika diberikan */}
           {ticket.counterDescription && (
             <Box sx={{ mb: 4 }}>
               <Typography variant="h6" gutterBottom fontWeight="medium">
                 {isCounterparty
-                  ? "Your"
+                  ? "Respon Anda"
                   : ticket.counterparty === "client"
-                  ? "Client's"
-                  : "Artist's"}{" "}
-                Response
+                  ? "Respon Klien"
+                  : "Respon Seniman"}{" "}
               </Typography>
 
               <Paper
@@ -518,7 +518,7 @@ export default function ResolutionTicketDetails({
                               variant="caption"
                               color="text.secondary"
                             >
-                              Counter Evidence Image {index + 1}
+                              Gambar Bukti Tandingan {index + 1}
                             </Typography>
                           </CardContent>
                         </Card>
@@ -533,7 +533,7 @@ export default function ResolutionTicketDetails({
           {ticket.status === "resolved" && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Admin Decision
+                Keputusan Admin
               </Typography>
 
               <Paper
@@ -561,10 +561,10 @@ export default function ResolutionTicketDetails({
                 }}
               >
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Decision:{" "}
+                  Keputusan:{" "}
                   {ticket.decision === "favorClient"
-                    ? "In favor of the client"
-                    : "In favor of the artist"}
+                    ? "Mendukung klien"
+                    : "Mendukung seniman"}
                 </Typography>
                 {ticket.resolutionNote && (
                   <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
@@ -575,18 +575,18 @@ export default function ResolutionTicketDetails({
             </Box>
           )}
 
-          {/* Status information: Next steps based on ticket status */}
+          {/* Informasi status: Langkah selanjutnya berdasarkan status tiket */}
           {ticket.status === "open" &&
             !canSubmitCounterproof() &&
             !isSubmitter && (
               <Box sx={{ mb: 3 }}>
                 <Alert severity="info" sx={{ mb: 2 }} icon={<InfoIcon />}>
                   <Typography variant="body2">
-                    Waiting for{" "}
-                    {ticket.counterparty === "client" ? "client" : "artist"} to
-                    provide counterproof. If no response is received by{" "}
-                    {formatDate(ticket.counterExpiresAt)}, this resolution will
-                    automatically proceed to admin review.
+                    Menunggu{" "}
+                    {ticket.counterparty === "client" ? "klien" : "seniman"}{" "}
+                    untuk memberikan bukti tandingan. Jika tidak ada respons
+                    yang diterima sebelum {formatDate(ticket.counterExpiresAt)},
+                    resolusi ini akan otomatis dilanjutkan ke tinjauan admin.
                   </Typography>
                 </Alert>
               </Box>
@@ -596,19 +596,19 @@ export default function ResolutionTicketDetails({
             <Box sx={{ mb: 3 }}>
               <Alert severity="info" sx={{ mb: 2 }} icon={<InfoIcon />}>
                 <Typography variant="body2">
-                  This resolution is now with our admin team for review. You'll
-                  be notified once a decision has been made.
+                  Resolusi ini sekarang sedang dalam tinjauan tim admin kami.
+                  Anda akan diberi tahu setelah keputusan dibuat.
                 </Typography>
               </Alert>
             </Box>
           )}
 
-          {/* Cancel button for submitter if ticket is still open or awaiting review */}
+          {/* Tombol pembatalan untuk pengirim jika tiket masih terbuka atau dalam tinjauan */}
           {canCancelTicket() && (
             <Box sx={{ mt: 4 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-                Cancel this resolution request
+                Batalkan permintaan resolusi ini
               </Typography>
               <Button
                 variant="outlined"
@@ -617,33 +617,34 @@ export default function ResolutionTicketDetails({
                 onClick={() => setShowCancelDialog(true)}
                 disabled={isSubmitting}
               >
-                Cancel Resolution Request
+                Batalkan Permintaan Resolusi
               </Button>
               <Typography
                 variant="caption"
                 color="text.secondary"
                 sx={{ display: "block", mt: 1 }}
               >
-                Only use this if the issue has been resolved directly between
-                you and the {ticket.counterparty}.
+                Gunakan ini hanya jika masalah telah diselesaikan langsung
+                antara Anda dan {ticket.counterparty}.
               </Typography>
             </Box>
           )}
         </Grid>
 
-        {/* Right Column: Counterproof Submission Form or Target Item Details */}
+        {/* Kolom Kanan: Formulir Pengajuan Bukti Tandingan atau Detail Item Target */}
         <Grid item xs={12} md={5}>
-          {/* Counterproof Submission Form - Only shown for counterparty if still open and no counterproof yet */}
+          {/* Formulir Pengajuan Bukti Tandingan - Hanya ditampilkan untuk pihak lawan jika masih terbuka dan belum ada bukti tandingan */}
           {canSubmitCounterproof() ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Submit Your Response
+                Kirimkan Respon Anda
               </Typography>
 
               <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
                 <Typography variant="body2">
-                  Please provide your perspective on this issue. You have until{" "}
-                  {formatDate(ticket.counterExpiresAt)} to respond.
+                  Harap berikan perspektif Anda tentang masalah ini. Anda
+                  memiliki waktu hingga {formatDate(ticket.counterExpiresAt)}{" "}
+                  untuk merespons.
                 </Typography>
               </Alert>
 
@@ -653,10 +654,11 @@ export default function ResolutionTicketDetails({
                     name="counterDescription"
                     control={control}
                     rules={{
-                      required: "Your response is required",
+                      required: "Respon Anda wajib diisi",
                       minLength: {
                         value: 20,
-                        message: "Description must be at least 20 characters",
+                        message:
+                          "Deskripsi harus memiliki setidaknya 20 karakter",
                       },
                     }}
                     render={({ field }) => (
@@ -675,22 +677,22 @@ export default function ResolutionTicketDetails({
                     )}
                   />
                 </Box>
-
-                {/* Proof images upload */}
+                {/* Unggah gambar bukti */}
                 <Box sx={{ mb: 3 }}>
                   <Typography
                     variant="subtitle2"
                     gutterBottom
                     fontWeight="medium"
                   >
-                    Supporting Evidence
+                    Bukti Pendukung
                   </Typography>
                   <Typography
                     variant="body2"
                     color="text.secondary"
                     gutterBottom
                   >
-                    Upload images to support your position (max 5 images)
+                    Unggah gambar untuk mendukung posisi Anda (maksimal 5
+                    gambar)
                   </Typography>
 
                   <Button
@@ -700,7 +702,7 @@ export default function ResolutionTicketDetails({
                     disabled={isSubmitting || files.length >= 5}
                     sx={{ mt: 1 }}
                   >
-                    Add Images
+                    Tambahkan Gambar
                     <input
                       type="file"
                       accept="image/*"
@@ -716,7 +718,7 @@ export default function ResolutionTicketDetails({
                       display="block"
                       sx={{ mt: 1 }}
                     >
-                      {files.length}/5 images selected
+                      {files.length}/5 gambar terpilih
                     </Typography>
                   )}
 
@@ -728,7 +730,7 @@ export default function ResolutionTicketDetails({
                             <Box
                               component="img"
                               src={url}
-                              alt={`Evidence Preview ${index + 1}`}
+                              alt={`Tampilan Bukti ${index + 1}`}
                               sx={{
                                 width: "100%",
                                 height: 100,
@@ -767,7 +769,7 @@ export default function ResolutionTicketDetails({
                   {isSubmitting ? (
                     <CircularProgress size={24} />
                   ) : (
-                    "Submit Response"
+                    "Kirim Respon"
                   )}
                 </Button>
               </form>
@@ -776,7 +778,7 @@ export default function ResolutionTicketDetails({
             /* Target Item Information */
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Resolution Information
+                Informasi Resolusi
               </Typography>
 
               <Paper
@@ -791,7 +793,7 @@ export default function ResolutionTicketDetails({
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="subtitle2" gutterBottom>
-                      Type
+                      Jenis
                     </Typography>
                     <Typography variant="body2">
                       {getTargetTypeDisplay(ticket.targetType)}
@@ -800,33 +802,33 @@ export default function ResolutionTicketDetails({
 
                   <Box>
                     <Typography variant="subtitle2" gutterBottom>
-                      Submitted By
+                      Dikirim Oleh
                     </Typography>
                     <Typography variant="body2">
                       {isSubmitter
-                        ? "You"
+                        ? "Anda"
                         : ticket.submittedBy === "client"
-                        ? "Client"
-                        : "Artist"}
+                        ? "Klien"
+                        : "Seniman"}
                     </Typography>
                   </Box>
 
                   <Box>
                     <Typography variant="subtitle2" gutterBottom>
-                      Counterparty
+                      Pihak Lawan
                     </Typography>
                     <Typography variant="body2">
                       {isCounterparty
-                        ? "You"
+                        ? "Anda"
                         : ticket.counterparty === "client"
-                        ? "Client"
-                        : "Artist"}
+                        ? "Klien"
+                        : "Seniman"}
                     </Typography>
                   </Box>
 
                   <Box>
                     <Typography variant="subtitle2" gutterBottom>
-                      Contract
+                      Kontrak
                     </Typography>
                     <Button
                       variant="text"
@@ -834,13 +836,13 @@ export default function ResolutionTicketDetails({
                       component={Link}
                       href={`/dashboard/${userId}/contracts/${contractId}`}
                     >
-                      View Contract
+                      Lihat Kontrak
                     </Button>
                   </Box>
 
                   <Box>
                     <Typography variant="subtitle2" gutterBottom>
-                      Disputed Item
+                      Item yang Dipersengketakan
                     </Typography>
                     <Button
                       variant="text"
@@ -848,7 +850,7 @@ export default function ResolutionTicketDetails({
                       component={Link}
                       href={getTargetUrl()}
                     >
-                      View {getTargetTypeDisplay(ticket.targetType)}
+                      Lihat {getTargetTypeDisplay(ticket.targetType)}
                     </Button>
                   </Box>
                 </Stack>
@@ -860,12 +862,12 @@ export default function ResolutionTicketDetails({
               >
                 <Typography variant="body2">
                   {ticket.status === "resolved"
-                    ? "This resolution has been decided by our admin team."
+                    ? "Resolusi ini telah diputuskan oleh tim admin kami."
                     : ticket.status === "cancelled"
-                    ? "This resolution request has been cancelled."
+                    ? "Permintaan resolusi ini telah dibatalkan."
                     : ticket.status === "awaitingReview"
-                    ? "This resolution is currently under review by our admin team. You'll be notified of the decision once it's made."
-                    : "Resolution requests help resolve disagreements between clients and artists with the assistance of our admin team."}
+                    ? "Resolusi ini sedang dalam tinjauan oleh tim admin kami. Anda akan diberi tahu setelah keputusan dibuat."
+                    : "Permintaan resolusi membantu menyelesaikan perselisihan antara klien dan seniman dengan bantuan tim admin kami."}
                 </Typography>
               </Alert>
             </Box>
@@ -883,27 +885,27 @@ export default function ResolutionTicketDetails({
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <CancelIcon sx={{ mr: 1, color: "error.main" }} />
-            Cancel Resolution Request?
+            Batalkan Permintaan Resolusi?
           </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to cancel this resolution request? This should
-            only be done if:
+            Apakah Anda yakin ingin membatalkan permintaan resolusi ini? Ini
+            hanya boleh dilakukan jika:
             <ul>
               <li>
-                The issue has been resolved directly between you and the{" "}
+                Masalah telah diselesaikan langsung antara Anda dan{" "}
                 {ticket.counterparty}
               </li>
-              <li>You no longer wish to pursue this resolution</li>
+              <li>Anda tidak ingin melanjutkan resolusi ini</li>
             </ul>
-            This action cannot be undone. If needed, you'll have to create a new
-            resolution ticket.
+            Tindakan ini tidak dapat dibatalkan. Jika diperlukan, Anda harus
+            membuat tiket resolusi baru.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowCancelDialog(false)} color="inherit">
-            No, Keep It
+            Tidak, Pertahankan
           </Button>
           <Button
             onClick={handleCancelTicket}
@@ -914,7 +916,7 @@ export default function ResolutionTicketDetails({
             {isSubmitting ? (
               <CircularProgress size={24} />
             ) : (
-              "Yes, Cancel Resolution"
+              "Ya, Batalkan Resolusi"
             )}
           </Button>
         </DialogActions>

@@ -40,17 +40,17 @@ const ContractTabsSection: React.FC<ContractTabsSectionProps> = ({
           <Tab
             icon={<HistoryIcon />}
             iconPosition="start"
-            label="Status History"
+            label="Riwayat Status"
           />
           <Tab
             icon={<ConfirmationNumberIcon />}
             iconPosition="start"
-            label="Tickets"
+            label="Tiket"
           />
           <Tab
             icon={<CloudUploadIcon />}
             iconPosition="start"
-            label="Uploads"
+            label="Unggahan"
           />
         </Tabs>
       </Box>

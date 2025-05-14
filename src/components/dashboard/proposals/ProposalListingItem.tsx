@@ -33,13 +33,13 @@ const statusColors = {
 } as const;
 
 const statusLabels = {
-  pendingArtist: "Awaiting Artist",
-  pendingClient: "Awaiting Client",
-  accepted: "Accepted",
-  rejectedArtist: "Rejected by Artist",
-  rejectedClient: "Rejected by Client",
-  expired: "Expired",
-  paid: "Paid",
+  pendingArtist: "Menunggu Tanggapan Seniman",
+  pendingClient: "Menunggu Tanggapan Klien",
+  accepted: "Diterima",
+  rejectedArtist: "Ditolak oleh Seniman",
+  rejectedClient: "Ditolak oleh Klien",
+  expired: "Kedaluwarsa",
+  paid: "Telah Dibayar",
 } as const;
 
 export default function ProposalListingItem({
@@ -154,7 +154,7 @@ export default function ProposalListingItem({
           <Stack spacing={2} sx={{ height: "100%" }}>
             {/* Dates Section */}
             <Box>
-              {/* Availability Window */}
+              {/* Jendela Ketersediaan */}
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                   <AccessTimeIcon
@@ -166,7 +166,7 @@ export default function ProposalListingItem({
                     color="text.secondary"
                     fontWeight={500}
                   >
-                    Availability Window
+                    Jendela Ketersediaan
                   </Typography>
                 </Box>
                 <Typography
@@ -174,13 +174,13 @@ export default function ProposalListingItem({
                   sx={{ display: "flex", justifyContent: "space-between" }}
                 >
                   <span>
-                    From:{" "}
+                    Dari:{" "}
                     <Box component="span" sx={{ fontWeight: 500 }}>
                       {formatDate(proposal.availability.earliestDate)}
                     </Box>
                   </span>
                   <span>
-                    To:{" "}
+                    Sampai:{" "}
                     <Box component="span" sx={{ fontWeight: 500 }}>
                       {formatDate(proposal.availability.latestDate)}
                     </Box>
@@ -188,7 +188,7 @@ export default function ProposalListingItem({
                 </Typography>
               </Box>
 
-              {/* Deadline */}
+              {/* Tenggat Waktu */}
               <Box
                 sx={{
                   p: 1,
@@ -206,14 +206,14 @@ export default function ProposalListingItem({
                   color="primary"
                   sx={{ mb: 0.5 }}
                 >
-                  Deadline
+                  Tenggat Waktu
                 </Typography>
                 <Typography variant="body2" fontWeight={500}>
                   {formatDate(proposal.deadline)}
                 </Typography>
               </Box>
 
-              {/* Expiration Notice */}
+              {/* Pemberitahuan Kedaluwarsa */}
               {proposal.expiresAt && (
                 <Typography
                   variant="body2"
@@ -230,7 +230,8 @@ export default function ProposalListingItem({
                   }}
                 >
                   {isExpiringSoon() && "⚠️ "}
-                  Offer expires: {new Date(proposal.expiresAt).toLocaleString()}
+                  Penawaran berakhir:{" "}
+                  {new Date(proposal.expiresAt).toLocaleString()}
                 </Typography>
               )}
             </Box>
@@ -255,18 +256,18 @@ export default function ProposalListingItem({
                   color="text.secondary"
                   fontWeight={500}
                 >
-                  Price Breakdown
+                  Rincian Harga
                 </Typography>
               </Box>
               <Stack spacing={1}>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="body2">Base Price:</Typography>
+                  <Typography variant="body2">Harga Dasar:</Typography>
                   <Typography variant="body2">
                     {formatCurrency(proposal.calculatedPrice.base)}
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="body2">Options:</Typography>
+                  <Typography variant="body2">Opsi:</Typography>
                   <Typography variant="body2">
                     {formatCurrency(proposal.calculatedPrice.optionGroups)}
                   </Typography>
@@ -275,7 +276,7 @@ export default function ProposalListingItem({
                   <Box
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
-                    <Typography variant="body2">Add-ons:</Typography>
+                    <Typography variant="body2">Add-on:</Typography>
                     <Typography variant="body2">
                       {formatCurrency(proposal.calculatedPrice.addons)}
                     </Typography>
@@ -286,7 +287,7 @@ export default function ProposalListingItem({
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
                     <Typography variant="body2" color="warning.main">
-                      Rush Fee:
+                      Biaya Kilat:
                     </Typography>
                     <Typography variant="body2" color="warning.main">
                       {formatCurrency(proposal.calculatedPrice.rush)}
@@ -298,7 +299,7 @@ export default function ProposalListingItem({
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
                     <Typography variant="body2" color="success.main">
-                      Discount:
+                      Diskon:
                     </Typography>
                     <Typography variant="body2" color="success.main">
                       -{formatCurrency(proposal.calculatedPrice.discount)}
@@ -310,7 +311,7 @@ export default function ProposalListingItem({
                     sx={{ display: "flex", justifyContent: "space-between" }}
                   >
                     <Typography variant="body2" color="error.main">
-                      Surcharge:
+                      Biaya Tambahan:
                     </Typography>
                     <Typography variant="body2" color="error.main">
                       +{formatCurrency(proposal.calculatedPrice.surcharge)}

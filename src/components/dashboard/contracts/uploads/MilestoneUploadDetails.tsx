@@ -69,17 +69,17 @@ export default function MilestoneUploadDetails({
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
 
-  // Format date for display
+  // Format tanggal untuk tampilan
   const formatDate = (date?: string | Date) => {
     if (!date) return "N/A";
     const parsedDate = typeof date === "string" ? new Date(date) : date;
     return parsedDate.toLocaleString();
   };
 
-  // Get milestone information
+  // Mendapatkan informasi milestone
   const milestone = contract.milestones?.[upload.milestoneIdx];
 
-  // Calculate time remaining until expiry
+  // Hitung waktu yang tersisa sampai kedaluwarsa
   const calculateTimeRemaining = () => {
     if (!upload.expiresAt) return null;
 
@@ -87,17 +87,17 @@ export default function MilestoneUploadDetails({
     const now = new Date();
     const diffMs = expiryDate.getTime() - now.getTime();
 
-    if (diffMs <= 0) return "Expired";
+    if (diffMs <= 0) return "Kedaluwarsa";
 
     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (diffHrs > 24) {
       const days = Math.floor(diffHrs / 24);
-      return `${days} day${days > 1 ? "s" : ""} remaining`;
+      return `${days} hari${days > 1 ? "s" : ""} tersisa`;
     }
 
-    return `${diffHrs}h ${diffMins}m remaining`;
+    return `${diffHrs}j ${diffMins}m tersisa`;
   };
 
   // Check if approaching expiry (less than 12 hours remaining)
@@ -138,15 +138,15 @@ export default function MilestoneUploadDetails({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "submitted":
-        return "Pending Client Review";
+        return "Menunggu Tinjauan Klien";
       case "accepted":
-        return "Accepted";
+        return "Diterima";
       case "rejected":
-        return "Rejected";
+        return "Ditolak";
       case "forcedAccepted":
-        return "Accepted (Admin)";
+        return "Diterima (Admin)";
       case "disputed":
-        return "In Dispute";
+        return "Dalam Perselisihan";
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
@@ -236,7 +236,7 @@ export default function MilestoneUploadDetails({
       >
         <Box>
           <Typography variant="h5" gutterBottom fontWeight="medium">
-            Milestone Upload
+            Unggahan Milestone
             {milestone && (
               <Typography
                 component="span"
@@ -244,7 +244,8 @@ export default function MilestoneUploadDetails({
                 color="text.secondary"
                 sx={{ ml: 1 }}
               >
-                for {milestone.title || `Milestone #${upload.milestoneIdx + 1}`}
+                untuk{" "}
+                {milestone.title || `Milestone #${upload.milestoneIdx + 1}`}
               </Typography>
             )}
           </Typography>
@@ -255,7 +256,7 @@ export default function MilestoneUploadDetails({
                 sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Created: {formatDate(upload.createdAt)}
+                Dibuat: {formatDate(upload.createdAt)}
               </Typography>
             </Box>
 
@@ -265,7 +266,7 @@ export default function MilestoneUploadDetails({
                   sx={{ fontSize: 18, mr: 0.5, color: "success.main" }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Resolved: {formatDate(upload.closedAt)}
+                  Diselesaikan: {formatDate(upload.closedAt)}
                 </Typography>
               </Box>
             )}
@@ -311,7 +312,7 @@ export default function MilestoneUploadDetails({
         )}
       </Box>
 
-      {/* Alert Messages */}
+      {/* Pesan Peringatan */}
       {upload.isFinal &&
         upload.status === "submitted" &&
         !isPastExpiry &&
@@ -319,12 +320,12 @@ export default function MilestoneUploadDetails({
         isApproachingExpiry() && (
           <Alert severity="warning" sx={{ mb: 3 }} icon={<AccessTimeIcon />}>
             <Typography variant="body2">
-              This milestone review will expire soon - on{" "}
+              Tinjauan milestone ini akan segera kedaluwarsa - pada{" "}
               {formatDate(upload.expiresAt)}.
               {!isAdmin &&
                 isClient &&
                 canReview &&
-                " Please respond as soon as possible."}
+                " Harap beri tanggapan secepatnya."}
             </Typography>
           </Alert>
         )}
@@ -335,16 +336,16 @@ export default function MilestoneUploadDetails({
         upload.expiresAt && (
           <Alert severity="error" sx={{ mb: 3 }}>
             <Typography variant="body2">
-              This milestone review has expired on{" "}
+              Tinjauan milestone ini telah kedaluwarsa pada{" "}
               {formatDate(upload.expiresAt)}.
-              {isClient && " The milestone may be auto-accepted soon."}
+              {isClient && " Milestone ini mungkin akan diterima otomatis."}
             </Typography>
           </Alert>
         )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
-          Your action has been processed successfully.
+          Tindakan Anda telah diproses dengan sukses.
         </Alert>
       )}
 
@@ -356,13 +357,13 @@ export default function MilestoneUploadDetails({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Main Content Area */}
+      {/* Area Konten Utama */}
       <Grid container spacing={3}>
-        {/* Left Column: Milestone Details */}
+        {/* Kolom Kiri: Detail Milestone */}
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
-              Milestone Details
+              Detail Milestone
             </Typography>
 
             <Paper
@@ -371,12 +372,12 @@ export default function MilestoneUploadDetails({
             >
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Milestone Information
+                  Informasi Milestone
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Milestone Percentage:
+                      Persentase Milestone:
                     </Typography>
                     <Typography variant="body1">
                       {milestone?.percent || 0}%
@@ -384,16 +385,18 @@ export default function MilestoneUploadDetails({
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Delivery Type:
+                      Jenis Pengiriman:
                     </Typography>
                     <Typography variant="body1">
-                      {upload.isFinal ? "Final Delivery" : "Progress Update"}
+                      {upload.isFinal
+                        ? "Pengiriman Final"
+                        : "Pembaruan Progres"}
                     </Typography>
                   </Grid>
                   {upload.isFinal && upload.expiresAt && (
                     <Grid item xs={12}>
                       <Typography variant="body2" color="text.secondary">
-                        Review Deadline:
+                        Batas Waktu Tinjauan:
                       </Typography>
                       <Typography variant="body1">
                         {formatDate(upload.expiresAt)}
@@ -404,11 +407,11 @@ export default function MilestoneUploadDetails({
               </Box>
             </Paper>
 
-            {/* Artist's Description */}
+            {/* Deskripsi Seniman */}
             {upload.description && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Artist's Description
+                  Deskripsi Seniman
                 </Typography>
                 <Paper
                   variant="outlined"
@@ -422,7 +425,7 @@ export default function MilestoneUploadDetails({
             )}
           </Box>
 
-          {/* Response Form - Only shown if user is client and can review */}
+          {/* Formulir Tanggapan - Hanya ditampilkan jika pengguna adalah klien dan dapat meninjau */}
           {!isAdmin &&
             isClient &&
             canReview &&
@@ -431,14 +434,15 @@ export default function MilestoneUploadDetails({
               <Box sx={{ mb: 3 }}>
                 <Divider sx={{ mb: 3 }} />
                 <Typography variant="h6" fontWeight="medium" gutterBottom>
-                  Your Response
+                  Tanggapan Anda
                 </Typography>
 
                 <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
                   <Typography variant="body2">
-                    By accepting this milestone, you acknowledge that the artist
-                    has completed this part of the project as agreed. Once
-                    accepted, the milestone cannot be changed.
+                    Dengan menerima milestone ini, Anda mengakui bahwa seniman
+                    telah menyelesaikan bagian ini dari proyek sesuai
+                    kesepakatan. Setelah diterima, milestone ini tidak dapat
+                    diubah.
                   </Typography>
                 </Alert>
 
@@ -453,7 +457,7 @@ export default function MilestoneUploadDetails({
                       sx={{ flexGrow: 1 }}
                       size="large"
                     >
-                      Accept Milestone
+                      Terima Milestone
                     </Button>
                     <Button
                       variant="outlined"
@@ -464,19 +468,19 @@ export default function MilestoneUploadDetails({
                       sx={{ flexGrow: 1 }}
                       size="large"
                     >
-                      Reject Milestone
+                      Tolak Milestone
                     </Button>
                   </Stack>
                 </Box>
               </Box>
             )}
 
-          {/* Escalate to Resolution section */}
+          {/* Bagian Eskalasi ke Resolusi */}
           {(isClient || isArtist) && upload.isFinal && upload.status && (
             <Box sx={{ mt: 4 }}>
               <Divider sx={{ mb: 3 }} />
               <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-                Not satisfied with the process?
+                Tidak puas dengan prosesnya?
               </Typography>
               <Button
                 variant="outlined"
@@ -485,7 +489,7 @@ export default function MilestoneUploadDetails({
                 disabled={isAdmin || isSubmitting}
                 startIcon={<WarningIcon />}
               >
-                Escalate to Resolution
+                Eskalasi ke Resolusi
               </Button>
 
               <Typography
@@ -493,19 +497,19 @@ export default function MilestoneUploadDetails({
                 color="text.secondary"
                 sx={{ display: "block", mt: 1 }}
               >
-                Escalation will be reviewed by our support team to help resolve
-                any issues.
+                Eskalasi akan ditinjau oleh tim dukungan kami untuk membantu
+                menyelesaikan masalah.
               </Typography>
             </Box>
           )}
         </Grid>
 
-        {/* Right Column: Upload Images */}
+        {/* Kolom Kanan: Unggah Gambar */}
         <Grid item xs={12} md={5}>
           {upload.images && upload.images.length > 0 ? (
             <Box>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                Milestone Images
+                Gambar Milestone
               </Typography>
               <Grid container spacing={2}>
                 {upload.images.map((url, index) => (
@@ -523,7 +527,7 @@ export default function MilestoneUploadDetails({
                       />
                       <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
                         <Typography variant="caption" color="text.secondary">
-                          Image {index + 1}
+                          Gambar {index + 1}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -554,7 +558,7 @@ export default function MilestoneUploadDetails({
                   color="text.secondary"
                   align="center"
                 >
-                  No images were uploaded for this milestone.
+                  Tidak ada gambar yang diunggah untuk milestone ini.
                 </Typography>
               </Paper>
             </Box>
@@ -572,29 +576,29 @@ export default function MilestoneUploadDetails({
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <ThumbDownIcon sx={{ mr: 1, color: "error.main" }} />
-            Reject Milestone
+            Tolak Milestone
           </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Please provide a detailed reason for rejecting this milestone. This
-            will help the artist understand what needs to be improved.
+            Harap berikan alasan rinci untuk menolak milestone ini. Ini akan
+            membantu seniman memahami apa yang perlu diperbaiki.
           </DialogContentText>
           <TextField
             autoFocus
             margin="dense"
-            label="Reason for Rejection"
+            label="Alasan Penolakan"
             multiline
             rows={4}
             fullWidth
             value={rejectionReason}
             onChange={(e) => setRejectionReason(e.target.value)}
-            placeholder="Explain why you are rejecting this milestone..."
+            placeholder="Jelaskan mengapa Anda menolak milestone ini..."
             required
             error={rejectionReason.trim() === ""}
             helperText={
               rejectionReason.trim() === ""
-                ? "Rejection reason is required"
+                ? "Alasan penolakan wajib diisi"
                 : ""
             }
             sx={{ mt: 2 }}
@@ -602,7 +606,7 @@ export default function MilestoneUploadDetails({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowRejectionDialog(false)} color="inherit">
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={handleReject}
@@ -610,12 +614,12 @@ export default function MilestoneUploadDetails({
             variant="contained"
             disabled={isAdmin || rejectionReason.trim() === "" || isSubmitting}
           >
-            {isSubmitting ? <CircularProgress size={24} /> : "Reject Milestone"}
+            {isSubmitting ? <CircularProgress size={24} /> : "Tolak Milestone"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Escalation Dialog */}
+      {/* Dialog Eskalasi */}
       <Dialog
         open={showEscalateDialog}
         onClose={() => setShowEscalateDialog(false)}
@@ -625,35 +629,34 @@ export default function MilestoneUploadDetails({
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <WarningIcon sx={{ mr: 1, color: "warning.main" }} />
-            Escalate to Resolution?
+            Eskalasi ke Resolusi?
           </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Escalating this issue will create a resolution ticket for admin
-            review. You will need to provide evidence and explain your position.
+            Mengeskalasi masalah ini akan membuat tiket resolusi untuk tinjauan
+            admin. Anda perlu memberikan bukti dan menjelaskan posisi Anda.
             <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-              When should you escalate?
+              Kapan Anda harus mengeskalasi?
             </Typography>
             <Typography variant="body2">
-              • If communication has broken down
+              • Jika komunikasi terputus
               <br />
-              • If there's a disagreement about contract terms
-              <br />• If you believe the other party isn't fulfilling their
-              obligations
+              • Jika ada ketidaksepakatan tentang syarat kontrak
+              <br />• Jika Anda percaya pihak lain tidak memenuhi kewajibannya
             </Typography>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowEscalateDialog(false)} color="inherit">
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={confirmEscalation}
             color="warning"
             variant="contained"
           >
-            Proceed to Resolution
+            Lanjutkan ke Resolusi
           </Button>
         </DialogActions>
       </Dialog>

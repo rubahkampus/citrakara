@@ -168,7 +168,7 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
         gap={2}
       >
         <Typography variant="h6" fontWeight="bold">
-          Your Contracts
+          Kontrak Anda
         </Typography>
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -176,11 +176,11 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
           alignItems={{ xs: "stretch", sm: "center" }}
         >
           <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Role</InputLabel>
+            <InputLabel>Peran</InputLabel>
             <Select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              label="Role"
+              label="Peran"
               startAdornment={
                 roleFilter === "artist" ? (
                   <BrushIcon fontSize="small" sx={{ mr: 1 }} />
@@ -191,9 +191,9 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
                 )
               }
             >
-              <MenuItem value="all">All Roles</MenuItem>
-              <MenuItem value="artist">As Artist</MenuItem>
-              <MenuItem value="client">As Client</MenuItem>
+              <MenuItem value="all">Semua Peran</MenuItem>
+              <MenuItem value="artist">Sebagai Seniman</MenuItem>
+              <MenuItem value="client">Sebagai Klien</MenuItem>
             </Select>
           </FormControl>
 
@@ -205,7 +205,7 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
               label="Status"
               startAdornment={<FilterIcon fontSize="small" sx={{ mr: 1 }} />}
             >
-              <MenuItem value="all">All Statuses</MenuItem>
+              <MenuItem value="all">Semua Status</MenuItem>
               {availableStatuses.map((status) => (
                 <MenuItem key={status} value={status}>
                   {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -239,11 +239,11 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
           <Tab
             label={
               <Box sx={{ display: "flex", alignItems: "center" }}>
-                <span>All</span>
+                <span>Semua</span>
                 <Badge
                   badgeContent={countByCategory.all}
                   color="primary"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 3 }}
                   max={99}
                 />
               </Box>
@@ -252,11 +252,11 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
           <Tab
             label={
               <Box sx={{ display: "flex", alignItems: "center" }}>
-                <span>Active</span>
+                <span>Aktif</span>
                 <Badge
                   badgeContent={countByCategory.active}
                   color="primary"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 3 }}
                   max={99}
                 />
               </Box>
@@ -265,11 +265,11 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
           <Tab
             label={
               <Box sx={{ display: "flex", alignItems: "center" }}>
-                <span>Completed</span>
+                <span>Selesai</span>
                 <Badge
                   badgeContent={countByCategory.completed}
                   color="success"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 3 }}
                   max={99}
                 />
               </Box>
@@ -278,11 +278,11 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
           <Tab
             label={
               <Box sx={{ display: "flex", alignItems: "center" }}>
-                <span>Cancelled</span>
+                <span>Dibatalkan</span>
                 <Badge
                   badgeContent={countByCategory.cancelled}
                   color="error"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 3 }}
                   max={99}
                 />
               </Box>
@@ -302,12 +302,12 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
           }}
         >
           <Typography variant="h6" color="text.secondary" gutterBottom>
-            No contracts found matching your filters
+            Tidak ada kontrak yang sesuai dengan filter Anda
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
             {statusFilter !== "all" || roleFilter !== "all"
-              ? "Try changing your filter settings or check back later."
-              : "When you create or receive contracts, they'll appear here."}
+              ? "Coba ubah pengaturan filter Anda atau periksa kembali nanti."
+              : "Ketika Anda membuat atau menerima kontrak, kontrak akan muncul di sini."}
           </Typography>
           {(statusFilter !== "all" ||
             roleFilter !== "all" ||
@@ -321,12 +321,12 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
                   }}
                   startIcon={<FilterIcon />}
                 >
-                  Clear Filters
+                  Hapus Filter
                 </Button>
               )}
               {tabValue !== 0 && (
                 <Button onClick={() => setTabValue(0)}>
-                  Show All Contracts
+                  Tampilkan Semua Kontrak
                 </Button>
               )}
             </ButtonGroup>

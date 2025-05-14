@@ -25,7 +25,7 @@ import { IRevisionTicket } from "@/lib/db/models/ticket.model";
 interface RevisionUploadFormProps {
   contract: IContract;
   userId: string;
-  username: string
+  username: string;
   ticketId: string;
 }
 
@@ -188,7 +188,7 @@ export default function RevisionUploadForm({
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Revision upload successful! Redirecting...
+          Unggahan revisi berhasil! Mengarahkan...
         </Alert>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -198,10 +198,10 @@ export default function RevisionUploadForm({
             </Alert>
           )}
 
-          {/* Revision Ticket Info Display */}
+          {/* Informasi Tiket Revisi */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Revision Request Details
+              Rincian Permintaan Revisi
             </Typography>
             <Box
               sx={{
@@ -218,14 +218,14 @@ export default function RevisionUploadForm({
 
               {ticket.milestoneIdx !== undefined && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  For Milestone:{" "}
+                  Untuk Milestone:{" "}
                   {contract.milestones?.[ticket.milestoneIdx]?.title ||
                     `#${ticket.milestoneIdx}`}
                 </Typography>
               )}
 
               <Typography variant="body2" sx={{ mt: 2 }}>
-                Client's description:
+                Deskripsi Klien:
               </Typography>
               <Typography
                 variant="body2"
@@ -242,7 +242,7 @@ export default function RevisionUploadForm({
               {ticket.referenceImages && ticket.referenceImages.length > 0 && (
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="body2" fontWeight="medium">
-                    Reference images:
+                    Gambar referensi:
                   </Typography>
                   <Grid container spacing={1} sx={{ mt: 0.5 }}>
                     {ticket.referenceImages.map((url, index) => (
@@ -250,7 +250,7 @@ export default function RevisionUploadForm({
                         <Box
                           component="img"
                           src={url}
-                          alt={`Reference ${index}`}
+                          alt={`Referensi ${index}`}
                           sx={{
                             width: "100%",
                             height: 100,
@@ -268,30 +268,30 @@ export default function RevisionUploadForm({
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Description Input */}
+          {/* Input Deskripsi */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Revision Description
+              Deskripsi Revisi
             </Typography>
 
             <Controller
               name="description"
               control={control}
               rules={{
-                required: "Description is required",
+                required: "Deskripsi diperlukan",
                 minLength: {
                   value: 10,
-                  message: "Description must be at least 10 characters",
+                  message: "Deskripsi harus minimal 10 karakter",
                 },
               }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Description"
+                  label="Deskripsi"
                   multiline
                   rows={4}
                   fullWidth
-                  placeholder="Explain what changes you've made in this revision..."
+                  placeholder="Jelaskan perubahan yang Anda buat pada revisi ini..."
                   error={!!errors.description}
                   helperText={errors.description?.message}
                   disabled={isSubmitting}
@@ -300,13 +300,13 @@ export default function RevisionUploadForm({
             />
           </Box>
 
-          {/* Image Upload Section */}
+          {/* Bagian Unggah Gambar */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Upload Revised Images
+              Unggah Gambar Revisi
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Upload up to 5 images for your revision.
+              Unggah hingga 5 gambar untuk revisi Anda.
             </Typography>
 
             <Box sx={{ mb: 2 }}>
@@ -317,7 +317,7 @@ export default function RevisionUploadForm({
                 disabled={isSubmitting || files.length >= 5}
                 sx={{ mt: 1 }}
               >
-                Add Images
+                Tambah Gambar
                 <input
                   type="file"
                   accept="image/*"
@@ -329,7 +329,7 @@ export default function RevisionUploadForm({
               </Button>
               {files.length > 0 && (
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {files.length}/5 images selected
+                  {files.length}/5 gambar dipilih
                 </Typography>
               )}
             </Box>
@@ -342,7 +342,7 @@ export default function RevisionUploadForm({
                       <Box
                         component="img"
                         src={url}
-                        alt={`Preview ${index}`}
+                        alt={`Pratinjau ${index}`}
                         sx={{
                           width: "100%",
                           height: 120,
@@ -371,19 +371,19 @@ export default function RevisionUploadForm({
               </Grid>
             ) : (
               <Alert severity="info" sx={{ mt: 1 }}>
-                Please select at least one image to upload.
+                Harap pilih setidaknya satu gambar untuk diunggah.
               </Alert>
             )}
           </Box>
 
-          {/* Submit Buttons */}
+          {/* Tombol Kirim */}
           <Stack direction="row" spacing={2}>
             <Button
               variant="outlined"
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -392,11 +392,7 @@ export default function RevisionUploadForm({
               disabled={isSubmitting || files.length === 0}
               sx={{ minWidth: 120 }}
             >
-              {isSubmitting ? (
-                <CircularProgress size={24} />
-              ) : (
-                "Upload Revision"
-              )}
+              {isSubmitting ? <CircularProgress size={24} /> : "Unggah Revisi"}
             </Button>
           </Stack>
         </form>

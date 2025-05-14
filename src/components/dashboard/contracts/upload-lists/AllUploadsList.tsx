@@ -68,14 +68,14 @@ const AllUploadsList: React.FC<AllUploadsListProps> = ({
       case "final":
         return upload.workProgress !== undefined ? (
           <Typography variant="body2" sx={{ mt: 1 }}>
-            Progress: {upload.workProgress}%
+            Kemajuan: {upload.workProgress}%
           </Typography>
         ) : null;
 
       case "revision":
         return upload.revisionTicketId ? (
           <Typography variant="body2" sx={{ mt: 1 }}>
-            Ticket: {upload.revisionTicketId.toString().substring(0, 8)}...
+            Tiket: {upload.revisionTicketId.toString().substring(0, 8)}...
           </Typography>
         ) : null;
 

@@ -273,7 +273,7 @@ export default function FinalUploadForm({
 
   const getRequestedBy = (ticket?: ICancelTicket): string => {
     if (!ticket || !ticket.requestedBy) return "";
-    return ticket.requestedBy === "client" ? "Client" : "Artist";
+    return ticket.requestedBy === "client" ? "Klien" : "Seniman";
   };
 
   const getReason = (ticket?: ICancelTicket): string => {
@@ -291,24 +291,23 @@ export default function FinalUploadForm({
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     setError(null);
-
     try {
-      // Validate inputs
+      // Validasi input
       if (files.length === 0) {
-        throw new Error("Please select at least one image to upload");
+        throw new Error("Harap pilih setidaknya satu gambar untuk diunggah");
       }
 
       if (data.isForCancellation && data.workProgress >= 100) {
         throw new Error(
-          "Work progress for cancellation must be less than 100%"
+          "Progres pekerjaan untuk pembatalan harus kurang dari 100%"
         );
       }
 
       if (!data.isForCancellation && data.workProgress < 100) {
-        throw new Error("Work progress for final delivery must be 100%");
+        throw new Error("Progres pekerjaan untuk pengiriman final harus 100%");
       }
 
-      // For milestone flow final upload (not cancellation), verify all milestones are completed
+      // Untuk alur milestone unggahan final (bukan pembatalan), pastikan semua milestone telah diselesaikan
       if (
         !data.isForCancellation &&
         contract.milestones &&
@@ -321,7 +320,7 @@ export default function FinalUploadForm({
 
         if (incompleteMilestones.length > 0) {
           throw new Error(
-            "All milestones must be completed and accepted before submitting the final delivery"
+            "Semua milestone harus diselesaikan dan diterima sebelum mengirimkan pengiriman final"
           );
         }
       }
@@ -377,8 +376,8 @@ export default function FinalUploadForm({
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          {watchIsForCancellation ? "Cancellation proof" : "Final delivery"}{" "}
-          upload successful! Redirecting...
+          {watchIsForCancellation ? "Bukti Pembatalan" : "Pengiriman Final"}{" "}
+          unggahan berhasil! Mengalihkan...
         </Alert>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -388,23 +387,24 @@ export default function FinalUploadForm({
             </Alert>
           )}
 
-          {/* Milestone Status Warning */}
+          {/* Peringatan Status Milestone */}
           {isMilestoneContract &&
             !watchIsForCancellation &&
             !allMilestonesComplete && (
               <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 3 }}>
                 <Typography variant="body1" fontWeight="medium">
-                  All milestones must be completed before final delivery
+                  Semua milestone harus diselesaikan sebelum pengiriman final
                 </Typography>
                 <Typography variant="body2">
-                  {incompleteMilestones.length} of {contract.milestones?.length}{" "}
-                  milestones are incomplete. You can only submit a final
-                  delivery when all milestones are accepted.
+                  {incompleteMilestones.length} dari{" "}
+                  {contract.milestones?.length} milestone belum lengkap. Anda
+                  hanya bisa mengirimkan pengiriman final setelah semua
+                  milestone diterima.
                 </Typography>
               </Alert>
             )}
 
-          {/* Milestone Status Success */}
+          {/* Status Milestone Sukses */}
           {isMilestoneContract &&
             !watchIsForCancellation &&
             allMilestonesComplete && (
@@ -414,16 +414,16 @@ export default function FinalUploadForm({
                 sx={{ mb: 3 }}
               >
                 <Typography variant="body1" fontWeight="medium">
-                  All milestones complete!
+                  Semua milestone selesai!
                 </Typography>
                 <Typography variant="body2">
-                  All {contract.milestones?.length} milestones have been
-                  accepted. You can now submit your final delivery.
+                  Semua {contract.milestones?.length} milestone telah diterima.
+                  Anda sekarang dapat mengirimkan pengiriman final Anda.
                 </Typography>
               </Alert>
             )}
 
-          {/* Contract Type Info */}
+          {/* Informasi Jenis Kontrak */}
           <Box sx={{ mb: 3 }}>
             <Stack
               direction="row"
@@ -433,20 +433,20 @@ export default function FinalUploadForm({
             >
               <Typography variant="h6" fontWeight="bold">
                 {watchIsForCancellation
-                  ? "Cancellation Proof"
-                  : "Final Delivery"}
+                  ? "Bukti Pembatalan"
+                  : "Pengiriman Final"}
               </Typography>
 
               {isMilestoneContract ? (
                 <Chip
-                  label="Milestone Contract"
+                  label="Kontrak Milestone"
                   color="primary"
                   variant="outlined"
                   size="small"
                 />
               ) : (
                 <Chip
-                  label="Standard Contract"
+                  label="Kontrak Standar"
                   color="secondary"
                   variant="outlined"
                   size="small"
@@ -454,9 +454,9 @@ export default function FinalUploadForm({
               )}
             </Stack>
 
-            {/* Upload Type Section */}
+            {/* Bagian Jenis Unggahan */}
             <Box sx={{ mb: 3 }}>
-              {/* Cancellation toggle - only show if not explicitly a cancellation upload and no active tickets */}
+              {/* Toggle Pembatalan - hanya tampil jika bukan unggahan pembatalan dan tidak ada tiket aktif */}
               {!cancelTicketId && !activeCancelTicket && (
                 <Box sx={{ mb: 2 }}>
                   <Controller
@@ -471,38 +471,37 @@ export default function FinalUploadForm({
                             disabled={isSubmitting}
                           />
                         }
-                        label="This is a cancellation proof (partial work)"
+                        label="Ini adalah bukti pembatalan (pekerjaan parsial)"
                       />
                     )}
                   />
 
                   {watchIsForCancellation && (
                     <Alert severity="info" sx={{ mt: 1 }}>
-                      For cancellations, you need to specify the percentage of
-                      work completed. The contract will be cancelled, and
-                      payment will be split according to policy and work
-                      completion.
+                      Untuk pembatalan, Anda perlu menentukan persentase
+                      pekerjaan yang telah diselesaikan. Kontrak akan
+                      dibatalkan, dan pembayaran akan dibagi sesuai kebijakan
+                      dan penyelesaian pekerjaan.
                     </Alert>
                   )}
                 </Box>
               )}
 
-              {/* Active Cancellation Ticket Notice */}
+              {/* Pemberitahuan Tiket Pembatalan Aktif */}
               {activeCancelTicket && (
                 <Alert severity="warning" sx={{ mb: 2 }}>
                   <Typography variant="body1" fontWeight="medium">
-                    Cancellation Upload Required
+                    Unggahan Pembatalan Diperlukan
                   </Typography>
                   <Typography variant="body2">
-                    An accepted cancellation request requires you to upload
-                    proof of your progress. This will be treated as a
-                    cancellation proof.
+                    Permintaan pembatalan yang diterima mengharuskan Anda untuk
+                    mengunggah bukti progres Anda. Ini akan dianggap sebagai
+                    bukti pembatalan.
                   </Typography>
                 </Alert>
               )}
 
-              {/* Cancel ticket information if available */}
-              {/* Cancel ticket information if available */}
+              {/* Informasi tiket pembatalan jika tersedia */}
               {displayTicket && (
                 <Box
                   sx={{
@@ -519,12 +518,12 @@ export default function FinalUploadForm({
                     fontWeight="bold"
                     gutterBottom
                   >
-                    Cancellation Request Details
+                    Detail Permintaan Pembatalan
                   </Typography>
                   <Grid container spacing={1}>
                     <Grid item xs={6}>
                       <Typography variant="body2" color="text.secondary">
-                        Requested by:
+                        Diminta oleh:
                       </Typography>
                       <Typography variant="body2" fontWeight="medium">
                         {getRequestedBy(displayTicket)}
@@ -540,7 +539,7 @@ export default function FinalUploadForm({
                     </Grid>
                     <Grid item xs={12} sx={{ mt: 1 }}>
                       <Typography variant="body2" color="text.secondary">
-                        Reason:
+                        Alasan:
                       </Typography>
                       <Typography variant="body2">
                         {getReason(displayTicket)}
@@ -551,21 +550,21 @@ export default function FinalUploadForm({
               )}
             </Box>
 
-            {/* Work Progress Section - for cancellations only */}
+            {/* Bagian Progres Pekerjaan - hanya untuk pembatalan */}
             {(watchIsForCancellation ||
               cancelTicketId ||
               activeCancelTicket) && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  Work Progress
+                  Progres Pekerjaan
                 </Typography>
 
                 {isMilestoneContract && (
                   <Alert severity="info" sx={{ mb: 2 }}>
                     <Typography variant="body2">
-                      Default progress is based on completed milestones (
-                      {calculateDefaultWorkProgress()}%). You can adjust this if
-                      necessary.
+                      Progres default berdasarkan milestone yang diselesaikan (
+                      {calculateDefaultWorkProgress()}%). Anda dapat
+                      menyesuaikan ini jika diperlukan.
                     </Typography>
                   </Alert>
                 )}
@@ -577,12 +576,12 @@ export default function FinalUploadForm({
                     validate: (value) =>
                       (watchIsForCancellation && value < 100) ||
                       (!watchIsForCancellation && value === 100) ||
-                      "Work progress must be less than 100% for cancellations and exactly 100% for final delivery",
+                      "Progres pekerjaan harus kurang dari 100% untuk pembatalan dan tepat 100% untuk pengiriman final",
                   }}
                   render={({ field }) => (
                     <Box>
                       <Typography gutterBottom>
-                        Current Progress: {field.value}%
+                        Progres Saat Ini: {field.value}%
                       </Typography>
                       <Slider
                         value={field.value}
@@ -606,8 +605,9 @@ export default function FinalUploadForm({
                   variant="body2"
                   sx={{ fontStyle: "italic", color: "text.secondary" }}
                 >
-                  For cancellations, please accurately estimate the percentage
-                  of work completed. This affects how payment will be split.
+                  Untuk pembatalan, harap perkirakan secara akurat persentase
+                  pekerjaan yang telah diselesaikan. Ini akan mempengaruhi
+                  bagaimana pembayaran akan dibagi.
                 </Typography>
               </Box>
             )}
@@ -615,16 +615,17 @@ export default function FinalUploadForm({
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Image Upload Section */}
+          {/* Bagian Unggah Gambar */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Upload{" "}
-              {watchIsForCancellation ? "Current Progress" : "Final Delivery"}{" "}
-              Images
+              Unggah{" "}
+              {watchIsForCancellation ? "Progres Saat Ini" : "Pengiriman Final"}{" "}
+              Gambar
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Upload up to 5 images showing your{" "}
-              {watchIsForCancellation ? "current progress" : "final delivery"}.
+              Unggah hingga 5 gambar yang menunjukkan{" "}
+              {watchIsForCancellation ? "progres saat ini" : "pengiriman final"}{" "}
+              Anda.
             </Typography>
 
             <Box sx={{ mb: 2 }}>
@@ -635,7 +636,7 @@ export default function FinalUploadForm({
                 disabled={isSubmitting || files.length >= 5}
                 sx={{ mt: 1 }}
               >
-                Add Images
+                Tambahkan Gambar
                 <input
                   type="file"
                   accept="image/*"
@@ -647,7 +648,7 @@ export default function FinalUploadForm({
               </Button>
               {files.length > 0 && (
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {files.length}/5 images selected
+                  {files.length}/5 gambar terpilih
                 </Typography>
               )}
             </Box>
@@ -660,7 +661,7 @@ export default function FinalUploadForm({
                       <Box
                         component="img"
                         src={url}
-                        alt={`Preview ${index}`}
+                        alt={`Pratinjau ${index}`}
                         sx={{
                           width: "100%",
                           height: 120,
@@ -689,38 +690,38 @@ export default function FinalUploadForm({
               </Grid>
             ) : (
               <Alert severity="info" sx={{ mt: 1 }}>
-                Please select at least one image to upload.
+                Harap pilih setidaknya satu gambar untuk diunggah.
               </Alert>
             )}
           </Box>
 
-          {/* Description Section */}
+          {/* Bagian Deskripsi */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Description
+              Deskripsi
             </Typography>
 
             <Controller
               name="description"
               control={control}
               rules={{
-                required: "Description is required",
+                required: "Deskripsi wajib diisi",
                 minLength: {
                   value: 10,
-                  message: "Description must be at least 10 characters",
+                  message: "Deskripsi harus memiliki setidaknya 10 karakter",
                 },
               }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Description"
+                  label="Deskripsi"
                   multiline
                   rows={4}
                   fullWidth
                   placeholder={
                     watchIsForCancellation
-                      ? "Describe the current state of the work and any limitations"
-                      : "Provide details about the final delivery"
+                      ? "Jelaskan kondisi pekerjaan saat ini dan keterbatasannya"
+                      : "Berikan detail tentang pengiriman final"
                   }
                   error={!!errors.description}
                   helperText={errors.description?.message}
@@ -730,14 +731,14 @@ export default function FinalUploadForm({
             />
           </Box>
 
-          {/* Submit Buttons */}
+          {/* Tombol Kirim */}
           <Stack direction="row" spacing={2}>
             <Button
               variant="outlined"
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -755,14 +756,14 @@ export default function FinalUploadForm({
               {isSubmitting ? (
                 <CircularProgress size={24} />
               ) : watchIsForCancellation ? (
-                "Upload Cancellation Proof"
+                "Unggah Bukti Pembatalan"
               ) : (
-                "Upload Final Delivery"
+                "Unggah Pengiriman Final"
               )}
             </Button>
           </Stack>
 
-          {/* Helpful note when submit is disabled due to incomplete milestones */}
+          {/* Catatan berguna ketika kirim dinonaktifkan karena milestone yang belum lengkap */}
           {isMilestoneContract &&
             !watchIsForCancellation &&
             !allMilestonesComplete && (
@@ -771,7 +772,7 @@ export default function FinalUploadForm({
                 color="error"
                 sx={{ display: "block", mt: 2, textAlign: "center" }}
               >
-                Complete all milestones before submitting the final delivery
+                Selesaikan semua milestone sebelum mengirim pengiriman final
               </Typography>
             )}
         </form>

@@ -235,8 +235,7 @@ export default function CancelTicketForm({
   if (!canCancel) {
     return (
       <Alert severity="error" sx={{ mb: 2 }}>
-        This contract cannot be cancelled in its current state:{" "}
-        {contract.status}
+        Kontrak tidak bisa dibatalkan dalam status: {contract.status}
       </Alert>
     );
   }
@@ -245,7 +244,7 @@ export default function CancelTicketForm({
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Cancellation request submitted successfully! Redirecting...
+          Permintaan pembatalan berhasil diajukan! Mengalihkan...
         </Alert>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -257,19 +256,19 @@ export default function CancelTicketForm({
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Contract Information
+              Informasi Kontrak
             </Typography>
             <Box sx={{ p: 2, bgcolor: "background.paper", borderRadius: 1 }}>
               <Typography variant="body2">
                 <strong>Status:</strong> {contract.status}
               </Typography>
               <Typography variant="body2">
-                <strong>Total Amount:</strong>{" "}
+                <strong>Jumlah Total:</strong>{" "}
                 {formatPrice(contract.finance.total)}
               </Typography>
               {contract.deadlineAt && (
                 <Typography variant="body2">
-                  <strong>Deadline:</strong>{" "}
+                  <strong>Tenggat Waktu:</strong>{" "}
                   {new Date(contract.deadlineAt).toLocaleDateString()}
                 </Typography>
               )}
@@ -280,54 +279,60 @@ export default function CancelTicketForm({
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Cancellation Details
+              Detail Pembatalan
             </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Please provide a clear and detailed reason for your cancellation
-              request. The {isArtist ? "client" : "artist"} will need to review
-              and accept your request.
+              Mohon berikan alasan yang jelas dan terperinci untuk permintaan
+              pembatalan Anda.
+              {isArtist ? " Klien" : " Seniman"} perlu meninjau dan menerima
+              permintaan Anda.
             </Typography>
 
             {hasCancellationFee ? (
               <Alert severity="info" sx={{ mb: 2 }}>
                 <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                  Cancellation Fee:{" "}
+                  Biaya Pembatalan:{" "}
                   {contract.proposalSnapshot.listingSnapshot.cancelationFee
                     ?.kind === "flat"
                     ? formatPrice(
                         contract.proposalSnapshot.listingSnapshot.cancelationFee
                           .amount
                       )
-                    : `${contract.proposalSnapshot.listingSnapshot.cancelationFee?.amount}% of total`}
+                    : `${contract.proposalSnapshot.listingSnapshot.cancelationFee?.amount}% dari total`}
                 </Typography>
                 <Typography variant="body2">
                   {isClient
-                    ? "You will pay this fee to the artist even if they haven't started work."
-                    : "You will forfeit this fee to the client if you cancel."}
+                    ? "Anda akan membayar biaya ini kepada seniman meskipun mereka belum memulai pekerjaan."
+                    : "Anda akan menyerahkan biaya ini kepada klien jika Anda membatalkan."}
                 </Typography>
               </Alert>
             ) : (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 <Typography variant="body2">
-                  No cancellation fee is configured for this contract. Final
-                  amounts will be calculated based on work completed.
+                  Tidak ada biaya pembatalan yang dikonfigurasi untuk kontrak
+                  ini. Jumlah akhir akan dihitung berdasarkan pekerjaan yang
+                  diselesaikan.
                 </Typography>
               </Alert>
             )}
 
             <Alert severity="warning" sx={{ mb: 2 }}>
               <Typography variant="body2" fontWeight="bold">
-                Estimated outcome if {isMilestoneContract ? "all finsihed milestones are accounted:" : "accepted with no work done:"}
+                Estimasi hasil jika{" "}
+                {isMilestoneContract
+                  ? "semua pencapaian yang telah selesai diperhitungkan:"
+                  : "diterima tanpa pekerjaan yang dilakukan:"}
               </Typography>
               <Typography variant="body2">
-                Artist receives: {formatPrice(outcome.artistAmount)}
+                Seniman menerima: {formatPrice(outcome.artistAmount)}
               </Typography>
               <Typography variant="body2">
-                Client receives: {formatPrice(outcome.clientAmount)}
+                Klien menerima: {formatPrice(outcome.clientAmount)}
               </Typography>
               <Typography variant="body2" fontStyle="italic" sx={{ mt: 1 }}>
-                Note: Final amounts will be calculated based on actual work
-                completed and will require final proof submission by the artist.
+                Catatan: Jumlah akhir akan dihitung berdasarkan pekerjaan aktual
+                yang diselesaikan dan memerlukan pengajuan bukti akhir oleh
+                seniman.
               </Typography>
             </Alert>
           </Box>
@@ -337,20 +342,20 @@ export default function CancelTicketForm({
               name="reason"
               control={control}
               rules={{
-                required: "Please provide a reason for cancellation",
+                required: "Harap berikan alasan pembatalan",
                 minLength: {
                   value: 10,
-                  message: "Reason must be at least 10 characters long",
+                  message: "Alasan harus minimal 10 karakter",
                 },
               }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Reason for Cancellation"
+                  label="Alasan Pembatalan"
                   multiline
                   rows={4}
                   fullWidth
-                  placeholder="Explain why you need to cancel this contract"
+                  placeholder="Jelaskan mengapa Anda perlu membatalkan kontrak ini"
                   error={!!errors.reason}
                   helperText={errors.reason?.message}
                   disabled={isSubmitting}
@@ -365,7 +370,7 @@ export default function CancelTicketForm({
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -377,7 +382,7 @@ export default function CancelTicketForm({
               {isSubmitting ? (
                 <CircularProgress size={24} />
               ) : (
-                "Submit Cancellation Request"
+                "Ajukan Permintaan Pembatalan"
               )}
             </Button>
           </Stack>

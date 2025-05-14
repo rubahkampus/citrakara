@@ -90,14 +90,14 @@ export default function FinalUploadDetails({
     },
   });
 
-  // Format date for display
+  // Format tanggal untuk ditampilkan
   const formatDate = (date?: string | Date) => {
     if (!date) return "N/A";
     const parsedDate = typeof date === "string" ? new Date(date) : date;
     return parsedDate.toLocaleString();
   };
 
-  // Calculate time remaining until expiry
+  // Hitung waktu tersisa hingga kedaluwarsa
   const calculateTimeRemaining = () => {
     if (!upload.expiresAt) return null;
 
@@ -105,17 +105,17 @@ export default function FinalUploadDetails({
     const now = new Date();
     const diffMs = expiryDate.getTime() - now.getTime();
 
-    if (diffMs <= 0) return "Expired";
+    if (diffMs <= 0) return "Kedaluwarsa";
 
     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (diffHrs > 24) {
       const days = Math.floor(diffHrs / 24);
-      return `${days} day${days > 1 ? "s" : ""} remaining`;
+      return `${days} hari tersisa`;
     }
 
-    return `${diffHrs}h ${diffMins}m remaining`;
+    return `${diffHrs}j ${diffMins}m tersisa`;
   };
 
   // Check if approaching expiry (less than 12 hours remaining)
@@ -181,15 +181,15 @@ export default function FinalUploadDetails({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "submitted":
-        return "Pending Client Review";
+        return "Menunggu Tinjauan Klien";
       case "accepted":
-        return "Accepted";
+        return "Diterima";
       case "rejected":
-        return "Rejected";
+        return "Ditolak";
       case "forcedAccepted":
-        return "Accepted (Admin)";
+        return "Diterima (Admin)";
       case "disputed":
-        return "In Dispute";
+        return "Sedang Dipersengketakan";
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
@@ -263,7 +263,7 @@ export default function FinalUploadDetails({
 
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
-      {/* Header Section with Status */}
+      {/* Bagian Header dengan Status */}
       <Box
         sx={{
           mb: 3,
@@ -274,7 +274,7 @@ export default function FinalUploadDetails({
       >
         <Box>
           <Typography variant="h5" gutterBottom fontWeight="medium">
-            {isCompleteDelivery ? "Final Delivery" : "Cancellation Proof"}
+            {isCompleteDelivery ? "Pengiriman Final" : "Bukti Pembatalan"}
           </Typography>
 
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
@@ -283,7 +283,7 @@ export default function FinalUploadDetails({
                 sx={{ fontSize: 18, mr: 0.5, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Submitted: {formatDate(upload.createdAt)}
+                Diajukan: {formatDate(upload.createdAt)}
               </Typography>
             </Box>
 
@@ -293,7 +293,7 @@ export default function FinalUploadDetails({
                   sx={{ fontSize: 18, mr: 0.5, color: "success.main" }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Resolved: {formatDate(upload.closedAt)}
+                  Diselesaikan: {formatDate(upload.closedAt)}
                 </Typography>
               </Box>
             )}
@@ -337,20 +337,20 @@ export default function FinalUploadDetails({
         )}
       </Box>
 
-      {/* Alert Messages */}
+      {/* Pesan Peringatan */}
       {upload.status === "submitted" &&
         !isPastExpiry &&
         upload.expiresAt &&
         isApproachingExpiry() && (
           <Alert severity="warning" sx={{ mb: 3 }} icon={<AccessTimeIcon />}>
             <Typography variant="body2">
-              This{" "}
-              {isCompleteDelivery ? "final delivery" : "cancellation proof"}{" "}
-              review will expire soon - on {formatDate(upload.expiresAt)}.
+              Tinjauan{" "}
+              {isCompleteDelivery ? "pengiriman final" : "bukti pembatalan"} ini
+              akan segera kedaluwarsa - pada {formatDate(upload.expiresAt)}.
               {!isAdmin &&
                 isClient &&
                 canReview &&
-                " Please respond as soon as possible."}
+                " Harap tanggapi sesegera mungkin."}
             </Typography>
           </Alert>
         )}
@@ -358,16 +358,18 @@ export default function FinalUploadDetails({
       {upload.status === "submitted" && isPastExpiry && upload.expiresAt && (
         <Alert severity="error" sx={{ mb: 3 }}>
           <Typography variant="body2">
-            This {isCompleteDelivery ? "final delivery" : "cancellation proof"}{" "}
-            review has expired on {formatDate(upload.expiresAt)}.
-            {isClient && " The delivery may be auto-accepted soon."}
+            Tinjauan{" "}
+            {isCompleteDelivery ? "pengiriman final" : "bukti pembatalan"} ini
+            telah kedaluwarsa pada {formatDate(upload.expiresAt)}.
+            {isClient &&
+              " Pengiriman ini mungkin akan diterima otomatis segera."}
           </Typography>
         </Alert>
       )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
-          Your action has been processed successfully.
+          Tindakan Anda telah diproses dengan sukses.
         </Alert>
       )}
 
@@ -379,23 +381,23 @@ export default function FinalUploadDetails({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Main Content Area */}
+      {/* Area Konten Utama */}
       <Grid container spacing={3}>
-        {/* Left Column: Delivery Details */}
+        {/* Kolom Kiri: Detail Pengiriman */}
         <Grid item xs={12} md={7}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="medium">
-              {isCompleteDelivery ? "Final Delivery" : "Cancellation"} Details
+              {isCompleteDelivery ? "Pengiriman Final" : "Pembatalan"} Detail
             </Typography>
 
             <Paper
               variant="outlined"
               sx={{ p: 2, borderRadius: 1, bgcolor: "background.paper", mb: 2 }}
             >
-              {/* Work Progress */}
+              {/* Progres Pekerjaan */}
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Work Progress
+                  Progres Pekerjaan
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                   <Typography variant="body2" sx={{ mr: 1 }}>
@@ -411,27 +413,28 @@ export default function FinalUploadDetails({
 
                 {isCancellationProof && (
                   <Typography variant="body2" color="text.secondary">
-                    This is a partial delivery for cancellation. Payment will be
-                    split according to the work percentage and contract policy.
+                    Ini adalah pengiriman parsial untuk pembatalan. Pembayaran
+                    akan dibagi sesuai persentase pekerjaan dan kebijakan
+                    kontrak.
                   </Typography>
                 )}
               </Box>
 
-              {/* Delivery Type & Dates */}
+              {/* Jenis Pengiriman & Tanggal */}
               <Grid container spacing={2}>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
-                    Delivery Type:
+                    Jenis Pengiriman:
                   </Typography>
                   <Typography variant="body1">
                     {isCompleteDelivery
-                      ? "Final Delivery"
-                      : "Cancellation Proof"}
+                      ? "Pengiriman Final"
+                      : "Bukti Pembatalan"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
-                    Review Deadline:
+                    Tenggat Waktu Tinjauan:
                   </Typography>
                   <Typography variant="body1">
                     {formatDate(upload.expiresAt)}
@@ -451,7 +454,7 @@ export default function FinalUploadDetails({
                           color="info"
                           sx={{ mt: 1 }}
                         >
-                          View Cancellation Request
+                          Lihat Permintaan Pembatalan
                         </Button>
                       </Link>
                     </Box>
@@ -460,11 +463,11 @@ export default function FinalUploadDetails({
               </Grid>
             </Paper>
 
-            {/* Cancellation Ticket Details */}
+            {/* Detail Tiket Pembatalan */}
             {isCancellationProof && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Cancellation Details
+                  Detail Pembatalan
                 </Typography>
 
                 <Paper
@@ -481,16 +484,16 @@ export default function FinalUploadDetails({
                     <Grid container spacing={2}>
                       <Grid item xs={6}>
                         <Typography variant="body2" color="text.secondary">
-                          Requested by:
+                          Diminta oleh:
                         </Typography>
                         <Typography variant="body1">
                           {cancelTicket.requestedBy === "client"
                             ? isClient
-                              ? "You"
-                              : "Client"
+                              ? "Anda"
+                              : "Klien"
                             : isArtist
-                            ? "You"
-                            : "Artist"}
+                            ? "Anda"
+                            : "Seniman"}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
@@ -505,7 +508,7 @@ export default function FinalUploadDetails({
                       </Grid>
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary">
-                          Reason:
+                          Alasan:
                         </Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>
                           {cancelTicket.reason}
@@ -514,18 +517,18 @@ export default function FinalUploadDetails({
                     </Grid>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
-                      Cancellation details not available
+                      Detail pembatalan tidak tersedia
                     </Typography>
                   )}
                 </Paper>
               </Box>
             )}
 
-            {/* Artist's Description */}
+            {/* Deskripsi Seniman */}
             {upload.description && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Artist's Description
+                  Deskripsi Seniman
                 </Typography>
                 <Paper
                   variant="outlined"
@@ -538,10 +541,10 @@ export default function FinalUploadDetails({
               </Box>
             )}
 
-            {/* Contract Terms */}
+            {/* Syarat Kontrak */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                Contract Information
+                Informasi Kontrak
               </Typography>
               <Paper
                 variant="outlined"
@@ -550,7 +553,7 @@ export default function FinalUploadDetails({
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Contract Status:
+                      Status Kontrak:
                     </Typography>
                     <Chip
                       label={contract.status}
@@ -563,7 +566,7 @@ export default function FinalUploadDetails({
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Created:
+                      Dibuat:
                     </Typography>
                     <Typography variant="body1">
                       {formatDate(contract.createdAt)}
@@ -571,7 +574,7 @@ export default function FinalUploadDetails({
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Deadline:
+                      Tenggat Waktu:
                     </Typography>
                     <Typography variant="body1">
                       {formatDate(contract.deadlineAt)}
@@ -579,7 +582,7 @@ export default function FinalUploadDetails({
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Grace Period Ends:
+                      Masa Tenggang Berakhir:
                     </Typography>
                     <Typography variant="body1">
                       {formatDate(contract.graceEndsAt)}
@@ -595,8 +598,8 @@ export default function FinalUploadDetails({
                           sx={{ color: "text.secondary", mr: 1 }}
                         />
                         <Typography variant="body2" color="text.secondary">
-                          Payment will be split according to the work percentage
-                          ({upload.workProgress}%)
+                          Pembayaran akan dibagi sesuai persentase pekerjaan (
+                          {upload.workProgress}%)
                         </Typography>
                       </Box>
                     </Grid>
@@ -605,7 +608,7 @@ export default function FinalUploadDetails({
               </Paper>
             </Box>
 
-            {/* Response Form - Only shown if user is client and can review */}
+            {/* Formulir Respon - Hanya ditampilkan jika pengguna adalah klien dan dapat meninjau */}
             {!isAdmin &&
               isClient &&
               canReview &&
@@ -613,14 +616,14 @@ export default function FinalUploadDetails({
                 <Box sx={{ mb: 3 }}>
                   <Divider sx={{ mb: 3 }} />
                   <Typography variant="h6" fontWeight="medium" gutterBottom>
-                    Your Response
+                    Respon Anda
                   </Typography>
 
                   <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
                     <Typography variant="body2">
                       {isCompleteDelivery
-                        ? "By accepting this final delivery, you acknowledge that the artist has completed the project as agreed. The contract will be marked as completed."
-                        : "By accepting this cancellation proof, you confirm the work percentage is accurate. The contract will be cancelled and payment will be split accordingly."}
+                        ? "Dengan menerima pengiriman final ini, Anda mengakui bahwa seniman telah menyelesaikan proyek sesuai kesepakatan. Kontrak akan ditandai sebagai selesai."
+                        : "Dengan menerima bukti pembatalan ini, Anda mengonfirmasi bahwa persentase pekerjaan sudah akurat. Kontrak akan dibatalkan dan pembayaran akan dibagi sesuai."}
                     </Typography>
                   </Alert>
 
@@ -638,10 +641,10 @@ export default function FinalUploadDetails({
                         {isSubmitting && success === false ? (
                           <CircularProgress size={24} color="inherit" />
                         ) : (
-                          `Accept ${
+                          `Terima ${
                             isCompleteDelivery
-                              ? "Final Delivery"
-                              : "Cancellation"
+                              ? "Pengiriman Final"
+                              : "Pembatalan"
                           }`
                         )}
                       </Button>
@@ -654,14 +657,14 @@ export default function FinalUploadDetails({
                         sx={{ flexGrow: 1 }}
                         size="large"
                       >
-                        Reject
+                        Tolak
                       </Button>
                     </Stack>
                   </Box>
                 </Box>
               )}
 
-            {/* Escalate to Resolution section */}
+            {/* Bagian Eskalasi ke Resolusi */}
             {(isClient || isArtist) && upload.status && (
               <Box sx={{ mt: 4 }}>
                 <Divider sx={{ mb: 3 }} />
@@ -670,7 +673,7 @@ export default function FinalUploadDetails({
                   fontWeight="medium"
                   gutterBottom
                 >
-                  Not satisfied with the process?
+                  Tidak puas dengan prosesnya?
                 </Typography>
                 <Button
                   variant="outlined"
@@ -679,7 +682,7 @@ export default function FinalUploadDetails({
                   disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
-                  Escalate to Resolution
+                  Eskalasi ke Resolusi
                 </Button>
 
                 <Typography
@@ -687,8 +690,8 @@ export default function FinalUploadDetails({
                   color="text.secondary"
                   sx={{ display: "block", mt: 1 }}
                 >
-                  Escalation will be reviewed by our support team to help
-                  resolve any issues.
+                  Eskalasi akan ditinjau oleh tim dukungan kami untuk membantu
+                  menyelesaikan masalah apapun.
                 </Typography>
               </Box>
             )}
@@ -700,8 +703,8 @@ export default function FinalUploadDetails({
           {upload.images && upload.images.length > 0 ? (
             <Box>
               <Typography variant="h6" gutterBottom fontWeight="medium">
-                {isCompleteDelivery ? "Final Delivery" : "Cancellation Proof"}{" "}
-                Images
+                {isCompleteDelivery ? "Pengiriman Final" : "Bukti Pembatalan"}{" "}
+                Gambar
               </Typography>
               <Grid container spacing={2}>
                 {upload.images.map((url, index) => (
@@ -710,7 +713,7 @@ export default function FinalUploadDetails({
                       <CardMedia
                         component="img"
                         image={url}
-                        alt={`Image ${index + 1}`}
+                        alt={`Gambar ${index + 1}`}
                         sx={{
                           height: 200,
                           objectFit: "cover",
@@ -720,7 +723,7 @@ export default function FinalUploadDetails({
                       />
                       <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
                         <Typography variant="caption" color="text.secondary">
-                          Image {index + 1}
+                          Gambar {index + 1}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -751,7 +754,7 @@ export default function FinalUploadDetails({
                   color="text.secondary"
                   align="center"
                 >
-                  No images were uploaded for this delivery.
+                  Tidak ada gambar yang diunggah untuk pengiriman ini.
                 </Typography>
               </Paper>
             </Box>
@@ -770,24 +773,24 @@ export default function FinalUploadDetails({
           <DialogTitle>
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <ThumbDownIcon sx={{ mr: 1, color: "error.main" }} />
-              Reject{" "}
-              {isCompleteDelivery ? "Final Delivery" : "Cancellation Proof"}
+              Tolak{" "}
+              {isCompleteDelivery ? "Pengiriman Final" : "Bukti Pembatalan"}
             </Box>
           </DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Please provide a detailed reason for rejecting this{" "}
-              {isCompleteDelivery ? "final delivery" : "cancellation proof"}.
-              This will help the artist understand what needs to be improved.
+              Harap berikan alasan rinci untuk menolak{" "}
+              {isCompleteDelivery ? "pengiriman final" : "bukti pembatalan"}{" "}
+              ini. Ini akan membantu seniman memahami apa yang perlu diperbaiki.
             </DialogContentText>
             <Controller
               name="rejectionReason"
               control={control}
               rules={{
-                required: "Rejection reason is required",
+                required: "Alasan penolakan wajib diisi",
                 minLength: {
                   value: 10,
-                  message: "Please provide at least 10 characters",
+                  message: "Harap berikan setidaknya 10 karakter",
                 },
               }}
               render={({ field }) => (
@@ -795,11 +798,11 @@ export default function FinalUploadDetails({
                   {...field}
                   autoFocus
                   margin="dense"
-                  label="Reason for Rejection"
+                  label="Alasan Penolakan"
                   multiline
                   rows={4}
                   fullWidth
-                  placeholder="Explain why you are rejecting this delivery..."
+                  placeholder="Jelaskan mengapa Anda menolak pengiriman ini..."
                   error={!!errors.rejectionReason}
                   helperText={errors.rejectionReason?.message}
                   sx={{ mt: 2 }}
@@ -807,12 +810,13 @@ export default function FinalUploadDetails({
               )}
             />
           </DialogContent>
+
           <DialogActions>
             <Button
               onClick={() => setShowRejectionDialog(false)}
               color="inherit"
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -820,7 +824,7 @@ export default function FinalUploadDetails({
               variant="contained"
               disabled={isAdmin || isSubmitting}
             >
-              {isSubmitting ? <CircularProgress size={24} /> : "Reject"}
+              {isSubmitting ? <CircularProgress size={24} /> : "Tolak"}
             </Button>
           </DialogActions>
         </form>
@@ -836,35 +840,34 @@ export default function FinalUploadDetails({
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <WarningIcon sx={{ mr: 1, color: "warning.main" }} />
-            Escalate to Resolution?
+            Eskalasi ke Resolusi?
           </Box>
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Escalating this issue will create a resolution ticket for admin
-            review. You will need to provide evidence and explain your position.
+            Meningkatkan masalah ini akan membuat tiket resolusi untuk tinjauan
+            admin. Anda perlu memberikan bukti dan menjelaskan posisi Anda.
             <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-              When should you escalate?
+              Kapan Anda harus mengeskalasi?
             </Typography>
             <Typography variant="body2">
-              • If communication has broken down
+              • Jika komunikasi terputus
               <br />
-              • If there's a disagreement about contract terms
-              <br />• If you believe the other party isn't fulfilling their
-              obligations
+              • Jika ada ketidaksepakatan tentang syarat kontrak
+              <br />• Jika Anda percaya pihak lain tidak memenuhi kewajibannya
             </Typography>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowEscalateDialog(false)} color="inherit">
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={confirmEscalation}
             color="warning"
             variant="contained"
           >
-            Proceed to Resolution
+            Lanjutkan ke Resolusi
           </Button>
         </DialogActions>
       </Dialog>

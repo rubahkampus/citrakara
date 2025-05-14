@@ -92,17 +92,17 @@ export default function ResolutionTicketForm({
   const getTargetTypeDisplay = (type: string): string => {
     switch (type) {
       case "cancelTicket":
-        return "Cancellation Request";
+        return "Permintaan Pembatalan";
       case "revisionTicket":
-        return "Revision Request";
+        return "Permintaan Revisi";
       case "changeTicket":
-        return "Change Request";
+        return "Permintaan Perubahan";
       case "finalUpload":
-        return "Final Delivery";
+        return "Pengiriman Final";
       case "progressMilestone":
-        return "Milestone Progress Upload";
+        return "Unggahan Progres Milestone";
       case "revisionUpload":
-        return "Revision Upload";
+        return "Unggahan Revisi";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
@@ -131,15 +131,15 @@ export default function ResolutionTicketForm({
     if (fetchedRef.current) return;
 
     const fetchTargetDetails = async () => {
-      // Validate inputs
+      // Validasi input
       if (!initialTargetType || !initialTargetId) {
-        setError("Missing target information");
+        setError("Informasi target hilang");
         setIsLoading(false);
         return;
       }
 
       if (!validateMongoId(initialTargetId)) {
-        setError("Invalid target ID format");
+        setError("Format ID target tidak valid");
         setIsLoading(false);
         return;
       }
@@ -169,8 +169,8 @@ export default function ResolutionTicketForm({
           switch (initialTargetType) {
             case "cancelTicket":
               label += ` - ${
-                data.requestedBy === "client" ? "Client" : "Artist"
-              } Initiated`;
+                data.requestedBy === "client" ? "Klien" : "Seniman"
+              } Memulai`;
               break;
             case "revisionTicket":
               if (data.milestoneIdx !== undefined) {
@@ -178,10 +178,10 @@ export default function ResolutionTicketForm({
               }
               break;
             case "changeTicket":
-              label += data.isPaidChange ? " - Paid Change" : "";
+              label += data.isPaidChange ? " - Perubahan Berbayar" : "";
               break;
             case "finalUpload":
-              label += ` - ${data.workProgress}% Complete`;
+              label += ` - ${data.workProgress}% Selesai`;
               break;
             case "progressMilestoneUpload":
               const pmIndex =
@@ -190,13 +190,13 @@ export default function ResolutionTicketForm({
                 contract.milestones && contract.milestones[pmIndex]
                   ? contract.milestones[pmIndex].title
                   : `Milestone ${pmIndex + 1}`;
-              label = `${pmTitle} Progress Upload`;
+              label = `${pmTitle} Unggahan Progres`;
               break;
             case "revisionUpload":
-              label = "Revision Upload";
+              label = "Unggahan Revisi";
               if (data.revisionTicketId) {
-                // If we wanted to be fancy, we could make another API call to get revision ticket details
-                // but for simplicity, we'll just use the revision ID
+                // Jika kita ingin lebih canggih, kita bisa melakukan panggilan API lain untuk mendapatkan detail tiket revisi
+                // tetapi untuk kesederhanaan, kita akan hanya menggunakan ID revisi
                 label += ` #${data.revisionTicketId.substring(0, 6)}`;
               }
               break;
@@ -204,11 +204,11 @@ export default function ResolutionTicketForm({
 
           setTargetLabel(label);
         } else {
-          setError("Could not find the item to dispute");
+          setError("Tidak dapat menemukan item untuk dipersengketakan");
         }
       } catch (err) {
-        console.error("Error fetching target details:", err);
-        setError("Could not load details for the selected item");
+        console.error("Error saat mengambil detail target:", err);
+        setError("Tidak dapat memuat detail untuk item yang dipilih");
       } finally {
         setLoadingDetails(false);
         setIsLoading(false);
@@ -231,7 +231,9 @@ export default function ResolutionTicketForm({
       const limitedFiles = totalFiles.slice(0, 5);
 
       if (totalFiles.length > 5) {
-        setError("Maximum 5 images allowed. Only the first 5 will be used.");
+        setError(
+          "Maksimal 5 gambar diperbolehkan. Hanya 5 gambar pertama yang akan digunakan."
+        );
         setTimeout(() => setError(null), 3000);
       }
 
@@ -261,13 +263,15 @@ export default function ResolutionTicketForm({
     setError(null);
 
     try {
-      // Validate input
+      // Validasi input
       if (!data.description.trim()) {
-        throw new Error("Please provide a detailed description of the issue");
+        throw new Error(
+          "Harap berikan deskripsi yang rinci tentang masalah ini"
+        );
       }
 
       if (!initialTargetType || !initialTargetId) {
-        throw new Error("Missing target information");
+        throw new Error("Informasi target hilang");
       }
 
       // Create FormData
@@ -347,7 +351,7 @@ export default function ResolutionTicketForm({
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Resolution request submitted successfully! Redirecting...
+          Permintaan resolusi berhasil diajukan! Mengalihkan...
         </Alert>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -359,18 +363,18 @@ export default function ResolutionTicketForm({
 
           <Alert severity="info" sx={{ mb: 3 }}>
             <Typography variant="body1" fontWeight="bold">
-              About Resolution Requests
+              Tentang Permintaan Resolusi
             </Typography>
             <Typography variant="body2">
-              Resolution requests are reviewed by administrators who will
-              examine both sides of the dispute and make a final decision. Both
-              parties will have the opportunity to provide evidence.
+              Permintaan resolusi akan ditinjau oleh administrator yang akan
+              memeriksa kedua sisi perselisihan dan membuat keputusan akhir.
+              Kedua pihak akan memiliki kesempatan untuk memberikan bukti.
             </Typography>
           </Alert>
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              What are you disputing?
+              Apa yang Anda perselisihkan?
             </Typography>
 
             <Box
@@ -408,13 +412,13 @@ export default function ResolutionTicketForm({
                       variant="body2"
                       sx={{ color: "text.secondary" }}
                     >
-                      <strong>Description:</strong>{" "}
+                      <strong>Deskripsi:</strong>{" "}
                       {targetDetails.description.substring(0, 100)}
                       {targetDetails.description.length > 100 && "..."}
                     </Typography>
                   )}
                   <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                    <strong>Created:</strong>{" "}
+                    <strong>Dibuat:</strong>{" "}
                     {new Date(targetDetails.createdAt).toLocaleDateString()}
                   </Typography>
                 </Stack>
@@ -427,22 +431,22 @@ export default function ResolutionTicketForm({
           {/* Detailed description */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Detailed Description
+              Deskripsi Rinci
             </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Please describe the issue in detail. Be specific about what went
-              wrong and why you believe this requires administrative
-              intervention.
+              Harap jelaskan masalah ini secara rinci. Jelaskan secara spesifik
+              apa yang salah dan mengapa Anda merasa hal ini memerlukan
+              intervensi administratif.
             </Typography>
 
             <Controller
               name="description"
               control={control}
               rules={{
-                required: "A detailed description is required",
+                required: "Deskripsi rinci wajib diisi",
                 minLength: {
                   value: 20,
-                  message: "Description must be at least 20 characters",
+                  message: "Deskripsi harus memiliki setidaknya 20 karakter",
                 },
               }}
               render={({ field }) => (
@@ -452,7 +456,7 @@ export default function ResolutionTicketForm({
                   multiline
                   rows={5}
                   fullWidth
-                  placeholder="Explain your dispute in detail..."
+                  placeholder="Jelaskan perselisihan Anda secara rinci..."
                   error={!!errors.description}
                   helperText={errors.description?.message}
                   disabled={isSubmitting}
@@ -464,11 +468,11 @@ export default function ResolutionTicketForm({
           {/* Proof images */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Supporting Evidence
+              Bukti Pendukung
             </Typography>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Upload screenshots, images, or other relevant evidence to support
-              your case. At least one image is required.
+              Unggah tangkapan layar, gambar, atau bukti relevan lainnya untuk
+              mendukung kasus Anda. Setidaknya satu gambar diperlukan.
             </Typography>
 
             <Box sx={{ mb: 2 }}>
@@ -479,7 +483,7 @@ export default function ResolutionTicketForm({
                 disabled={isSubmitting || files.length >= 5}
                 sx={{ mt: 1 }}
               >
-                Add Images
+                Tambahkan Gambar
                 <input
                   type="file"
                   accept="image/*"
@@ -491,7 +495,7 @@ export default function ResolutionTicketForm({
               </Button>
               {files.length > 0 ? (
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {files.length}/5 images selected
+                  {files.length}/5 gambar terpilih
                 </Typography>
               ) : (
                 <Typography
@@ -500,7 +504,7 @@ export default function ResolutionTicketForm({
                   display="block"
                   sx={{ mt: 1 }}
                 >
-                  At least one proof image is required
+                  Setidaknya satu gambar bukti diperlukan
                 </Typography>
               )}
             </Box>
@@ -545,10 +549,10 @@ export default function ResolutionTicketForm({
 
           <Alert severity="warning" sx={{ mb: 3 }}>
             <Typography variant="body2">
-              Filing a resolution request is a serious matter. Administrators
-              will review all evidence from both parties before making a
-              decision. The counterparty will have 24 hours to respond with
-              their own evidence.
+              Mengajukan permintaan resolusi adalah hal yang serius.
+              Administrator akan meninjau semua bukti dari kedua pihak sebelum
+              membuat keputusan. Pihak lawan akan memiliki waktu 24 jam untuk
+              merespons dengan bukti mereka sendiri.
             </Typography>
           </Alert>
 
@@ -558,7 +562,7 @@ export default function ResolutionTicketForm({
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -570,7 +574,7 @@ export default function ResolutionTicketForm({
               {isSubmitting ? (
                 <CircularProgress size={24} />
               ) : (
-                "Submit Resolution Request"
+                "Kirim Permintaan Resolusi"
               )}
             </Button>
           </Stack>

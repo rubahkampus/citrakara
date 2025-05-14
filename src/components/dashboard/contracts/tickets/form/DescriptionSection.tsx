@@ -74,21 +74,21 @@ export default function DescriptionSection({
 
       const value = textarea.value;
 
-      // Validate
+      // Validasi
       if (!value) {
         setError(fieldName, {
           type: "required",
-          message: "Description is required",
+          message: "Deskripsi wajib diisi",
         });
       } else if (value.length < 10) {
         setError(fieldName, {
           type: "minLength",
-          message: "Description should be at least 10 characters",
+          message: "Deskripsi harus memiliki setidaknya 10 karakter",
         });
       } else if (value.length > 2000) {
         setError(fieldName, {
           type: "maxLength",
-          message: "Description must be less than 2000 characters",
+          message: "Deskripsi harus kurang dari 2000 karakter",
         });
       } else {
         clearErrors(fieldName);
@@ -143,7 +143,7 @@ export default function DescriptionSection({
         }}
       >
         <Typography variant="h6" color="primary" fontWeight="medium">
-          Description
+          Deskripsi
         </Typography>
         <FormControlLabel
           control={
@@ -162,8 +162,8 @@ export default function DescriptionSection({
       {includeDescription ? (
         <Box>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            Update the general description for your commission. Be as detailed
-            as possible about what you want.
+            Perbarui deskripsi umum untuk komisi Anda. Jelaskan sejelas mungkin
+            tentang apa yang Anda inginkan.
           </Typography>
 
           <div
@@ -205,7 +205,7 @@ export default function DescriptionSection({
 
           <Box sx={{ mt: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              Current description:
+              Deskripsi yang ada:
             </Typography>
             <Box
               sx={{
@@ -231,7 +231,7 @@ export default function DescriptionSection({
           color="text.secondary"
           sx={{ fontStyle: "italic", mt: 2 }}
         >
-          Switch the toggle to include changes to the description.
+          Alihkan toggle untuk menyertakan perubahan pada deskripsi.
         </Typography>
       )}
     </Paper>

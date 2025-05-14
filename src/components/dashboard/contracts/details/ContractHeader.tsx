@@ -1,40 +1,82 @@
 // src/components/dashboard/contracts/ContractHeader.tsx
 import React from "react";
-import { Box, Typography, Divider, Breadcrumbs, Link } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Divider,
+  Breadcrumbs,
+  Link,
+  Button,
+} from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import ArticleIcon from "@mui/icons-material/Article";
 import { IContract } from "@/lib/db/models/contract.model";
 import ContractStatusBadge from "../ContractStatusBadge";
-import commissionListingModel from "@/lib/db/models/commissionListing.model";
+import { NavigateNext, Home, LocalAtm, ArrowBack } from "@mui/icons-material";
 
 interface ContractHeaderProps {
   contract: IContract;
+  username: string;
 }
 
-const ContractHeader: React.FC<ContractHeaderProps> = ({ contract }) => {
+const ContractHeader: React.FC<ContractHeaderProps> = ({
+  contract,
+  username,
+}) => {
   return (
     <>
-      <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-        <Link
-          underline="hover"
-          color="inherit"
-          href="/dashboard"
-          sx={{ display: "flex", alignItems: "center" }}
+      <Box sx={{ mb: 3 }}>
+        <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+          <Link
+            component={Link}
+            href={`/${username}/dashboard`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <Home fontSize="small" sx={{ mr: 0.5 }} />
+            Dashboard
+          </Link>
+          <Link
+            component={Link}
+            href={`/${username}/dashboard/contracts`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
+            Kontrak
+          </Link>
+          <Typography
+            color="text.primary"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            Detail Kontrak
+          </Typography>
+        </Breadcrumbs>
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: 2,
+          }}
         >
-          <HomeIcon sx={{ mr: 0.5 }} fontSize="small" />
-          Dashboard
-        </Link>
-        <Link
-          underline="hover"
-          color="inherit"
-          href="/dashboard/contracts"
-          sx={{ display: "flex", alignItems: "center" }}
-        >
-          <ArticleIcon sx={{ mr: 0.5 }} fontSize="small" />
-          Contracts
-        </Link>
-        <Typography color="text.primary">Contract Details</Typography>
-      </Breadcrumbs>
+          <Typography variant="h5" fontWeight="500">
+            Detail Kontrak
+          </Typography>
+          <Button
+            component={Link}
+            href={`/${username}/dashboard/wallet`}
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            size="small"
+          >
+            Kembali ke Kontrak
+          </Button>
+        </Box>
+      </Box>
 
       <Box
         display="flex"
@@ -44,7 +86,8 @@ const ContractHeader: React.FC<ContractHeaderProps> = ({ contract }) => {
       >
         <Box>
           <Typography variant="h5" fontWeight="medium">
-            {contract.proposalSnapshot.listingSnapshot.title || "Contract Details"}
+            {contract.proposalSnapshot.listingSnapshot.title ||
+              "Contract Details"}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             ID: {contract._id.toString().substring(0, 8)}...

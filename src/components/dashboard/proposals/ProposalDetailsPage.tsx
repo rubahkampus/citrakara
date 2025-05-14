@@ -244,67 +244,6 @@ export default function ProposalDetailsPage({
     new Date(proposal.deadline).toISOString()
   );
 
-  // Get contract timeline steps
-  const getTimelineSteps = () => {
-    const steps = [
-      {
-        label: "Proposal Created",
-        date: formatDate(proposal.createdAt),
-        completed: true,
-        icon: <DescriptionIcon />,
-      },
-      {
-        label: "Artist Response",
-        date:
-          proposal.updatedAt !== proposal.createdAt
-            ? formatDate(proposal.updatedAt)
-            : "Pending",
-        completed: proposal.status !== "pendingArtist",
-        icon:
-          proposal.status === "rejectedArtist" ? (
-            <CancelIcon color="error" />
-          ) : (
-            <CheckCircleIcon
-              color={
-                proposal.status !== "pendingArtist" ? "success" : "disabled"
-              }
-            />
-          ),
-      },
-      {
-        label: "Client Confirmation",
-        date:
-          proposal.status === "pendingClient"
-            ? "Pending"
-            : proposal.artistAdjustments?.acceptedDate
-            ? formatDate(proposal.artistAdjustments.acceptedDate)
-            : "N/A",
-        completed: ["accepted", "paid"].includes(proposal.status),
-        icon: (
-          <CheckCircleIcon
-            color={
-              ["accepted", "paid"].includes(proposal.status)
-                ? "success"
-                : "disabled"
-            }
-          />
-        ),
-      },
-      {
-        label: "Payment",
-        date: proposal.status === "paid" ? "Completed" : "Pending",
-        completed: proposal.status === "paid",
-        icon: (
-          <AttachMoneyIcon
-            color={proposal.status === "paid" ? "success" : "disabled"}
-          />
-        ),
-      },
-    ];
-
-    return steps;
-  };
-
   // Helper to find option group, selection, or addon details from the listing snapshot
   const findOptionDetails = (type: string, id: number) => {
     if (type === "group") {
@@ -357,20 +296,20 @@ export default function ProposalDetailsPage({
     );
   };
 
-  // Render general options in a more intuitive way
+  // Menampilkan opsi umum dengan cara yang lebih intuitif
   const renderGeneralOptions = () => {
     if (!proposal.generalOptions) {
-      return <Typography>No options selected</Typography>;
+      return <Typography>Tidak ada opsi yang dipilih</Typography>;
     }
 
     return (
       <Card sx={{ mb: 3, overflow: "visible" }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-            General Options
+            Opsi Umum
           </Typography>
 
-          {/* Option Groups */}
+          {/* Grup Opsi */}
           {proposal.generalOptions.optionGroups &&
             proposal.generalOptions.optionGroups.length > 0 && (
               <Box sx={{ mb: 3 }}>
@@ -378,7 +317,7 @@ export default function ProposalDetailsPage({
                   variant="subtitle1"
                   sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
                 >
-                  Option Groups
+                  Grup Opsi
                 </Typography>
                 <TableContainer
                   component={Paper}
@@ -388,9 +327,9 @@ export default function ProposalDetailsPage({
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ bgcolor: "background.default" }}>
-                        <TableCell>Option</TableCell>
-                        <TableCell>Selection</TableCell>
-                        <TableCell align="right">Price</TableCell>
+                        <TableCell>Opsi</TableCell>
+                        <TableCell>Pilihan</TableCell>
+                        <TableCell align="right">Harga</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -410,7 +349,7 @@ export default function ProposalDetailsPage({
                           <TableRow key={option.id}>
                             <TableCell>
                               {groupDetails?.title ||
-                                `Option Group ${option.groupId}`}
+                                `Grup Opsi ${option.groupId}`}
                             </TableCell>
                             <TableCell>
                               {option.selectedSelectionLabel}
@@ -427,7 +366,7 @@ export default function ProposalDetailsPage({
               </Box>
             )}
 
-          {/* Add-ons */}
+          {/* Add-on */}
           {proposal.generalOptions.addons &&
             proposal.generalOptions.addons.length > 0 && (
               <Box sx={{ mb: 3 }}>
@@ -435,7 +374,7 @@ export default function ProposalDetailsPage({
                   variant="subtitle1"
                   sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
                 >
-                  Add-ons
+                  Tambahan
                 </Typography>
                 <TableContainer
                   component={Paper}
@@ -445,8 +384,8 @@ export default function ProposalDetailsPage({
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ bgcolor: "background.default" }}>
-                        <TableCell>Add-on</TableCell>
-                        <TableCell align="right">Price</TableCell>
+                        <TableCell>Tambahan</TableCell>
+                        <TableCell align="right">Harga</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -473,7 +412,7 @@ export default function ProposalDetailsPage({
               </Box>
             )}
 
-          {/* Answers */}
+          {/* Jawaban Klien */}
           {proposal.generalOptions.answers &&
             proposal.generalOptions.answers.length > 0 && (
               <Box>
@@ -481,7 +420,7 @@ export default function ProposalDetailsPage({
                   variant="subtitle1"
                   sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
                 >
-                  Client Responses
+                  Jawaban dari Klien
                 </Typography>
                 {proposal.generalOptions.answers.map((answer) => {
                   const questionDetails = findOptionDetails(
@@ -505,7 +444,7 @@ export default function ProposalDetailsPage({
                         gutterBottom
                       >
                         {questionDetails?.text ||
-                          `Question ${answer.questionId}`}
+                          `Pertanyaan ${answer.questionId}`}
                       </Typography>
                       <Typography variant="body1">{answer.answer}</Typography>
                     </Box>
@@ -519,10 +458,11 @@ export default function ProposalDetailsPage({
   };
 
   // Render subject options in a more intuitive way
+  // Menampilkan opsi subjek dengan cara yang lebih intuitif
   const renderSubjectOptions = () => {
     if (!proposal.subjectOptions || proposal.subjectOptions.length === 0) {
       return (
-        <Typography variant="body2">No subject options selected</Typography>
+        <Typography variant="body2">Tidak ada subjek yang dipilih</Typography>
       );
     }
 
@@ -533,7 +473,7 @@ export default function ProposalDetailsPage({
         <Card key={subject.subjectId} sx={{ mb: 3, overflow: "visible" }}>
           <CardContent sx={{ p: 3 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-              {subjectDetails?.title || `Subject ${subject.subjectId}`}
+              {subjectDetails?.title || `Subjek ${subject.subjectId}`}
             </Typography>
 
             {subject.instances.map((instance) => (
@@ -550,17 +490,17 @@ export default function ProposalDetailsPage({
                   variant="subtitle1"
                   sx={{ mb: 2, fontWeight: "medium" }}
                 >
-                  Instance {instance.id}
+                  Instansi {instance.id}
                 </Typography>
 
-                {/* Instance Option Groups */}
+                {/* Grup Opsi Instansi */}
                 {instance.optionGroups && instance.optionGroups.length > 0 && (
                   <Box sx={{ mb: 3 }}>
                     <Typography
                       variant="subtitle2"
                       sx={{ mb: 1, color: "primary.main" }}
                     >
-                      Options
+                      Opsi
                     </Typography>
                     <TableContainer
                       component={Paper}
@@ -570,9 +510,9 @@ export default function ProposalDetailsPage({
                       <Table size="small">
                         <TableHead>
                           <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Option</TableCell>
-                            <TableCell>Selection</TableCell>
-                            <TableCell align="right">Price</TableCell>
+                            <TableCell>Opsi</TableCell>
+                            <TableCell>Pilihan</TableCell>
+                            <TableCell align="right">Harga</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -593,7 +533,7 @@ export default function ProposalDetailsPage({
                               <TableRow key={option.id}>
                                 <TableCell>
                                   {groupDetails?.title ||
-                                    `Option ${option.groupId}`}
+                                    `Opsi ${option.groupId}`}
                                 </TableCell>
                                 <TableCell>
                                   {option.selectedSelectionLabel}
@@ -610,14 +550,14 @@ export default function ProposalDetailsPage({
                   </Box>
                 )}
 
-                {/* Instance Add-ons */}
+                {/* Add-on Instansi */}
                 {instance.addons && instance.addons.length > 0 && (
                   <Box sx={{ mb: 3 }}>
                     <Typography
                       variant="subtitle2"
                       sx={{ mb: 1, color: "primary.main" }}
                     >
-                      Add-ons
+                      Tambahan
                     </Typography>
                     <TableContainer
                       component={Paper}
@@ -627,8 +567,8 @@ export default function ProposalDetailsPage({
                       <Table size="small">
                         <TableHead>
                           <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Add-on</TableCell>
-                            <TableCell align="right">Price</TableCell>
+                            <TableCell>Tambahan</TableCell>
+                            <TableCell align="right">Harga</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -643,7 +583,7 @@ export default function ProposalDetailsPage({
                               <TableRow key={addon.id}>
                                 <TableCell>
                                   {addonDetails?.label ||
-                                    `Add-on ${addon.addonId}`}
+                                    `Tambahan ${addon.addonId}`}
                                 </TableCell>
                                 <TableCell align="right">
                                   {formatCurrency(addon.price)}
@@ -657,14 +597,14 @@ export default function ProposalDetailsPage({
                   </Box>
                 )}
 
-                {/* Instance Answers */}
+                {/* Jawaban Klien Instansi */}
                 {instance.answers && instance.answers.length > 0 && (
                   <Box>
                     <Typography
                       variant="subtitle2"
                       sx={{ mb: 1, color: "primary.main" }}
                     >
-                      Client Responses
+                      Jawaban Klien
                     </Typography>
                     {instance.answers.map((answer) => {
                       const questionDetails = findSubjectOptionDetails(
@@ -689,7 +629,7 @@ export default function ProposalDetailsPage({
                             gutterBottom
                           >
                             {questionDetails?.text ||
-                              `Question ${answer.questionId}`}
+                              `Pertanyaan ${answer.questionId}`}
                           </Typography>
                           <Typography variant="body1">
                             {answer.answer}
@@ -715,7 +655,7 @@ export default function ProposalDetailsPage({
         </Alert>
       )}
 
-      {/* Back button and header */}
+      {/* Tombol kembali dan header */}
       <Box
         sx={{
           display: "flex",
@@ -732,11 +672,11 @@ export default function ProposalDetailsPage({
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" fontWeight="bold">
-            Commission Contract
+            Kontrak Komisi
           </Typography>
         </Box>
 
-        {/* Edit button */}
+        {/* Tombol edit */}
         {canEditProposal && (
           <Button
             variant="outlined"
@@ -754,7 +694,7 @@ export default function ProposalDetailsPage({
         )}
       </Box>
 
-      {/* Status card */}
+      {/* Kartu status proposal */}
       <Paper
         elevation={3}
         sx={{
@@ -775,10 +715,10 @@ export default function ProposalDetailsPage({
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
           {statusMap[proposal.status]?.icon}
           <Typography variant="h5" fontWeight="medium" sx={{ ml: 1 }}>
-            {statusMap[proposal.status]?.text || "Unknown Status"}
+            {statusMap[proposal.status]?.text || "Status Tidak Dikenal"}
           </Typography>
           <Chip
-            label={statusMap[proposal.status]?.text || "Unknown"}
+            label={statusMap[proposal.status]?.text || "Tidak Diketahui"}
             color={
               proposal.status.includes("reject")
                 ? "error"
@@ -805,7 +745,7 @@ export default function ProposalDetailsPage({
                 sx={{ mr: 1 }}
               />
               <Typography variant="body2" color="text.secondary">
-                Project
+                Proyek
               </Typography>
             </Box>
             <Typography
@@ -824,7 +764,7 @@ export default function ProposalDetailsPage({
                 sx={{ mr: 1 }}
               />
               <Typography variant="body2" color="text.secondary">
-                Deadline
+                Tenggat Waktu
               </Typography>
             </Box>
             <Typography
@@ -843,8 +783,8 @@ export default function ProposalDetailsPage({
             >
               {formatDate(new Date(proposal.deadline).toISOString())}
               {daysRemaining > 0
-                ? ` (${daysRemaining} days left)`
-                : " (Due today!)"}
+                ? ` (${daysRemaining} hari lagi)`
+                : " (Hari terakhir!)"}
             </Typography>
           </Grid>
 
@@ -852,7 +792,7 @@ export default function ProposalDetailsPage({
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <PersonIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
               <Typography variant="body2" color="text.secondary">
-                {role === "client" ? "Artist" : "Client"}
+                {role === "client" ? "Ilustrator" : "Klien"}
               </Typography>
             </Box>
             <Typography
@@ -860,8 +800,8 @@ export default function ProposalDetailsPage({
               sx={{ fontWeight: "medium", ml: 4, mb: 2 }}
             >
               {role === "client"
-                ? otherPartyInfo?.username || "Artist"
-                : otherPartyInfo?.username || "Client"}
+                ? otherPartyInfo?.username || "Ilustrator"
+                : otherPartyInfo?.username || "Klien"}
             </Typography>
           </Grid>
 
@@ -873,7 +813,7 @@ export default function ProposalDetailsPage({
                 sx={{ mr: 1 }}
               />
               <Typography variant="body2" color="text.secondary">
-                Total Price
+                Total Harga
               </Typography>
             </Box>
             <Typography
@@ -885,13 +825,13 @@ export default function ProposalDetailsPage({
           </Grid>
         </Grid>
 
-        {/* Timeline for proposal progress */}
+        {/* Garis waktu (jika ada, bisa ditambahkan di sini) */}
         <Box
           sx={{ mt: 3, pt: 2, borderTop: "1px dashed", borderColor: "divider" }}
         ></Box>
       </Paper>
 
-      {/* Response Form Section */}
+      {/* Formulir Respons */}
       {(canArtistRespond || canClientRespond) && (
         <Box sx={{ mb: 4 }}>
           {role === "artist" && canArtistRespond ? (
@@ -910,7 +850,7 @@ export default function ProposalDetailsPage({
         </Box>
       )}
 
-      {/* Status Message */}
+      {/* Pesan Status */}
       {!(canArtistRespond || canClientRespond) && (
         <Alert
           severity={
@@ -930,21 +870,21 @@ export default function ProposalDetailsPage({
         >
           <Typography variant="body1">
             {proposal.status === "accepted"
-              ? "This proposal has been accepted. The artist will begin work according to the agreed timeline."
+              ? "Proposal ini telah diterima. Ilustrator akan mulai bekerja sesuai dengan jadwal yang disepakati."
               : proposal.status === "rejectedArtist"
-              ? "This proposal has been rejected by the artist. You may want to submit a new proposal with different requirements."
+              ? "Proposal ini ditolak oleh ilustrator. Anda dapat membuat proposal baru dengan kebutuhan yang berbeda."
               : proposal.status === "rejectedClient"
-              ? "You have rejected the artist's adjustments. The artist may propose new adjustments."
+              ? "Anda menolak penyesuaian dari ilustrator. Ilustrator dapat mengajukan penyesuaian baru."
               : proposal.status === "expired"
-              ? "This proposal has expired and can no longer be accepted."
+              ? "Proposal ini telah kedaluwarsa dan tidak dapat diterima lagi."
               : proposal.status === "paid"
-              ? "This proposal has been paid. The artist will now complete the work as agreed."
-              : "Waiting for the other party to respond to this proposal."}
+              ? "Proposal ini telah dibayar. Ilustrator akan menyelesaikan karya sesuai kesepakatan."
+              : "Menunggu tanggapan dari pihak lainnya terhadap proposal ini."}
           </Typography>
         </Alert>
       )}
 
-      {/* Cancel Proposal Button (for clients only) */}
+      {/* Tombol Batalkan Proposal (hanya untuk klien) */}
       {role === "client" &&
         !["expired", "rejectedArtist", "rejectedClient", "paid"].includes(
           proposal.status
@@ -959,12 +899,12 @@ export default function ProposalDetailsPage({
               startIcon={<CancelIcon />}
               sx={{ borderRadius: 2 }}
             >
-              Cancel Proposal
+              Batalkan Proposal
             </Button>
           </Box>
         )}
 
-      {/* Project Description */}
+      {/* Deskripsi Proyek */}
       <Paper
         elevation={2}
         sx={{
@@ -979,14 +919,14 @@ export default function ProposalDetailsPage({
           color="primary"
           sx={{ mb: 2, fontWeight: "medium" }}
         >
-          Project Description
+          Deskripsi Proyek
         </Typography>
         <Typography variant="body1" paragraph>
           {proposal.generalDescription}
         </Typography>
       </Paper>
 
-      {/* Selected Options */}
+      {/* Opsi yang Dipilih */}
       <Paper
         elevation={2}
         sx={{
@@ -1001,13 +941,13 @@ export default function ProposalDetailsPage({
           color="primary"
           sx={{ mb: 3, fontWeight: "medium" }}
         >
-          Selected Options
+          Opsi yang Dipilih
         </Typography>
         {renderGeneralOptions()}
         {renderSubjectOptions()}
       </Paper>
 
-      {/* Commission Details */}
+      {/* Rincian Listing Komisi */}
       <Accordion
         expanded={expandedSection === "listingDetails"}
         onChange={handleSectionToggle("listingDetails")}
@@ -1022,7 +962,7 @@ export default function ProposalDetailsPage({
             color="primary"
             sx={{ display: "flex", alignItems: "center" }}
           >
-            <DescriptionIcon sx={{ mr: 1 }} /> Commission Listing Details
+            <DescriptionIcon sx={{ mr: 1 }} /> Rincian Listing Komisi
           </Typography>
         </AccordionSummary>
         <AccordionDetails>
@@ -1030,7 +970,7 @@ export default function ProposalDetailsPage({
         </AccordionDetails>
       </Accordion>
 
-      {/* Price Breakdown */}
+      {/* Rincian Harga */}
       <Paper
         elevation={2}
         sx={{
@@ -1045,21 +985,21 @@ export default function ProposalDetailsPage({
           color="primary"
           sx={{ mb: 3, fontWeight: "medium" }}
         >
-          Price Breakdown
+          Rincian Harga
         </Typography>
 
         <TableContainer sx={{ mb: 3 }}>
           <Table>
             <TableBody>
               <TableRow>
-                <TableCell>Base Price</TableCell>
+                <TableCell>Harga Dasar</TableCell>
                 <TableCell align="right">
                   {formatCurrency(proposal.calculatedPrice.base)}
                 </TableCell>
               </TableRow>
               {proposal.calculatedPrice.optionGroups > 0 && (
                 <TableRow>
-                  <TableCell>Option Groups</TableCell>
+                  <TableCell>Opsi Tambahan</TableCell>
                   <TableCell align="right">
                     {formatCurrency(proposal.calculatedPrice.optionGroups)}
                   </TableCell>
@@ -1067,7 +1007,7 @@ export default function ProposalDetailsPage({
               )}
               {proposal.calculatedPrice.addons > 0 && (
                 <TableRow>
-                  <TableCell>Add-ons</TableCell>
+                  <TableCell>Add-on</TableCell>
                   <TableCell align="right">
                     {formatCurrency(proposal.calculatedPrice.addons)}
                   </TableCell>
@@ -1077,10 +1017,10 @@ export default function ProposalDetailsPage({
                 <TableRow>
                   <TableCell>
                     <Tooltip
-                      title={`Rush fee for ${proposal.rush?.days} rushed days`}
+                      title={`Biaya ekspres untuk ${proposal.rush?.days} hari dipercepat`}
                     >
                       <Box sx={{ display: "flex", alignItems: "center" }}>
-                        Rush Fee{" "}
+                        Biaya Ekspres{" "}
                         <InfoIcon
                           fontSize="small"
                           sx={{ ml: 1, color: "text.secondary" }}
@@ -1095,7 +1035,7 @@ export default function ProposalDetailsPage({
               )}
               {proposal.calculatedPrice.discount > 0 && (
                 <TableRow>
-                  <TableCell>Discount</TableCell>
+                  <TableCell>Diskon</TableCell>
                   <TableCell align="right" sx={{ color: "success.main" }}>
                     -{formatCurrency(proposal.calculatedPrice.discount)}
                   </TableCell>
@@ -1103,7 +1043,7 @@ export default function ProposalDetailsPage({
               )}
               {proposal.artistAdjustments?.acceptedSurcharge && (
                 <TableRow>
-                  <TableCell>Artist Surcharge</TableCell>
+                  <TableCell>Tambahan dari Ilustrator</TableCell>
                   <TableCell align="right" sx={{ color: "error.main" }}>
                     +
                     {formatCurrency(
@@ -1114,7 +1054,7 @@ export default function ProposalDetailsPage({
               )}
               {proposal.artistAdjustments?.acceptedDiscount && (
                 <TableRow>
-                  <TableCell>Artist Discount</TableCell>
+                  <TableCell>Diskon dari Ilustrator</TableCell>
                   <TableCell align="right" sx={{ color: "success.main" }}>
                     -
                     {formatCurrency(
@@ -1133,7 +1073,7 @@ export default function ProposalDetailsPage({
                   },
                 }}
               >
-                <TableCell>Total Amount</TableCell>
+                <TableCell>Total Akhir</TableCell>
                 <TableCell align="right">
                   {formatCurrency(proposal.calculatedPrice.total)}
                 </TableCell>
@@ -1143,66 +1083,7 @@ export default function ProposalDetailsPage({
         </TableContainer>
       </Paper>
 
-      {/* Rush Details if applicable */}
-      {proposal.rush && (
-        <Paper
-          elevation={2}
-          sx={{
-            p: 3,
-            mb: 4,
-            borderRadius: 2,
-            bgcolor: proposal.rush.fee ? "warning.lighter" : "background.paper",
-            borderLeft: proposal.rush.fee ? 5 : 0,
-            borderColor: "warning.main",
-          }}
-        >
-          <Typography
-            variant="h5"
-            sx={{
-              mb: 3,
-              fontWeight: "medium",
-              color: proposal.rush.fee ? "warning.dark" : "primary.main",
-            }}
-          >
-            Rush Details
-          </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={4}>
-              <Typography variant="body2" color="text.secondary">
-                Rush Days
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                {proposal.rush.days < 0 ? 0 : proposal.rush.days}
-              </Typography>
-            </Grid>
-            {proposal.rush.paidDays !== undefined && (
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Paid Rush Days
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                  {proposal.rush.paidDays}
-                </Typography>
-              </Grid>
-            )}
-            {proposal.rush.fee && (
-              <Grid item xs={12} sm={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Rush Fee
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{ fontWeight: "medium", color: "warning.dark" }}
-                >
-                  {formatCurrency(proposal.rush.fee)}
-                </Typography>
-              </Grid>
-            )}
-          </Grid>
-        </Paper>
-      )}
-
-      {/* Reference Images */}
+      {/* Gambar Referensi */}
       {proposal.referenceImages && proposal.referenceImages.length > 0 && (
         <Paper
           elevation={2}
@@ -1218,7 +1099,7 @@ export default function ProposalDetailsPage({
             color="primary"
             sx={{ mb: 3, fontWeight: "medium" }}
           >
-            Reference Images
+            Gambar Referensi
           </Typography>
           <Grid container spacing={2}>
             {proposal.referenceImages.map((imgUrl, index) => (
@@ -1240,7 +1121,7 @@ export default function ProposalDetailsPage({
                   <CardMedia
                     component="img"
                     image={imgUrl}
-                    alt={`Reference ${index + 1}`}
+                    alt={`Referensi ${index + 1}`}
                     sx={{
                       height: 200,
                       objectFit: "cover",
@@ -1248,7 +1129,7 @@ export default function ProposalDetailsPage({
                   />
                   <CardContent sx={{ p: 1, bgcolor: "background.default" }}>
                     <Typography variant="caption" color="text.secondary">
-                      Reference Image {index + 1}
+                      Gambar Referensi {index + 1}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -1322,7 +1203,7 @@ export default function ProposalDetailsPage({
             variant="h5"
             sx={{ mb: 3, fontWeight: "medium", color: "error.main" }}
           >
-            Rejection Reason
+            Alasan Penolakan
           </Typography>
           <Typography variant="body1">{proposal.rejectionReason}</Typography>
         </Paper>
@@ -1338,26 +1219,8 @@ export default function ProposalDetailsPage({
           onClick={() => router.push(`/${username}/dashboard/proposals`)}
           sx={{ borderRadius: 2 }}
         >
-          Back to Proposals
+          Kembali ke Proposal
         </Button>
-
-        {proposal.status === "accepted" && (
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<MessageOutlinedIcon />}
-            onClick={() =>
-              router.push(
-                `/${username}/messages/${
-                  role === "artist" ? proposal.clientId : proposal.artistId
-                }`
-              )
-            }
-            sx={{ borderRadius: 2 }}
-          >
-            Message {role === "artist" ? "Client" : "Artist"}
-          </Button>
-        )}
       </Box>
 
       <Snackbar

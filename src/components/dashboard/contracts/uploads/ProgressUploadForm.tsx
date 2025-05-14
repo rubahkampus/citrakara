@@ -144,7 +144,7 @@ export default function ProgressUploadForm({
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Progress upload successful! Redirecting...
+          Unggahan progres berhasil! Mengalihkan...
         </Alert>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -154,30 +154,30 @@ export default function ProgressUploadForm({
             </Alert>
           )}
 
-          {/* Description Section */}
+          {/* Seksi Deskripsi */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Progress Description
+              Deskripsi Progres
             </Typography>
 
             <Controller
               name="description"
               control={control}
               rules={{
-                required: "Description is required",
+                required: "Deskripsi diperlukan",
                 minLength: {
                   value: 10,
-                  message: "Description must be at least 10 characters",
+                  message: "Deskripsi harus minimal 10 karakter",
                 },
               }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Description"
+                  label="Deskripsi"
                   multiline
                   rows={4}
                   fullWidth
-                  placeholder="Provide details about this progress update"
+                  placeholder="Berikan detail tentang pembaruan progres ini"
                   error={!!errors.description}
                   helperText={errors.description?.message}
                   disabled={isSubmitting}
@@ -186,13 +186,13 @@ export default function ProgressUploadForm({
             />
           </Box>
 
-          {/* Image Upload Section */}
+          {/* Seksi Unggah Gambar */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Upload Images
+              Unggah Gambar
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Upload up to 5 images showing your progress.
+              Unggah hingga 5 gambar yang menunjukkan progres Anda.
             </Typography>
 
             <Box sx={{ mb: 2 }}>
@@ -203,7 +203,7 @@ export default function ProgressUploadForm({
                 disabled={isSubmitting || files.length >= 5}
                 sx={{ mt: 1 }}
               >
-                Add Images
+                Tambah Gambar
                 <input
                   type="file"
                   accept="image/*"
@@ -215,7 +215,7 @@ export default function ProgressUploadForm({
               </Button>
               {files.length > 0 && (
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {files.length}/5 images selected
+                  {files.length}/5 gambar terpilih
                 </Typography>
               )}
             </Box>
@@ -228,7 +228,7 @@ export default function ProgressUploadForm({
                       <Box
                         component="img"
                         src={url}
-                        alt={`Preview ${index}`}
+                        alt={`Pratinjau ${index}`}
                         sx={{
                           width: "100%",
                           height: 120,
@@ -257,19 +257,19 @@ export default function ProgressUploadForm({
               </Grid>
             ) : (
               <Alert severity="info" sx={{ mt: 1 }}>
-                Please select at least one image to upload.
+                Silakan pilih setidaknya satu gambar untuk diunggah.
               </Alert>
             )}
           </Box>
 
-          {/* Submit Buttons */}
+          {/* Tombol Kirim */}
           <Stack direction="row" spacing={2}>
             <Button
               variant="outlined"
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -278,11 +278,7 @@ export default function ProgressUploadForm({
               disabled={isSubmitting || files.length === 0}
               sx={{ minWidth: 120 }}
             >
-              {isSubmitting ? (
-                <CircularProgress size={24} />
-              ) : (
-                "Upload Progress"
-              )}
+              {isSubmitting ? <CircularProgress size={24} /> : "Unggah Progres"}
             </Button>
           </Stack>
         </form>

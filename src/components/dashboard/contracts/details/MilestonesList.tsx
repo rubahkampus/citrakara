@@ -51,7 +51,7 @@ const MilestonesList: React.FC<MilestonesListProps> = ({ milestones = [] }) => {
   return (
     <Box>
       <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-        Milestones
+        Daftar Milestone
       </Typography>
 
       {milestones.map((milestone, index) => {
@@ -113,13 +113,13 @@ const MilestonesList: React.FC<MilestonesListProps> = ({ milestones = [] }) => {
                   <Box display="flex" justifyContent="space-between">
                     {milestone.startedAt && (
                       <Typography variant="body2" color="text.secondary">
-                        Started: {formatDate(milestone.startedAt)}
+                        Dimulai: {formatDate(milestone.startedAt)}
                       </Typography>
                     )}
 
                     {milestone.completedAt && (
                       <Typography variant="body2" color="text.secondary">
-                        Completed: {formatDate(milestone.completedAt)}
+                        Selesai: {formatDate(milestone.completedAt)}
                       </Typography>
                     )}
                   </Box>

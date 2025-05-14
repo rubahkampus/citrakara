@@ -66,7 +66,7 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
                   fontSize="small"
                   sx={{ mr: 1, color: "text.secondary" }}
                 />
-                Contract ID
+                ID Kontrak
               </Box>
             </TableCell>
             <TableCell>
@@ -82,7 +82,7 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
                   fontSize="small"
                   sx={{ mr: 1, color: "text.secondary" }}
                 />
-                Client
+                Klien
               </Box>
             </TableCell>
             <TableCell>{contract.clientId.toString()}</TableCell>
@@ -94,7 +94,7 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
                   fontSize="small"
                   sx={{ mr: 1, color: "text.secondary" }}
                 />
-                Artist
+                Ilustrator
               </Box>
             </TableCell>
             <TableCell>{contract.artistId.toString()}</TableCell>
@@ -106,7 +106,7 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
                   fontSize="small"
                   sx={{ mr: 1, color: "text.secondary" }}
                 />
-                Created At
+                Tanggal Dibuat
               </Box>
             </TableCell>
             <TableCell>{formatDate(contract.createdAt)}</TableCell>
@@ -140,14 +140,14 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
                   fontSize="small"
                   sx={{ mr: 1, color: "text.secondary" }}
                 />
-                Grace Period Ends
+                Akhir Masa Toleransi
               </Box>
             </TableCell>
             <TableCell>{formatDate(contract.graceEndsAt)}</TableCell>
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
-              Flow Type
+              Jenis Alur
             </TableCell>
             <TableCell>
               <Chip
@@ -160,7 +160,7 @@ const ContractInfoTable: React.FC<ContractInfoTableProps> = ({ contract }) => {
           </TableRow>
           <TableRow>
             <TableCell component="th" scope="row">
-              Work Progress
+              Progres Pekerjaan
             </TableCell>
             <TableCell>
               <Box display="flex" alignItems="center">

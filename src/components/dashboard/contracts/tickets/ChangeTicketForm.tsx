@@ -24,7 +24,10 @@ import DescriptionSection from "./form/DescriptionSection";
 import ReferenceImagesSection from "./form/ReferenceImagesSection";
 import GeneralOptionsSection from "./form/GeneralOptionsSection";
 import SubjectOptionsSection from "./form/SubjectOptionsSection";
-import { ProposalGeneralOptions, ProposalSubjectOptions } from "@/lib/db/models/proposal.model";
+import {
+  ProposalGeneralOptions,
+  ProposalSubjectOptions,
+} from "@/lib/db/models/proposal.model";
 
 export interface GeneralOptionGroupInput {
   selectedId: number;
@@ -240,7 +243,10 @@ export default function ChangeTicketFormPage({
         }
       }
 
-      const transformedOptions = transformOptions(values.generalOptions, values.subjectOptions)
+      const transformedOptions = transformOptions(
+        values.generalOptions,
+        values.subjectOptions
+      );
       // console.log(latestTerms.generalOptions)
       // console.log(transformedOptions.generalOptions)
       // console.log(latestTerms.subjectOptions)
@@ -251,7 +257,12 @@ export default function ChangeTicketFormPage({
         if (values.includeGeneralOptions) {
           // Compare with original to see if there are changes
           const currentGeneralOptions = latestTerms.generalOptions || {};
-          if (!areObjectsEqual(transformedOptions.generalOptions, currentGeneralOptions)) {
+          if (
+            !areObjectsEqual(
+              transformedOptions.generalOptions,
+              currentGeneralOptions
+            )
+          ) {
             formData.append(
               "generalOptions",
               JSON.stringify(transformedOptions.generalOptions)
@@ -278,7 +289,12 @@ export default function ChangeTicketFormPage({
         if (values.includeSubjectOptions) {
           // Compare with original to see if there are changes
           const currentSubjectOptions = latestTerms.subjectOptions || {};
-          if (!areObjectsEqual(transformedOptions.subjectOptions, currentSubjectOptions)) {
+          if (
+            !areObjectsEqual(
+              transformedOptions.subjectOptions,
+              currentSubjectOptions
+            )
+          ) {
             formData.append(
               "subjectOptions",
               JSON.stringify(transformedOptions.subjectOptions)
@@ -393,33 +409,33 @@ export default function ChangeTicketFormPage({
     if (Object.keys(errors).length === 0) return null;
 
     const fieldNames: Record<string, string> = {
-      reason: "Reason",
-      deadlineAt: "Deadline",
-      generalDescription: "Description",
-      referenceImages: "Reference Images",
-      generalOptions: "General Options",
-      subjectOptions: "Subject Options",
+      reason: "Alasan",
+      deadlineAt: "Tenggat Waktu",
+      generalDescription: "Deskripsi",
+      referenceImages: "Gambar Referensi",
+      generalOptions: "Opsi Umum",
+      subjectOptions: "Opsi Subjek",
     };
 
     const missingFields = Object.keys(errors)
       .map((key) => fieldNames[key] || key)
       .join(", ");
 
-    return `Please complete the following required fields: ${missingFields}`;
+    return `Harap lengkapi field berikut yang wajib diisi: ${missingFields}`;
   };
 
-  // Check if contract changes are allowed
+  // Periksa apakah perubahan kontrak diperbolehkan
   if (!isChangeAllowed) {
     return (
-      <Alert severity="error">This contract does not allow changes.</Alert>
+      <Alert severity="error">Kontrak ini tidak mengizinkan perubahan.</Alert>
     );
   }
 
-  // Check if user is a client (only clients can create change tickets)
+  // Periksa apakah pengguna adalah klien (hanya klien yang dapat membuat permintaan perubahan)
   if (!isClient) {
     return (
       <Alert severity="warning">
-        Only clients can request contract changes.
+        Hanya klien yang dapat meminta perubahan kontrak.
       </Alert>
     );
   }
@@ -459,54 +475,54 @@ export default function ChangeTicketFormPage({
           }}
         >
           <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 3 }}>
-            Request Contract Changes
+            Permintaan Perubahan Kontrak
           </Typography>
 
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" fontWeight="bold">
-              Change Request Information
+              Informasi Permintaan Perubahan
             </Typography>
             <Typography variant="body2">
-              You can request changes to certain aspects of the contract. The
-              artist will need to approve these changes and may apply a fee for
-              significant modifications.
+              Anda dapat meminta perubahan pada aspek tertentu dari kontrak.
+              Seniman perlu menyetujui perubahan ini dan mungkin akan menerapkan
+              biaya untuk perubahan yang signifikan.
             </Typography>
           </Box>
 
           <Box sx={{ mb: 3 }}>
             <Alert severity="info">
               <Typography variant="body2" fontWeight="bold">
-                Changeable Aspects:
+                Aspek yang Dapat Diubah:
               </Typography>
               <Typography variant="body2">
                 {allowedChanges.length > 0
                   ? allowedChanges.join(", ")
-                  : "No specific aspects are listed as changeable. Contact the artist directly."}
+                  : "Tidak ada aspek spesifik yang tercatat sebagai dapat diubah. Hubungi seniman langsung."}
               </Typography>
             </Alert>
           </Box>
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Reason input - stays in the main component */}
+          {/* Alasan input - tetap di komponen utama */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Reason for Changes
+              Alasan untuk Perubahan
             </Typography>
             <TextField
               {...register("reason", {
-                required: "Reason is required",
+                required: "Alasan wajib diisi",
                 minLength: {
                   value: 10,
                   message:
-                    "Please provide a more detailed reason (minimum 10 characters)",
+                    "Harap berikan alasan yang lebih detail (minimal 10 karakter)",
                 },
               })}
-              label="Reason"
+              label="Alasan"
               multiline
               rows={3}
               fullWidth
-              placeholder="Explain why you need these changes..."
+              placeholder="Jelaskan mengapa Anda membutuhkan perubahan ini..."
               error={!!errors.reason}
               helperText={errors.reason?.message}
               disabled={isSubmitting}
@@ -583,14 +599,19 @@ export default function ChangeTicketFormPage({
   );
 }
 
-
-
-function transformOptions(generalOptions: Record<string, any>, subjectOptions: Record<string, any>) {
+function transformOptions(
+  generalOptions: Record<string, any>,
+  subjectOptions: Record<string, any>
+) {
   // Deep clone the generalOptions to avoid mutations
-  const transformedGeneralOptions = JSON.parse(JSON.stringify(generalOptions)) as ProposalGeneralOptions;
-  
+  const transformedGeneralOptions = JSON.parse(
+    JSON.stringify(generalOptions)
+  ) as ProposalGeneralOptions;
+
   // Transform subjectOptions from object with keys to array with subjectId
-  const transformedSubjectOptions: ProposalSubjectOptions = Object.entries(subjectOptions).map(([subjectId, data]) => {
+  const transformedSubjectOptions: ProposalSubjectOptions = Object.entries(
+    subjectOptions
+  ).map(([subjectId, data]) => {
     // Create the new subject object with subjectId
     return {
       subjectId: parseInt(subjectId),
@@ -600,52 +621,58 @@ function transformOptions(generalOptions: Record<string, any>, subjectOptions: R
           id: index + 1, // Generate sequential ID
           optionGroups: [],
           addons: [],
-          answers: []
+          answers: [],
         };
-        
+
         // Transform optionGroups from object to array format
         if (instance.optionGroups) {
-            newInstance.optionGroups = Object.entries(instance.optionGroups).map(([groupId, group]: [string, any]) => {
-            return {
-              id: parseInt(groupId),
-              groupId: parseInt(groupId),
-              selectedSelectionID: group.selectedId,
-              selectedSelectionLabel: group.selectedLabel,
-              price: group.price
-            };
-            });
+          newInstance.optionGroups = Object.entries(instance.optionGroups).map(
+            ([groupId, group]: [string, any]) => {
+              return {
+                id: parseInt(groupId),
+                groupId: parseInt(groupId),
+                selectedSelectionID: group.selectedId,
+                selectedSelectionLabel: group.selectedLabel,
+                price: group.price,
+              };
+            }
+          );
         }
-        
+
         // Transform addons from object to array format
         if (instance.addons) {
-          newInstance.addons = Object.entries(instance.addons).map(([addonId, price]) => {
-            return {
-              id: parseInt(addonId),
-              addonId: parseInt(addonId),
-              price: price
-            };
-          });
+          newInstance.addons = Object.entries(instance.addons).map(
+            ([addonId, price]) => {
+              return {
+                id: parseInt(addonId),
+                addonId: parseInt(addonId),
+                price: price,
+              };
+            }
+          );
         }
-        
+
         // Transform answers from object to array format
         if (instance.answers) {
-          newInstance.answers = Object.entries(instance.answers).map(([questionId, answer]) => {
-            return {
-              id: parseInt(questionId),
-              questionId: parseInt(questionId),
-              answer: answer
-            };
-          });
+          newInstance.answers = Object.entries(instance.answers).map(
+            ([questionId, answer]) => {
+              return {
+                id: parseInt(questionId),
+                questionId: parseInt(questionId),
+                answer: answer,
+              };
+            }
+          );
         }
-        
+
         return newInstance;
-      })
+      }),
     };
   });
-  
+
   // Return the combined object with both transformed parts
   return {
     generalOptions: transformedGeneralOptions,
-    subjectOptions: transformedSubjectOptions
+    subjectOptions: transformedSubjectOptions,
   };
 }

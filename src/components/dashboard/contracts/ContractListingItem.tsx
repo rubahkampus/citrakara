@@ -141,7 +141,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
               variant="subtitle2"
               color={`${getStatusColor(contract.status)}.main`}
             >
-              {role === "artist" ? "You are the Artist" : "You are the Client"}
+              {role === "artist" ? "Anda sebagai Seniman" : "Anda sebagai Klien"}
             </Typography>
           </Box>
           <Chip
@@ -154,10 +154,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
         {/* Main content */}
         <Box sx={{ p: 2 }}>
           <Typography variant="h6" fontWeight="bold" gutterBottom>
-            {contract.proposalSnapshot?.generalDescription.substring(0, 60)}
-            {contract.proposalSnapshot?.generalDescription.length > 60
-              ? "..."
-              : ""}
+            {contract.proposalSnapshot?.listingSnapshot?.title}
           </Typography>
 
           <Stack
@@ -179,7 +176,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                 />
               )}
               <Typography variant="body2" color="text.secondary">
-                {role === "artist" ? "Client: " : "Artist: "}
+                {role === "artist" ? "Klien: " : "Seniman: "}
                 <Typography
                   component="span"
                   variant="body2"
@@ -196,7 +193,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                 sx={{ mr: 1, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Amount:
+                Jumlah:
                 <Typography
                   component="span"
                   variant="body2"
@@ -214,7 +211,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                 sx={{ mr: 1, color: "text.secondary" }}
               />
               <Tooltip
-                title={`Created: ${formatDate(contract.createdAt as Date)}`}
+                title={`Dibuat: ${formatDate(contract.createdAt as Date)}`}
               >
                 <Typography variant="body2" color="text.secondary">
                   {isOverdue && contract.status === "active" ? (
@@ -224,23 +221,23 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                       color="error.main"
                       fontWeight="medium"
                     >
-                      Overdue by {Math.abs(daysRemaining)} days
+                      Terlambat {Math.abs(daysRemaining)} hari
                     </Typography>
                   ) : contract.status === "active" ? (
                     <>
-                      Due:{" "}
+                      Deadline:
                       <Typography
                         component="span"
                         variant="body2"
                         fontWeight="medium"
                       >
-                        {formatDate(contract.deadlineAt)} ({daysRemaining} days
-                        left)
+                        {formatDate(contract.deadlineAt)} ({daysRemaining} hari
+                        lagi)
                       </Typography>
                     </>
                   ) : (
                     <>
-                      Deadline:{" "}
+                      Deadline:
                       <Typography
                         component="span"
                         variant="body2"
@@ -259,12 +256,12 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
           {contract.milestones && contract.milestones.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                Progress:{" "}
+                Kemajuan:{" "}
                 {contract.currentMilestoneIndex !== undefined
                   ? `${contract.currentMilestoneIndex + 1}/${
                       contract.milestones.length
-                    } milestones`
-                  : "Not started"}
+                    } tonggak`
+                  : "Belum dimulai"}
               </Typography>
               <Box
                 sx={{
@@ -301,7 +298,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                 },
               }}
             >
-              View Details
+              Lihat Detail
             </Button>
           </Box>
         </Box>

@@ -77,25 +77,26 @@ export default function ClientRespondForm({
 
   return (
     <Box sx={{ width: "100%" }}>
-      {/* Adjustment Notice Alert */}
+      {/* Pemberitahuan Penyesuaian Harga */}
       {isAdjustmentProposed && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          The artist has proposed price adjustments. Please review and respond.
+          Seniman telah mengajukan penyesuaian harga. Silakan tinjau dan beri
+          tanggapan.
         </Alert>
       )}
 
-      {/* Response Cards */}
+      {/* Kartu Tanggapan */}
       <Card variant="outlined" sx={{ mb: 3, width: "100%" }} elevation={2}>
         <CardContent>
           {activeView === "cancel" ? (
-            /* Cancellation View */
+            /* Tampilan Pembatalan */
             <>
               <Typography variant="h6" gutterBottom color="error">
-                Cancel Proposal
+                Batalkan Proposal
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Are you sure you want to cancel this proposal? This action
-                cannot be undone.
+                Apakah Anda yakin ingin membatalkan proposal ini? Tindakan ini
+                tidak dapat dibatalkan.
               </Typography>
 
               <Stack direction="row" spacing={2} justifyContent="center">
@@ -104,7 +105,7 @@ export default function ClientRespondForm({
                   onClick={() => setActiveView("main")}
                   disabled={loading}
                 >
-                  Back
+                  Kembali
                 </Button>
                 <Button
                   variant="contained"
@@ -112,19 +113,19 @@ export default function ClientRespondForm({
                   onClick={handleConfirmCancel}
                   disabled={loading}
                 >
-                  Confirm Cancellation
+                  Konfirmasi Pembatalan
                 </Button>
               </Stack>
             </>
           ) : activeView === "reject" ? (
-            /* Rejection View */
+            /* Tampilan Penolakan */
             <>
               <Typography variant="h6" gutterBottom color="warning.main">
-                Reject Artist's Adjustments
+                Tolak Penyesuaian Seniman
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Rejecting will send the proposal back to the artist. They can
-                make new adjustments or accept the original terms.
+                Menolak akan mengirim proposal kembali ke seniman. Mereka dapat
+                melakukan penyesuaian baru atau menerima ketentuan asli.
               </Typography>
 
               <Stack direction="row" spacing={2} justifyContent="center">
@@ -133,7 +134,7 @@ export default function ClientRespondForm({
                   onClick={() => setActiveView("main")}
                   disabled={loading}
                 >
-                  Back
+                  Kembali
                 </Button>
                 <Button
                   variant="contained"
@@ -141,20 +142,20 @@ export default function ClientRespondForm({
                   onClick={handleConfirmReject}
                   disabled={loading}
                 >
-                  Reject Adjustments
+                  Tolak Penyesuaian
                 </Button>
               </Stack>
             </>
           ) : (
-            /* Main Response View */
+            /* Tampilan Tanggapan Utama */
             <>
               <Typography variant="h6" gutterBottom>
                 {proposal.status === "accepted"
-                  ? "Proceed to Payment"
-                  : "Respond to Proposal"}
+                  ? "Lanjutkan ke Pembayaran"
+                  : "Tanggapi Proposal"}
               </Typography>
 
-              {/* Price Adjustments Display */}
+              {/* Tampilkan Penyesuaian Harga */}
               {isAdjustmentProposed && hasAdjustments && (
                 <Box
                   sx={{
@@ -165,7 +166,7 @@ export default function ClientRespondForm({
                   }}
                 >
                   <Typography variant="body2" color="text.secondary">
-                    Price Adjustments:
+                    Penyesuaian Harga:
                   </Typography>
 
                   {hasSurcharge && (
@@ -180,7 +181,7 @@ export default function ClientRespondForm({
 
                   {hasDiscount && (
                     <Chip
-                      label={`Discount: -${formatCurrency(discountAmount)}`}
+                      label={`Diskon: -${formatCurrency(discountAmount)}`}
                       color="success"
                       variant="outlined"
                       size="small"
@@ -201,14 +202,14 @@ export default function ClientRespondForm({
                 }}
               >
                 <Typography variant="subtitle2" color="text.secondary">
-                  Final Total
+                  Total Akhir
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                   {formatCurrency(finalPrice)}
                 </Typography>
               </Box>
 
-              {/* Action Buttons */}
+              {/* Tombol Aksi */}
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={2}
@@ -222,7 +223,7 @@ export default function ClientRespondForm({
                   disabled={loading}
                   fullWidth
                 >
-                  Cancel Proposal
+                  Batalkan Proposal
                 </Button>
 
                 {proposal.status === "pendingClient" && (
@@ -234,7 +235,7 @@ export default function ClientRespondForm({
                       disabled={loading}
                       fullWidth
                     >
-                      Reject Adjustments
+                      Tolak Penyesuaian
                     </Button>
                     <Button
                       variant="contained"
@@ -244,7 +245,7 @@ export default function ClientRespondForm({
                       disabled={loading}
                       fullWidth
                     >
-                      Accept Adjustments
+                      Terima Penyesuaian
                     </Button>
                   </>
                 )}
@@ -257,13 +258,14 @@ export default function ClientRespondForm({
                     disabled={true}
                     fullWidth
                   >
-                    Accepted
+                    Diterima
                   </Button>
                 )}
               </Stack>
             </>
           )}
 
+          {/* Tombol Lanjutkan Pembayaran */}
           {(proposal.status === "accepted" || proposal.status === "paid") && (
             <Button
               variant="contained"
@@ -275,8 +277,8 @@ export default function ClientRespondForm({
               sx={{ mt: 2 }}
             >
               {proposal.status == "accepted"
-                ? "Proceed to Payment"
-                : "Proposal Paid"}
+                ? "Lanjutkan ke Pembayaran"
+                : "Proposal Telah Dibayar"}
             </Button>
           )}
 
@@ -299,14 +301,14 @@ export default function ClientRespondForm({
                   }
                 );
 
-                // Handle success (you can add additional logic here)
-                // For example, redirecting to the contract page
+                // Tangani keberhasilan (Anda bisa menambahkan logika tambahan di sini)
+                // Misalnya, mengarahkan ke halaman kontrak
                 if (response.data.contractId) {
                   router.push(`/contracts/${response.data.contractId}`);
                 }
               } catch (err: any) {
-                console.error("Error creating contract:", err);
-                // The error handling is now done within the dialog component
+                console.error("Error membuat kontrak:", err);
+                // Penanganan kesalahan sekarang dilakukan di dalam komponen dialog
               }
             }}
           />

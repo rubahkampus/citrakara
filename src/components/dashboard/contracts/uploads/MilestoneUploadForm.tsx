@@ -29,7 +29,7 @@ interface MilestoneUploadFormProps {
   userId: string;
   username: string;
   milestoneIdx: number;
-  isAllowedFinal: boolean
+  isAllowedFinal: boolean;
 }
 
 interface FormValues {
@@ -42,7 +42,7 @@ export default function MilestoneUploadForm({
   userId,
   username,
   milestoneIdx,
-  isAllowedFinal
+  isAllowedFinal,
 }: MilestoneUploadFormProps) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
@@ -167,7 +167,7 @@ export default function MilestoneUploadForm({
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Milestone upload successful! Redirecting...
+          Unggahan milestone berhasil! Mengalihkan...
         </Alert>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -177,10 +177,10 @@ export default function MilestoneUploadForm({
             </Alert>
           )}
 
-          {/* Milestone Info Display */}
+          {/* Tampilkan Info Milestone */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Milestone Information
+              Informasi Milestone
             </Typography>
             <Box
               sx={{
@@ -203,30 +203,30 @@ export default function MilestoneUploadForm({
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Description Section */}
+          {/* Bagian Deskripsi */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Progress Description
+              Deskripsi Progres
             </Typography>
 
             <Controller
               name="description"
               control={control}
               rules={{
-                required: "Description is required",
+                required: "Deskripsi wajib diisi",
                 minLength: {
                   value: 10,
-                  message: "Description must be at least 10 characters",
+                  message: "Deskripsi harus minimal 10 karakter",
                 },
               }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Description"
+                  label="Deskripsi"
                   multiline
                   rows={4}
                   fullWidth
-                  placeholder="Describe your progress on this milestone..."
+                  placeholder="Jelaskan progres Anda pada milestone ini..."
                   error={!!errors.description}
                   helperText={errors.description?.message}
                   disabled={isSubmitting}
@@ -235,13 +235,14 @@ export default function MilestoneUploadForm({
             />
           </Box>
 
-          {/* Image Upload Section */}
+          {/* Bagian Unggah Gambar */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Upload Images
+              Unggah Gambar
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Upload up to 5 images showing your progress on this milestone.
+              Unggah hingga 5 gambar yang menunjukkan progres Anda pada
+              milestone ini.
             </Typography>
 
             <Box sx={{ mb: 2 }}>
@@ -252,7 +253,7 @@ export default function MilestoneUploadForm({
                 disabled={isSubmitting || files.length >= 5}
                 sx={{ mt: 1 }}
               >
-                Add Images
+                Tambah Gambar
                 <input
                   type="file"
                   accept="image/*"
@@ -264,7 +265,7 @@ export default function MilestoneUploadForm({
               </Button>
               {files.length > 0 && (
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {files.length}/5 images selected
+                  {files.length}/5 gambar terpilih
                 </Typography>
               )}
             </Box>
@@ -277,7 +278,7 @@ export default function MilestoneUploadForm({
                       <Box
                         component="img"
                         src={url}
-                        alt={`Preview ${index}`}
+                        alt={`Pratinjau ${index}`}
                         sx={{
                           width: "100%",
                           height: 120,
@@ -306,12 +307,12 @@ export default function MilestoneUploadForm({
               </Grid>
             ) : (
               <Alert severity="info" sx={{ mt: 1 }}>
-                Please select at least one image to upload.
+                Harap pilih setidaknya satu gambar untuk diunggah.
               </Alert>
             )}
           </Box>
 
-          {/* Final Delivery Checkbox */}
+          {/* Checkbox Pengiriman Final */}
           <Box sx={{ mb: 3 }}>
             <Controller
               name="isFinal"
@@ -326,28 +327,29 @@ export default function MilestoneUploadForm({
                       disabled={isSubmitting || !isAllowedFinal}
                     />
                   }
-                  label="This is the final delivery for this milestone (all revisions must be finished first)"
+                  label="Ini adalah pengiriman final untuk milestone ini (semua revisi harus selesai terlebih dahulu)"
                 />
               )}
             />
 
             {watchIsFinal && (
               <Alert severity="info" sx={{ mt: 1 }}>
-                By marking this as final, you are indicating that this milestone
-                is complete and ready for client review. The client will need to
-                accept this upload to proceed to the next milestone.
+                Dengan menandai ini sebagai final, Anda menunjukkan bahwa
+                milestone ini telah selesai dan siap untuk ditinjau oleh klien.
+                Klien perlu menerima unggahan ini untuk melanjutkan ke milestone
+                berikutnya.
               </Alert>
             )}
           </Box>
 
-          {/* Submit Buttons */}
+          {/* Tombol Kirim */}
           <Stack direction="row" spacing={2}>
             <Button
               variant="outlined"
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               type="submit"
@@ -359,7 +361,7 @@ export default function MilestoneUploadForm({
               {isSubmitting ? (
                 <CircularProgress size={24} />
               ) : (
-                "Upload Milestone"
+                "Unggah Milestone"
               )}
             </Button>
           </Stack>

@@ -159,6 +159,7 @@ export default async function UploadDetailsPage({
           userId={(session as Session).id}
           isArtist={isArtist}
           isClient={isClient}
+          isAdmin={false}
           canReview={canReview}
           username={(session as Session).username}
         />
@@ -171,6 +172,7 @@ export default async function UploadDetailsPage({
           userId={(session as Session).id}
           isArtist={isArtist}
           isClient={isClient}
+          isAdmin={false}
           canReview={canReview}
         />
       )}
@@ -182,6 +184,7 @@ export default async function UploadDetailsPage({
           userId={(session as Session).id}
           isArtist={isArtist}
           isClient={isClient}
+          isAdmin={false}
           canReview={canReview}
           username={(session as Session).username}
         />

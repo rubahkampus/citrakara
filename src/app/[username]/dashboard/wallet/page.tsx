@@ -41,12 +41,6 @@ export default async function WalletPage({ params }: WalletPageProps) {
           username={username}
           walletSummary={walletSummary}
         />
-        <Box>
-          <Typography variant="h6">Wallet Summary</Typography>
-          <Typography>Available Balance: {walletSummary.available}</Typography>
-          <Typography>Escrowed Balance: {walletSummary.escrowed}</Typography>
-          <Typography>Total Balance: {walletSummary.total}</Typography>
-        </Box>
       </Suspense>
     </Box>
   );

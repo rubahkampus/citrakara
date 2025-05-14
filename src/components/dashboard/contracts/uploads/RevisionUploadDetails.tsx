@@ -38,6 +38,7 @@ interface RevisionUploadDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
+  isAdmin: boolean;
   canReview: boolean;
 }
 
@@ -51,6 +52,7 @@ export default function RevisionUploadDetails({
   userId,
   isArtist,
   isClient,
+  isAdmin,
   canReview,
 }: RevisionUploadDetailsProps) {
   const router = useRouter();
@@ -443,7 +445,7 @@ export default function RevisionUploadDetails({
       )}
 
       {/* Action Buttons for Client */}
-      {isClient && canReview && upload.status === "submitted" && (
+      {!isAdmin && isClient && canReview && upload.status === "submitted" && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
             Review Actions
@@ -454,7 +456,7 @@ export default function RevisionUploadDetails({
               color="error"
               startIcon={<CancelIcon />}
               onClick={() => handleReview("reject")}
-              disabled={isSubmitting}
+              disabled={isAdmin || isSubmitting}
             >
               Reject Revision
             </Button>
@@ -463,7 +465,7 @@ export default function RevisionUploadDetails({
               color="success"
               startIcon={<CheckCircleIcon />}
               onClick={() => handleReview("accept")}
-              disabled={isSubmitting}
+              disabled={isAdmin || isSubmitting}
             >
               Accept Revision
             </Button>
@@ -551,7 +553,7 @@ export default function RevisionUploadDetails({
         <DialogActions>
           <Button
             onClick={() => setOpenConfirmDialog(false)}
-            disabled={isSubmitting}
+            disabled={isAdmin || isSubmitting}
           >
             Cancel
           </Button>
@@ -559,7 +561,7 @@ export default function RevisionUploadDetails({
             onClick={handleReviewConfirm}
             color={reviewAction === "accept" ? "success" : "error"}
             variant="contained"
-            disabled={isSubmitting}
+            disabled={isAdmin || isSubmitting}
             startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
           >
             {isSubmitting

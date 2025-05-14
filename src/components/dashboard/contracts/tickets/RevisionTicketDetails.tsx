@@ -49,7 +49,8 @@ interface RevisionTicketDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
-  username: string
+  isAdmin: boolean;
+  username: string;
 }
 
 export default function RevisionTicketDetails({
@@ -58,7 +59,8 @@ export default function RevisionTicketDetails({
   userId,
   isArtist,
   isClient,
-  username
+  isAdmin,
+  username,
 }: RevisionTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<"accept" | "reject" | "">("");
@@ -112,6 +114,7 @@ export default function RevisionTicketDetails({
 
   // Determine if user can respond to this ticket (artist only)
   const canRespond = () => {
+    if (isAdmin) return false;
     return isArtist && ticket.status === "pending" && !isPastExpiry;
   };
 
@@ -486,7 +489,7 @@ export default function RevisionTicketDetails({
                     variant={response === "accept" ? "contained" : "outlined"}
                     color="success"
                     onClick={() => setResponse("accept")}
-                    disabled={isSubmitting}
+                    disabled={isAdmin || isSubmitting}
                     startIcon={<ThumbUpIcon />}
                     sx={{ flexGrow: 1 }}
                     size="large"
@@ -497,7 +500,7 @@ export default function RevisionTicketDetails({
                     variant={response === "reject" ? "contained" : "outlined"}
                     color="error"
                     onClick={() => setResponse("reject")}
-                    disabled={isSubmitting}
+                    disabled={isAdmin || isSubmitting}
                     startIcon={<ThumbDownIcon />}
                     sx={{ flexGrow: 1 }}
                     size="large"
@@ -529,7 +532,7 @@ export default function RevisionTicketDetails({
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Explain why you are rejecting this revision request"
                     required
-                    disabled={isSubmitting}
+                    disabled={isAdmin || isSubmitting}
                     error={
                       response === "reject" && rejectionReason.trim() === ""
                     }
@@ -548,6 +551,7 @@ export default function RevisionTicketDetails({
                 color="primary"
                 onClick={handleSubmit}
                 disabled={
+                  isAdmin ||
                   !response ||
                   (response === "reject" && !rejectionReason.trim()) ||
                   isSubmitting
@@ -585,7 +589,7 @@ export default function RevisionTicketDetails({
                 variant="contained"
                 color="primary"
                 onClick={() => setShowPaymentDialog(true)}
-                disabled={isSubmitting}
+                disabled={isAdmin || isSubmitting}
                 startIcon={<PaymentIcon />}
               >
                 Pay Revision Fee
@@ -654,7 +658,7 @@ export default function RevisionTicketDetails({
                   variant="outlined"
                   color="warning"
                   onClick={handleEscalation}
-                  disabled={isSubmitting}
+                  disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
                   Escalate to Resolution

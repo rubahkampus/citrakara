@@ -75,10 +75,12 @@ export default async function ResolutionTicketPage({
   // Prepare URL params if provided
   const searchParam = await searchParams;
   const targetType = searchParam?.targetType as
-    | "cancel"
-    | "revision"
-    | "final"
-    | "milestone";
+    | "cancelTicket"
+    | "revisionTicket"
+    | "changeTicket"
+    | "finalUpload"
+    | "progressMilestoneUpload"
+    | "revisionUpload";
   const targetId = searchParam?.targetId;
 
   // Serialize contract for client component

@@ -1,5 +1,5 @@
 // components/dashboard/wallet/WalletDashboardPage.tsx
-'use client'
+"use client";
 
 import React from "react";
 import {
@@ -14,6 +14,7 @@ import {
   Stack,
   Alert,
   Tooltip,
+  Breadcrumbs,
 } from "@mui/material";
 import Link from "next/link";
 import {
@@ -26,6 +27,9 @@ import {
   CreditCard,
   AddCircle,
   ArrowUpward,
+  ArrowBack,
+  Home,
+  NavigateNext,
 } from "@mui/icons-material";
 
 // Types
@@ -58,6 +62,49 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
   return (
     <Box>
       {/* Navigation tabs - already handled by parent component */}
+      <Box sx={{ mb: 3 }}>
+        <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+          <MuiLink
+            component={Link}
+            href={`/${username}/dashboard`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <Home fontSize="small" sx={{ mr: 0.5 }} />
+            Dashboard
+          </MuiLink>
+          <Typography
+            color="text.primary"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
+            Dompet
+          </Typography>
+        </Breadcrumbs>
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: 2,
+          }}
+        >
+          <Typography variant="h5" fontWeight="500">
+            Dompet
+          </Typography>
+          <Button
+            component={Link}
+            href={`/${username}/dashboard`}
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            size="small"
+          >
+            Kembali ke Profil
+          </Button>
+        </Box>
+      </Box>
 
       {/* Main balance card with gradient background */}
       <Card
@@ -74,7 +121,7 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
               sx={{ mr: 2, fontSize: 32, color: "white" }}
             />
             <Typography variant="h5" fontWeight="500" color="white">
-              Your Wallet
+              Dompetmu
             </Typography>
           </Box>
 
@@ -83,14 +130,14 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Available Balance
+                  Saldo Tersedia
                 </Typography>
                 <Typography variant="h4" color="primary.main" fontWeight="bold">
                   {formatCurrency(walletSummary.available)}
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Ready to withdraw or spend
+                    Siap ditarik atau digunakan
                   </Typography>
                   <Tooltip title="Funds you can withdraw or use for new commissions">
                     <Info fontSize="small" color="action" sx={{ ml: 1 }} />
@@ -103,14 +150,14 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Escrowed Balance
+                  Saldo Eskro
                 </Typography>
                 <Typography variant="h4" color="warning.main" fontWeight="bold">
                   {formatCurrency(walletSummary.escrowed)}
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Locked in active contracts
+                    Tertahan di dalam kontrak
                   </Typography>
                   <Tooltip title="Funds held in escrow until contracts are completed">
                     <Info fontSize="small" color="action" sx={{ ml: 1 }} />
@@ -123,14 +170,14 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Total Balance
+                  Saldo Total
                 </Typography>
                 <Typography variant="h4" fontWeight="bold">
                   {formatCurrency(walletSummary.total)}
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Available + Escrowed
+                    Tersedia + Eskro
                   </Typography>
                   <Tooltip title="Your total funds on the platform">
                     <Info fontSize="small" color="action" sx={{ ml: 1 }} />
@@ -182,7 +229,7 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
 
       {/* Quick links */}
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
-        Quick Actions
+        Aksi
       </Typography>
       <Grid container spacing={2}>
         {/* Transaction history link */}
@@ -212,10 +259,10 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
                     <ReceiptLong color="primary" sx={{ mr: 2, fontSize: 28 }} />
                     <Box>
                       <Typography variant="h6" fontWeight="500">
-                        Transaction History
+                        Riwayat Transaksi
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        View all your past transactions
+                        Lihat semua transaksi sebelumnya
                       </Typography>
                     </Box>
                   </Box>
@@ -253,10 +300,10 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
                     <CreditCard color="primary" sx={{ mr: 2, fontSize: 28 }} />
                     <Box>
                       <Typography variant="h6" fontWeight="500">
-                        Claimable Contracts
+                        Klaim Kontrak 
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Claim payments from completed contracts
+                        Klaim pembayaran atau uang kembali
                       </Typography>
                     </Box>
                   </Box>
@@ -267,25 +314,6 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
           </Link>
         </Grid>
       </Grid>
-
-      {/* Help section */}
-      <Alert
-        severity="info"
-        icon={<HelpOutline />}
-        sx={{
-          mt: 4,
-          borderRadius: 2,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-        }}
-      >
-        <Typography variant="subtitle2" fontWeight="500">
-          Need help with your wallet?
-        </Typography>
-        <Typography variant="body2">
-          For assistance with payments, withdrawals, or any other wallet-related
-          issues, please contact our support team.
-        </Typography>
-      </Alert>
     </Box>
   );
 };

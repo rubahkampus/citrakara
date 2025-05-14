@@ -209,40 +209,45 @@ export default function ChatSidebar({
                       </Typography>
                     }
                     secondary={
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          noWrap
+                      <>
+                        <Box
+                          component="span"
                           sx={{
-                            maxWidth: "120px",
-                            fontWeight: conversation.unreadCount ? 600 : 400,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
                           }}
                         >
-                          {conversation.latestMessage?.content ||
-                            "New conversation"}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ minWidth: "60px", textAlign: "right" }}
-                        >
-                          {conversation.lastActivity
-                            ? formatDistanceToNow(
-                                new Date(conversation.lastActivity),
-                                {
-                                  addSuffix: false,
-                                }
-                              )
-                            : ""}
-                        </Typography>
-                      </Box>
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            color="text.secondary"
+                            noWrap
+                            sx={{
+                              maxWidth: "120px",
+                              fontWeight: conversation.unreadCount ? 600 : 400,
+                            }}
+                          >
+                            {conversation.latestMessage?.content ||
+                              "New conversation"}
+                          </Typography>
+                          <Typography
+                            component="span"
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ minWidth: "60px", textAlign: "right" }}
+                          >
+                            {conversation.lastActivity
+                              ? formatDistanceToNow(
+                                  new Date(conversation.lastActivity),
+                                  {
+                                    addSuffix: false,
+                                  }
+                                )
+                              : ""}
+                          </Typography>
+                        </Box>
+                      </>
                     }
                   />
                 </ListItemButton>

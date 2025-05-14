@@ -46,8 +46,9 @@ interface MilestoneUploadDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
+  isAdmin: boolean;
   canReview: boolean;
-  username: string
+  username: string;
 }
 
 export default function MilestoneUploadDetails({
@@ -56,8 +57,9 @@ export default function MilestoneUploadDetails({
   userId,
   isArtist,
   isClient,
+  isAdmin,
   canReview,
-  username
+  username,
 }: MilestoneUploadDetailsProps) {
   const router = useRouter();
   const [rejectionReason, setRejectionReason] = useState("");
@@ -319,7 +321,10 @@ export default function MilestoneUploadDetails({
             <Typography variant="body2">
               This milestone review will expire soon - on{" "}
               {formatDate(upload.expiresAt)}.
-              {isClient && canReview && " Please respond as soon as possible."}
+              {!isAdmin &&
+                isClient &&
+                canReview &&
+                " Please respond as soon as possible."}
             </Typography>
           </Alert>
         )}
@@ -418,7 +423,8 @@ export default function MilestoneUploadDetails({
           </Box>
 
           {/* Response Form - Only shown if user is client and can review */}
-          {isClient &&
+          {!isAdmin &&
+            isClient &&
             canReview &&
             upload.isFinal &&
             upload.status === "submitted" && (
@@ -442,7 +448,7 @@ export default function MilestoneUploadDetails({
                       variant="contained"
                       color="success"
                       onClick={handleAccept}
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       startIcon={<ThumbUpIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -453,7 +459,7 @@ export default function MilestoneUploadDetails({
                       variant="outlined"
                       color="error"
                       onClick={() => setShowRejectionDialog(true)}
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       startIcon={<ThumbDownIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -476,7 +482,7 @@ export default function MilestoneUploadDetails({
                 variant="outlined"
                 color="warning"
                 onClick={handleEscalation}
-                disabled={isSubmitting}
+                disabled={isAdmin || isSubmitting}
                 startIcon={<WarningIcon />}
               >
                 Escalate to Resolution
@@ -602,7 +608,7 @@ export default function MilestoneUploadDetails({
             onClick={handleReject}
             color="error"
             variant="contained"
-            disabled={rejectionReason.trim() === "" || isSubmitting}
+            disabled={isAdmin || rejectionReason.trim() === "" || isSubmitting}
           >
             {isSubmitting ? <CircularProgress size={24} /> : "Reject Milestone"}
           </Button>

@@ -66,13 +66,6 @@ export default async function TicketsListPage({
           isClient={isClient}
           contractStatus={contract.status}
         />
-        <Box>
-          Ticket listings for contract {contractId} would be displayed here.
-          There are {cancelTickets.length} cancel tickets,
-          {revisionTickets.length} revision tickets,
-          {changeTickets.length} change tickets, and
-          {resolutionTickets.length} resolution tickets.
-        </Box>
       </Suspense>
     </Box>
   );

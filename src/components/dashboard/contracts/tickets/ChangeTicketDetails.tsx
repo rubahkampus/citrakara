@@ -68,7 +68,8 @@ interface ChangeTicketDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
-  username: string
+  isAdmin: boolean;
+  username: string;
 }
 
 export default function ChangeTicketDetails({
@@ -77,7 +78,8 @@ export default function ChangeTicketDetails({
   userId,
   isArtist,
   isClient,
-  username
+  isAdmin,
+  username,
 }: ChangeTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<
@@ -149,6 +151,7 @@ export default function ChangeTicketDetails({
 
   // Determine if user can respond to this ticket
   const canRespond = () => {
+    if (isAdmin) return false;
     // Artist can respond to pendingArtist tickets
     if (
       isArtist &&
@@ -815,14 +818,24 @@ export default function ChangeTicketDetails({
   };
 
   // Determine what changes have been requested
-  const hasDescriptionChange = !!ticket.changeSet.generalDescription && ticket.changeSet.generalDescription !== currentContractTerms.generalDescription;
-  const hasDeadlineChange = !!ticket.changeSet.deadlineAt && JSON.stringify(ticket.changeSet.deadlineAt) !== JSON.stringify(contract.deadlineAt);
+  const hasDescriptionChange =
+    !!ticket.changeSet.generalDescription &&
+    ticket.changeSet.generalDescription !==
+      currentContractTerms.generalDescription;
+  const hasDeadlineChange =
+    !!ticket.changeSet.deadlineAt &&
+    JSON.stringify(ticket.changeSet.deadlineAt) !==
+      JSON.stringify(contract.deadlineAt);
   const hasGeneralOptionsChange =
     ticket.changeSet.generalOptions &&
-    Object.keys(ticket.changeSet.generalOptions).length > 0 && JSON.stringify(ticket.changeSet.generalOptions) !== JSON.stringify(currentContractTerms.generalOptions);
+    Object.keys(ticket.changeSet.generalOptions).length > 0 &&
+    JSON.stringify(ticket.changeSet.generalOptions) !==
+      JSON.stringify(currentContractTerms.generalOptions);
   const hasSubjectOptionsChange =
     ticket.changeSet.subjectOptions &&
-    Object.keys(ticket.changeSet.subjectOptions).length > 0 && JSON.stringify(ticket.changeSet.subjectOptions) !== JSON.stringify(currentContractTerms.subjectOptions);
+    Object.keys(ticket.changeSet.subjectOptions).length > 0 &&
+    JSON.stringify(ticket.changeSet.subjectOptions) !==
+      JSON.stringify(currentContractTerms.subjectOptions);
   const hasReferenceImagesChange =
     ticket.changeSet.referenceImages &&
     ticket.changeSet.referenceImages.length > 0;
@@ -1188,7 +1201,7 @@ export default function ChangeTicketDetails({
                       variant={response === "accept" ? "contained" : "outlined"}
                       color="success"
                       onClick={() => setResponse("accept")}
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       startIcon={<ThumbUpIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -1201,7 +1214,7 @@ export default function ChangeTicketDetails({
                       }
                       color="primary"
                       onClick={() => setResponse("propose")}
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       startIcon={<PaymentIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -1212,7 +1225,7 @@ export default function ChangeTicketDetails({
                       variant={response === "reject" ? "contained" : "outlined"}
                       color="error"
                       onClick={() => setResponse("reject")}
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       startIcon={<ThumbDownIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -1248,7 +1261,7 @@ export default function ChangeTicketDetails({
                       onChange={(e) => setProposedFee(Number(e.target.value))}
                       placeholder="Enter fee amount"
                       required
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       error={
                         response === "propose" &&
                         (proposedFee <= 0 || isNaN(proposedFee))
@@ -1275,7 +1288,7 @@ export default function ChangeTicketDetails({
                       onChange={(e) => setRejectionReason(e.target.value)}
                       placeholder="Explain why you are rejecting these changes"
                       required
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       error={
                         response === "reject" && rejectionReason.trim() === ""
                       }
@@ -1294,6 +1307,7 @@ export default function ChangeTicketDetails({
                   color="primary"
                   onClick={handleSubmit}
                   disabled={
+                    isAdmin ||
                     !response ||
                     (response === "reject" && !rejectionReason.trim()) ||
                     (response === "propose" &&
@@ -1337,7 +1351,7 @@ export default function ChangeTicketDetails({
                   variant="contained"
                   color="success"
                   onClick={() => setShowPaymentDialog(true)}
-                  disabled={isSubmitting}
+                  disabled={isAdmin || isSubmitting}
                   startIcon={<PaymentIcon />}
                   sx={{ flexGrow: 1 }}
                   size="large"
@@ -1348,7 +1362,7 @@ export default function ChangeTicketDetails({
                   variant={response === "reject" ? "contained" : "outlined"}
                   color="error"
                   onClick={() => setResponse("reject")}
-                  disabled={isSubmitting}
+                  disabled={isAdmin || isSubmitting}
                   startIcon={<ThumbDownIcon />}
                   sx={{ flexGrow: 1 }}
                   size="large"
@@ -1368,7 +1382,7 @@ export default function ChangeTicketDetails({
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Explain why you are rejecting this fee"
                     required
-                    disabled={isSubmitting}
+                    disabled={isAdmin || isSubmitting}
                     error={
                       response === "reject" && rejectionReason.trim() === ""
                     }
@@ -1383,7 +1397,9 @@ export default function ChangeTicketDetails({
                     variant="contained"
                     color="primary"
                     onClick={handleSubmit}
-                    disabled={!rejectionReason.trim() || isSubmitting}
+                    disabled={
+                      isAdmin || !rejectionReason.trim() || isSubmitting
+                    }
                   >
                     {isSubmitting ? (
                       <CircularProgress size={24} />
@@ -1425,7 +1441,7 @@ export default function ChangeTicketDetails({
                   variant="outlined"
                   color="warning"
                   onClick={handleEscalation}
-                  disabled={isSubmitting}
+                  disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
                   Escalate to Resolution

@@ -79,27 +79,6 @@ export default async function WalletClaimableContractsPage({
           asClient={serializedAsClient}
           userId={(session as Session).id}
         />
-        <Box>
-          <Typography variant="h6">Claimable as Artist</Typography>
-          {asArtist.length === 0 ? (
-            <Typography>No contracts with claimable funds as artist</Typography>
-          ) : (
-            <Typography>
-              Found {asArtist.length} contracts with claimable funds as artist
-            </Typography>
-          )}
-
-          <Typography variant="h6" sx={{ mt: 3 }}>
-            Claimable as Client
-          </Typography>
-          {asClient.length === 0 ? (
-            <Typography>No contracts with claimable funds as client</Typography>
-          ) : (
-            <Typography>
-              Found {asClient.length} contracts with claimable funds as client
-            </Typography>
-          )}
-        </Box>
       </Suspense>
     </Box>
   );

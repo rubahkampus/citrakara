@@ -14,12 +14,13 @@ import ChangeTicketDetails from "@/components/dashboard/contracts/tickets/Change
 import ResolutionTicketDetails from "@/components/dashboard/contracts/tickets/ResolutionTicketDetails";
 import { IContract } from "@/lib/db/models/contract.model";
 import { IResolutionTicket } from "@/lib/db/models/ticket.model";
+import { isAdminByUsername } from "@/lib/db/repositories/user.repository";
 
 interface TicketDetailsPageProps {
   params: {
     username: string;
     contractId: string;
-    ticketType: "cancel" | "revision" | "change" | "resolution";
+    ticketType: "cancel" | "revision" | "change";
     ticketId: string;
   };
 }
@@ -59,9 +60,6 @@ export default async function TicketDetailsPage({
       case "change":
         ticket = await findChangeTicketById(ticketId);
         break;
-      case "resolution":
-        ticket = await findResolutionTicketById(ticketId);
-        break;
       default:
         return <Alert severity="error">Invalid ticket type</Alert>;
     }
@@ -84,7 +82,6 @@ export default async function TicketDetailsPage({
         {ticketType === "cancel" && "Cancellation Request"}
         {ticketType === "revision" && "Revision Request"}
         {ticketType === "change" && "Contract Change Request"}
-        {ticketType === "resolution" && "Resolution Request"}
       </Typography>
 
       {/* These would be implemented separately */}
@@ -95,6 +92,7 @@ export default async function TicketDetailsPage({
           userId={(session as Session).id}
           isArtist={isArtist}
           isClient={isClient}
+          isAdmin={false}
           username={(session as Session).username}
         />
       )}
@@ -106,6 +104,7 @@ export default async function TicketDetailsPage({
           userId={(session as Session).id}
           isArtist={isArtist}
           isClient={isClient}
+          isAdmin={false}
           username={(session as Session).username}
         />
       )}
@@ -117,6 +116,7 @@ export default async function TicketDetailsPage({
           userId={(session as Session).id}
           isArtist={isArtist}
           isClient={isClient}
+          isAdmin={false}
           username={(session as Session).username}
         />
       )}

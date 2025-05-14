@@ -42,7 +42,14 @@ export default async function ResolutionRedirectPage({
   // If we have valid parameters, include them in the redirect
   if (targetType && targetId) {
     // Validate parameters - only redirect if they are valid
-    const validTargetTypes = ["cancel", "revision", "final", "milestone"];
+    const validTargetTypes = [
+      "cancelTicket",
+      "revisionTicket",
+      "changeTicket",
+      "finalUpload",
+      "progressMilestoneUpload",
+      "revisionUpload",
+    ];
     const isValidType = validTargetTypes.includes(targetType);
     const isValidId = isValidObjectId(targetId);
 

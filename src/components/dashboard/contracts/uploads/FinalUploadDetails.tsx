@@ -49,8 +49,9 @@ interface FinalUploadDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
+  isAdmin: boolean;
   canReview: boolean;
-  username: string
+  username: string;
 }
 
 interface ReviewFormData {
@@ -63,8 +64,9 @@ export default function FinalUploadDetails({
   userId,
   isArtist,
   isClient,
+  isAdmin,
   canReview,
-  username
+  username,
 }: FinalUploadDetailsProps) {
   const router = useRouter();
   const [cancelTicket, setCancelTicket] = useState<ICancelTicket | null>(null);
@@ -345,7 +347,10 @@ export default function FinalUploadDetails({
               This{" "}
               {isCompleteDelivery ? "final delivery" : "cancellation proof"}{" "}
               review will expire soon - on {formatDate(upload.expiresAt)}.
-              {isClient && canReview && " Please respond as soon as possible."}
+              {!isAdmin &&
+                isClient &&
+                canReview &&
+                " Please respond as soon as possible."}
             </Typography>
           </Alert>
         )}
@@ -601,55 +606,60 @@ export default function FinalUploadDetails({
             </Box>
 
             {/* Response Form - Only shown if user is client and can review */}
-            {isClient && canReview && upload.status === "submitted" && (
-              <Box sx={{ mb: 3 }}>
-                <Divider sx={{ mb: 3 }} />
-                <Typography variant="h6" fontWeight="medium" gutterBottom>
-                  Your Response
-                </Typography>
-
-                <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
-                  <Typography variant="body2">
-                    {isCompleteDelivery
-                      ? "By accepting this final delivery, you acknowledge that the artist has completed the project as agreed. The contract will be marked as completed."
-                      : "By accepting this cancellation proof, you confirm the work percentage is accurate. The contract will be cancelled and payment will be split accordingly."}
-                  </Typography>
-                </Alert>
-
+            {!isAdmin &&
+              isClient &&
+              canReview &&
+              upload.status === "submitted" && (
                 <Box sx={{ mb: 3 }}>
-                  <Stack direction="row" spacing={2}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={handleAccept}
-                      disabled={isSubmitting}
-                      startIcon={<ThumbUpIcon />}
-                      sx={{ flexGrow: 1 }}
-                      size="large"
-                    >
-                      {isSubmitting && success === false ? (
-                        <CircularProgress size={24} color="inherit" />
-                      ) : (
-                        `Accept ${
-                          isCompleteDelivery ? "Final Delivery" : "Cancellation"
-                        }`
-                      )}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={() => setShowRejectionDialog(true)}
-                      disabled={isSubmitting}
-                      startIcon={<ThumbDownIcon />}
-                      sx={{ flexGrow: 1 }}
-                      size="large"
-                    >
-                      Reject
-                    </Button>
-                  </Stack>
+                  <Divider sx={{ mb: 3 }} />
+                  <Typography variant="h6" fontWeight="medium" gutterBottom>
+                    Your Response
+                  </Typography>
+
+                  <Alert severity="info" sx={{ mb: 3 }} icon={<InfoIcon />}>
+                    <Typography variant="body2">
+                      {isCompleteDelivery
+                        ? "By accepting this final delivery, you acknowledge that the artist has completed the project as agreed. The contract will be marked as completed."
+                        : "By accepting this cancellation proof, you confirm the work percentage is accurate. The contract will be cancelled and payment will be split accordingly."}
+                    </Typography>
+                  </Alert>
+
+                  <Box sx={{ mb: 3 }}>
+                    <Stack direction="row" spacing={2}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={handleAccept}
+                        disabled={isAdmin || isSubmitting}
+                        startIcon={<ThumbUpIcon />}
+                        sx={{ flexGrow: 1 }}
+                        size="large"
+                      >
+                        {isSubmitting && success === false ? (
+                          <CircularProgress size={24} color="inherit" />
+                        ) : (
+                          `Accept ${
+                            isCompleteDelivery
+                              ? "Final Delivery"
+                              : "Cancellation"
+                          }`
+                        )}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => setShowRejectionDialog(true)}
+                        disabled={isAdmin || isSubmitting}
+                        startIcon={<ThumbDownIcon />}
+                        sx={{ flexGrow: 1 }}
+                        size="large"
+                      >
+                        Reject
+                      </Button>
+                    </Stack>
+                  </Box>
                 </Box>
-              </Box>
-            )}
+              )}
 
             {/* Escalate to Resolution section */}
             {(isClient || isArtist) && upload.status && (
@@ -666,7 +676,7 @@ export default function FinalUploadDetails({
                   variant="outlined"
                   color="warning"
                   onClick={handleEscalation}
-                  disabled={isSubmitting}
+                  disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
                   Escalate to Resolution
@@ -808,7 +818,7 @@ export default function FinalUploadDetails({
               type="submit"
               color="error"
               variant="contained"
-              disabled={isSubmitting}
+              disabled={isAdmin || isSubmitting}
             >
               {isSubmitting ? <CircularProgress size={24} /> : "Reject"}
             </Button>

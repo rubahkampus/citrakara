@@ -42,7 +42,8 @@ interface CancelTicketDetailsProps {
   userId: string;
   isArtist: boolean;
   isClient: boolean;
-  username: string
+  isAdmin: boolean;
+  username: string;
 }
 
 interface FormValues {
@@ -55,7 +56,8 @@ export default function CancelTicketDetails({
   userId,
   isArtist,
   isClient,
-  username
+  isAdmin,
+  username,
 }: CancelTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<"accept" | "reject" | "">("");
@@ -118,6 +120,7 @@ export default function CancelTicketDetails({
     // Only the counterparty can respond (not the requester)
     if (ticket.requestedBy === "client" && isArtist) return true;
     if (ticket.requestedBy === "artist" && isClient) return true;
+    if (isAdmin) return false;
     return false;
   };
 
@@ -467,7 +470,7 @@ export default function CancelTicketDetails({
                       variant={response === "accept" ? "contained" : "outlined"}
                       color="success"
                       onClick={() => setResponse("accept")}
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       startIcon={<ThumbUpIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -479,7 +482,7 @@ export default function CancelTicketDetails({
                       variant={response === "reject" ? "contained" : "outlined"}
                       color="error"
                       onClick={() => setResponse("reject")}
-                      disabled={isSubmitting}
+                      disabled={isAdmin || isSubmitting}
                       startIcon={<ThumbDownIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -523,7 +526,7 @@ export default function CancelTicketDetails({
                           fullWidth
                           placeholder="Explain why you are rejecting this cancellation request"
                           required
-                          disabled={isSubmitting}
+                          disabled={isAdmin || isSubmitting}
                           error={!!errors.rejectionReason}
                           helperText={errors.rejectionReason?.message}
                           sx={{ mb: 2 }}
@@ -538,6 +541,7 @@ export default function CancelTicketDetails({
                   color="primary"
                   type="submit"
                   disabled={
+                    isAdmin ||
                     !response ||
                     (response === "reject" &&
                       !control._formValues.rejectionReason) ||
@@ -610,7 +614,7 @@ export default function CancelTicketDetails({
                   variant="outlined"
                   color="warning"
                   onClick={handleEscalation}
-                  disabled={isSubmitting}
+                  disabled={isAdmin || isSubmitting}
                   startIcon={<WarningIcon />}
                 >
                   Escalate to Resolution

@@ -26,7 +26,7 @@ interface CreateTicketPageProps {
   params: {
     username: string;
     contractId: string;
-    ticketType: "cancel" | "revision" | "change" | "resolution";
+    ticketType: "cancel" | "revision" | "change";
   };
 }
 
@@ -137,15 +137,6 @@ export default async function CreateTicketPage({
     });
   }
 
-  // For resolution tickets
-  if (ticketType === "resolution" && unresolvedResolutionTickets.length > 0) {
-    warnings.push({
-      type: "error",
-      message:
-        "There is already an active resolution case for this contract. Please wait for it to be resolved before creating a new one.",
-    });
-  }
-
   // Add warnings for unfinished uploads (always informational)
   if (isArtist && unfinishedRevisionTickets.length > 0) {
     warnings.push({
@@ -192,8 +183,7 @@ export default async function CreateTicketPage({
       warning.type === "error" &&
       ((ticketType === "cancel" && warning.message.includes("cancellation")) ||
         (ticketType === "revision" && warning.message.includes("revision")) ||
-        (ticketType === "change" && warning.message.includes("change")) ||
-        (ticketType === "resolution" && warning.message.includes("resolution")))
+        (ticketType === "change" && warning.message.includes("change")))
   );
 
   return (
@@ -202,7 +192,6 @@ export default async function CreateTicketPage({
         {ticketType === "cancel" && "Request Cancellation"}
         {ticketType === "revision" && "Request Revision"}
         {ticketType === "change" && "Request Contract Change"}
-        {ticketType === "resolution" && "Request Resolution"}
       </Typography>
 
       {/* Display warnings */}

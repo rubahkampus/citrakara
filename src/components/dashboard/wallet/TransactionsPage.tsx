@@ -1,5 +1,5 @@
 // components/dashboard/wallet/TransactionsPage.tsx
-'use client'
+"use client";
 
 import React, { useState, useMemo } from "react";
 import {
@@ -99,15 +99,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const getTransactionTypeLabel = (type: string): string => {
     switch (type) {
       case "hold":
-        return "Payment Hold";
+        return "Pembayaran Ditahan";
       case "release":
-        return "Payment Release";
+        return "Pembayaran Dirilis";
       case "refund":
-        return "Refund";
+        return "Uang Kembali";
       case "revision_fee":
-        return "Revision Fee";
+        return "Biaya Revisi";
       case "change_fee":
-        return "Change Fee";
+        return "Biaya Ganti Kontrak";
       default:
         return type;
     }
@@ -233,31 +233,31 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       {/* Navigation */}
       <Box sx={{ mb: 3 }}>
         <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
-          <Link href={`/${username}/dashboard`} passHref>
-            <MuiLink
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              <Home fontSize="small" sx={{ mr: 0.5 }} />
-              Dashboard
-            </MuiLink>
-          </Link>
-          <Link href={`/${username}/dashboard/wallet`} passHref>
-            <MuiLink
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
-              Wallet
-            </MuiLink>
-          </Link>
+          <MuiLink
+            component={Link}
+            href={`/${username}/dashboard`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <Home fontSize="small" sx={{ mr: 0.5 }} />
+            Dashboard
+          </MuiLink>
+          <MuiLink
+            component={Link}
+            href={`/${username}/dashboard/wallet`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
+            Dompet
+          </MuiLink>
           <Typography
             color="text.primary"
             sx={{ display: "flex", alignItems: "center" }}
           >
-            Transactions
+            Transaksi
           </Typography>
         </Breadcrumbs>
 
@@ -270,13 +270,17 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           }}
         >
           <Typography variant="h5" fontWeight="500">
-            Transaction History
+            Riwayat Transaksi
           </Typography>
-          <Link href={`/${username}/dashboard/wallet`} passHref>
-            <Button variant="outlined" startIcon={<ArrowBack />} size="small">
-              Back to Wallet
-            </Button>
-          </Link>
+          <Button
+            component={Link}
+            href={`/${username}/dashboard/wallet`}
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            size="small"
+          >
+            Kembali ke Dompet
+          </Button>
         </Box>
       </Box>
 
@@ -291,7 +295,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
               color: "white",
             }}
           >
-            <Typography variant="subtitle2">Total Incoming</Typography>
+            <Typography variant="subtitle2">Total Masuk</Typography>
             <Typography variant="h5" fontWeight="bold">
               {formatCurrency(totalIncoming)}
             </Typography>
@@ -306,7 +310,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
               color: "white",
             }}
           >
-            <Typography variant="subtitle2">Total Outgoing</Typography>
+            <Typography variant="subtitle2">Total Keluar</Typography>
             <Typography variant="h5" fontWeight="bold">
               {formatCurrency(totalOutgoing)}
             </Typography>
@@ -320,7 +324,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              label="Search transactions"
+              label="Cari transaksi"
               variant="outlined"
               value={searchTerm}
               onChange={handleSearchChange}
@@ -331,13 +335,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                   </InputAdornment>
                 ),
               }}
-              placeholder="Search by contract ID, note, or type"
+              placeholder="Cari ID, jenis, atau catatan kontrak"
               size="small"
             />
           </Grid>
           <Grid item xs={12} md={3}>
             <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel id="type-filter-label">Transaction Type</InputLabel>
+              <InputLabel id="type-filter-label">Jenis Transaksi</InputLabel>
               <Select
                 labelId="type-filter-label"
                 value={typeFilter}
@@ -349,12 +353,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                   </InputAdornment>
                 }
               >
-                <MenuItem value="all">All Types</MenuItem>
-                <MenuItem value="hold">Payment Hold</MenuItem>
-                <MenuItem value="release">Payment Release</MenuItem>
-                <MenuItem value="refund">Refund</MenuItem>
-                <MenuItem value="revision_fee">Revision Fee</MenuItem>
-                <MenuItem value="change_fee">Change Fee</MenuItem>
+                <MenuItem value="all">Semua</MenuItem>
+                <MenuItem value="hold">Pembayaran Ditahan</MenuItem>
+                <MenuItem value="release">Pembayaran Dirilis</MenuItem>
+                <MenuItem value="refund">Uang Kembali</MenuItem>
+                <MenuItem value="revision_fee">Biaya Revisi</MenuItem>
+                <MenuItem value="change_fee">Biaya Ganti Kontrak</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -367,11 +371,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 onChange={handleDateFilterChange}
                 label="Time Period"
               >
-                <MenuItem value="all">All Time</MenuItem>
-                <MenuItem value="today">Today</MenuItem>
-                <MenuItem value="week">Last 7 Days</MenuItem>
-                <MenuItem value="month">Last 30 Days</MenuItem>
-                <MenuItem value="year">Last Year</MenuItem>
+                <MenuItem value="all">Semua</MenuItem>
+                <MenuItem value="today">Hari Ini</MenuItem>
+                <MenuItem value="week">7 Hari Terakhir</MenuItem>
+                <MenuItem value="month">30 Hari Terakhir</MenuItem>
+                <MenuItem value="year">Tahun Lalu</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -398,10 +402,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       {filteredTransactions.length === 0 && (
         <Alert severity="info" sx={{ mb: 3 }}>
           <Typography variant="body1">
-            No transactions found matching your criteria.
+            Tidak ada transaksi yang cocok.
           </Typography>
           <Typography variant="body2">
-            Try adjusting your search or filters to see more results.
+            Coba ganti kriteria pencarian.
           </Typography>
         </Alert>
       )}
@@ -415,14 +419,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           <Table sx={{ minWidth: 650 }} aria-label="transactions table">
             <TableHead sx={{ bgcolor: "action.hover" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Type</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Flow</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Tanggal</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Jenis</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Alur</TableCell>
                 <TableCell sx={{ fontWeight: "bold" }} align="right">
-                  Amount
+                  Jumlah
                 </TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Contract</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Note</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Kontrak</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Catatan</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

@@ -45,14 +45,6 @@ export default async function WalletTransactionsPage({
           username={username}
           transactions={serializedTransactions}
         />
-        <Box>
-          <Typography variant="h6">Recent Transactions</Typography>
-          {transactions.length === 0 ? (
-            <Typography>No transactions found</Typography>
-          ) : (
-            <Typography>Found {transactions.length} transactions</Typography>
-          )}
-        </Box>
       </Suspense>
     </Box>
   );

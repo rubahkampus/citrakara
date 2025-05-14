@@ -1,5 +1,5 @@
 // components/dashboard/wallet/ClaimableContractsPage.tsx
-'use client'
+"use client";
 
 import React, { useState, useMemo } from "react";
 import {
@@ -249,31 +249,31 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     return amount > 0;
   };
 
-  // Get status label
+  // Ambil label status (Bahasa Indonesia)
   const getStatusLabel = (status: Contract["status"]): string => {
     switch (status) {
       case "active":
-        return "Active";
+        return "Aktif";
       case "completed":
-        return "Completed";
+        return "Selesai";
       case "completedLate":
-        return "Completed Late";
+        return "Selesai Terlambat";
       case "cancelledClient":
-        return "Cancelled by Client";
+        return "Dibatalkan Klien";
       case "cancelledClientLate":
-        return "Cancelled by Client (Late)";
+        return "Dibatalkan Klien (Terlambat)";
       case "cancelledArtist":
-        return "Cancelled by Artist";
+        return "Dibatalkan Ilustrator";
       case "cancelledArtistLate":
-        return "Cancelled by Artist (Late)";
+        return "Dibatalkan Ilustrator (Terlambat)";
       case "notCompleted":
-        return "Not Completed";
+        return "Gagal Diselesaikan";
       default:
         return status;
     }
   };
 
-  // Get status color
+  // Ambil warna status (tidak perlu diubah jika tetap pakai skema warna bawaan)
   const getStatusColor = (status: Contract["status"]): string => {
     switch (status) {
       case "active":
@@ -306,7 +306,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     }
   };
 
-  // Get claim explanation
+  // Ambil penjelasan klaim (Bahasa Indonesia)
   const getClaimExplanation = (
     contract: Contract,
     role: "artist" | "client"
@@ -315,39 +315,39 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     const isCancelled = contract.status.includes("cancelled");
 
     if (contract.status === "active") {
-      return "Contract is still active";
+      return "Kontrak masih aktif.";
     }
 
     if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds) {
-      return "Funds already claimed";
+      return "Dana sudah diklaim sebelumnya.";
     }
 
     if (role === "artist") {
       if (contract.status === "completed") {
-        return `Full payment for completed work.`;
+        return `Pembayaran penuh untuk pekerjaan yang selesai.`;
       } else if (contract.status === "completedLate") {
-        return `Payment minus late penalty (${formatCurrency(
+        return `Pembayaran dikurangi denda keterlambatan (${formatCurrency(
           contract.finance.total - contract.finance.totalOwnedByArtist
         )}).`;
       } else if (isCancelled) {
-        return `Partial payment based on ${contract.workPercentage}% work completed.`;
+        return `Pembayaran sebagian sesuai ${contract.workPercentage}% progres kerja.`;
       } else if (contract.status === "notCompleted") {
-        return "No payment due to incomplete work.";
+        return "Tidak ada pembayaran karena pekerjaan tidak selesai.";
       }
     } else {
-      // Client role
+      // Peran klien
       if (contract.status === "completedLate") {
-        return `Late penalty refund.`;
+        return `Pengembalian dana karena keterlambatan.`;
       } else if (contract.status === "notCompleted") {
-        return `Full refund for incomplete work.`;
+        return `Pengembalian penuh karena pekerjaan tidak selesai.`;
       } else if (isCancelled) {
-        return `Partial refund for cancelled contract.`;
+        return `Pengembalian sebagian karena kontrak dibatalkan.`;
       } else if (contract.status === "completed") {
-        return "No refund for completed work.";
+        return "Tidak ada pengembalian karena pekerjaan telah selesai.";
       }
     }
 
-    return `Claimable amount based on contract terms.`;
+    return `Jumlah yang dapat diklaim sesuai ketentuan kontrak.`;
   };
 
   // Get contract state chip
@@ -394,9 +394,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
       );
 
       // Show success message
-      setSnackbarMessage(
-        "Funds claimed successfully! The amount will be added to your available balance."
-      );
+      setSnackbarMessage("Yay! Danamu sudah masuk! Cek saldo kamu sekarang.");
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
 
@@ -414,7 +412,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
       // Show error message
       setSnackbarMessage(
         error.response?.data?.message ||
-          "Failed to claim funds. Please try again later."
+          "Ups, terjadi kesalahan saat klaim dana. Coba lagi sebentar lagi ya!"
       );
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
@@ -448,31 +446,31 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
       {/* Navigation */}
       <Box sx={{ mb: 3 }}>
         <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
-          <Link href={`/${username}/dashboard`} passHref>
-            <MuiLink
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              <Home fontSize="small" sx={{ mr: 0.5 }} />
-              Dashboard
-            </MuiLink>
-          </Link>
-          <Link href={`/${username}/dashboard/wallet`} passHref>
-            <MuiLink
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
-              Wallet
-            </MuiLink>
-          </Link>
+          <MuiLink
+            component={Link}
+            href={`/${username}/dashboard`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <Home fontSize="small" sx={{ mr: 0.5 }} />
+            Dashboard
+          </MuiLink>
+          <MuiLink
+            component={Link}
+            href={`/${username}/dashboard/wallet`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
+            Dompet
+          </MuiLink>
           <Typography
             color="text.primary"
             sx={{ display: "flex", alignItems: "center" }}
           >
-            Claimable Contracts
+            Klaim Kontrak
           </Typography>
         </Breadcrumbs>
 
@@ -485,13 +483,17 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
           }}
         >
           <Typography variant="h5" fontWeight="500">
-            Contract Payments
+            Klaim Kontrak
           </Typography>
-          <Link href={`/${username}/dashboard/wallet`} passHref>
-            <Button variant="outlined" startIcon={<ArrowBack />} size="small">
-              Back to Wallet
-            </Button>
-          </Link>
+          <Button
+            component={Link}
+            href={`/${username}/dashboard/wallet`}
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            size="small"
+          >
+            Kembali ke Dompet
+          </Button>
         </Box>
       </Box>
 
@@ -513,9 +515,8 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
           }}
         >
           <Typography variant="body2">
-            When a contract reaches its end-of-lifecycle status, you can claim
-            the funds owed to you. The claimed amount will be added to your
-            available wallet balance.
+            Begitu kontraknya selesai, kamu bisa klaim dananya! Saldo kamu akan
+            langsung bertambah di dompet.
           </Typography>
           <Tooltip title="Learn more about contract payments">
             <IconButton size="small" color="info">
@@ -542,7 +543,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
               >
                 <MonetizationOn sx={{ fontSize: 40, mr: 2 }} />
                 <Box>
-                  <Typography variant="body2">Claimable as Artist</Typography>
+                  <Typography variant="body2">Klaim Sebagai Seniman</Typography>
                   <Typography variant="h5" fontWeight="bold">
                     {formatCurrency(totalClaimableAsArtist)}
                   </Typography>
@@ -571,7 +572,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
               >
                 <LocalAtm sx={{ fontSize: 40, mr: 2 }} />
                 <Box>
-                  <Typography variant="body2">Claimable as Client</Typography>
+                  <Typography variant="body2">Klaim Sebagai Klien</Typography>
                   <Typography variant="h5" fontWeight="bold">
                     {formatCurrency(totalClaimableAsClient)}
                   </Typography>
@@ -592,15 +593,15 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
       {hasNoContracts && (
         <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
           <Info color="action" sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
-          <Typography variant="h6">No Contracts Found</Typography>
+          <Typography variant="h6">Belum Ada Kontrak</Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ mt: 1, maxWidth: 500, mx: "auto" }}
           >
-            You don't have any contracts yet. When you participate in a contract
-            as either an artist or client, you'll be able to manage and claim
-            payments here.
+            Kamu belum memiliki kontrak apa pun. Setelah kamu terlibat dalam
+            kontrak sebagai ilustrator atau klien, kamu bisa mengelola dan
+            mengklaim pembayaran dari halaman ini.
           </Typography>
         </Paper>
       )}
@@ -628,7 +629,9 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                   >
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                       <Person sx={{ mr: 1 }} />
-                      <Typography>As Artist ({asArtist.length})</Typography>
+                      <Typography>
+                        Sebagai Seniman ({asArtist.length})
+                      </Typography>
                     </Box>
                   </Badge>
                 }
@@ -644,7 +647,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                   >
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                       <Person sx={{ mr: 1 }} />
-                      <Typography>As Client ({asClient.length})</Typography>
+                      <Typography>Sebagai Klien ({asClient.length})</Typography>
                     </Box>
                   </Badge>
                 }
@@ -666,7 +669,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                       >
                         <MonetizationOn color="success" sx={{ mr: 1 }} />
                         <Typography variant="h6" fontWeight="500">
-                          Claimable Contracts
+                          Klaim Kontrak
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
@@ -700,7 +703,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                       >
                         <Assignment color="info" sx={{ mr: 1 }} />
                         <Typography variant="h6" fontWeight="500">
-                          Active Contracts
+                          Kontrak Aktif
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
@@ -734,7 +737,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                       >
                         <DoneAll color="action" sx={{ mr: 1 }} />
                         <Typography variant="h6" fontWeight="500">
-                          Completed Contracts
+                          Kontrak Selesai
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
@@ -762,7 +765,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
 
                   {asArtist.length === 0 && (
                     <Alert severity="info">
-                      You don't have any contracts as an artist.
+                      Kamu tidak punya kontrak sebagai seniman{" "}
                     </Alert>
                   )}
                 </>
@@ -779,7 +782,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                       >
                         <MonetizationOn color="success" sx={{ mr: 1 }} />
                         <Typography variant="h6" fontWeight="500">
-                          Claimable Contracts
+                          Klaim Kontrak{" "}
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
@@ -813,7 +816,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                       >
                         <Assignment color="info" sx={{ mr: 1 }} />
                         <Typography variant="h6" fontWeight="500">
-                          Active Contracts
+                          Kontrak Aktif{" "}
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
@@ -847,7 +850,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                       >
                         <DoneAll color="action" sx={{ mr: 1 }} />
                         <Typography variant="h6" fontWeight="500">
-                          Completed Contracts
+                          Kontrak Selesai{" "}
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
@@ -875,7 +878,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
 
                   {asClient.length === 0 && (
                     <Alert severity="info">
-                      You don't have any contracts as a client.
+                      Kamu tidak punya kontrak sebagai klien{" "}
                     </Alert>
                   )}
                 </>
@@ -908,7 +911,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                 </Typography>
 
                 <Typography sx={{ mb: 2 }}>
-                  You are about to claim
+                  Kamu akan mengklaim{" "}
                   <Typography
                     component="span"
                     fontWeight="bold"
@@ -921,7 +924,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                         : contractToClaim.finance.totalOwnedByClient
                     )}{" "}
                   </Typography>
-                  from this contract.
+                  dari kontrak ini
                 </Typography>
 
                 <Box
@@ -942,16 +945,15 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                     />
                   </Typography>
                 </Box>
-
                 <Typography sx={{ mb: 2 }}>
-                  This amount will be added to your available wallet balance
-                  immediately.
+                  Jumlah ini akan langsung ditambahkan ke saldo dompetmu yang
+                  tersedia.
                 </Typography>
 
                 <Alert severity="warning" sx={{ mt: 2 }}>
                   <Typography variant="body2">
-                    This action cannot be undone. Once claimed, the contract
-                    will be considered fully resolved.
+                    Tindakan ini tidak dapat dibatalkan. Setelah diklaim,
+                    kontrak akan dianggap selesai sepenuhnya.
                   </Typography>
                 </Alert>
               </>
@@ -964,7 +966,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
             disabled={isProcessing}
             variant="outlined"
           >
-            Cancel
+            Batal
           </Button>
           <Button
             onClick={handleClaimConfirm}
@@ -1067,7 +1069,7 @@ const ContractCard: React.FC<ContractCardProps> = ({
               {contract.proposalSnapshot.listingSnapshot.title}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Contract ID: {contract._id.substring(0, 8)}...
+              ID Kontrak: {contract._id.substring(0, 8)}...
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -1086,7 +1088,7 @@ const ContractCard: React.FC<ContractCardProps> = ({
         <Grid container spacing={2}>
           <Grid item xs={6} md={3}>
             <Typography variant="body2" color="text.secondary">
-              Contract Total
+              Total Kontrak
             </Typography>
             <Typography variant="body1" fontWeight="medium">
               {formatCurrency(contract.finance.total)}
@@ -1094,7 +1096,7 @@ const ContractCard: React.FC<ContractCardProps> = ({
           </Grid>
           <Grid item xs={6} md={3}>
             <Typography variant="body2" color="text.secondary">
-              Work Completed
+              Persentase Kerja Selesai
             </Typography>
             <Typography variant="body1" fontWeight="medium">
               {contract.workPercentage}%
@@ -1154,7 +1156,7 @@ const ContractCard: React.FC<ContractCardProps> = ({
                 endIcon={<Launch />}
                 sx={{ ml: 2 }}
               >
-                View Contract
+                Lihat Kontrak
               </Button>
             </Link>
           )}
@@ -1198,7 +1200,7 @@ const ContractCard: React.FC<ContractCardProps> = ({
       {isActive && (
         <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
           <Button variant="outlined" color="primary" disabled fullWidth>
-            Claimable After Completion
+            Klaim Setelah Penyelesaian
           </Button>
         </CardActions>
       )}

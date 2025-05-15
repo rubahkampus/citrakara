@@ -19,11 +19,14 @@ import {
 import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 import { getUserDefaultTos } from "./tos.service";
 import { Types } from "mongoose";
+import { ID } from "../db/models/commissionListing.model";
 
-// Define ID type to match the model
-type ID = number;
-
-// Custom error class for HTTP status mapping
+/* ======================================================================
+ * Types and Utilities
+ * ====================================================================== */
+/**
+ * Custom error class for HTTP status mapping
+ */
 export class HttpError extends Error {
   status: number;
 
@@ -33,6 +36,10 @@ export class HttpError extends Error {
     this.name = "HttpError";
   }
 }
+
+/* ======================================================================
+ * Helper Functions
+ * ====================================================================== */
 
 /**
  * Generate sequential IDs for new components
@@ -88,6 +95,43 @@ function computePriceRange(input: Partial<CommissionListingPayload>) {
   });
 
   return { min, max };
+}
+
+/**
+ * Extract only allowed fields from JSON for commission listing
+ */
+function sanitizePayload(rawPayload: any): Partial<CommissionListingPayload> {
+  const allowedFields = [
+    "title",
+    "description",
+    "tags",
+    "slots",
+    // "tos",
+    "type",
+    "flow",
+    "deadline",
+    "basePrice",
+    "cancelationFee",
+    "latePenaltyPercent",
+    "graceDays",
+    "currency",
+    "allowContractChange",
+    "changeable",
+    "revisions",
+    "milestones",
+    "generalOptions",
+    "subjectOptions",
+  ];
+
+  const sanitized: any = {};
+
+  for (const field of allowedFields) {
+    if (field in rawPayload) {
+      sanitized[field] = rawPayload[field];
+    }
+  }
+
+  return sanitized;
 }
 
 /**
@@ -150,43 +194,6 @@ function validateListingPayload(payload: Partial<CommissionListingPayload>) {
   if (payload.slots === 0) {
     throw new HttpError("Slots cannot be 0");
   }
-}
-
-/**
- * Extract only allowed fields from JSON for commission listing
- */
-function sanitizePayload(rawPayload: any): Partial<CommissionListingPayload> {
-  const allowedFields = [
-    "title",
-    "description",
-    "tags",
-    "slots",
-    // "tos",
-    "type",
-    "flow",
-    "deadline",
-    "basePrice",
-    "cancelationFee",
-    "latePenaltyPercent",
-    "graceDays",
-    "currency",
-    "allowContractChange",
-    "changeable",
-    "revisions",
-    "milestones",
-    "generalOptions",
-    "subjectOptions",
-  ];
-
-  const sanitized: any = {};
-
-  for (const field of allowedFields) {
-    if (field in rawPayload) {
-      sanitized[field] = rawPayload[field];
-    }
-  }
-
-  return sanitized;
 }
 
 /**
@@ -299,6 +306,10 @@ function processPayloadWithIds(
   return processed;
 }
 
+/* ======================================================================
+ * Main Service Functions - Creation and Updates
+ * ====================================================================== */
+
 /**
  * Create a commission listing from form data
  * Handles file uploads to R2 and JSON parsing
@@ -379,8 +390,6 @@ export async function createListingFromForm(artistId: string, form: FormData) {
 
   // 9. Validate *after* thumbnail is set (so no more missing‐thumbnail errors)
   validateListingPayload(processedData);
-
-  // console.log("Listing data (validated):", JSON.stringify(processedData));
 
   // 10. Compute price range & persist
   const price = computePriceRange(processedData);
@@ -495,75 +504,6 @@ export async function updateListingFromForm(
 }
 
 /**
- * Get all active listings for an artist by ID
- */
-export async function getArtistListings(artistId: string) {
-  return findActiveListingsByArtist(artistId);
-}
-
-/**
- * Set the active state of a listing (enables/disables it)
- */
-export async function setListingActiveState(
-  artistId: string,
-  listingId: string,
-  active: boolean
-) {
-  // Note: artistId parameter is kept for future authorization checks
-  return updateCommissionListing(listingId, { isActive: active });
-}
-
-/**
- * Soft delete a listing (marks as deleted but keeps in database)
- */
-export async function deleteListing(artistId: string, listingId: string) {
-  return softDeleteListing(artistId, listingId);
-}
-
-/**
- * Update the slots used in a listing (for order creation/cancellation)
- */
-export async function applySlotDelta(listingId: string, delta: number) {
-  return adjustSlotsUsed(listingId, delta);
-}
-
-/**
- * Get active listings for a user by username (public)
- */
-export async function getListingsByUsername(username: string) {
-  const artist = await findUserByUsername(username);
-  if (!artist) {
-    throw new HttpError("User not found", 404);
-  }
-  return findActiveListingsByArtist(artist._id);
-}
-
-/**
- * Get a specific listing by ID (public)
- * Validates that it exists and is active
- */
-export async function getListingPublic(listingId: string) {
-  const listing = await findCommissionListingById(listingId, { lean: true });
-  if (!listing || listing.isDeleted || !listing.isActive) {
-    throw new HttpError("Listing not found", 404);
-  }
-  return listing;
-}
-
-/**
- * Search for listings with filtering options
- */
-export async function browseListings(options: {
-  label?: string;
-  tags?: string[];
-  artistId?: string;
-  skip?: number;
-  limit?: number;
-}) {
-  return searchListings(options);
-}
-
-/**
  * Update a commission listing with JSON data
  */
 export async function updateListing(
@@ -601,6 +541,43 @@ export async function updateListing(
 
   // 7. Persist all processed fields (including price!)
   return updateCommissionListingComponents(listingId, processedData);
+}
+
+/* ======================================================================
+ * Listing Management Operations
+ * ====================================================================== */
+
+/**
+ * Get all active listings for an artist by ID
+ */
+export async function getArtistListings(artistId: string) {
+  return findActiveListingsByArtist(artistId);
+}
+
+/**
+ * Set the active state of a listing (enables/disables it)
+ */
+export async function setListingActiveState(
+  artistId: string,
+  listingId: string,
+  active: boolean
+) {
+  // Note: artistId parameter is kept for future authorization checks
+  return updateCommissionListing(listingId, { isActive: active });
+}
+
+/**
+ * Soft delete a listing (marks as deleted but keeps in database)
+ */
+export async function deleteListing(artistId: string, listingId: string) {
+  return softDeleteListing(artistId, listingId);
+}
+
+/**
+ * Update the slots used in a listing (for order creation/cancellation)
+ */
+export async function applySlotDelta(listingId: string, delta: number) {
+  return adjustSlotsUsed(listingId, delta);
 }
 
 /**
@@ -642,15 +619,49 @@ export async function removeQuestionFromListing(
   return removeQuestion(listingId, target);
 }
 
-export async function getBookmarkedCommissionsWithArtist(
-  commissionIds: string[]
-) {
-  if (!commissionIds.length) return [];
+/* ======================================================================
+ * Public Search and Retrieval Operations
+ * ====================================================================== */
 
-  const objectIds = commissionIds.map((id) => new Types.ObjectId(id));
-  return findBookmarkedListingsWithArtist(objectIds);
+/**
+ * Get active listings for a user by username (public)
+ */
+export async function getListingsByUsername(username: string) {
+  const artist = await findUserByUsername(username);
+  if (!artist) {
+    throw new HttpError("User not found", 404);
+  }
+  return findActiveListingsByArtist(artist._id);
 }
 
+/**
+ * Get a specific listing by ID (public)
+ * Validates that it exists and is active
+ */
+export async function getListingPublic(listingId: string) {
+  const listing = await findCommissionListingById(listingId, { lean: true });
+  if (!listing || listing.isDeleted || !listing.isActive) {
+    throw new HttpError("Listing not found", 404);
+  }
+  return listing;
+}
+
+/**
+ * Search for listings with basic filtering options
+ */
+export async function browseListings(options: {
+  label?: string;
+  tags?: string[];
+  artistId?: string;
+  skip?: number;
+  limit?: number;
+}) {
+  return searchListings(options);
+}
+
+/**
+ * Enhanced search for listings with advanced filtering options
+ */
 export async function searchCommissionListings(params: {
   label?: string;
   tags?: string[];
@@ -662,4 +673,16 @@ export async function searchCommissionListings(params: {
   limit?: number;
 }) {
   return searchListingsEnhanced(params);
+}
+
+/**
+ * Get bookmarked commission listings with artist information
+ */
+export async function getBookmarkedCommissionsWithArtist(
+  commissionIds: string[]
+) {
+  if (!commissionIds.length) return [];
+
+  const objectIds = commissionIds.map((id) => new Types.ObjectId(id));
+  return findBookmarkedListingsWithArtist(objectIds);
 }

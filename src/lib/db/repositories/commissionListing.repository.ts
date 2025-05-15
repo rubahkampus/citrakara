@@ -2,14 +2,17 @@
 import { connectDB } from "@/lib/db/connection";
 import CommissionListing, {
   ICommissionListing,
+  ID,
 } from "@/lib/db/models/commissionListing.model";
 import { Types, ClientSession } from "mongoose";
 
-/* ----------------------------- Input DTOs ----------------------------- */
-// Define ID type to match the model
-type ID = number;
+/* ======================================================================
+ * Types and Interfaces
+ * ====================================================================== */
 
-// Pure payload type instead of derived from Mongoose Document
+/**
+ * Input Data Transfer Objects
+ */
 export interface CommissionListingPayload {
   artistId: Types.ObjectId;
   title: string;
@@ -92,8 +95,13 @@ export type CommissionListingUpdateInput = Partial<
   >
 >;
 
-/* ----------------------------- CRUD helpers --------------------------- */
+/* ======================================================================
+ * Core CRUD Operations
+ * ====================================================================== */
 
+/**
+ * Create a new commission listing
+ */
 export async function createCommissionListing(
   payload: CommissionListingPayload,
   session?: ClientSession
@@ -111,6 +119,9 @@ export async function createCommissionListing(
   return doc.save({ session });
 }
 
+/**
+ * Find a commission listing by ID
+ */
 export async function findCommissionListingById(
   id: string | Types.ObjectId,
   { lean = false }: { lean?: boolean } = {}
@@ -128,6 +139,44 @@ export async function findCommissionListingById(
   }
 }
 
+/**
+ * Generic atomic update for a commission listing
+ */
+export async function updateCommissionListing(
+  id: string | Types.ObjectId,
+  updates: CommissionListingUpdateInput,
+  session?: ClientSession
+) {
+  await connectDB();
+  return CommissionListing.findByIdAndUpdate(id, updates, {
+    new: true,
+    session,
+  });
+}
+
+/**
+ * Soft delete a listing
+ */
+export async function softDeleteListing(
+  artistId: string | Types.ObjectId,
+  listingId: string | Types.ObjectId,
+  session?: ClientSession
+) {
+  await connectDB();
+  return CommissionListing.findOneAndUpdate(
+    { _id: listingId, artistId },
+    { isDeleted: true, isActive: false },
+    { new: true, session }
+  );
+}
+
+/* ======================================================================
+ * Listing Search Operations
+ * ====================================================================== */
+
+/**
+ * Find active listings by artist
+ */
 export async function findActiveListingsByArtist(
   artistId: string | Types.ObjectId
 ) {
@@ -135,7 +184,9 @@ export async function findActiveListingsByArtist(
   return CommissionListing.find({ artistId, isDeleted: false }).lean();
 }
 
-/** Public search –  simple tag/keyword filter */
+/**
+ * Basic public search with simple tag/keyword filter
+ */
 export async function searchListings({
   label,
   tags,
@@ -169,20 +220,93 @@ export async function searchListings({
   return { items, total };
 }
 
-/** Generic atomic update */
-export async function updateCommissionListing(
-  id: string | Types.ObjectId,
-  updates: CommissionListingUpdateInput,
-  session?: ClientSession
-) {
+/**
+ * Enhanced search with more filtering options
+ */
+export async function searchListingsEnhanced({
+  label,
+  tags,
+  artistId,
+  priceRange,
+  type,
+  flow,
+  skip = 0,
+  limit = 20,
+}: {
+  label?: string;
+  tags?: string[];
+  artistId?: string;
+  priceRange?: { min?: number; max?: number };
+  type?: "template" | "custom";
+  flow?: "standard" | "milestone";
+  skip?: number;
+  limit?: number;
+}) {
   await connectDB();
-  return CommissionListing.findByIdAndUpdate(id, updates, {
-    new: true,
-    session,
-  });
+
+  const filter: Record<string, any> = {
+    isActive: true,
+    isDeleted: false,
+  };
+
+  if (artistId) filter.artistId = artistId;
+  if (tags?.length) filter.tags = { $in: tags };
+  if (label) filter.$text = { $search: label };
+  if (type) filter.type = type;
+  if (flow) filter.flow = flow;
+
+  // Price range filtering
+  if (priceRange) {
+    if (priceRange.min !== undefined) {
+      filter["price.min"] = { $gte: priceRange.min };
+    }
+    if (priceRange.max !== undefined) {
+      filter["price.max"] = { $lte: priceRange.max };
+    }
+  }
+
+  // Execute queries in parallel for efficiency
+  const [items, total] = await Promise.all([
+    CommissionListing.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .populate({
+        path: "artistId",
+        select: "username displayName profilePicture",
+      })
+      .lean(),
+    CommissionListing.countDocuments(filter),
+  ]);
+
+  return { items, total };
 }
 
-/** Update specific components with IDs */
+/**
+ * Find bookmarked listings and populate artist info
+ */
+export async function findBookmarkedListingsWithArtist(
+  listingIds: Types.ObjectId[]
+) {
+  await connectDB();
+
+  return CommissionListing.find({
+    _id: { $in: listingIds },
+    isDeleted: false,
+  })
+    .populate({
+      path: "artistId",
+      select: "username displayName profilePicture",
+    })
+    .lean();
+}
+
+/* ======================================================================
+ * Specialized Update Operations
+ * ====================================================================== */
+
+/**
+ * Update specific components with IDs
+ */
 export async function updateCommissionListingComponents(
   id: string | Types.ObjectId,
   updates: Partial<CommissionListingPayload>,
@@ -221,7 +345,9 @@ export async function updateCommissionListingComponents(
   });
 }
 
-/** Adjust slotsUsed by ±n (for order create/cancel) */
+/**
+ * Adjust slotsUsed by ±n (for order create/cancel)
+ */
 export async function adjustSlotsUsed(
   id: string | Types.ObjectId,
   delta: number,
@@ -235,23 +361,9 @@ export async function adjustSlotsUsed(
   );
 }
 
-/** Soft delete */
-export async function softDeleteListing(
-  artistId: string | Types.ObjectId,
-  listingId: string | Types.ObjectId,
-  session?: ClientSession
-) {
-  await connectDB();
-  return CommissionListing.findOneAndUpdate(
-    { _id: listingId, artistId },
-    { isDeleted: true, isActive: false },
-    { new: true, session }
-  );
-}
-
-/**
- * Helper functions for managing components with IDs
- */
+/* ======================================================================
+ * Component Management Operations
+ * ====================================================================== */
 
 /**
  * Adds a question to either generalOptions or a specific subjectOption
@@ -366,79 +478,3 @@ export async function removeQuestion(
 
 // Similar helper functions could be added for managing other components with IDs
 // such as optionGroups, selections, addons, etc.
-
-/** Find bookmarked listings and populate artist info */
-export async function findBookmarkedListingsWithArtist(
-  listingIds: Types.ObjectId[]
-) {
-  await connectDB();
-
-  return CommissionListing.find({
-    _id: { $in: listingIds },
-    isDeleted: false,
-  })
-    .populate({
-      path: "artistId",
-      select: "username displayName profilePicture",
-    })
-    .lean();
-}
-
-/** Enhanced search with more filtering options */
-export async function searchListingsEnhanced({
-  label,
-  tags,
-  artistId,
-  priceRange,
-  type,
-  flow,
-  skip = 0,
-  limit = 20,
-}: {
-  label?: string;
-  tags?: string[];
-  artistId?: string;
-  priceRange?: { min?: number; max?: number };
-  type?: "template" | "custom";
-  flow?: "standard" | "milestone";
-  skip?: number;
-  limit?: number;
-}) {
-  await connectDB();
-
-  const filter: Record<string, any> = {
-    isActive: true,
-    isDeleted: false,
-  };
-
-  if (artistId) filter.artistId = artistId;
-  if (tags?.length) filter.tags = { $in: tags };
-  if (label) filter.$text = { $search: label };
-  if (type) filter.type = type;
-  if (flow) filter.flow = flow;
-
-  // Price range filtering
-  if (priceRange) {
-    if (priceRange.min !== undefined) {
-      filter["price.min"] = { $gte: priceRange.min };
-    }
-    if (priceRange.max !== undefined) {
-      filter["price.max"] = { $lte: priceRange.max };
-    }
-  }
-
-  // Execute queries in parallel for efficiency
-  const [items, total] = await Promise.all([
-    CommissionListing.find(filter)
-      .skip(skip)
-      .limit(limit)
-      .populate({
-        path: "artistId",
-        select: "username displayName profilePicture",
-      })
-      .lean(),
-    CommissionListing.countDocuments(filter),
-  ]);
-
-  return { items, total };
-}

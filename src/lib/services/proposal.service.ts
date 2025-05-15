@@ -22,12 +22,12 @@ import {
   cancelProposal,
 } from "@/lib/db/repositories/proposal.repository";
 import { findCommissionListingById } from "@/lib/db/repositories/commissionListing.repository";
-import { findUserByUsername } from "@/lib/db/repositories/user.repository";
 import { connectDB } from "@/lib/db/connection";
 import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
 import type { Cents, ISODate, ObjectId } from "@/types/common";
 import { HttpError } from "./commissionListing.service";
 import { ICommissionListing } from "../db/models/commissionListing.model";
+import { getLatestActiveContractDeadline } from "../db/repositories/contract.repository";
 
 // ========== Service Interfaces ==========
 export interface ServiceOptionSelection {
@@ -738,12 +738,4 @@ export async function getDynamicEstimate(listingId: string) {
     ...repoComputeDynamicEstimate(listing, baseDate),
     baseDate, // Also return baseDate for context
   };
-}
-
-// TODO: replace stub with real query once contract.repository is ready
-// TODO: once Contract model is wired, return the most recent active one.
-export async function getLatestActiveContractDeadline(
-  artistId: ObjectId
-): Promise<Date | null> {
-  return null; // for now, always "no active contract"
 }

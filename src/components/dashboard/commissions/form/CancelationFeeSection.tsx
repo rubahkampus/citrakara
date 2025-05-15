@@ -23,7 +23,7 @@ const CancelationFeeSection: React.FC = () => {
   return (
     <Box>
       <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
-        Cancellation Fee
+        Biaya Pembatalan
       </Typography>
 
       <Grid container spacing={3}>
@@ -34,13 +34,13 @@ const CancelationFeeSection: React.FC = () => {
             name="cancelKind"
             render={({ field }) => (
               <FormControl fullWidth>
-                <InputLabel>Fee Type</InputLabel>
-                <Select {...field} label="Fee Type">
-                  <MenuItem value="flat">Flat Fee</MenuItem>
-                  <MenuItem value="percentage">Percentage</MenuItem>
+                <InputLabel>Jenis Biaya</InputLabel>
+                <Select {...field} label="Jenis Biaya">
+                  <MenuItem value="flat">Biaya Tetap</MenuItem>
+                  <MenuItem value="percentage">Persentase</MenuItem>
                 </Select>
                 <FormHelperText>
-                  How cancellation fees are calculated
+                  Bagaimana biaya pembatalan dihitung
                 </FormHelperText>
               </FormControl>
             )}
@@ -59,7 +59,7 @@ const CancelationFeeSection: React.FC = () => {
             render={({ field, fieldState }) => (
               <TextField
                 {...field}
-                label="Amount"
+                label="Jumlah"
                 type="number"
                 fullWidth
                 error={!!fieldState.error}
@@ -97,11 +97,11 @@ const CancelationFeeSection: React.FC = () => {
                 helperText={
                   fieldState.error
                     ? cancelKind === "percentage"
-                      ? "Must be between 0-100%"
-                      : "Must be a positive number"
+                      ? "Harus antara 0-100%"
+                      : "Harus berupa angka positif"
                     : cancelKind === "percentage"
-                    ? "Percentage of total commission price"
-                    : "Fixed amount for cancellation"
+                    ? "Persentase dari total harga pesanan"
+                    : "Jumlah tetap untuk pembatalan"
                 }
               />
             )}

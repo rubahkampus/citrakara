@@ -102,9 +102,9 @@ export default function CommissionCard({
   const getDeadlineText = () => {
     const { deadline } = commission;
     if (deadline.min === deadline.max) {
-      return `${deadline.min} days`;
+      return `${deadline.min} hari`;
     }
-    return `${deadline.min}-${deadline.max} days`;
+    return `${deadline.min}-${deadline.max} hari`;
   };
 
   // First tag and review data
@@ -124,14 +124,15 @@ export default function CommissionCard({
         width: "100%",
         borderRadius: 3,
         overflow: "hidden",
-        boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.07)",
         backgroundColor: theme.palette.background.paper,
         transition: "all 0.3s ease",
         "&:hover": {
           transform: "translateY(-5px)",
-          boxShadow: "0 15px 30px rgba(0,0,0,0.1)",
+          boxShadow: "0 15px 30px rgba(0,0,0,0.12)",
         },
         position: "relative",
+        height: { sm: 320 }, // Fixed height to match image height on larger screens
       }}
     >
       {/* Image Carousel */}
@@ -141,6 +142,7 @@ export default function CommissionCard({
           flex: { xs: "1", sm: "0 0 45%" },
           height: { xs: 240, sm: 320 },
           backgroundColor: theme.palette.grey[100],
+          overflow: "hidden", // Ensure image doesn't overflow
         }}
       >
         {currentImage ? (
@@ -167,12 +169,12 @@ export default function CommissionCard({
             }}
           >
             <Typography variant="body1" color="text.secondary">
-              No Images Available
+              Tidak Ada Gambar
             </Typography>
           </Box>
         )}
 
-        {/* Prev/Next Arrows - only show on hover */}
+        {/* Prev/Next Arrows - improved visibility */}
         {samples.length > 1 && (
           <>
             <IconButton
@@ -182,19 +184,20 @@ export default function CommissionCard({
                 top: "50%",
                 left: 12,
                 transform: "translateY(-50%)",
-                backgroundColor: alpha(theme.palette.common.black, 0.3),
+                backgroundColor: alpha(theme.palette.common.black, 0.4),
                 color: theme.palette.common.white,
                 "&:hover": {
-                  backgroundColor: alpha(theme.palette.common.black, 0.5),
+                  backgroundColor: alpha(theme.palette.common.black, 0.6),
                   transform: "translateY(-50%) scale(1.1)",
                 },
                 width: 36,
                 height: 36,
-                opacity: { xs: 1, sm: 0 },
+                opacity: { xs: 1, sm: 0.8 },
                 transition: "all 0.2s ease",
                 ".MuiBox-root:hover &": {
                   opacity: 1,
                 },
+                zIndex: 2,
               }}
               size="small"
             >
@@ -207,19 +210,20 @@ export default function CommissionCard({
                 top: "50%",
                 right: 12,
                 transform: "translateY(-50%)",
-                backgroundColor: alpha(theme.palette.common.black, 0.3),
+                backgroundColor: alpha(theme.palette.common.black, 0.4),
                 color: theme.palette.common.white,
                 "&:hover": {
-                  backgroundColor: alpha(theme.palette.common.black, 0.5),
+                  backgroundColor: alpha(theme.palette.common.black, 0.6),
                   transform: "translateY(-50%) scale(1.1)",
                 },
                 width: 36,
                 height: 36,
-                opacity: { xs: 1, sm: 0 },
+                opacity: { xs: 1, sm: 0.8 },
                 transition: "all 0.2s ease",
                 ".MuiBox-root:hover &": {
                   opacity: 1,
                 },
+                zIndex: 2,
               }}
               size="small"
             >
@@ -228,9 +232,9 @@ export default function CommissionCard({
           </>
         )}
 
-        {/* Type label */}
+        {/* Type label - improved visibility */}
         <Chip
-          label={commission.type === "template" ? "YCH" : "Custom"}
+          label={commission.type === "template" ? "YCH" : "Kustom"}
           size="small"
           sx={{
             position: "absolute",
@@ -238,23 +242,25 @@ export default function CommissionCard({
             left: 12,
             backgroundColor:
               commission.type === "template"
-                ? alpha(theme.palette.info.main, 0.9)
-                : alpha(theme.palette.success.main, 0.9),
+                ? alpha(theme.palette.info.main, 0.95)
+                : alpha(theme.palette.success.main, 0.95),
             color: theme.palette.common.white,
             fontWeight: 600,
             fontSize: "0.7rem",
             height: 24,
+            zIndex: 2,
+            boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
           }}
         />
 
-        {/* Bookmark */}
+        {/* Bookmark - improved styling */}
         <IconButton
           onClick={(e) => e.stopPropagation()}
           sx={{
             position: "absolute",
             top: 12,
             right: 12,
-            backgroundColor: alpha(theme.palette.common.white, 0.8),
+            backgroundColor: alpha(theme.palette.common.white, 0.85),
             width: 36,
             height: 36,
             "&:hover": {
@@ -262,13 +268,15 @@ export default function CommissionCard({
               transform: "scale(1.1)",
             },
             transition: "all 0.2s ease",
+            zIndex: 2,
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           }}
           size="small"
         >
           <BookmarkBorderRounded sx={{ fontSize: 20 }} />
         </IconButton>
 
-        {/* Dots Indicator */}
+        {/* Dots Indicator - improved styling */}
         {samples.length > 1 && (
           <Stack
             direction="row"
@@ -278,9 +286,11 @@ export default function CommissionCard({
               bottom: 12,
               left: "50%",
               transform: "translateX(-50%)",
-              backgroundColor: alpha(theme.palette.common.black, 0.4),
+              backgroundColor: alpha(theme.palette.common.black, 0.5),
               borderRadius: 5,
               p: 0.8,
+              zIndex: 2,
+              boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
             }}
           >
             {samples.map((_, idx) => (
@@ -310,126 +320,137 @@ export default function CommissionCard({
         )}
       </Box>
 
-      {/* Content Area */}
+      {/* Content Area - improved spacing */}
       <Box
         sx={{
           flex: 1,
           p: { xs: 2.5, sm: 3 },
           display: "flex",
           flexDirection: "column",
+          height: "100%", // Ensures content area fills full height
+          justifyContent: "space-between", // Better distribution of elements
+          overflow: "auto", // Allow scrolling if content overflows
         }}
       >
-        {/* Top info area with stats */}
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
-          {firstTag && (
+        {/* Content wrapper to manage scrolling */}
+        <Box sx={{ overflow: "auto", height: "100%" }}>
+          {/* Top info area with stats */}
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={2}
+            sx={{ mb: 1.5 }}
+          >
+            {firstTag && (
+              <Chip
+                label={firstTag}
+                size="small"
+                sx={{
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  color: theme.palette.primary.main,
+                  fontWeight: 500,
+                  height: 24,
+                }}
+              />
+            )}
+
+            {reviewCount > 0 && (
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <StarRounded
+                  sx={{ color: theme.palette.warning.main, fontSize: 18 }}
+                />
+                <Typography variant="body2" fontWeight={600}>
+                  {rating.toFixed(1)}
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 0.5, fontWeight: 400 }}
+                  >
+                    ({reviewCount})
+                  </Typography>
+                </Typography>
+              </Stack>
+            )}
+
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <AccessTimeRounded
+                sx={{ color: theme.palette.text.secondary, fontSize: 18 }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                {getDeadlineText()}
+              </Typography>
+            </Stack>
+          </Stack>
+
+          {/* Title */}
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            sx={{
+              mb: 1.5,
+              color: theme.palette.text.primary,
+              lineHeight: 1.2,
+            }}
+          >
+            {commission.title}
+          </Typography>
+
+          {/* Price */}
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+            <LocalOfferRounded
+              sx={{ color: theme.palette.primary.main, fontSize: 20 }}
+            />
+            <Typography
+              variant="h6"
+              fontWeight={600}
+              sx={{
+                color: theme.palette.primary.main,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Mulai {priceDisplay}
+            </Typography>
+          </Stack>
+
+          {/* Description */}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              mb: 2.5,
+              lineHeight: 1.6,
+            }}
+          >
+            {descriptionText}
+          </Typography>
+
+          {/* Status chip */}
+          {!slotsAvailable && (
             <Chip
-              label={firstTag}
+              label="Slot tidak tersedia"
               size="small"
               sx={{
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                color: theme.palette.primary.main,
+                bgcolor: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
                 fontWeight: 500,
-                height: 24,
+                mb: 2,
+                width: "fit-content",
               }}
             />
           )}
+        </Box>
 
-          {reviewCount > 0 && (
-            <Stack direction="row" alignItems="center" spacing={0.5}>
-              <StarRounded
-                sx={{ color: theme.palette.warning.main, fontSize: 18 }}
-              />
-              <Typography variant="body2" fontWeight={600}>
-                {rating.toFixed(1)}
-                <Typography
-                  component="span"
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 0.5, fontWeight: 400 }}
-                >
-                  ({reviewCount})
-                </Typography>
-              </Typography>
-            </Stack>
-          )}
-
-          <Stack direction="row" alignItems="center" spacing={0.5}>
-            <AccessTimeRounded
-              sx={{ color: theme.palette.text.secondary, fontSize: 18 }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              {getDeadlineText()}
-            </Typography>
-          </Stack>
-        </Stack>
-
-        {/* Title */}
-        <Typography
-          variant="h5"
-          fontWeight={700}
-          sx={{
-            mb: 1.5,
-            color: theme.palette.text.primary,
-            lineHeight: 1.2,
-          }}
-        >
-          {commission.title}
-        </Typography>
-
-        {/* Price */}
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-          <LocalOfferRounded
-            sx={{ color: theme.palette.primary.main, fontSize: 20 }}
-          />
-          <Typography
-            variant="h6"
-            fontWeight={600}
-            sx={{
-              color: theme.palette.primary.main,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            From {priceDisplay}
-          </Typography>
-        </Stack>
-
-        {/* Description */}
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            display: "-webkit-box",
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            mb: 2.5,
-            lineHeight: 1.6,
-          }}
-        >
-          {descriptionText}
-        </Typography>
-
-        {/* Status chip */}
-        {!slotsAvailable && (
-          <Chip
-            label="No slots available"
-            size="small"
-            sx={{
-              bgcolor: alpha(theme.palette.error.main, 0.1),
-              color: theme.palette.error.main,
-              fontWeight: 500,
-              mb: 2,
-              width: "fit-content",
-            }}
-          />
-        )}
-
-        {/* Actions */}
+        {/* Actions - fixed at bottom */}
         <Stack
           direction="row"
           spacing={1.5}
           sx={{
-            mt: "auto",
+            mt: 2,
             alignItems: "center",
           }}
         >
@@ -465,7 +486,7 @@ export default function CommissionCard({
                 transition: "all 0.3s ease",
               }}
             >
-              {slotsAvailable ? "Request Commission" : "Currently Unavailable"}
+              {slotsAvailable ? "Ajukan Komisi" : "Saat Ini Tidak Tersedia"}
             </Button>
           )}
 
@@ -482,11 +503,11 @@ export default function CommissionCard({
                 borderWidth: 2,
               }}
             >
-              Manage Listing
+              Kelola Daftar
             </Button>
           )}
 
-          <Tooltip title="Chat with artist">
+          <Tooltip title="Chat dengan seniman">
             <IconButton
               onClick={(e) => e.stopPropagation()}
               sx={{

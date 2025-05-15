@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { Box, Typography, Alert, Container, Paper } from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getResolutionTicketsByUser } from "@/lib/services/ticket.service";
-import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
 import ResolutionListSkeleton from "@/components/dashboard/resolution/ResolutionListSkeleton";
 import ResolutionListPage from "@/components/dashboard/resolution/ResolutionListPage";
 import { GavelRounded as GavelIcon } from "@mui/icons-material";

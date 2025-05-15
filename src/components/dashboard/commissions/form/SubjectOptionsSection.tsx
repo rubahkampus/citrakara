@@ -344,10 +344,11 @@ const SubjectOptionsSection = () => {
   return (
     <Box>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Subject Options
+        Opsi Subjek
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Define different subjects with their own options, addons, and questions
+        Tentukan subjek berbeda dengan opsi, layanan tambahan, dan pertanyaan
+        mereka sendiri
       </Typography>
 
       {subjects.length === 0 && (
@@ -361,10 +362,10 @@ const SubjectOptionsSection = () => {
           }}
         >
           <Typography color="text.secondary" gutterBottom>
-            No subject groups added yet
+            Belum ada grup subjek yang ditambahkan
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Subject groups help organize your commission options by category
+            Grup subjek membantu mengatur opsi pesanan Anda berdasarkan kategori
           </Typography>
         </Box>
       )}
@@ -382,9 +383,9 @@ const SubjectOptionsSection = () => {
                 name={`subjectOptions.${subjectIndex}.title`}
                 render={({ field }) => (
                   <TextField
-                    label="Subject Title"
+                    label="Judul Subjek"
                     fullWidth
-                    helperText="Category name (e.g. Characters, Backgrounds)"
+                    helperText="Nama kategori (mis. Karakter, Latar Belakang)"
                     {...field}
                   />
                 )}
@@ -398,19 +399,19 @@ const SubjectOptionsSection = () => {
                 rules={{ min: 1 }}
                 render={({ field, fieldState }) => (
                   <TextField
-                    label="Max Items"
+                    label="Maks. Item"
                     type="number"
                     fullWidth
                     error={!!fieldState.error}
                     helperText={
                       fieldState.error
-                        ? "Must be at least 1"
-                        : "How many can be selected"
+                        ? "Minimal harus 1"
+                        : "Berapa banyak yang dapat dipilih"
                     }
                     InputProps={{
                       inputProps: { min: 1 },
                       endAdornment: (
-                        <Tooltip title="Maximum number of items clients can select">
+                        <Tooltip title="Jumlah maksimum item yang dapat dipilih klien">
                           <InputAdornment position="end">
                             <InfoIcon fontSize="small" color="action" />
                           </InputAdornment>
@@ -434,14 +435,14 @@ const SubjectOptionsSection = () => {
                 rules={{ min: 0, max: 100 }}
                 render={({ field, fieldState }) => (
                   <TextField
-                    label="Discount %"
+                    label="Diskon %"
                     type="number"
                     fullWidth
                     error={!!fieldState.error}
                     helperText={
                       fieldState.error
-                        ? "Must be 0-100%"
-                        : "For multiple selections"
+                        ? "Harus 0-100%"
+                        : "Untuk pemilihan ganda"
                     }
                     InputProps={{
                       inputProps: { min: 0, max: 100 },
@@ -473,7 +474,7 @@ const SubjectOptionsSection = () => {
                 startIcon={<DeleteIcon />}
                 onClick={() => removeSubject(subjectIndex)}
               >
-                Remove
+                Hapus
               </Button>
             </Grid>
           </Grid>
@@ -483,10 +484,10 @@ const SubjectOptionsSection = () => {
           {/* Option Groups */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-              Option Groups
+              Grup Opsi
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Create groups of options where clients can select one option
+              Buat grup opsi di mana klien dapat memilih satu opsi
             </Typography>
             <SubjectOptionGroup
               control={control}
@@ -498,10 +499,10 @@ const SubjectOptionsSection = () => {
           {/* Addons */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-              Addons
+              Layanan Tambahan
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Additional services clients can add to their commission
+              Layanan tambahan yang dapat ditambahkan klien ke pesanan mereka
             </Typography>
             <SubjectAddonList
               control={control}
@@ -513,10 +514,10 @@ const SubjectOptionsSection = () => {
           {/* Questions */}
           <Box>
             <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-              Questions
+              Pertanyaan
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Questions specific to this subject category
+              Pertanyaan khusus untuk kategori subjek ini
             </Typography>
             <SubjectQuestionList
               control={control}
@@ -541,7 +542,7 @@ const SubjectOptionsSection = () => {
         }
         sx={{ mt: 1 }}
       >
-        Add Subject Group
+        Tambah Grup Subjek
       </Button>
     </Box>
   );

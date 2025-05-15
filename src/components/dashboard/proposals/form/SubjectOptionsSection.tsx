@@ -91,7 +91,7 @@ export default function SubjectOptionsSection({
   return (
     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
       <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
-        Subject Options
+        Opsi Subjek
       </Typography>
       <Divider sx={{ mb: 3 }} />
 
@@ -243,8 +243,8 @@ const SubjectSection = React.memo(
     const remainingSlots = useMemo(
       () =>
         subject.limit === -1
-          ? "Unlimited"
-          : `${subject.limit - fields.length} remaining`,
+          ? "Tidak Terbatas"
+          : `${subject.limit - fields.length} tersisa`,
       [subject.limit, fields.length]
     );
 
@@ -269,13 +269,13 @@ const SubjectSection = React.memo(
 
             {subject.discount > 0 && !isSingleInstanceOnly && (
               <Tooltip
-                title={`Get ${
+                title={`Dapatkan ${
                   subject.discount
-                }% discount on additional ${subject.title.toLowerCase()}s (starting from the second one)`}
+                }% diskon untuk tambahan ${subject.title.toLowerCase()} (mulai dari yang kedua)`}
               >
                 <Chip
                   icon={<InfoIcon />}
-                  label={`${subject.discount}% Multi-discount`}
+                  label={`${subject.discount}% Diskon-Multi`}
                   size="small"
                   color="secondary"
                   sx={{ ml: 2 }}
@@ -300,7 +300,7 @@ const SubjectSection = React.memo(
                   subject.limit !== -1 && fields.length >= subject.limit
                 }
               >
-                Add {subject.title}
+                Tambah {subject.title}
               </Button>
             </Box>
           )}
@@ -334,7 +334,7 @@ const SubjectSection = React.memo(
           >
             <CardContent sx={{ textAlign: "center", py: 4 }}>
               <Typography color="text.secondary" gutterBottom>
-                No {subject.title.toLowerCase()} added yet
+                Belum ada {subject.title.toLowerCase()} yang ditambahkan
               </Typography>
               <Button
                 startIcon={<AddIcon />}
@@ -343,7 +343,7 @@ const SubjectSection = React.memo(
                 onClick={addInstance}
                 sx={{ mt: 1 }}
               >
-                Add {subject.title}
+                Tambah {subject.title}
               </Button>
             </CardContent>
           </Card>
@@ -584,7 +584,7 @@ const InstanceCard = React.memo(
               {subject.title} #{instanceIndex + 1}
               {isDiscountApplicable && subject.discount > 0 && (
                 <Chip
-                  label={`${subject.discount}% off`}
+                  label={`${subject.discount}% diskon`}
                   color="secondary"
                   size="small"
                   sx={{ ml: 1 }}
@@ -597,7 +597,7 @@ const InstanceCard = React.memo(
                   color="error"
                   sx={{ ml: 1 }}
                 >
-                  (has errors)
+                  (ada error)
                 </Typography>
               )}
             </Typography>
@@ -608,7 +608,7 @@ const InstanceCard = React.memo(
           <Box
             sx={{ position: "absolute", top: "12px", right: "40px", zIndex: 1 }}
           >
-            <Tooltip title="Remove this item">
+            <Tooltip title="Hapus item ini">
               <IconButton
                 size="small"
                 onClick={(e) => {
@@ -631,7 +631,7 @@ const InstanceCard = React.memo(
                 sx={{ mb: 2 }}
                 fontWeight="medium"
               >
-                Select Options
+                Pilih Opsi
               </Typography>
               <Grid container spacing={2}>
                 {subject.optionGroups.map(
@@ -694,7 +694,7 @@ const InstanceCard = React.memo(
                           instanceIndex
                         ]?.optionGroups?.[group.title] && (
                           <FormHelperText error>
-                            This field is required
+                            Bidang ini wajib diisi
                           </FormHelperText>
                         )}
                       </FormControl>
@@ -713,7 +713,7 @@ const InstanceCard = React.memo(
                 sx={{ mb: 2 }}
                 fontWeight="medium"
               >
-                Additional Services
+                Layanan Tambahan
               </Typography>
 
               <Box
@@ -811,7 +811,7 @@ const InstanceCard = React.memo(
                 sx={{ mb: 2 }}
                 fontWeight="medium"
               >
-                Additional Information
+                Informasi Tambahan
               </Typography>
               <Card variant="outlined">
                 <CardContent>

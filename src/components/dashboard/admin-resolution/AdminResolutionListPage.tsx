@@ -255,10 +255,10 @@ export default function AdminResolutionListPage({
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab label="Awaiting Review" />
-          <Tab label="Open" />
-          <Tab label="Resolved" />
-          <Tab label="All Tickets" />
+          <Tab label="Menunggu Peninjauan" />
+          <Tab label="Terbuka" />
+          <Tab label="Terselesaikan" />
+          <Tab label="Semua Tiket" />
         </Tabs>
       </Box>
 
@@ -271,29 +271,29 @@ export default function AdminResolutionListPage({
             label="Status"
             onChange={handleStatusFilterChange}
           >
-            <MenuItem value="all">All Statuses</MenuItem>
-            <MenuItem value="open">Open</MenuItem>
-            <MenuItem value="awaitingReview">Awaiting Review</MenuItem>
-            <MenuItem value="resolved">Resolved</MenuItem>
-            <MenuItem value="cancelled">Cancelled</MenuItem>
+            <MenuItem value="all">Semua Status</MenuItem>
+            <MenuItem value="open">Terbuka</MenuItem>
+            <MenuItem value="awaitingReview">Menunggu Peninjauan</MenuItem>
+            <MenuItem value="resolved">Terselesaikan</MenuItem>
+            <MenuItem value="cancelled">Dibatalkan</MenuItem>
           </Select>
         </FormControl>
 
         <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Type</InputLabel>
+          <InputLabel>Jenis</InputLabel>
           <Select
             value={typeFilter}
-            label="Type"
+            label="Jenis"
             onChange={handleTypeFilterChange}
           >
-            <MenuItem value="all">All Types</MenuItem>
-            <MenuItem value="cancel">Cancellation</MenuItem>
-            <MenuItem value="revision">Revision</MenuItem>
-            <MenuItem value="change">Change Request</MenuItem>
-            <MenuItem value="final">Final Delivery</MenuItem>
+            <MenuItem value="all">Semua Jenis</MenuItem>
+            <MenuItem value="cancel">Pembatalan</MenuItem>
+            <MenuItem value="revision">Revisi</MenuItem>
+            <MenuItem value="change">Permintaan Perubahan</MenuItem>
+            <MenuItem value="final">Pengiriman Final</MenuItem>
             <MenuItem value="milestone">Milestone</MenuItem>
-            <MenuItem value="progressMilestone">Progress Upload</MenuItem>
-            <MenuItem value="revisionUpload">Revision Upload</MenuItem>
+            <MenuItem value="progressMilestone">Unggahan Kemajuan</MenuItem>
+            <MenuItem value="revisionUpload">Unggahan Revisi</MenuItem>
           </Select>
         </FormControl>
 
@@ -302,7 +302,7 @@ export default function AdminResolutionListPage({
           onClick={() => setRefreshTrigger((prev) => prev + 1)}
           disabled={isLoading}
         >
-          Refresh
+          Segarkan
         </Button>
       </Box>
 
@@ -313,7 +313,7 @@ export default function AdminResolutionListPage({
       ) : filteredTickets.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: "center" }}>
           <Typography variant="body1">
-            No resolution tickets found matching your criteria.
+            Tidak ditemukan tiket penyelesaian yang sesuai dengan kriteria Anda.
           </Typography>
         </Paper>
       ) : (
@@ -321,12 +321,12 @@ export default function AdminResolutionListPage({
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Contract ID</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Parties</TableCell>
+                <TableCell>Tanggal</TableCell>
+                <TableCell>ID Kontrak</TableCell>
+                <TableCell>Jenis</TableCell>
+                <TableCell>Pihak</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Action</TableCell>
+                <TableCell>Tindakan</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -360,14 +360,14 @@ export default function AdminResolutionListPage({
                     <Chip
                       label={
                         ticket.status === "open"
-                          ? "Open"
+                          ? "Terbuka"
                           : ticket.status === "awaitingReview"
-                          ? "Awaiting Review"
+                          ? "Menunggu Peninjauan"
                           : ticket.status === "resolved"
                           ? ticket.decision === "favorClient"
-                            ? "Resolved (Client)"
-                            : "Resolved (Artist)"
-                          : "Cancelled"
+                            ? "Terselesaikan (Klien)"
+                            : "Terselesaikan (Seniman)"
+                          : "Dibatalkan"
                       }
                       size="small"
                       color={getStatusColor(ticket.status)}
@@ -380,7 +380,9 @@ export default function AdminResolutionListPage({
                       onClick={() => handleViewTicket(ticket._id)}
                       disabled={isLoading}
                     >
-                      {ticket.status === "awaitingReview" ? "Resolve" : "View"}
+                      {ticket.status === "awaitingReview"
+                        ? "Selesaikan"
+                        : "Lihat"}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -392,18 +394,18 @@ export default function AdminResolutionListPage({
 
       <Box sx={{ mb: 2 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          As an administrator, you are responsible for resolving disputes
-          between clients and artists.
+          Sebagai administrator, Anda bertanggung jawab untuk menyelesaikan
+          sengketa antara klien dan seniman.
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Tickets with "Awaiting Review" status require your decision. Please
-          review all evidence carefully before making a judgment.
+          Tiket dengan status "Menunggu Peninjauan" memerlukan keputusan Anda.
+          Harap tinjau semua bukti dengan seksama sebelum membuat penilaian.
         </Typography>
         <Alert severity="info" sx={{ mt: 2 }}>
           <Typography variant="body2">
-            <strong>Note:</strong> Your decisions impact the escrow fund
-            distribution and contract status. All decisions are logged for audit
-            purposes.
+            <strong>Catatan:</strong> Keputusan Anda berdampak pada distribusi
+            dana escrow dan status kontrak. Semua keputusan dicatat untuk
+            keperluan audit.
           </Typography>
         </Alert>
       </Box>

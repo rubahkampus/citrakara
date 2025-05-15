@@ -28,6 +28,7 @@ import {
   Tab,
   IconButton,
   Tooltip,
+  ButtonGroup,
 } from "@mui/material";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -36,6 +37,7 @@ import GavelIcon from "@mui/icons-material/Gavel";
 import WarningIcon from "@mui/icons-material/Warning";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ZoomInIcon from "@mui/icons-material/ZoomIn";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import Link from "next/link";
 
 interface AdminResolutionFormProps {
@@ -98,29 +100,33 @@ export default function AdminResolutionForm({
   const getTargetTypeDisplay = (type: string) => {
     switch (type) {
       case "cancelTicket":
-        return "Cancellation Request";
+        return "Pembatalan Kontrak";
       case "revisionTicket":
-        return "Revision Request";
+        return "Permintaan Revisi";
       case "changeTicket":
-        return "Change Request";
+        return "Permintaan Perubahan";
       case "finalUpload":
-        return "Final Delivery";
+        return "Pengiriman Final";
       case "progressMilestoneUpload":
-        return "Milestone Progress Upload";
+        return "Progres Milestone";
       case "revisionUpload":
-        return "Revision Upload";
+        return "Pengiriman Revisi";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
 
-  // Get target URL for viewing the disputed item
+  // Get target URL for viewing the disputed item in standard view
   const getTargetUrl = () => {
     switch (ticket.targetType) {
       case "cancelTicket":
       case "revisionTicket":
       case "changeTicket":
-        return `/dashboard/${userId}/contracts/${ticket.contractId}/tickets/${ticket.targetType}/${ticket.targetId}`;
+        return `/dashboard/${userId}/contracts/${
+          ticket.contractId
+        }/tickets/${ticket.targetType.replace("Ticket", "")}/${
+          ticket.targetId
+        }`;
       case "finalUpload":
         return `/dashboard/${userId}/contracts/${ticket.contractId}/uploads/final/${ticket.targetId}`;
       case "progressMilestoneUpload":
@@ -130,6 +136,12 @@ export default function AdminResolutionForm({
       default:
         return `/dashboard/${userId}/contracts/${ticket.contractId}`;
     }
+  };
+
+  // Get target URL for admin review
+  const getAdminTargetUrl = () => {
+    // Route to admin-specific view
+    return `/dashboard/${userId}/admin-resolution/${ticket._id}/${ticket.targetType}/${ticket.targetId}`;
   };
 
   // Handle form submission
@@ -164,52 +176,51 @@ export default function AdminResolutionForm({
     if (!decision) return "";
 
     // Base message based on who is favored
-    const favoredParty = decision === "favorClient" ? "Client" : "Artist";
-    let baseMessage = `This decision will rule in favor of the ${favoredParty}.`;
+    const favoredParty = decision === "favorClient" ? "Klien" : "Seniman";
+    let baseMessage = `Keputusan ini akan berpihak pada ${favoredParty}.`;
 
     // Additional details based on target type
     switch (ticket.targetType) {
-      case "cancel":
+      case "cancelTicket":
         return `${baseMessage} ${
           decision === "favorClient"
-            ? "The cancellation will be accepted and the contract will be marked as cancelled with appropriate compensation based on work completed."
-            : "The cancellation will be rejected and the contract will continue."
+            ? "Pembatalan akan diterima dan kontrak akan ditandai sebagai dibatalkan dengan kompensasi yang sesuai berdasarkan pekerjaan yang telah diselesaikan."
+            : "Pembatalan akan ditolak dan kontrak akan dilanjutkan."
         }`;
 
-      case "revision":
+      case "revisionTicket":
         return `${baseMessage} ${
           decision === "favorClient"
-            ? "The artist will be required to make the requested revisions."
-            : "The artist will not be required to make the requested revisions."
+            ? "Seniman akan diminta untuk melakukan revisi yang diminta."
+            : "Seniman tidak akan diminta untuk melakukan revisi yang diminta."
         }`;
 
-      case "change":
+      case "changeTicket":
         return `${baseMessage} ${
           decision === "favorClient"
-            ? "The requested changes to the contract will be applied without additional fees."
-            : "The changes will not be required or the artist's proposed fees will be enforced."
+            ? "Perubahan yang diminta pada kontrak akan diterapkan tanpa biaya tambahan."
+            : "Perubahan tidak akan diperlukan atau biaya yang diusulkan seniman akan diberlakukan."
         }`;
 
-      case "final":
+      case "finalUpload":
         return `${baseMessage} ${
           decision === "favorClient"
-            ? "The final delivery will be rejected and the artist must make adjustments."
-            : "The final delivery will be forcibly accepted and the contract marked as completed."
+            ? "Pengiriman final akan ditolak dan seniman harus melakukan penyesuaian."
+            : "Pengiriman final akan dipaksa diterima dan kontrak ditandai sebagai selesai."
         }`;
 
-      case "milestone":
-      case "progressMilestone":
+      case "progressMilestoneUpload":
         return `${baseMessage} ${
           decision === "favorClient"
-            ? "The milestone upload will be rejected and the artist must address the issues."
-            : "The milestone will be forcibly accepted and the contract will progress to the next phase."
+            ? "Unggahan milestone akan ditolak dan seniman harus mengatasi masalah tersebut."
+            : "Milestone akan dipaksa diterima dan kontrak akan berlanjut ke tahap berikutnya."
         }`;
 
       case "revisionUpload":
         return `${baseMessage} ${
           decision === "favorClient"
-            ? "The revision upload will be rejected and the artist must address the issues."
-            : "The revision will be forcibly accepted."
+            ? "Unggahan revisi akan ditolak dan seniman harus mengatasi masalah tersebut."
+            : "Revisi akan dipaksa diterima."
         }`;
 
       default:
@@ -223,16 +234,16 @@ export default function AdminResolutionForm({
       {!canResolve && (
         <Alert severity="info" sx={{ mb: 3 }}>
           {ticket.status === "open"
-            ? "This ticket is still open for counterproof submission. You can review it, but you cannot make a decision yet."
+            ? "Tiket ini masih terbuka untuk pengajuan bukti bantahan. Anda dapat meninjau, tetapi belum dapat membuat keputusan."
             : ticket.status === "resolved"
-            ? "This ticket has already been resolved."
-            : "This ticket cannot be resolved at this time."}
+            ? "Tiket ini sudah diselesaikan."
+            : "Tiket ini tidak dapat diselesaikan saat ini."}
         </Alert>
       )}
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} icon={<CheckCircleIcon />}>
-          Resolution submitted successfully. Redirecting...
+          Pengajuan penyelesaian berhasil. Mengalihkan...
         </Alert>
       )}
 
@@ -253,7 +264,7 @@ export default function AdminResolutionForm({
           }}
         >
           <Typography variant="h6" fontWeight="medium">
-            Resolution Ticket Details
+            Detail Tiket Penyelesaian
           </Typography>
           <Chip
             label={ticket.status.toUpperCase()}
@@ -283,7 +294,7 @@ export default function AdminResolutionForm({
             <Stack spacing={2}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Target Type
+                  Jenis Target
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {getTargetTypeDisplay(ticket.targetType)}
@@ -292,19 +303,19 @@ export default function AdminResolutionForm({
 
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Submitted By
+                  Diajukan Oleh
                 </Typography>
                 <Typography variant="body1">
-                  {ticket.submittedBy === "client" ? "Client" : "Artist"}
+                  {ticket.submittedBy === "client" ? "Klien" : "Seniman"}
                 </Typography>
               </Box>
 
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Counterparty
+                  Pihak Lawan
                 </Typography>
                 <Typography variant="body1">
-                  {ticket.counterparty === "client" ? "Client" : "Artist"}
+                  {ticket.counterparty === "client" ? "Klien" : "Seniman"}
                 </Typography>
               </Box>
             </Stack>
@@ -317,7 +328,7 @@ export default function AdminResolutionForm({
                   sx={{ fontSize: 18, mr: 1, color: "text.secondary" }}
                 />
                 <Typography variant="subtitle2" color="text.secondary">
-                  Created
+                  Dibuat
                 </Typography>
                 <Typography variant="body1" sx={{ ml: 1 }}>
                   {formatDate(ticket.createdAt)}
@@ -330,7 +341,7 @@ export default function AdminResolutionForm({
                     sx={{ fontSize: 18, mr: 1, color: "text.secondary" }}
                   />
                   <Typography variant="subtitle2" color="text.secondary">
-                    Counterproof Deadline
+                    Batas Waktu Bukti Bantahan
                   </Typography>
                   <Typography variant="body1" sx={{ ml: 1 }}>
                     {formatDate(ticket.counterExpiresAt)}
@@ -344,7 +355,7 @@ export default function AdminResolutionForm({
                     sx={{ fontSize: 18, mr: 1, color: "text.secondary" }}
                   />
                   <Typography variant="subtitle2" color="text.secondary">
-                    Resolved On
+                    Diselesaikan Pada
                   </Typography>
                   <Typography variant="body1" sx={{ ml: 1 }}>
                     {formatDate(ticket.resolvedAt)}
@@ -355,24 +366,29 @@ export default function AdminResolutionForm({
           </Grid>
         </Grid>
 
-        <Box sx={{ mt: 2 }}>
-          <Button
-            component={Link}
-            href={`/dashboard/${userId}/contracts/${ticket.contractId}`}
-            variant="text"
-            size="small"
-          >
-            View Contract
-          </Button>
-          <Button
-            component={Link}
-            href={getTargetUrl()}
-            variant="text"
-            size="small"
-            sx={{ ml: 2 }}
-          >
-            View Disputed Item
-          </Button>
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            Tindakan
+          </Typography>
+          <ButtonGroup variant="outlined">
+            <Button
+              component={Link}
+              href={`/dashboard/${userId}/contracts/${ticket.contractId}`}
+              startIcon={<VisibilityIcon />}
+              size="small"
+            >
+              Lihat Kontrak
+            </Button>
+            <Button
+              component={Link}
+              href={getAdminTargetUrl()}
+              startIcon={<VisibilityIcon />}
+              size="small"
+              color="secondary"
+            >
+              Lihat Item Bermasalah
+            </Button>
+          </ButtonGroup>
         </Box>
       </Paper>
 
@@ -385,20 +401,20 @@ export default function AdminResolutionForm({
           sx={{ mb: 3 }}
         >
           <Tab
-            label={`${
-              ticket.submittedBy === "client" ? "Client" : "Artist"
-            }'s Evidence`}
+            label={`Bukti ${
+              ticket.submittedBy === "client" ? "Klien" : "Seniman"
+            }`}
             id="tab-0"
             aria-controls="tabpanel-0"
           />
           <Tab
-            label={`${
-              ticket.counterparty === "client" ? "Client" : "Artist"
-            }'s Counterevidence`}
+            label={`Bukti Bantahan ${
+              ticket.counterparty === "client" ? "Klien" : "Seniman"
+            }`}
             id="tab-1"
             aria-controls="tabpanel-1"
           />
-          <Tab label="Side by Side" id="tab-2" aria-controls="tabpanel-2" />
+          <Tab label="Berdampingan" id="tab-2" aria-controls="tabpanel-2" />
         </Tabs>
 
         {/* Original Evidence Tab */}
@@ -411,8 +427,7 @@ export default function AdminResolutionForm({
           {activeTab === 0 && (
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                {ticket.submittedBy === "client" ? "Client" : "Artist"}'s
-                Evidence
+                Bukti {ticket.submittedBy === "client" ? "Klien" : "Seniman"}
               </Typography>
 
               <Typography
@@ -430,7 +445,7 @@ export default function AdminResolutionForm({
                     fontWeight="medium"
                     gutterBottom
                   >
-                    Evidence Images ({ticket.proofImages.length})
+                    Gambar Bukti ({ticket.proofImages.length})
                   </Typography>
                   <Grid container spacing={2}>
                     {ticket.proofImages.map((img: string, i: number) => (
@@ -439,7 +454,7 @@ export default function AdminResolutionForm({
                           <CardMedia
                             component="img"
                             image={img}
-                            alt={`Evidence ${i + 1}`}
+                            alt={`Bukti ${i + 1}`}
                             sx={{ height: 200, objectFit: "cover" }}
                           />
                           <CardContent sx={{ p: 1, pb: "8px !important" }}>
@@ -450,9 +465,9 @@ export default function AdminResolutionForm({
                               }}
                             >
                               <Typography variant="caption">
-                                Evidence {i + 1}
+                                Bukti {i + 1}
                               </Typography>
-                              <Tooltip title="View Larger">
+                              <Tooltip title="Lihat Lebih Besar">
                                 <IconButton
                                   size="small"
                                   onClick={() => window.open(img, "_blank")}
@@ -469,7 +484,7 @@ export default function AdminResolutionForm({
                 </Box>
               ) : (
                 <Alert severity="info" sx={{ mt: 2 }}>
-                  No evidence images provided.
+                  Tidak ada gambar bukti yang disediakan.
                 </Alert>
               )}
             </Paper>
@@ -486,8 +501,8 @@ export default function AdminResolutionForm({
           {activeTab === 1 && (
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="h6" fontWeight="medium" gutterBottom>
-                {ticket.counterparty === "client" ? "Client" : "Artist"}'s
-                Response
+                Tanggapan{" "}
+                {ticket.counterparty === "client" ? "Klien" : "Seniman"}
               </Typography>
 
               {ticket.counterDescription ? (
@@ -508,7 +523,7 @@ export default function AdminResolutionForm({
                         fontWeight="medium"
                         gutterBottom
                       >
-                        Counterevidence Images (
+                        Gambar Bukti Bantahan (
                         {ticket.counterProofImages.length})
                       </Typography>
                       <Grid container spacing={2}>
@@ -519,7 +534,7 @@ export default function AdminResolutionForm({
                                 <CardMedia
                                   component="img"
                                   image={img}
-                                  alt={`Counterevidence ${i + 1}`}
+                                  alt={`Bukti Bantahan ${i + 1}`}
                                   sx={{ height: 200, objectFit: "cover" }}
                                 />
                                 <CardContent
@@ -532,9 +547,9 @@ export default function AdminResolutionForm({
                                     }}
                                   >
                                     <Typography variant="caption">
-                                      Counterevidence {i + 1}
+                                      Bukti Bantahan {i + 1}
                                     </Typography>
-                                    <Tooltip title="View Larger">
+                                    <Tooltip title="Lihat Lebih Besar">
                                       <IconButton
                                         size="small"
                                         onClick={() =>
@@ -554,7 +569,7 @@ export default function AdminResolutionForm({
                     </Box>
                   ) : (
                     <Alert severity="info" sx={{ mt: 2 }}>
-                      No counterevidence images provided.
+                      Tidak ada gambar bukti bantahan yang disediakan.
                     </Alert>
                   )}
                 </>
@@ -565,12 +580,12 @@ export default function AdminResolutionForm({
                 >
                   {ticket.status === "open" ? (
                     <>
-                      No counterproof has been submitted yet. The counterparty
-                      has until {formatDate(ticket.counterExpiresAt)} to
-                      respond.
+                      Belum ada bukti bantahan yang diajukan. Pihak lawan
+                      memiliki waktu hingga{" "}
+                      {formatDate(ticket.counterExpiresAt)} untuk menanggapi.
                     </>
                   ) : (
-                    "No counterproof was submitted before the deadline."
+                    "Tidak ada bukti bantahan yang diajukan sebelum batas waktu."
                   )}
                 </Alert>
               )}
@@ -590,8 +605,8 @@ export default function AdminResolutionForm({
               <Grid item xs={12} md={6}>
                 <Paper elevation={2} sx={{ p: 3, height: "100%" }}>
                   <Typography variant="h6" fontWeight="medium" gutterBottom>
-                    {ticket.submittedBy === "client" ? "Client" : "Artist"}'s
-                    Evidence
+                    Bukti{" "}
+                    {ticket.submittedBy === "client" ? "Klien" : "Seniman"}
                   </Typography>
 
                   <Typography
@@ -609,7 +624,7 @@ export default function AdminResolutionForm({
                         fontWeight="medium"
                         gutterBottom
                       >
-                        Evidence Images
+                        Gambar Bukti
                       </Typography>
                       <Grid container spacing={1}>
                         {ticket.proofImages.map((img: string, i: number) => (
@@ -618,7 +633,7 @@ export default function AdminResolutionForm({
                               <CardMedia
                                 component="img"
                                 image={img}
-                                alt={`Evidence ${i + 1}`}
+                                alt={`Bukti ${i + 1}`}
                                 sx={{ height: 100, objectFit: "cover" }}
                                 onClick={() => window.open(img, "_blank")}
                               />
@@ -634,8 +649,8 @@ export default function AdminResolutionForm({
               <Grid item xs={12} md={6}>
                 <Paper elevation={2} sx={{ p: 3, height: "100%" }}>
                   <Typography variant="h6" fontWeight="medium" gutterBottom>
-                    {ticket.counterparty === "client" ? "Client" : "Artist"}'s
-                    Response
+                    Tanggapan{" "}
+                    {ticket.counterparty === "client" ? "Klien" : "Seniman"}
                   </Typography>
 
                   {ticket.counterDescription ? (
@@ -656,7 +671,7 @@ export default function AdminResolutionForm({
                               fontWeight="medium"
                               gutterBottom
                             >
-                              Counterevidence Images
+                              Gambar Bukti Bantahan
                             </Typography>
                             <Grid container spacing={1}>
                               {ticket.counterProofImages.map(
@@ -666,7 +681,7 @@ export default function AdminResolutionForm({
                                       <CardMedia
                                         component="img"
                                         image={img}
-                                        alt={`Counterevidence ${i + 1}`}
+                                        alt={`Bukti Bantahan ${i + 1}`}
                                         sx={{ height: 100, objectFit: "cover" }}
                                         onClick={() =>
                                           window.open(img, "_blank")
@@ -687,12 +702,13 @@ export default function AdminResolutionForm({
                     >
                       {ticket.status === "open" ? (
                         <>
-                          No counterproof has been submitted yet. The
-                          counterparty has until{" "}
-                          {formatDate(ticket.counterExpiresAt)} to respond.
+                          Belum ada bukti bantahan yang diajukan. Pihak lawan
+                          memiliki waktu hingga{" "}
+                          {formatDate(ticket.counterExpiresAt)} untuk
+                          menanggapi.
                         </>
                       ) : (
-                        "No counterproof was submitted before the deadline."
+                        "Tidak ada bukti bantahan yang diajukan sebelum batas waktu."
                       )}
                     </Alert>
                   )}
@@ -707,14 +723,14 @@ export default function AdminResolutionForm({
       {ticket.status === "resolved" ? (
         <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
           <Typography variant="h6" fontWeight="medium" gutterBottom>
-            Resolution Decision
+            Keputusan Penyelesaian
           </Typography>
           <Box sx={{ mb: 2 }}>
             <Chip
               label={
                 ticket.decision === "favorClient"
-                  ? "Decision in Favor of Client"
-                  : "Decision in Favor of Artist"
+                  ? "Keputusan Berpihak pada Klien"
+                  : "Keputusan Berpihak pada Seniman"
               }
               color={ticket.decision === "favorClient" ? "info" : "secondary"}
               icon={<GavelIcon />}
@@ -722,7 +738,7 @@ export default function AdminResolutionForm({
             />
           </Box>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Resolution Note
+            Catatan Penyelesaian
           </Typography>
           <Paper
             variant="outlined"
@@ -734,7 +750,7 @@ export default function AdminResolutionForm({
           </Paper>
           <Box sx={{ mt: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              Resolved by {ticket.resolvedBy?.toString()} on{" "}
+              Diselesaikan oleh {ticket.resolvedBy?.toString()} pada{" "}
               {formatDate(ticket.resolvedAt)}
             </Typography>
           </Box>
@@ -743,16 +759,17 @@ export default function AdminResolutionForm({
         <form onSubmit={handleSubmit(onSubmit)}>
           <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
             <Typography variant="h6" fontWeight="medium" gutterBottom>
-              Make Resolution Decision
+              Buat Keputusan Penyelesaian
             </Typography>
 
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                As an administrator, you need to decide which party's position
-                to uphold. Consider all evidence provided by both parties before
-                making your decision. The outcome of this resolution will affect
-                the disputed{" "}
-                {getTargetTypeDisplay(ticket.targetType).toLowerCase()}.
+                Sebagai administrator, Anda perlu memutuskan posisi pihak mana
+                yang akan didukung. Pertimbangkan semua bukti yang diberikan
+                oleh kedua belah pihak sebelum membuat keputusan Anda. Hasil
+                dari penyelesaian ini akan mempengaruhi{" "}
+                {getTargetTypeDisplay(ticket.targetType).toLowerCase()} yang
+                disengketakan.
               </Typography>
             </Alert>
 
@@ -760,20 +777,20 @@ export default function AdminResolutionForm({
               <Controller
                 name="decision"
                 control={control}
-                rules={{ required: "A decision is required" }}
+                rules={{ required: "Keputusan diperlukan" }}
                 render={({ field }) => (
                   <FormControl component="fieldset" error={!!errors.decision}>
-                    <FormLabel component="legend">Decision</FormLabel>
+                    <FormLabel component="legend">Keputusan</FormLabel>
                     <RadioGroup row {...field}>
                       <FormControlLabel
                         value="favorClient"
                         control={<Radio />}
-                        label="In Favor of Client"
+                        label="Berpihak pada Klien"
                       />
                       <FormControlLabel
                         value="favorArtist"
                         control={<Radio />}
-                        label="In Favor of Artist"
+                        label="Berpihak pada Seniman"
                       />
                     </RadioGroup>
                     {errors.decision && (
@@ -806,25 +823,24 @@ export default function AdminResolutionForm({
                 name="resolutionNote"
                 control={control}
                 rules={{
-                  required: "A resolution note is required",
+                  required: "Catatan penyelesaian diperlukan",
                   minLength: {
                     value: 50,
-                    message:
-                      "Please provide at least 50 characters of explanation",
+                    message: "Harap berikan setidaknya 50 karakter penjelasan",
                   },
                 }}
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Resolution Note"
+                    label="Catatan Penyelesaian"
                     multiline
                     rows={4}
                     fullWidth
-                    placeholder="Provide a detailed explanation of your decision. This will be visible to both parties."
+                    placeholder="Berikan penjelasan rinci tentang keputusan Anda. Ini akan terlihat oleh kedua belah pihak."
                     error={!!errors.resolutionNote}
                     helperText={
                       errors.resolutionNote?.message ||
-                      "Explain the reasoning behind your decision in detail. Both parties will see this explanation."
+                      "Jelaskan alasan di balik keputusan Anda secara rinci. Kedua belah pihak akan melihat penjelasan ini."
                     }
                   />
                 )}
@@ -847,12 +863,12 @@ export default function AdminResolutionForm({
                   isSubmitting ? <CircularProgress size={20} /> : <GavelIcon />
                 }
               >
-                {isSubmitting ? "Submitting..." : "Submit Resolution"}
+                {isSubmitting ? "Mengirim..." : "Kirim Penyelesaian"}
               </Button>
 
               <Chip
                 icon={<WarningIcon />}
-                label="This action cannot be undone"
+                label="Tindakan ini tidak dapat dibatalkan"
                 color="warning"
                 variant="outlined"
               />
@@ -866,14 +882,14 @@ export default function AdminResolutionForm({
 
       <Paper elevation={2} sx={{ p: 3 }}>
         <Typography variant="h6" fontWeight="medium" gutterBottom>
-          Contract Information
+          Informasi Kontrak
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
             <Stack spacing={2}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Contract Status
+                  Status Kontrak
                 </Typography>
                 <Chip
                   label={contract.status.toUpperCase()}
@@ -893,7 +909,7 @@ export default function AdminResolutionForm({
 
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Created
+                  Dibuat
                 </Typography>
                 <Typography variant="body2">
                   {formatDate(contract.createdAt)}
@@ -906,7 +922,7 @@ export default function AdminResolutionForm({
             <Stack spacing={2}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Artist ID
+                  ID Seniman
                 </Typography>
                 <Typography variant="body2">
                   {contract.artistId.toString()}
@@ -915,7 +931,7 @@ export default function AdminResolutionForm({
 
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Client ID
+                  ID Klien
                 </Typography>
                 <Typography variant="body2">
                   {contract.clientId.toString()}
@@ -928,7 +944,7 @@ export default function AdminResolutionForm({
             <Stack spacing={2}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Deadline
+                  Tenggat Waktu
                 </Typography>
                 <Typography variant="body2">
                   {formatDate(contract.deadlineAt)}
@@ -937,7 +953,7 @@ export default function AdminResolutionForm({
 
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Grace Period Ends
+                  Masa Tenggang Berakhir
                 </Typography>
                 <Typography variant="body2">
                   {formatDate(contract.graceEndsAt)}

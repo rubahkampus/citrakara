@@ -80,64 +80,18 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
     updateDisplayValues();
   }, []);
 
-  // fetch TOS entries
-  // const [tosName, setTosName] = useState("Default Terms of Service");
-  // useEffect(() => {
-  //   (async () => {
-  //     try {
-  //       const res = await axiosClient.get("/api/tos/default");
-  //       console.log("Default TOS:", res.data.tos);
-  //       if (res.data.tos) {
-  //         setTosName(res.data.tos.title);
-  //         // Auto-set the TOS ID
-  //         setValue("tos", res.data.tos._id);
-  //         console.log("TOS ID set to:", getValues("tos"));
-  //         updateDisplayValues();
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching default TOS:", error);
-  //     }
-  //   })();
-  // }, [setValue]);
-
   return (
     <>
-      {/* Debug display with state that updates properly */}
-      <Box
-        sx={{
-          mb: 2,
-          p: 2,
-          bgcolor: "#f5f5f5",
-          borderRadius: 1,
-          border: "1px solid #e0e0e0",
-        }}
-      >
-        <Typography variant="subtitle2" gutterBottom>
-          Debug Values:
-        </Typography>
-        <Typography variant="body2">Title: {displayValues.title}</Typography>
-        <Typography variant="body2">
-          Base Price: {displayValues.basePrice} (Use Base Price:{" "}
-          {usesBasePrice ? "Yes" : "No"})
-        </Typography>
-        <Typography variant="body2">
-          Slots: {displayValues.slots} (Unlimited: {isUnlimited ? "Yes" : "No"})
-        </Typography>
-        <Typography variant="body2">Type: {displayValues.type}</Typography>
-        <Typography variant="body2">Flow: {displayValues.flow}</Typography>
-        {/* <Typography variant="body2">TOS: {displayValues.tos}</Typography> */}
-      </Box>
-
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Controller
             name="title"
             control={control}
-            rules={{ required: "Title is required" }}
+            rules={{ required: "Judul diperlukan" }}
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Title"
+                label="Judul"
                 fullWidth
                 error={!!errors.title}
                 helperText={errors.title?.message}
@@ -157,7 +111,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Base Price"
+                label="Harga Dasar"
                 fullWidth
                 type="number"
                 InputProps={{
@@ -184,7 +138,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                   updateDisplayValues();
                 }}
                 error={!!errors.basePrice}
-                helperText="Enter a positive number"
+                helperText="Masukkan angka positif"
                 disabled={!usesBasePrice}
                 // disabled={mode === "edit" || !usesBasePrice}
               />
@@ -213,7 +167,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                   }}
                 />
               }
-              label="Use base price (IDR)"
+              label="Gunakan harga dasar (IDR)"
             />
             <Typography
               variant="caption"
@@ -221,8 +175,8 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
               display="block"
             >
               {usesBasePrice
-                ? "Commission will start with a base price"
-                : "Base price will be set to 0"}
+                ? "Pesanan akan dimulai dengan harga dasar"
+                : "Harga dasar akan diatur ke 0"}
             </Typography>
           </Box>
         </Grid>
@@ -237,12 +191,12 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                 validate: (value) =>
                   value === -1 ||
                   value >= 1 ||
-                  "Slots must be at least 1 or -1 for unlimited",
+                  "Slot minimal 1 atau -1 untuk tidak terbatas",
               }}
               render={({ field }) => (
                 <>
                   <TextField
-                    label="Slots"
+                    label="Slot"
                     fullWidth
                     type="number"
                     disabled={isUnlimited}
@@ -261,7 +215,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                     }}
                     error={!!errors.slots}
                     helperText={
-                      errors.slots?.message || "Number of available slots"
+                      errors.slots?.message || "Jumlah slot yang tersedia"
                     }
                   />
                   <FormControlLabel
@@ -280,7 +234,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                         }}
                       />
                     }
-                    label="Unlimited slots"
+                    label="Slot tidak terbatas"
                   />
                 </>
               )}
@@ -292,13 +246,13 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
           <Controller
             name="type"
             control={control}
-            rules={{ required: "Type required" }}
+            rules={{ required: "Tipe diperlukan" }}
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.type}>
-                <InputLabel>Type</InputLabel>
+                <InputLabel>Tipe</InputLabel>
                 <Select
                   {...field}
-                  label="Type"
+                  label="Tipe"
                   // disabled={mode === "edit"}
                   onChange={(e) => {
                     field.onChange(e);
@@ -307,7 +261,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                   }}
                 >
                   <MenuItem value="template">Template</MenuItem>
-                  <MenuItem value="custom">Custom</MenuItem>
+                  <MenuItem value="custom">Kustom</MenuItem>
                 </Select>
                 {errors.type && (
                   <FormHelperText>{errors.type.message}</FormHelperText>
@@ -321,13 +275,13 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
           <Controller
             name="flow"
             control={control}
-            rules={{ required: "Flow required" }}
+            rules={{ required: "Alur diperlukan" }}
             render={({ field }) => (
               <FormControl fullWidth error={!!errors.flow}>
-                <InputLabel>Flow</InputLabel>
+                <InputLabel>Alur</InputLabel>
                 <Select
                   {...field}
-                  label="Flow"
+                  label="Alur"
                   // disabled={mode === "edit"}
                   onChange={(e) => {
                     field.onChange(e);
@@ -335,7 +289,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
                     updateDisplayValues();
                   }}
                 >
-                  <MenuItem value="standard">Standard</MenuItem>
+                  <MenuItem value="standard">Standar</MenuItem>
                   <MenuItem value="milestone">Milestone</MenuItem>
                 </Select>
                 {errors.flow && (
@@ -345,17 +299,6 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
             )}
           />
         </Grid>
-
-        {/* <Grid item xs={12}> */}
-          {/* Display fixed TOS */}
-          {/* <TextField
-            label="Terms of Service"
-            value={tosName}
-            fullWidth
-            disabled
-            helperText="Using default terms of service"
-          />
-        </Grid> */}
       </Grid>
     </>
   );

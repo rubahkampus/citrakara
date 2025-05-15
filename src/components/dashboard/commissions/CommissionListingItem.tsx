@@ -267,7 +267,7 @@ export const CommissionListingItem = ({
       >
         {!listing.isActive && isOwner && (
           <Chip
-            label="Inactive"
+            label="Tidak Aktif"
             color="default"
             size="small"
             sx={{
@@ -288,7 +288,7 @@ export const CommissionListingItem = ({
           />
         )}
         <Chip
-          label={listing.flow === "standard" ? "Standard" : "Milestone"}
+          label={listing.flow === "standard" ? "Standar" : "Milestone"}
           color={listing.flow === "standard" ? "success" : "info"}
           size="small"
           sx={{
@@ -313,7 +313,7 @@ export const CommissionListingItem = ({
             gap: 1,
           }}
         >
-          <Tooltip title="Quick edit">
+          <Tooltip title="Edit Cepat">
             <IconButton
               size="small"
               sx={{
@@ -333,7 +333,7 @@ export const CommissionListingItem = ({
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="More options">
+          <Tooltip title="Opsi Lainnya">
             <IconButton
               size="small"
               sx={{
@@ -369,7 +369,9 @@ export const CommissionListingItem = ({
         >
           {isAuthenticated && (
             <Tooltip
-              title={bookmarkState ? "Remove from saved" : "Save for later"}
+              title={
+                bookmarkState ? "Hapus dari tersimpan" : "Simpan untuk nanti"
+              }
             >
               <IconButton
                 size="small"
@@ -422,10 +424,10 @@ export const CommissionListingItem = ({
         >
           <DeleteIcon color="error" sx={{ fontSize: 40, mb: 2 }} />
           <Typography variant="subtitle1" gutterBottom fontWeight={600}>
-            Delete this commission?
+            Hapus pesanan ini?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            This action cannot be undone.
+            Tindakan ini tidak dapat dibatalkan.
           </Typography>
           <Stack direction="row" spacing={2}>
             <Button
@@ -433,7 +435,7 @@ export const CommissionListingItem = ({
               onClick={handleDeleteCancel}
               sx={{ borderRadius: 8, px: 3 }}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               variant="contained"
@@ -441,7 +443,7 @@ export const CommissionListingItem = ({
               onClick={handleDeleteCommission}
               sx={{ borderRadius: 8, px: 3 }}
             >
-              Delete
+              Hapus
             </Button>
           </Stack>
         </Box>
@@ -541,7 +543,7 @@ export const CommissionListingItem = ({
             }}
           >
             <Palette sx={{ fontSize: 16, mr: 0.5, color: "warning.main" }} />
-            by {username}
+            oleh {username}
           </Typography>
         )}
 
@@ -567,8 +569,8 @@ export const CommissionListingItem = ({
             sx={{ fontWeight: 500 }}
           >
             {listing.slots === -1
-              ? "Unlimited slots available"
-              : `${slotsLeft}/${listing.slots} slots available`}
+              ? "Slot tidak terbatas tersedia"
+              : `${slotsLeft}/${listing.slots} slot tersedia`}
           </Typography>
         </Box>
 
@@ -585,7 +587,7 @@ export const CommissionListingItem = ({
             }}
           >
             <BarChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
-            Updated {new Date(listing.updatedAt).toLocaleDateString()}
+            Diperbarui {new Date(listing.updatedAt).toLocaleDateString()}
           </Typography>
         )}
 
@@ -672,7 +674,7 @@ export const CommissionListingItem = ({
 
                 <Tooltip
                   title={
-                    listing.isActive ? "Deactivate listing" : "Activate listing"
+                    listing.isActive ? "Nonaktifkan daftar" : "Aktifkan daftar"
                   }
                 >
                   <Button
@@ -697,7 +699,7 @@ export const CommissionListingItem = ({
                 </Tooltip>
               </Stack>
 
-              <Tooltip title="View public page">
+              <Tooltip title="Lihat halaman publik">
                 <Button
                   size="small"
                   variant="text"
@@ -710,7 +712,7 @@ export const CommissionListingItem = ({
                     fontSize: "0.8rem",
                   }}
                 >
-                  Preview
+                  Pratinjau
                 </Button>
               </Tooltip>
             </>
@@ -729,7 +731,7 @@ export const CommissionListingItem = ({
                   fontSize: "0.8rem",
                 }}
               >
-                View Details
+                Lihat Detail
               </Button> */}
             </>
           )}
@@ -766,14 +768,14 @@ export const CommissionListingItem = ({
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
-            Edit Commission
+            Edit Pesanan
           </MenuItem>
 
           <MenuItem onClick={handlePublicView} dense>
             <ListItemIcon>
               <LaunchIcon fontSize="small" />
             </ListItemIcon>
-            View Public Page
+            Lihat Halaman Publik
           </MenuItem>
 
           <Divider sx={{ my: 0.5 }} />
@@ -786,7 +788,7 @@ export const CommissionListingItem = ({
                 <VisibilityIcon fontSize="small" />
               )}
             </ListItemIcon>
-            {listing.isActive ? "Deactivate Listing" : "Activate Listing"}
+            {listing.isActive ? "Nonaktifkan Daftar" : "Aktifkan Daftar"}
           </MenuItem>
 
           <Divider sx={{ my: 0.5 }} />
@@ -799,7 +801,7 @@ export const CommissionListingItem = ({
             <ListItemIcon sx={{ color: "error.main" }}>
               <DeleteIcon fontSize="small" />
             </ListItemIcon>
-            Delete Commission
+            Hapus Pesanan
           </MenuItem>
         </Menu>
       )}

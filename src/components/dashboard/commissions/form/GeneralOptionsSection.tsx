@@ -83,7 +83,7 @@ const OptionGroupList: React.FC<{
     <Box>
       {fields.length === 0 && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          No option groups added yet
+          Belum ada grup opsi yang ditambahkan
         </Typography>
       )}
 
@@ -99,7 +99,7 @@ const OptionGroupList: React.FC<{
               name={`${path}.${groupIndex}.title`}
               render={({ field }) => (
                 <TextField
-                  label="Group Title"
+                  label="Judul Grup"
                   fullWidth
                   size="small"
                   sx={{ mr: 1, flexGrow: 1 }}
@@ -114,7 +114,7 @@ const OptionGroupList: React.FC<{
 
           <Divider sx={{ my: 1 }} />
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Options (each with price adjustment)
+            Opsi (masing-masing dengan penyesuaian harga)
           </Typography>
 
           {/* Nested field array for selections within the group */}
@@ -134,7 +134,7 @@ const OptionGroupList: React.FC<{
         size="small"
         sx={{ mt: 1 }}
       >
-        Add Option Group
+        Tambah Grup Opsi
       </Button>
     </Box>
   );
@@ -174,7 +174,7 @@ const NestedSelections: React.FC<{
         sx={{ mt: 1 }}
         variant="text"
       >
-        Add Option
+        Tambah Opsi
       </Button>
     </Box>
   );
@@ -194,7 +194,7 @@ const AddonList: React.FC<{
     <Box>
       {fields.length === 0 && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          No addons created yet
+          Belum ada layanan tambahan yang dibuat
         </Typography>
       )}
 
@@ -216,7 +216,7 @@ const AddonList: React.FC<{
         size="small"
         sx={{ mt: 1 }}
       >
-        Add Addon
+        Tambah Layanan
       </Button>
     </Box>
   );
@@ -232,7 +232,7 @@ const QuestionList: React.FC<{
     <Box>
       {fields.length === 0 && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          No questions added yet
+          Belum ada pertanyaan yang ditambahkan
         </Typography>
       )}
 
@@ -249,7 +249,12 @@ const QuestionList: React.FC<{
               control={control}
               name={`${path}.${index}.label`}
               render={({ field }) => (
-                <TextField label="Question" fullWidth size="small" {...field} />
+                <TextField
+                  label="Pertanyaan"
+                  fullWidth
+                  size="small"
+                  {...field}
+                />
               )}
             />
           </Grid>
@@ -272,7 +277,7 @@ const QuestionList: React.FC<{
         size="small"
         sx={{ mt: 1 }}
       >
-        Add Question
+        Tambah Pertanyaan
       </Button>
     </Box>
   );
@@ -288,21 +293,21 @@ const GeneralOptionsSection = () => {
   return (
     <Box>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
-        General Options
+        Opsi Umum
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Define option groups, addons, and questions that apply to all
-        commissions
+        Tentukan grup opsi, layanan tambahan, dan pertanyaan yang berlaku untuk
+        semua pesanan
       </Typography>
 
       <Grid container spacing={4}>
         {/* Option Groups */}
         <Grid item xs={12}>
           <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-            Option Groups
+            Grup Opsi
           </Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Create groups of options where clients can select one option
+            Buat grup opsi di mana klien dapat memilih satu opsi
           </Typography>
           <OptionGroupList
             control={control}
@@ -314,10 +319,10 @@ const GeneralOptionsSection = () => {
         {/* Addons */}
         <Grid item xs={12}>
           <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-            Addons
+            Layanan Tambahan
           </Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Additional services clients can add to their commission
+            Layanan tambahan yang dapat ditambahkan klien ke pesanan mereka
           </Typography>
           <AddonList
             control={control}
@@ -329,10 +334,10 @@ const GeneralOptionsSection = () => {
         {/* Questions */}
         <Grid item xs={12}>
           <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-            Questions
+            Pertanyaan
           </Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Questions to ask clients when they request a commission
+            Pertanyaan untuk ditanyakan kepada klien saat mereka meminta pesanan
           </Typography>
           <QuestionList control={control} path="generalOptions.questions" />
         </Grid>

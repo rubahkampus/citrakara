@@ -1,10 +1,11 @@
-// src/lib/db/models/review.model.ts
-import { Schema, Document, model, models } from "mongoose";
-import type { ObjectId, ISODate } from "@/types/common";
+import { ISODate } from "@/types/common";
+import { Document, Schema, model, models, Types, ObjectId } from "mongoose";
 
 export interface IReview extends Document {
   _id: ObjectId;
-  orderId: ObjectId;
+  uploadId: ObjectId;
+
+  contractId: ObjectId;
   listingId: ObjectId;
   artistId: ObjectId;
   clientId: ObjectId;
@@ -16,38 +17,51 @@ export interface IReview extends Document {
   images?: string[];
 
   createdAt: ISODate;
-  editedAt?: ISODate;
-  isDeleted: boolean;
+  updatedAt: ISODate;
 }
 
 const ReviewSchema = new Schema<IReview>(
   {
-    orderId: {
+    uploadId: {
       type: Schema.Types.ObjectId,
-      ref: "Order",
       required: true,
-      unique: true,
+      ref: "FinalUpload",
+    },
+
+    contractId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "Contract",
     },
     listingId: {
       type: Schema.Types.ObjectId,
-      ref: "CommissionListing",
       required: true,
+      ref: "CommissionListing",
     },
-    artistId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    clientId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    artistId: { type: Schema.Types.ObjectId, required: true, ref: "User" },
+    clientId: { type: Schema.Types.ObjectId, required: true, ref: "User" },
 
-    rating: { type: Number, min: 1, max: 5, required: true },
-    comment: { type: String, maxlength: 1024 },
-
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+      validate: {
+        validator: Number.isInteger,
+        message: "Rating must be an integer between 1 and 5",
+      },
+    },
+    comment: { type: String, required: true },
     images: { type: [String], default: [] },
-    editedAt: { type: Date },
-    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-/* ---------- Indexes ---------- */
-ReviewSchema.index({ listingId: 1, isDeleted: 1 });
-ReviewSchema.index({ artistId: 1, isDeleted: 1 });
+// Index by related objects for quick lookups
+ReviewSchema.index({ uploadId: 1 }, { unique: true }); // One review per upload
+ReviewSchema.index({ contractId: 1 });
+ReviewSchema.index({ listingId: 1 });
+ReviewSchema.index({ artistId: 1 });
+ReviewSchema.index({ clientId: 1 });
 
 export default models.Review || model<IReview>("Review", ReviewSchema);

@@ -88,6 +88,7 @@ export type CommissionListingUpdateInput = Partial<
     | "slotsUsed"
     | "latePenaltyPercent"
     | "graceDays"
+    | "reviewsSummary"
   >
 >;
 

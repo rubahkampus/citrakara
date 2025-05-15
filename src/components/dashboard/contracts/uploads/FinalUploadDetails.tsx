@@ -1,4 +1,3 @@
-// src/components/dashboard/contracts/uploads/FinalUploadDetails.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -27,12 +26,14 @@ import {
   LinearProgress,
   Tooltip,
   IconButton,
+  Rating,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { IContract } from "@/lib/db/models/contract.model";
 import { IFinalUpload } from "@/lib/db/models/upload.model";
 import { ICancelTicket } from "@/lib/db/models/ticket.model";
+import { IReview } from "@/lib/db/models/review.model";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import WarningIcon from "@mui/icons-material/Warning";
@@ -42,6 +43,9 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import InfoIcon from "@mui/icons-material/Info";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
+import CreateReviewDialog from "../reviews/CreateReviewDialog";
 
 interface FinalUploadDetailsProps {
   contract: IContract;
@@ -76,6 +80,9 @@ export default function FinalUploadDetails({
   const [success, setSuccess] = useState(false);
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [existingReview, setExistingReview] = useState<IReview | null>(null);
+  const [isLoadingReview, setIsLoadingReview] = useState(false);
 
   const isCompleteDelivery = upload.workProgress === 100;
   const isCancellationProof = upload.workProgress < 100;
@@ -158,6 +165,29 @@ export default function FinalUploadDetails({
       fetchCancelTicket();
     }
   }, [contract._id, upload.cancelTicketId]);
+
+  // Fetch existing review for this upload
+  useEffect(() => {
+    const fetchReview = async () => {
+      if (!upload._id || !isClient) return;
+
+      setIsLoadingReview(true);
+      try {
+        const response = await axiosClient.get(
+          `/api/contract/${contract.id}/uploads/final/${upload.id}/review`
+        );
+        if (response.data.exists) {
+          setExistingReview(response.data.review);
+        }
+      } catch (err) {
+        console.error("Error fetching review:", err);
+      } finally {
+        setIsLoadingReview(false);
+      }
+    };
+
+    fetchReview();
+  }, [upload._id, isClient]);
 
   // Determine status colors
   const getStatusColor = (status: string) => {
@@ -260,6 +290,19 @@ export default function FinalUploadDetails({
       `/${username}/dashboard/contracts/${contract._id}/resolution/new?targetType=final&targetId=${upload._id}`
     );
   };
+
+  // Handle successful review submission
+  const handleReviewSuccess = () => {
+    // Refresh to show updated reviews
+    router.refresh();
+  };
+
+  // Determine if client can leave a review (only for accepted deliveries)
+  const canLeaveReview =
+    isClient &&
+    isCompleteDelivery &&
+    upload.status === "accepted" &&
+    !existingReview;
 
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
@@ -376,6 +419,49 @@ export default function FinalUploadDetails({
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
+        </Alert>
+      )}
+
+      {/* Review Button - Shown only to clients for accepted complete deliveries */}
+      {canLeaveReview && (
+        <Alert
+          severity="info"
+          icon={<StarIcon />}
+          action={
+            <Button
+              color="primary"
+              size="small"
+              variant="contained"
+              onClick={() => setShowReviewDialog(true)}
+              startIcon={<StarIcon />}
+            >
+              Beri Ulasan
+            </Button>
+          }
+          sx={{ mb: 3 }}
+        >
+          <Typography variant="body2">
+            Pengiriman telah diterima. Bagikan pengalaman Anda dengan memberikan
+            ulasan kepada seniman.
+          </Typography>
+        </Alert>
+      )}
+
+      {/* Display existing review if one exists */}
+      {existingReview && (
+        <Alert severity="success" icon={<StarIcon />} sx={{ mb: 3 }}>
+          <Typography variant="body2" fontWeight="medium" gutterBottom>
+            Anda telah memberikan ulasan untuk pengiriman ini
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+            <Box sx={{ mr: 2 }}>
+              <Rating value={existingReview.rating} readOnly size="small" />
+            </Box>
+            <Typography variant="body2">
+              "{existingReview.comment.substring(0, 100)}
+              {existingReview.comment.length > 100 ? "..." : ""}"
+            </Typography>
+          </Box>
         </Alert>
       )}
 
@@ -829,6 +915,18 @@ export default function FinalUploadDetails({
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Review Dialog */}
+      {canLeaveReview && (
+        <CreateReviewDialog
+          open={showReviewDialog}
+          onClose={() => setShowReviewDialog(false)}
+          uploadId={upload._id.toString()}
+          contractId={contract._id.toString()}
+          uploadImages={upload.images || []}
+          onSuccess={handleReviewSuccess}
+        />
+      )}
 
       {/* Escalation Dialog */}
       <Dialog

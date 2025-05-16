@@ -77,7 +77,6 @@ export interface CommissionFormValues {
   slots: number;
   type: "template" | "custom";
   flow: "standard" | "milestone";
-  // tos: string;
   // Samples + Thumbnail
   samples: (File | string)[];
   thumbnailIdx: number;

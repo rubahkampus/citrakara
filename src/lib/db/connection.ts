@@ -40,7 +40,7 @@ export async function connectDB(): Promise<typeof mongoose.connection> {
 
   // Establish a new connection
   global._mongoose.promise = mongoose
-    .connect(uri, { dbName: "komis" })
+    .connect(uri, { dbName: "komis-beta" })
     .then((mongooseInstance) => {
       global._mongoose.conn = mongooseInstance.connection;
       return mongooseInstance.connection;

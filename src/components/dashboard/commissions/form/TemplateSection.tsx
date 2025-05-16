@@ -24,67 +24,110 @@ import {
   OptionGroupInput,
   AddonInput,
   QuestionInput,
+  SelectionInput,
+  RevisionPolicyInput,
+  MilestoneInput,
+  SubjectGroupInput,
 } from "../CommissionFormPage";
+import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
-// A lean interface just for your template data
+// A lean interface just for template data
 interface TemplateData {
   id: string;
   title: string;
-  type: "template" | "custom";
-  flow: "standard" | "milestone";
   basePrice: number;
   currency: string;
+  slots: number;
+  type: "template" | "custom";
+  flow: "standard" | "milestone";
+  samples?: (File | string)[];
+  thumbnailIdx?: number;
+  // Description
   description: { title: string; detail: string }[];
+  // Deadline
   deadlineMode: "standard" | "withDeadline" | "withRush";
   deadlineMin: number;
   deadlineMax: number;
-  tags: string[];
+  rushKind?: "flat" | "perDay";
+  rushAmount?: number;
+  // Fees
+  cancelKind: "flat" | "percentage";
+  cancelAmount: number;
+  // Revisions
+  revisionType: "none" | "standard" | "milestone";
+  revLimit?: boolean;
+  revFree?: number;
+  revExtraAllowed?: boolean;
+  revFee?: number;
+  // Milestones
+  milestones?: MilestoneInput[];
+  // Contract
+  allowContractChange: boolean;
+  changeable: string[];
+  // Options
   generalOptions: {
     optionGroups: OptionGroupInput[];
     addons: AddonInput[];
-    // raw strings here
-    questions: string[];
+    questions: (string | QuestionInput)[];
   };
   subjectOptions: Array<{
+    id?: number;
     title: string;
     limit: number;
     discount: number;
     optionGroups: OptionGroupInput[];
     addons: AddonInput[];
-    // raw strings
-    questions: string[];
+    questions: (string | QuestionInput)[];
   }>;
-  milestones?: CommissionFormValues["milestones"];
+  // Tags
+  tags: string[];
 }
-// Mock data with proper typing
-const TEMPLATES: TemplateCard[] = [
+
+// Pre-defined templates with proper typing
+const TEMPLATES: TemplateData[] = [
   {
     id: "1",
-    title: "Anthro Furry Character Commission",
+    title:
+      "Furry Anthro Character Commission (Milestone-Deadline-Per-Milestone Revisions)",
+    basePrice: 300000,
+    currency: "IDR",
+    slots: 5,
     type: "template",
     flow: "milestone",
-    basePrice: 300000,
     description: [
       {
         title: "Concept & Sketch",
-        detail: "Initial character sketch based on your references.",
+        detail: "Initial sketch of your character based on your references.",
       },
-      { title: "Lineart", detail: "Clean lineart of your character." },
-      { title: "Coloring", detail: "Base colors applied to your character." },
+      { title: "Lineart", detail: "Clean line art of your character." },
       {
-        title: "Final Shading & Details",
-        detail: "Shading, highlights, and final touches.",
+        title: "Base Colors",
+        detail: "Base colors applied to your character.",
+      },
+      {
+        title: "Shading & Final Details",
+        detail: "Shadows, highlights, and final touches.",
       },
     ],
     deadlineMode: "withDeadline",
     deadlineMin: 14,
     deadlineMax: 21,
-    currency: "IDR",
+    cancelKind: "percentage",
+    cancelAmount: 20,
+    revisionType: "milestone",
+    allowContractChange: true,
+    changeable: [
+      "deadline",
+      "generalDescription",
+      "referenceImages",
+      "generalOptions",
+      "subjectOptions",
+    ],
     tags: ["furry", "anthro", "character", "milestone"],
     generalOptions: {
       optionGroups: [
         {
-          title: "Commercial Use?",
+          title: "Commercial Usage?",
           selections: [
             { label: "No", price: 0 },
             { label: "Yes", price: 50000 },
@@ -98,11 +141,11 @@ const TEMPLATES: TemplateCard[] = [
           ],
         },
       ],
-      addons: [{ label: "Sream on Twitch", price: 100000 }],
+      addons: [{ label: "Twitch Stream", price: 100000 }],
       questions: [
-        "What is your mood for this commission?",
-        "Do you have any specific color palette in mind?",
-        "What is the vibe of the commission?",
+        "What mood do you want for this commission?",
+        "Do you have a specific color palette in mind?",
+        "What tone would you like for the commission?",
       ],
     },
     subjectOptions: [
@@ -115,8 +158,8 @@ const TEMPLATES: TemplateCard[] = [
             title: "View Type",
             selections: [
               { label: "Headshot", price: 0 },
-              { label: "Half-body", price: 100000 },
-              { label: "Full-body", price: 200000 },
+              { label: "Half Body", price: 100000 },
+              { label: "Full Body", price: 200000 },
             ],
           },
           {
@@ -129,13 +172,13 @@ const TEMPLATES: TemplateCard[] = [
         ],
         addons: [
           {
-            label: "NSFW Anatomy (For Half-body and Full-body only)",
+            label: "NSFW Anatomy (Half Body and Full Body only)",
             price: 50000,
           },
         ],
         questions: [
-          "What is the species of the character and do you have reference images?",
-          "Any preferred pose or expression?",
+          "What species is your character and do you have reference images?",
+          "Any specific pose or expression desired?",
         ],
       },
       {
@@ -146,82 +189,257 @@ const TEMPLATES: TemplateCard[] = [
           {
             title: "Detail Level",
             selections: [
-              { label: "Simple Flat Color", price: 0 },
+              { label: "Simple Solid Color", price: 0 },
               { label: "Detailed Background", price: 150000 },
             ],
           },
         ],
         addons: [],
-        questions: ["What kind of background do you have in mind?"],
+        questions: ["What type of background would you like?"],
       },
     ],
     milestones: [
       {
         title: "Concept & Sketch",
         percent: 25,
-        policy: { limit: true, free: 2, extraAllowed: true, fee: 0 },
+        policy: {
+          limit: true,
+          free: 2,
+          extraAllowed: true,
+          fee: 50000,
+        },
       },
       {
         title: "Lineart",
         percent: 25,
-        policy: { limit: true, free: 2, extraAllowed: true, fee: 0 },
+        policy: {
+          limit: true,
+          free: 2,
+          extraAllowed: true,
+          fee: 50000,
+        },
       },
       {
-        title: "Coloring",
+        title: "Base Colors",
         percent: 25,
-        policy: { limit: true, free: 2, extraAllowed: true, fee: 0 },
+        policy: {
+          limit: true,
+          free: 2,
+          extraAllowed: true,
+          fee: 50000,
+        },
       },
       {
-        title: "Final Shading & Details",
+        title: "Shading & Final Details",
         percent: 25,
-        policy: { limit: true, free: 2, extraAllowed: true, fee: 0 },
+        policy: {
+          limit: true,
+          free: 2,
+          extraAllowed: true,
+          fee: 50000,
+        },
       },
     ],
   },
+  {
+    id: "2",
+    title: "Furry Chibi (Standard-Rush perDay-No Revisions)",
+    basePrice: 150000,
+    currency: "IDR",
+    slots: 10,
+    type: "template",
+    flow: "standard",
+    description: [
+      {
+        title: "Chibi Illustration",
+        detail:
+          "Cute and simple chibi-style illustration of your furry character.",
+      },
+      {
+        title: "Flat Color Style",
+        detail:
+          "Using solid colors with minimal shading for a minimalist style.",
+      },
+    ],
+    deadlineMode: "withRush",
+    deadlineMin: 7,
+    deadlineMax: 14,
+    rushKind: "perDay",
+    rushAmount: 25000,
+    cancelKind: "percentage",
+    cancelAmount: 30,
+    revisionType: "none",
+    allowContractChange: true,
+    changeable: ["deadline", "generalDescription", "referenceImages"],
+    tags: ["furry", "chibi", "flat color"],
+    generalOptions: {
+      optionGroups: [
+        {
+          title: "Number of Characters",
+          selections: [
+            { label: "1 Character", price: 0 },
+            { label: "2 Characters", price: 125000 },
+            { label: "3 Characters", price: 250000 },
+          ],
+        },
+      ],
+      addons: [],
+      questions: [
+        "Brief character description (species, colors, clothing)",
+        "Desired pose or expression?",
+      ],
+    },
+    subjectOptions: [],
+  },
+  {
+    id: "3",
+    title: "Furry Scene (Standard-Rush Flat-Standard Revision with Quota)",
+    basePrice: 600000,
+    currency: "IDR",
+    slots: 1,
+    type: "custom",
+    flow: "standard",
+    description: [
+      {
+        title: "Complex Scene",
+        detail:
+          "Full scene illustration with furry characters and detailed background.",
+      },
+      {
+        title: "High Quality",
+        detail: "Full rendering with shading and lighting effects.",
+      },
+    ],
+    deadlineMode: "withRush",
+    deadlineMin: 21,
+    deadlineMax: 35,
+    rushKind: "flat",
+    rushAmount: 300000,
+    cancelKind: "flat",
+    cancelAmount: 300000,
+    revisionType: "standard",
+    revLimit: true,
+    revFree: 2,
+    revExtraAllowed: true,
+    revFee: 150000,
+    allowContractChange: true,
+    changeable: ["deadline", "generalDescription", "referenceImages"],
+    tags: ["furry", "scene", "illustration"],
+    generalOptions: {
+      optionGroups: [
+        {
+          title: "Art Style",
+          selections: [
+            { label: "Cartoon", price: 0 },
+            { label: "Semi-Realistic", price: 200000 },
+            { label: "Anime", price: 100000 },
+          ],
+        },
+      ],
+      addons: [
+        { label: "Special Effects (fire, water, etc)", price: 150000 },
+        { label: "Print-Ready Version", price: 100000 },
+      ],
+      questions: [
+        "Desired atmosphere or mood for the scene?",
+        "Time of day in the scene (morning, afternoon, night)?",
+      ],
+    },
+    subjectOptions: [
+      {
+        title: "Character",
+        limit: 5,
+        discount: 20,
+        optionGroups: [
+          {
+            title: "Size in Scene",
+            selections: [
+              { label: "Main Character", price: 200000 },
+              { label: "Secondary Character", price: 100000 },
+              { label: "Background Character", price: 50000 },
+            ],
+          },
+        ],
+        addons: [{ label: "Add Special Detail", price: 50000 }],
+        questions: [
+          "Character description and position in scene?",
+          "Desired interaction between characters?",
+        ],
+      },
+      {
+        title: "Setting",
+        limit: 1,
+        discount: 0,
+        optionGroups: [
+          {
+            title: "Complexity",
+            selections: [
+              { label: "Simple", price: 0 },
+              { label: "Medium", price: 200000 },
+              { label: "Complex", price: 400000 },
+            ],
+          },
+        ],
+        addons: [{ label: "Custom Architecture", price: 200000 }],
+        questions: ["Description of desired setting?"],
+      },
+    ],
+  },
+  {
+    id: "4",
+    title:
+      "Furry Reference Sheet (Standard-Standard Deadline-Unlimited Revisions)",
+    basePrice: 400000,
+    currency: "IDR",
+    slots: 3,
+    type: "template",
+    flow: "standard",
+    description: [
+      {
+        title: "Character Reference Sheet",
+        detail:
+          "Complete reference sheet for your furry character, including front, side, and back views with full details.",
+      },
+      {
+        title: "Inclusive",
+        detail:
+          "Includes facial expressions, anatomy details, and color palette.",
+      },
+    ],
+    deadlineMode: "standard",
+    deadlineMin: 14,
+    deadlineMax: 28,
+    cancelKind: "flat",
+    cancelAmount: 100000,
+    revisionType: "standard",
+    revLimit: false,
+    revFree: 999,
+    revExtraAllowed: false,
+    allowContractChange: false,
+    changeable: [],
+    tags: ["furry", "reference", "sheet"],
+    generalOptions: {
+      optionGroups: [
+        {
+          title: "Copyright",
+          selections: [
+            { label: "Personal Use", price: 0 },
+            { label: "Commercial Use", price: 200000 },
+          ],
+        },
+      ],
+      addons: [
+        { label: "Add Action Pose", price: 150000 },
+        { label: "Add Clothing Details", price: 100000 },
+      ],
+      questions: [
+        "What animal is your character?",
+        "Do you have references or a description of your character?",
+      ],
+    },
+    subjectOptions: [],
+  },
 ];
-
-interface TemplateCard {
-  id: string;
-  title: string;
-  type: "template" | "custom";
-  flow: "standard" | "milestone";
-  basePrice: number;
-  description: Array<{ title: string; detail: string }>;
-  deadlineMode: "standard" | "withDeadline" | "withRush";
-  deadlineMin: number;
-  deadlineMax: number;
-  currency: string;
-  tags: string[];
-  generalOptions: {
-    optionGroups: Array<{
-      title: string;
-      selections: Array<{ label: string; price: number }>;
-    }>;
-    addons: Array<{ label: string; price: number }>;
-    questions: string[];
-  };
-  subjectOptions: Array<{
-    title: string;
-    limit: number;
-    discount: number;
-    optionGroups: Array<{
-      title: string;
-      selections: Array<{ label: string; price: number }>;
-    }>;
-    addons: Array<{ label: string; price: number }>;
-    questions: string[];
-  }>;
-  milestones?: {
-    title: string;
-    percent: number;
-    policy: {
-      limit: boolean;
-      free: number;
-      extraAllowed: boolean;
-      fee: number;
-    };
-  }[];
-}
 
 export const TemplateSection: React.FC = () => {
   const [tab, setTab] = useState(0);
@@ -232,11 +450,20 @@ export const TemplateSection: React.FC = () => {
 
   const { reset } = useFormContext<CommissionFormValues>();
 
-  // Helper: turn ["foo","bar"] into [{id:1,label:"foo"},…]
-  const mkQuestions = (qs: string[]): QuestionInput[] =>
-    qs.map((label, i) => ({ id: i + 1, label }));
+  // Helper: convert simple strings or objects to QuestionInput format
+  const convertToQuestionInputs = (
+    questions: Array<string | QuestionInput>
+  ): QuestionInput[] => {
+    return questions.map((q, i) => {
+      if (typeof q === "string") {
+        return { id: i + 1, label: q };
+      } else {
+        return { id: q.id || i + 1, label: q.label };
+      }
+    });
+  };
 
-  // When you pick a template, build a Partial<CommissionFormValues> and reset()
+  // When a template is selected, build the form values and reset the form
   const onSelect = (tpl: TemplateData) => {
     setSelected(tpl.id);
 
@@ -244,81 +471,196 @@ export const TemplateSection: React.FC = () => {
       title: tpl.title,
       basePrice: tpl.basePrice,
       currency: tpl.currency,
-      slots: -1,
+      slots: tpl.slots,
       type: tpl.type,
       flow: tpl.flow,
-      // tos: "",
-      samples: [],
-      thumbnailIdx: 0,
+      samples: tpl.samples || [],
+      thumbnailIdx: tpl.thumbnailIdx !== undefined ? tpl.thumbnailIdx : 0,
       description: tpl.description,
       deadlineMode: tpl.deadlineMode,
       deadlineMin: tpl.deadlineMin,
       deadlineMax: tpl.deadlineMax,
-      cancelKind: "percentage",
-      cancelAmount: 10,
-      revisionType: tpl.flow === "milestone" ? "milestone" : "standard",
-      milestones: tpl.milestones ?? [],
-      allowContractChange: true,
-      changeable: [
-        "deadline",
-        "generalOptions",
-        "subjectOptions",
-        "generalDescription",
-        "referenceImages",
-      ],
+      cancelKind: tpl.cancelKind,
+      cancelAmount: tpl.cancelAmount,
+      rushKind: tpl.rushKind,
+      rushAmount: tpl.rushAmount,
+      revisionType: tpl.revisionType,
+      revLimit: tpl.revLimit,
+      revFree: tpl.revFree,
+      revExtraAllowed: tpl.revExtraAllowed,
+      revFee: tpl.revFee,
+      milestones: tpl.milestones || [],
+      allowContractChange: tpl.allowContractChange,
+      changeable: tpl.changeable,
       generalOptions: {
-        ...tpl.generalOptions,
-        questions: mkQuestions(
-          // template.generalOptions.questions is string[]
-          (tpl.generalOptions.questions as any[]).map((q) =>
-            typeof q === "string" ? q : String(q)
-          )
-        ),
+        optionGroups: tpl.generalOptions.optionGroups.map((group) => ({
+          id: group.id,
+          title: group.title,
+          selections: group.selections.map((selection, idx) => ({
+            id: selection.id || idx + 1,
+            label: selection.label,
+            price: selection.price,
+          })),
+        })),
+        addons: tpl.generalOptions.addons.map((addon, idx) => ({
+          id: addon.id || idx + 1,
+          label: addon.label,
+          price: addon.price,
+        })),
+        questions: convertToQuestionInputs(tpl.generalOptions.questions),
       },
-      subjectOptions: tpl.subjectOptions.map((sub) => ({
-        ...sub,
-        questions: mkQuestions(
-          (sub.questions as any[]).map((q) =>
-            typeof q === "string" ? q : String(q)
-          )
-        ),
+      subjectOptions: tpl.subjectOptions.map((subject, subjectIdx) => ({
+        id: subject.id || subjectIdx + 1,
+        title: subject.title,
+        limit: subject.limit,
+        discount: subject.discount,
+        optionGroups: subject.optionGroups.map((group, groupIdx) => ({
+          id: group.id || groupIdx + 1,
+          title: group.title,
+          selections: group.selections.map((selection, selectionIdx) => ({
+            id: selection.id || selectionIdx + 1,
+            label: selection.label,
+            price: selection.price,
+          })),
+        })),
+        addons: subject.addons.map((addon, addonIdx) => ({
+          id: addon.id || addonIdx + 1,
+          label: addon.label,
+          price: addon.price,
+        })),
+        questions: convertToQuestionInputs(subject.questions),
       })),
       tags: tpl.tags,
     };
 
+    // Clean up undefined optional fields
+    if (!tpl.rushKind) delete defaults.rushKind;
+    if (!tpl.rushAmount) delete defaults.rushAmount;
+    if (tpl.revisionType !== "standard") {
+      delete defaults.revLimit;
+      delete defaults.revFree;
+      delete defaults.revExtraAllowed;
+      delete defaults.revFee;
+    }
+    if (tpl.flow !== "milestone") {
+      delete defaults.milestones;
+    }
+
     reset((prev) => ({ ...prev, ...defaults }));
   };
 
-  // Fetch user-created commissions only when that tab is active
+  // Fetch user-created commissions when the tab is active
   useEffect(() => {
     if (tab !== 1) return;
+
     setLoading(true);
     axiosClient
       .get("/api/commission/listing")
       .then((res) => {
-        const data: TemplateData[] = res.data.listings.map((l: any) => ({
-          id: l._id,
-          title: l.title,
-          type: l.type,
-          flow: l.flow,
-          basePrice: l.basePrice,
-          currency: l.currency,
-          description:
-            l.description?.length > 0
-              ? l.description
-              : [{ title: "Overview", detail: "No description" }],
-          deadlineMode: l.deadline.mode,
-          deadlineMin: l.deadline.min,
-          deadlineMax: l.deadline.max,
-          tags: l.tags || [],
-          generalOptions: l.generalOptions || {
-            optionGroups: [],
-            addons: [],
-            questions: [],
-          },
-          subjectOptions: l.subjectOptions || [],
-          milestones: l.milestones,
-        }));
+        const data: TemplateData[] = res.data.listings.map(
+          (l: ICommissionListing) => ({
+            id: l._id,
+            title: l.title,
+            type: l.type,
+            flow: l.flow,
+            basePrice: l.basePrice,
+            currency: l.currency || "IDR",
+            slots: l.slots || -1,
+            samples: l.samples || [],
+            thumbnailIdx: l.thumbnailIdx,
+            description:
+              l.description?.length > 0
+                ? l.description
+                : [{ title: "Overview", detail: "No description" }],
+            deadlineMode: l.deadline.mode,
+            deadlineMin: l.deadline.min,
+            deadlineMax: l.deadline.max,
+            rushKind: l.deadline.rushFee?.kind,
+            rushAmount: l.deadline.rushFee?.amount,
+            cancelKind: l.cancelationFee.kind,
+            cancelAmount: l.cancelationFee.amount,
+            revisionType: l.revisions?.type || "none",
+            revLimit:
+              l.revisions?.type === "standard"
+                ? l.revisions.policy?.limit
+                : undefined,
+            revFree:
+              l.revisions?.type === "standard"
+                ? l.revisions.policy?.free
+                : undefined,
+            revExtraAllowed:
+              l.revisions?.type === "standard"
+                ? l.revisions.policy?.extraAllowed
+                : undefined,
+            revFee:
+              l.revisions?.type === "standard"
+                ? l.revisions.policy?.fee
+                : undefined,
+            milestones:
+              l.milestones?.map((m) => ({
+                id: m.id,
+                title: m.title,
+                percent: m.percent,
+                policy: m.policy,
+              })) || [],
+            allowContractChange: l.allowContractChange,
+            changeable: l.changeable || [],
+            tags: l.tags || [],
+            generalOptions: {
+              optionGroups:
+                l.generalOptions?.optionGroups?.map((g) => ({
+                  id: g.id,
+                  title: g.title,
+                  selections:
+                    g.selections?.map((s) => ({
+                      id: s.id,
+                      label: s.label,
+                      price: s.price,
+                    })) || [],
+                })) || [],
+              addons:
+                l.generalOptions?.addons?.map((a) => ({
+                  id: a.id,
+                  label: a.label,
+                  price: a.price,
+                })) || [],
+              questions:
+                l.generalOptions?.questions?.map((q) => ({
+                  id: q.id,
+                  label: q.text,
+                })) || [],
+            },
+            subjectOptions:
+              l.subjectOptions?.map((so) => ({
+                id: so.id,
+                title: so.title,
+                limit: so.limit,
+                discount: so.discount || 0,
+                optionGroups:
+                  so.optionGroups?.map((g) => ({
+                    id: g.id,
+                    title: g.title,
+                    selections:
+                      g.selections?.map((s) => ({
+                        id: s.id,
+                        label: s.label,
+                        price: s.price,
+                      })) || [],
+                  })) || [],
+                addons:
+                  so.addons?.map((a) => ({
+                    id: a.id,
+                    label: a.label,
+                    price: a.price,
+                  })) || [],
+                questions:
+                  so.questions?.map((q) => ({
+                    id: q.id,
+                    label: q.text,
+                  })) || [],
+              })) || [],
+          })
+        );
         setUserTemplates(data);
         setError(null);
       })
@@ -346,7 +688,7 @@ export const TemplateSection: React.FC = () => {
             <Chip label={tpl.type} size="small" />
             <Chip label={tpl.flow} size="small" />
             <Chip
-              label={`IDR ${tpl.basePrice.toLocaleString()}`}
+              label={`${tpl.currency} ${tpl.basePrice.toLocaleString()}`}
               size="small"
             />
           </Stack>

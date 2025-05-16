@@ -26,7 +26,7 @@ import {
 import { KButton } from "@/components/KButton";
 import { axiosClient } from "@/lib/utils/axiosClient";
 
-// Update the type to match what DialogManager expects
+// Types
 type DialogMode =
   | "viewTos"
   | "editTos"
@@ -56,6 +56,31 @@ interface TosDialogProps {
   isOwner?: boolean;
 }
 
+// Default values
+const DEFAULT_SECTIONS: TosSection[] = [
+  {
+    subtitle: "Ketentuan Umum",
+    text: "Persyaratan ini mengatur semua komisi yang diterima oleh artis.",
+  },
+  {
+    subtitle: "Pembayaran",
+    text: "Pembayaran diperlukan di muka sebelum pekerjaan dimulai. Tidak ada pengembalian dana setelah pekerjaan dimulai.",
+  },
+  {
+    subtitle: "Hak Cipta",
+    text: "Artis mempertahankan semua hak atas karya seni kecuali dinyatakan lain secara eksplisit.",
+  },
+  {
+    subtitle: "Penggunaan",
+    text: "Klien hanya dapat menggunakan karya yang ditugaskan untuk penggunaan pribadi, kecuali jika hak komersial dibeli.",
+  },
+  {
+    subtitle: "Revisi",
+    text: "Setiap komisi mencakup hingga 2 revisi. Revisi tambahan akan dikenakan biaya sesuai tarif per jam artis.",
+  },
+];
+
+// Component
 export default function TosDialog({
   open,
   onClose,
@@ -64,6 +89,7 @@ export default function TosDialog({
   initialData,
   isOwner = false,
 }: TosDialogProps) {
+  // State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -71,42 +97,21 @@ export default function TosDialog({
   const [setAsDefault, setSetAsDefault] = useState(true);
 
   // Normalize the mode to handle both naming conventions
-  const normalizedMode =
-    mode === "viewTos" || mode === "view"
-      ? "view"
-      : mode === "editTos" || mode === "edit"
-      ? "edit"
-      : "create";
+  const normalizedMode = mode.includes("view")
+    ? "view"
+    : mode.includes("edit")
+    ? "edit"
+    : "create";
 
   // Load existing or default data
   useEffect(() => {
     if (!open) return;
+
     setError(null);
 
     if (normalizedMode === "create") {
-      setTitle("Terms of Service");
-      setSections([
-        {
-          subtitle: "General Terms",
-          text: "These terms govern all commissions accepted by the artist.",
-        },
-        {
-          subtitle: "Payment",
-          text: "Payment is required upfront before work begins. No refunds after work has started.",
-        },
-        {
-          subtitle: "Rights",
-          text: "The artist retains all rights to the artwork unless explicitly stated otherwise.",
-        },
-        {
-          subtitle: "Usage",
-          text: "The client may use the commissioned work for personal use only, unless commercial rights are purchased.",
-        },
-        {
-          subtitle: "Revisions",
-          text: "Each commission includes up to 2 revisions. Additional revisions will be charged at the artist's hourly rate.",
-        },
-      ]);
+      setTitle("Syarat dan Ketentuan");
+      setSections(DEFAULT_SECTIONS);
       setSetAsDefault(true);
       return;
     }
@@ -129,12 +134,15 @@ export default function TosDialog({
           setSetAsDefault(tos.isDefault || false);
         })
         .catch((err) =>
-          setError(err.response?.data?.error || "Failed to load TOS")
+          setError(
+            err.response?.data?.error || "Gagal memuat Syarat dan Ketentuan"
+          )
         )
         .finally(() => setLoading(false));
     }
   }, [open, normalizedMode, tosId, initialData]);
 
+  // Section handlers
   const handleAddSection = () => {
     setSections([...sections, { subtitle: "", text: "" }]);
   };
@@ -148,19 +156,21 @@ export default function TosDialog({
     field: "subtitle" | "text",
     value: string
   ) => {
-    const copy = [...sections];
-    copy[idx][field] = value;
-    setSections(copy);
+    const updatedSections = [...sections];
+    updatedSections[idx][field] = value;
+    setSections(updatedSections);
   };
 
+  // Form submission
   const handleSubmit = async () => {
+    // Validation
     if (!title.trim()) {
-      setError("Title is required");
+      setError("Judul diperlukan");
       return;
     }
 
     if (sections.some((s) => !s.subtitle.trim() || !s.text.trim())) {
-      setError("All sections must be filled");
+      setError("Semua bagian harus diisi");
       return;
     }
 
@@ -183,157 +193,223 @@ export default function TosDialog({
       }
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to save TOS");
+      setError(
+        err.response?.data?.error || "Gagal menyimpan Syarat dan Ketentuan"
+      );
       setLoading(false);
     }
   };
 
+  // Dialog title based on mode
+  const getDialogTitle = () => {
+    switch (normalizedMode) {
+      case "view":
+        return "Syarat dan Ketentuan";
+      case "edit":
+        return "Edit Syarat dan Ketentuan";
+      default:
+        return "Buat Syarat dan Ketentuan";
+    }
+  };
+
+  // Render UI Components
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (normalizedMode === "view") {
+      return (
+        <>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: "bold" }}>
+            {title}
+          </Typography>
+
+          {sections.map((sec, i) => (
+            <Paper
+              key={i}
+              variant="outlined"
+              sx={{
+                mb: 2,
+                p: 2,
+                borderRadius: 1.5,
+                transition: "all 0.2s ease-in-out",
+                "&:hover": { boxShadow: 1 },
+              }}
+            >
+              <Typography variant="h6" color="primary" gutterBottom>
+                {sec.subtitle}
+              </Typography>
+              <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
+                {sec.text}
+              </Typography>
+            </Paper>
+          ))}
+        </>
+      );
+    }
+
+    return (
+      <Box>
+        <TextField
+          label="Judul"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          fullWidth
+          required
+          sx={{ mb: 3 }}
+        />
+
+        {sections.map((sec, i) => (
+          <Paper
+            key={i}
+            elevation={0}
+            sx={{
+              mb: 3,
+              p: 2.5,
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              transition: "all 0.2s",
+              "&:hover": { boxShadow: 1 },
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mb: 1.5,
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="subtitle2">Bagian {i + 1}</Typography>
+              {sections.length > 1 && (
+                <IconButton
+                  color="error"
+                  onClick={() => handleRemoveSection(i)}
+                  size="small"
+                  sx={{
+                    opacity: 0.7,
+                    "&:hover": { opacity: 1 },
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+
+            <TextField
+              label="Judul Bagian"
+              value={sec.subtitle}
+              onChange={(e) =>
+                handleSectionChange(i, "subtitle", e.target.value)
+              }
+              fullWidth
+              required
+              sx={{ mb: 2 }}
+              size="small"
+            />
+
+            <TextField
+              label="Konten"
+              value={sec.text}
+              onChange={(e) => handleSectionChange(i, "text", e.target.value)}
+              fullWidth
+              multiline
+              rows={3}
+              placeholder="Masukkan konten bagian di sini..."
+            />
+          </Paper>
+        ))}
+
+        <Box sx={{ textAlign: "center", mb: 2 }}>
+          <Button
+            startIcon={<AddIcon />}
+            onClick={handleAddSection}
+            sx={{ borderRadius: 2 }}
+          >
+            Tambah Bagian
+          </Button>
+        </Box>
+      </Box>
+    );
+  };
+
+  // Main dialog render
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="md"
-      PaperProps={{ sx: { borderRadius: 2 } }}
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          overflow: "hidden",
+        },
+      }}
     >
       <DialogTitle
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          px: 3,
+          py: 2,
+          bgcolor: "background.paper",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center" }}>
-          <DescriptionIcon sx={{ mr: 1, color: "primary.main" }} />
-          <Typography variant="h6">
-            {normalizedMode === "view"
-              ? "Terms of Service"
-              : normalizedMode === "edit"
-              ? "Edit Terms of Service"
-              : "Create Terms of Service"}
+          <DescriptionIcon sx={{ mr: 1.5, color: "primary.main" }} />
+          <Typography variant="h6" sx={{ fontWeight: 500 }}>
+            {getDialogTitle()}
           </Typography>
         </Box>
-        <IconButton onClick={onClose} disabled={loading}>
+        <IconButton
+          onClick={onClose}
+          disabled={loading}
+          sx={{ color: "text.secondary" }}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
+
       <Divider />
-      <DialogContent sx={{ py: 3 }}>
-        {loading && (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
+
+      <DialogContent sx={{ p: 3 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 1 }}>
             {error}
           </Alert>
         )}
-        {!loading && !error && (
-          <Box>
-            {normalizedMode === "view" ? (
-              <>
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  sx={{ fontWeight: "bold" }}
-                >
-                  {title}
-                </Typography>
 
-                {sections.map((sec, i) => (
-                  <Paper key={i} variant="outlined" sx={{ mb: 2, p: 2 }}>
-                    <Typography variant="h6" color="primary" gutterBottom>
-                      {sec.subtitle}
-                    </Typography>
-                    <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
-                      {sec.text}
-                    </Typography>
-                  </Paper>
-                ))}
-              </>
-            ) : (
-              <Box>
-                <TextField
-                  label="Title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  fullWidth
-                  required
-                  sx={{ mb: 3 }}
-                />
-                {sections.map((sec, i) => (
-                  <Paper
-                    key={i}
-                    sx={{
-                      mb: 3,
-                      p: 2,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      borderRadius: 2,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        mb: 1,
-                      }}
-                    >
-                      <Typography>Section {i + 1}</Typography>
-                      {sections.length > 1 && (
-                        <IconButton
-                          color="error"
-                          onClick={() => handleRemoveSection(i)}
-                          size="small"
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
-                    <TextField
-                      label="Section Title"
-                      value={sec.subtitle}
-                      onChange={(e) =>
-                        handleSectionChange(i, "subtitle", e.target.value)
-                      }
-                      fullWidth
-                      required
-                      sx={{ mb: 2 }}
-                    />
-                    <TextField
-                      label="Content"
-                      value={sec.text}
-                      onChange={(e) =>
-                        handleSectionChange(i, "text", e.target.value)
-                      }
-                      fullWidth
-                      multiline
-                      rows={3}
-                    />
-                  </Paper>
-                ))}
-                <Box sx={{ textAlign: "center", mb: 2 }}>
-                  <Button startIcon={<AddIcon />} onClick={handleAddSection}>
-                    Add Section
-                  </Button>
-                </Box>
-              </Box>
-            )}
-          </Box>
-        )}
+        {renderContent()}
       </DialogContent>
+
       <Divider />
-      <DialogActions sx={{ px: 3, py: 2 }}>
+
+      <DialogActions sx={{ px: 3, py: 2, justifyContent: "flex-end" }}>
         {normalizedMode === "view" ? (
-          <KButton onClick={onClose}>Close</KButton>
+          <KButton onClick={onClose}>Tutup</KButton>
         ) : (
           <>
-            <Button onClick={onClose} disabled={loading}>
-              Cancel
+            <Button
+              onClick={onClose}
+              disabled={loading}
+              sx={{ mr: 1, borderRadius: 1 }}
+            >
+              Batalkan
             </Button>
-            <KButton onClick={handleSubmit} loading={loading}>
-              Save Changes
+            <KButton
+              onClick={handleSubmit}
+              loading={loading}
+              sx={{ borderRadius: 1 }}
+            >
+              Simpan Perubahan
             </KButton>
           </>
         )}

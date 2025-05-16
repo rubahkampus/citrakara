@@ -97,7 +97,7 @@ export default function AuthDialog({
           }}
         >
           <Typography variant="h5" fontWeight="bold">
-            {mode === "login" ? "Welcome back" : "Create your account"}
+            {mode === "login" ? "Selamat Datang" : "Buat Akun Baru"}
           </Typography>
           <IconButton onClick={handleClose} edge="end">
             <CloseIcon />
@@ -141,15 +141,15 @@ export default function AuthDialog({
           >
             <Typography variant="body2" color="text.secondary">
               {mode === "login"
-                ? "Don't have an account?"
-                : "Already have an account?"}
+                ? "Belum punya akun?"
+                : "Sudah punya akun"}
             </Typography>
             <KButton
               variantType="ghost"
               onClick={toggleMode}
               sx={{ mt: 1, fontWeight: 600 }}
             >
-              {mode === "login" ? "Sign up" : "Sign in"}
+              {mode === "login" ? "Daftar" : "Masuk"}
             </KButton>
           </Paper>
         </Box>

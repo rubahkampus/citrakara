@@ -24,24 +24,7 @@ import { TransitionProps } from "@mui/material/transitions";
 import Image from "next/image";
 import React from "react";
 import { axiosClient } from "@/lib/utils/axiosClient";
-
-// Interface for gallery post
-interface GalleryPost {
-  _id: string;
-  galleryId: string;
-  userId: string;
-  images: string[];
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const Transition = React.forwardRef(function Transition(
-  props: TransitionProps & { children: React.ReactElement },
-  ref: React.Ref<unknown>
-) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
+import { IGalleryPost } from "@/lib/db/models/galleryPost.model";
 
 interface GalleryPostDialogProps {
   open: boolean;
@@ -51,6 +34,21 @@ interface GalleryPostDialogProps {
   isOwner?: boolean;
 }
 
+// Constants
+const INDONESIAN_TEXT = {
+  loading: "Memuat postingan galeri...",
+  noDescription: "Tidak ada deskripsi",
+  error: "Gagal memuat detail postingan",
+};
+
+// Animation component
+const Transition = React.forwardRef(function Transition(
+  props: TransitionProps & { children: React.ReactElement },
+  ref: React.Ref<unknown>
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
 export default function GalleryPostDialog({
   open,
   onClose,
@@ -58,40 +56,41 @@ export default function GalleryPostDialog({
   mode = "view",
   isOwner = false,
 }: GalleryPostDialogProps) {
+  // Theme & Responsive hooks
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // State
-  const [post, setPost] = useState<GalleryPost | null>(null);
+  const [post, setPost] = useState<IGalleryPost | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Fetch post data when dialog opens with a postId
+  // Effects
   useEffect(() => {
     if (!postId || !open) return;
-
-    const fetchPostDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        setImageLoaded(false);
-
-        const response = await axiosClient.get(`/api/gallery/post/${postId}`);
-        setPost(response.data.post);
-        setCurrentImageIndex(0);
-      } catch (error: any) {
-        console.error("Error fetching post details:", error);
-        setError(error?.response?.data?.error || "Failed to load post details");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPostDetails();
   }, [postId, open]);
+
+  // Handlers
+  const fetchPostDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setImageLoaded(false);
+
+      const response = await axiosClient.get(`/api/gallery/post/${postId}`);
+      setPost(response.data.post);
+      setCurrentImageIndex(0);
+    } catch (error: any) {
+      console.error("Error fetching post details:", error);
+      setError(error?.response?.data?.error || INDONESIAN_TEXT.error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleClose = () => {
     onClose();
@@ -116,12 +115,213 @@ export default function GalleryPostDialog({
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("id-ID", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   };
+
+  // Component parts
+  const renderLoader = () => (
+    <Box
+      sx={{
+        width: "100%",
+        height: { xs: 350, sm: 450, md: 650 },
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "black",
+      }}
+    >
+      <CircularProgress size={40} sx={{ color: "white" }} />
+      <Typography sx={{ color: "white", mt: 2, opacity: 0.8 }}>
+        {INDONESIAN_TEXT.loading}
+      </Typography>
+    </Box>
+  );
+
+  const renderError = () => (
+    <Box
+      sx={{
+        width: "100%",
+        height: { xs: 300, sm: 400, md: 550 },
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "black",
+        p: 3,
+      }}
+    >
+      <Typography
+        color="error"
+        sx={{
+          color: "white",
+          textAlign: "center",
+          maxWidth: "80%",
+        }}
+      >
+        {error}
+      </Typography>
+    </Box>
+  );
+
+  const renderImageViewer = () => (
+    <Box
+      sx={{
+        position: "relative",
+        width: { xs: "100%", md: "70%" },
+        height: { xs: 350, sm: 450, md: 650 },
+        bgcolor: "#000",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+      }}
+    >
+      {post?.images && post?.images.length > 0 && (
+        <>
+          {!imageLoaded && (
+            <CircularProgress
+              size={30}
+              sx={{
+                color: "white",
+                position: "absolute",
+                zIndex: 1,
+              }}
+            />
+          )}
+          <Fade in={imageLoaded} timeout={300}>
+            <Box
+              sx={{
+                height: "100%",
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              <Image
+                src={post.images[currentImageIndex]}
+                alt={`Gambar galeri ${currentImageIndex + 1}`}
+                layout="fill"
+                objectFit="contain"
+                unoptimized={true}
+                onLoadingComplete={() => setImageLoaded(true)}
+              />
+            </Box>
+          </Fade>
+        </>
+      )}
+
+      {/* Navigation controls */}
+      {renderImageNavigation()}
+    </Box>
+  );
+
+  const renderImageNavigation = () => (
+    <>
+      {post?.images && post?.images.length > 1 && imageLoaded && (
+        <>
+          <IconButton
+            onClick={handlePrev}
+            size={isMobile ? "medium" : "large"}
+            sx={{
+              position: "absolute",
+              left: { xs: 8, sm: 16 },
+              bgcolor: "rgba(0,0,0,0.3)",
+              color: "white",
+              backdropFilter: "blur(4px)",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                bgcolor: "rgba(0,0,0,0.5)",
+                transform: "scale(1.1)",
+              },
+            }}
+          >
+            <ArrowBack />
+          </IconButton>
+          <IconButton
+            onClick={handleNext}
+            size={isMobile ? "medium" : "large"}
+            sx={{
+              position: "absolute",
+              right: { xs: 8, sm: 16 },
+              bgcolor: "rgba(0,0,0,0.3)",
+              color: "white",
+              backdropFilter: "blur(4px)",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                bgcolor: "rgba(0,0,0,0.5)",
+                transform: "scale(1.1)",
+              },
+            }}
+          >
+            <ArrowForward />
+          </IconButton>
+        </>
+      )}
+
+      {/* Image counter */}
+      {post?.images && post?.images.length > 1 && (
+        <Chip
+          label={`${currentImageIndex + 1} / ${post.images.length}`}
+          size="small"
+          sx={{
+            position: "absolute",
+            bottom: 16,
+            right: 16,
+            bgcolor: "rgba(0,0,0,0.4)",
+            color: "white",
+            backdropFilter: "blur(4px)",
+            height: 28,
+            "& .MuiChip-label": {
+              px: 1.5,
+              py: 0.5,
+              fontSize: 13,
+              fontWeight: 500,
+            },
+          }}
+        />
+      )}
+    </>
+  );
+
+  const renderPostDetails = () => (
+    <Box
+      sx={{
+        p: { xs: 3, md: 4 },
+        width: { xs: "100%", md: "30%" },
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        overflow: "auto",
+      }}
+    >
+      <Box>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+          <CalendarMonth
+            sx={{ color: "text.secondary", fontSize: 18, mr: 1 }}
+          />
+          <Typography variant="body2" color="text.secondary">
+            {post && formatDate(post.createdAt.toString())}
+          </Typography>
+        </Box>
+
+        <Divider sx={{ mb: 2 }} />
+
+        <Typography
+          variant="body1"
+          sx={{
+            color: "text.primary",
+            lineHeight: 1.6,
+            whiteSpace: "pre-line",
+          }}
+        >
+          {post?.description || INDONESIAN_TEXT.noDescription}
+        </Typography>
+      </Box>
+    </Box>
+  );
 
   return (
     <Dialog
@@ -141,6 +341,7 @@ export default function GalleryPostDialog({
         },
       }}
     >
+      {/* Close button */}
       <Box
         sx={{
           position: "absolute",
@@ -176,194 +377,13 @@ export default function GalleryPostDialog({
         }}
       >
         {loading ? (
-          <Box
-            sx={{
-              width: "100%",
-              height: { xs: 350, sm: 450, md: 650 },
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: "black",
-            }}
-          >
-            <CircularProgress size={40} sx={{ color: "white" }} />
-            <Typography sx={{ color: "white", mt: 2, opacity: 0.8 }}>
-              Loading gallery post...
-            </Typography>
-          </Box>
+          renderLoader()
         ) : error ? (
-          <Box
-            sx={{
-              width: "100%",
-              height: { xs: 300, sm: 400, md: 550 },
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: "black",
-              p: 3,
-            }}
-          >
-            <Typography
-              color="error"
-              sx={{
-                color: "white",
-                textAlign: "center",
-                maxWidth: "80%",
-              }}
-            >
-              {error}
-            </Typography>
-          </Box>
+          renderError()
         ) : post ? (
           <>
-            {/* Image viewer */}
-            <Box
-              sx={{
-                position: "relative",
-                width: { xs: "100%", md: "70%" },
-                height: { xs: 350, sm: 450, md: 650 },
-                bgcolor: "#000",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-              }}
-            >
-              {post.images.length > 0 && (
-                <>
-                  {!imageLoaded && (
-                    <CircularProgress
-                      size={30}
-                      sx={{
-                        color: "white",
-                        position: "absolute",
-                        zIndex: 1,
-                      }}
-                    />
-                  )}
-                  <Fade in={imageLoaded} timeout={300}>
-                    <Box
-                      sx={{
-                        height: "100%",
-                        width: "100%",
-                        position: "relative",
-                      }}
-                    >
-                      <Image
-                        src={post.images[currentImageIndex]}
-                        alt={`Gallery image ${currentImageIndex + 1}`}
-                        layout="fill"
-                        objectFit="contain"
-                        unoptimized={true}
-                        onLoadingComplete={() => setImageLoaded(true)}
-                      />
-                    </Box>
-                  </Fade>
-                </>
-              )}
-
-              {/* Navigation arrows */}
-              {post.images.length > 1 && imageLoaded && (
-                <>
-                  <IconButton
-                    onClick={handlePrev}
-                    size={isMobile ? "medium" : "large"}
-                    sx={{
-                      position: "absolute",
-                      left: { xs: 8, sm: 16 },
-                      bgcolor: "rgba(0,0,0,0.3)",
-                      color: "white",
-                      backdropFilter: "blur(4px)",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        bgcolor: "rgba(0,0,0,0.5)",
-                        transform: "scale(1.1)",
-                      },
-                    }}
-                  >
-                    <ArrowBack />
-                  </IconButton>
-                  <IconButton
-                    onClick={handleNext}
-                    size={isMobile ? "medium" : "large"}
-                    sx={{
-                      position: "absolute",
-                      right: { xs: 8, sm: 16 },
-                      bgcolor: "rgba(0,0,0,0.3)",
-                      color: "white",
-                      backdropFilter: "blur(4px)",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        bgcolor: "rgba(0,0,0,0.5)",
-                        transform: "scale(1.1)",
-                      },
-                    }}
-                  >
-                    <ArrowForward />
-                  </IconButton>
-                </>
-              )}
-
-              {/* Image counter */}
-              {post.images.length > 1 && (
-                <Chip
-                  label={`${currentImageIndex + 1} / ${post.images.length}`}
-                  size="small"
-                  sx={{
-                    position: "absolute",
-                    bottom: 16,
-                    right: 16,
-                    bgcolor: "rgba(0,0,0,0.4)",
-                    color: "white",
-                    backdropFilter: "blur(4px)",
-                    height: 28,
-                    "& .MuiChip-label": {
-                      px: 1.5,
-                      py: 0.5,
-                      fontSize: 13,
-                      fontWeight: 500,
-                    },
-                  }}
-                />
-              )}
-            </Box>
-
-            {/* Image details */}
-            <Box
-              sx={{
-                p: { xs: 3, md: 4 },
-                width: { xs: "100%", md: "30%" },
-                display: "flex",
-                flexDirection: "column",
-                gap: 3,
-                overflow: "auto",
-              }}
-            >
-              <Box>
-                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                  <CalendarMonth
-                    sx={{ color: "text.secondary", fontSize: 18, mr: 1 }}
-                  />
-                  <Typography variant="body2" color="text.secondary">
-                    {formatDate(post.createdAt)}
-                  </Typography>
-                </Box>
-
-                <Divider sx={{ mb: 2 }} />
-
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: "text.primary",
-                    lineHeight: 1.6,
-                    whiteSpace: "pre-line",
-                  }}
-                >
-                  {post.description || "No description provided"}
-                </Typography>
-              </Box>
-            </Box>
+            {renderImageViewer()}
+            {renderPostDetails()}
           </>
         ) : null}
       </DialogContent>

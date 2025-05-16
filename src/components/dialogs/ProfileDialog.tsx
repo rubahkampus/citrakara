@@ -21,6 +21,7 @@ import {
   MenuItem,
   InputAdornment,
   Tooltip,
+  Stack,
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { axiosClient } from "@/lib/utils/axiosClient";
@@ -33,6 +34,7 @@ import {
   Link as LinkIcon,
 } from "@mui/icons-material";
 
+// Types
 interface ProfileDialogProps {
   open: boolean;
   onClose: () => void;
@@ -63,6 +65,11 @@ interface FormValues {
 interface SocialPlatforms {
   [key: string]: string;
 }
+
+// Constants
+const MAX_BIO_LENGTH = 250;
+const MAX_TAGS = 10;
+const CURRENCIES = ["IDR", "USD", "EUR", "SGD", "AUD", "JPY"];
 
 const SOCIAL_PLATFORMS: SocialPlatforms = {
   discord: "Discord",
@@ -118,11 +125,6 @@ export default function ProfileDialog({
     profile?.banner
   );
 
-  // Constants
-  const MAX_BIO_LENGTH = 250;
-  const MAX_TAGS = 10;
-  const CURRENCIES = ["IDR", "USD", "EUR", "SGD", "AUD", "JPY"];
-
   // Computed values
   const watchBio = watch("bio");
   const bioLength = watchBio?.length || 0;
@@ -165,12 +167,12 @@ export default function ProfileDialog({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setError("Only image files are allowed");
+      setError("Hanya file gambar yang diperbolehkan");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be less than 5MB");
+      setError("Ukuran gambar harus kurang dari 5MB");
       return;
     }
 
@@ -213,7 +215,7 @@ export default function ProfileDialog({
     if (hasChanges) {
       if (
         window.confirm(
-          "You have unsaved changes. Are you sure you want to close?"
+          "Anda memiliki perubahan yang belum disimpan. Yakin ingin menutup?"
         )
       ) {
         onClose();
@@ -241,10 +243,6 @@ export default function ProfileDialog({
       if (profilePicture) formData.append("profilePicture", profilePicture);
       if (banner) formData.append("banner", banner);
 
-      for (var pair of formData.entries()) {
-        console.log(pair[0] + ", " + pair[1]);
-      } // Debugging line
-
       const response = await axiosClient.patch("/api/me/update", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -262,7 +260,7 @@ export default function ProfileDialog({
       }
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to update profile.");
+      setError(err.response?.data?.error || "Gagal memperbarui profil.");
     } finally {
       setLoading(false);
     }
@@ -276,11 +274,22 @@ export default function ProfileDialog({
       onClose={handleClose}
       fullWidth
       maxWidth="md"
-      PaperProps={{ sx: { borderRadius: 2 } }}
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          overflow: "hidden",
+        },
+      }}
     >
-      <DialogTitle sx={{ pb: 1 }}>
+      <DialogTitle
+        sx={{
+          pb: 1,
+          backgroundColor: "primary.light",
+          color: "primary.contrastText",
+        }}
+      >
         <Typography component="div" variant="h5" fontWeight="bold">
-          Edit Your Profile
+          Edit Profil Anda
         </Typography>
       </DialogTitle>
       <Divider />
@@ -294,13 +303,21 @@ export default function ProfileDialog({
           }}
         >
           {/* Left column - Profile images */}
-          <Box sx={{ width: { xs: "100%", md: "40%" } }}>
+          <Stack spacing={3} sx={{ width: { xs: "100%", md: "40%" } }}>
             <Paper
               elevation={0}
-              sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                border: "1px solid #e0e0e0",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                },
+              }}
             >
-              <Typography variant="h6" gutterBottom>
-                Profile Picture
+              <Typography variant="h6" gutterBottom fontWeight="medium">
+                Foto Profil
               </Typography>
 
               <Box
@@ -311,7 +328,12 @@ export default function ProfileDialog({
               >
                 <Avatar
                   src={profilePreview}
-                  sx={{ width: 150, height: 150, border: "4px solid #f5f5f5" }}
+                  sx={{
+                    width: 150,
+                    height: 150,
+                    border: "4px solid #f5f5f5",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
                 />
                 <Button
                   variant="contained"
@@ -322,10 +344,14 @@ export default function ProfileDialog({
                     bottom: 0,
                     borderRadius: 10,
                     bgcolor: "primary.main",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                    "&:hover": {
+                      bgcolor: "primary.dark",
+                    },
                   }}
                 >
                   <CameraAlt sx={{ mr: 1 }} fontSize="small" />
-                  Change
+                  Ganti
                   <input
                     type="file"
                     accept="image/*"
@@ -343,16 +369,24 @@ export default function ProfileDialog({
                 align="center"
                 gutterBottom
               >
-                Recommended size: 400x400px, max 5MB
+                Ukuran yang direkomendasikan: 400x400px, maks 5MB
               </Typography>
             </Paper>
 
             <Paper
               elevation={0}
-              sx={{ p: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                border: "1px solid #e0e0e0",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                },
+              }}
             >
-              <Typography variant="h6" gutterBottom>
-                Profile Banner
+              <Typography variant="h6" gutterBottom fontWeight="medium">
+                Banner Profil
               </Typography>
 
               <Box
@@ -371,6 +405,7 @@ export default function ProfileDialog({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)",
                 }}
               >
                 {!bannerPreview && (
@@ -385,10 +420,11 @@ export default function ProfileDialog({
                     bottom: 8,
                     right: 8,
                     borderRadius: 10,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
                   }}
                 >
                   <Image sx={{ mr: 1 }} fontSize="small" />
-                  Upload
+                  Unggah
                   <input
                     type="file"
                     accept="image/*"
@@ -401,36 +437,44 @@ export default function ProfileDialog({
               </Box>
 
               <Typography variant="body2" color="text.secondary" align="center">
-                Recommended size: 1200x400px, max 5MB
+                Ukuran yang direkomendasikan: 1200x400px, maks 5MB
               </Typography>
             </Paper>
-          </Box>
+          </Stack>
 
           {/* Right column - Profile details */}
-          <Box sx={{ width: { xs: "100%", md: "60%" } }}>
+          <Stack spacing={3} sx={{ width: { xs: "100%", md: "60%" } }}>
             {/* Basic Information */}
             <Paper
               elevation={0}
-              sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                border: "1px solid #e0e0e0",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                },
+              }}
             >
-              <Typography variant="h6" gutterBottom>
-                Basic Information
+              <Typography variant="h6" gutterBottom fontWeight="medium">
+                Informasi Dasar
               </Typography>
 
               <TextField
-                label="Display Name"
+                label="Nama Tampilan"
                 fullWidth
                 variant="outlined"
                 {...register("displayName", {
-                  required: "Display name is required",
+                  required: "Nama tampilan wajib diisi",
                   maxLength: {
                     value: 50,
-                    message: "Display name must be less than 50 characters",
+                    message: "Nama tampilan harus kurang dari 50 karakter",
                   },
                 })}
                 error={!!errors.displayName}
                 helperText={errors.displayName?.message}
-                sx={{ mb: 3 }}
+                sx={{ mb: 3, mt: 2 }}
               />
 
               <TextField
@@ -442,13 +486,13 @@ export default function ProfileDialog({
                 {...register("bio", {
                   maxLength: {
                     value: MAX_BIO_LENGTH,
-                    message: `Must be less than ${MAX_BIO_LENGTH} characters`,
+                    message: `Harus kurang dari ${MAX_BIO_LENGTH} karakter`,
                   },
                 })}
                 error={bioLength > MAX_BIO_LENGTH || !!errors.bio}
                 helperText={
                   errors.bio?.message ||
-                  `${bioLength}/${MAX_BIO_LENGTH} characters`
+                  `${bioLength}/${MAX_BIO_LENGTH} karakter`
                 }
                 sx={{
                   mb: 3,
@@ -480,18 +524,18 @@ export default function ProfileDialog({
                           color="primary"
                         />
                       }
-                      label="Open for Commissions"
+                      label="Terbuka untuk Komisi"
                     />
                   )}
                 />
 
-                <Controller
+                {/* <Controller
                   name="defaultCurrency"
                   control={control}
                   render={({ field }) => (
                     <TextField
                       select
-                      label="Currency"
+                      label="Mata Uang"
                       value={field.value}
                       onChange={field.onChange}
                       variant="outlined"
@@ -505,19 +549,29 @@ export default function ProfileDialog({
                       ))}
                     </TextField>
                   )}
-                />
+                /> */}
               </Box>
             </Paper>
 
             {/* Tags */}
             <Paper
               elevation={0}
-              sx={{ p: 3, mb: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                border: "1px solid #e0e0e0",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                },
+              }}
             >
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <Typography variant="h6">Tags</Typography>
+                <Typography variant="h6" fontWeight="medium">
+                  Tag
+                </Typography>
                 <Tooltip
-                  title={`Add up to ${MAX_TAGS} tags to help people find your profile`}
+                  title={`Tambahkan hingga ${MAX_TAGS} tag untuk membantu orang menemukan profil Anda`}
                 >
                   <InfoOutlined
                     fontSize="small"
@@ -529,7 +583,7 @@ export default function ProfileDialog({
               <Box sx={{ mb: 2 }}>
                 {tags.length === 0 ? (
                   <Typography variant="body2" color="text.secondary" mb={2}>
-                    Add tags to help others discover your work
+                    Tambahkan tag untuk membantu orang lain menemukan karya Anda
                   </Typography>
                 ) : (
                   <Box display="flex" gap={1} flexWrap="wrap" mb={2}>
@@ -541,6 +595,7 @@ export default function ProfileDialog({
                         sx={{
                           bgcolor: "primary.light",
                           color: "primary.contrastText",
+                          fontWeight: 500,
                           "& .MuiChip-deleteIcon": {
                             color: "primary.contrastText",
                             "&:hover": { color: "white" },
@@ -554,7 +609,7 @@ export default function ProfileDialog({
                 <Box display="flex" gap={1}>
                   <TextField
                     fullWidth
-                    placeholder="Add a tag"
+                    placeholder="Tambahkan tag"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -566,7 +621,7 @@ export default function ProfileDialog({
                     size="small"
                     disabled={tags.length >= MAX_TAGS}
                     helperText={
-                      tags.length >= MAX_TAGS ? `Maximum ${MAX_TAGS} tags` : ""
+                      tags.length >= MAX_TAGS ? `Maksimal ${MAX_TAGS} tag` : ""
                     }
                     InputProps={{
                       endAdornment: (
@@ -578,7 +633,7 @@ export default function ProfileDialog({
                             }
                             size="small"
                           >
-                            Add
+                            Tambah
                           </Button>
                         </InputAdornment>
                       ),
@@ -591,11 +646,21 @@ export default function ProfileDialog({
             {/* Social Links */}
             <Paper
               elevation={0}
-              sx={{ p: 3, borderRadius: 2, border: "1px solid #e0e0e0" }}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                border: "1px solid #e0e0e0",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                },
+              }}
             >
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <Typography variant="h6">Social Links</Typography>
-                <Tooltip title="Connect your social profiles">
+                <Typography variant="h6" fontWeight="medium">
+                  Tautan Media Sosial
+                </Typography>
+                <Tooltip title="Hubungkan profil sosial Anda">
                   <InfoOutlined
                     fontSize="small"
                     sx={{ ml: 1, color: "text.secondary" }}
@@ -605,7 +670,8 @@ export default function ProfileDialog({
 
               {socials.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" mb={2}>
-                  Add your social media links so others can connect with you
+                  Tambahkan tautan media sosial Anda agar orang lain dapat
+                  terhubung dengan Anda
                 </Typography>
               ) : (
                 <Box sx={{ mb: 3 }}>
@@ -620,6 +686,11 @@ export default function ProfileDialog({
                         borderRadius: 1,
                         bgcolor: "background.paper",
                         border: "1px solid #e0e0e0",
+                        transition: "all 0.15s ease-in-out",
+                        "&:hover": {
+                          bgcolor: "#f9f9f9",
+                          borderColor: "#d0d0d0",
+                        },
                       }}
                     >
                       <Typography
@@ -648,7 +719,14 @@ export default function ProfileDialog({
                       <IconButton
                         onClick={() => removeSocial(i)}
                         size="small"
-                        sx={{ color: "error.light" }}
+                        sx={{
+                          color: "error.light",
+                          "&:hover": {
+                            color: "error.main",
+                            bgcolor: "error.light",
+                            opacity: 0.1,
+                          },
+                        }}
                       >
                         <Delete fontSize="small" />
                       </IconButton>
@@ -666,7 +744,7 @@ export default function ProfileDialog({
                   size="small"
                   sx={{ minWidth: 150 }}
                 >
-                  <MenuItem value="">Select platform</MenuItem>
+                  <MenuItem value="">Pilih platform</MenuItem>
                   {Object.entries(SOCIAL_PLATFORMS).map(([value, label]) => (
                     <MenuItem
                       key={value}
@@ -698,34 +776,58 @@ export default function ProfileDialog({
                   onClick={addSocial}
                   variant="outlined"
                   disabled={!socialLabel || !socialUrl.trim()}
-                  sx={{ height: 40 }}
+                  sx={{
+                    height: 40,
+                    minWidth: 0,
+                    px: 1,
+                  }}
                 >
                   <Add />
                 </Button>
               </Box>
             </Paper>
-          </Box>
+          </Stack>
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
+          <Alert
+            severity="error"
+            sx={{
+              mt: 2,
+              borderRadius: 2,
+            }}
+          >
             {error}
           </Alert>
         )}
       </DialogContent>
 
       <Divider />
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={handleClose} disabled={loading} variant="outlined">
-          Cancel
+      <DialogActions sx={{ px: 3, py: 2, bgcolor: "background.paper" }}>
+        <Button
+          onClick={handleClose}
+          disabled={loading}
+          variant="outlined"
+          sx={{
+            borderRadius: 2,
+          }}
+        >
+          Batal
         </Button>
         <Button
           onClick={handleSubmit(onSubmit)}
           variant="contained"
           disabled={loading || !hasChanges}
           startIcon={loading ? <CircularProgress size={16} /> : undefined}
+          sx={{
+            borderRadius: 2,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            "&:hover": {
+              boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+            },
+          }}
         >
-          {loading ? "Saving..." : "Save Changes"}
+          {loading ? "Menyimpan..." : "Simpan Perubahan"}
         </Button>
       </DialogActions>
     </Dialog>

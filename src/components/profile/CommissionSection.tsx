@@ -10,6 +10,11 @@ import { axiosClient } from "@/lib/utils/axiosClient";
 import { useRouter } from "next/navigation";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
+// Constants
+const LOADING_SKELETON_COUNT = 2;
+const EMPTY_CONTAINER_HEIGHT = 150;
+
+// Types
 interface CommissionSectionProps {
   username: string;
   isOwner: boolean;
@@ -19,117 +24,162 @@ export default function CommissionSection({
   username,
   isOwner,
 }: CommissionSectionProps) {
+  // Hooks
+  const router = useRouter();
   const openDialog = useDialogStore((state) => state.open);
+
+  // State
   const [commissions, setCommissions] = useState<ICommissionListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const router = useRouter();
+  // Helpers
+  const fetchCommissions = async () => {
+    try {
+      const response = await axiosClient.get(
+        `/api/commission/user/${username}`
+      );
+      return response.data.listings || [];
+    } catch (err: any) {
+      throw new Error(err.response?.data?.error || "Gagal memuat komisi");
+    }
+  };
 
+  // Effects
   useEffect(() => {
-    const fetchCommissions = async () => {
+    const loadCommissions = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const response = await axiosClient.get(
-          `/api/commission/user/${username}`
-        );
-        setCommissions(response.data.listings || []);
-      } catch (err: any) {
-        setError(err.response?.data?.error || "Failed to load commissions");
+        const listings = await fetchCommissions();
+        setCommissions(listings);
+      } catch (err) {
+        setError((err as Error).message);
         setCommissions([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCommissions();
+    loadCommissions();
   }, [username]);
 
+  // Event handlers
   const handleCreate = () => {
     router.push(`/${username}/dashboard/commissions/new`);
   };
 
   const handleManage = () => {
-    // Navigate to commissions dashboard page
     router.push(`/${username}/dashboard/commissions`);
   };
 
+  // UI Components
+  const renderActionButtons = () => (
+    <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+      <KButton
+        onClick={handleCreate}
+        sx={{
+          px: 4,
+          py: 1,
+          "&:hover": {
+            bgcolor: "primary.dark",
+          },
+        }}
+      >
+        Buat Komisi Baru
+      </KButton>
+      <KButton
+        variantType="ghost"
+        onClick={handleManage}
+        sx={{
+          px: 4,
+          py: 1,
+          "&:hover": {
+            bgcolor: "action.hover",
+          },
+        }}
+      >
+        Kelola Komisi
+      </KButton>
+    </Box>
+  );
+
+  const renderLoadingSkeleton = () => (
+    <Box>
+      {[...Array(LOADING_SKELETON_COUNT)].map((_, i) => (
+        <Skeleton
+          key={i}
+          variant="rectangular"
+          height={140}
+          sx={{ mb: 2, borderRadius: 1 }}
+        />
+      ))}
+    </Box>
+  );
+
+  const renderErrorMessage = () => (
+    <Box
+      sx={{
+        height: EMPTY_CONTAINER_HEIGHT,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "error.light",
+        borderRadius: 1,
+        border: "1px solid",
+        borderColor: "error.main",
+        color: "error.contrastText",
+        p: 2,
+      }}
+    >
+      <Typography>{error}</Typography>
+    </Box>
+  );
+
+  const renderEmptyCommissions = () => (
+    <Box
+      sx={{
+        height: EMPTY_CONTAINER_HEIGHT,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.paper",
+        borderRadius: 1,
+        border: "1px dashed",
+        borderColor: "divider",
+      }}
+    >
+      <Typography color="text.secondary">Tidak ada komisi tersedia</Typography>
+    </Box>
+  );
+
+  const renderCommissionsList = () => (
+    <Grid container spacing={2}>
+      {commissions.map((commission) => (
+        <Grid item xs={12} key={commission._id.toString()}>
+          <CommissionCard
+            commission={commission}
+            isOwner={isOwner}
+            username={username}
+          />
+        </Grid>
+      ))}
+    </Grid>
+  );
+
+  // Main Render
   return (
     <Box>
-      {isOwner && (
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-          <KButton onClick={handleCreate} sx={{ px: 4, py: 1 }}>
-            Create New Commission
-          </KButton>
-          <KButton
-            variantType="ghost"
-            onClick={handleManage}
-            sx={{ px: 4, py: 1 }}
-          >
-            Manage Commissions
-          </KButton>
-        </Box>
-      )}
+      {isOwner && renderActionButtons()}
 
-      {loading ? (
-        <Box>
-          {[...Array(2)].map((_, i) => (
-            <Skeleton
-              key={i}
-              variant="rectangular"
-              height={140}
-              sx={{ mb: 2, borderRadius: 1 }}
-            />
-          ))}
-        </Box>
-      ) : error ? (
-        <Box
-          sx={{
-            height: 150,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            bgcolor: "error.light",
-            borderRadius: 1,
-            border: "1px solid",
-            borderColor: "error.main",
-            color: "error.contrastText",
-          }}
-        >
-          <Typography>{error}</Typography>
-        </Box>
-      ) : commissions.length === 0 ? (
-        <Box
-          sx={{
-            height: 150,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            bgcolor: "background.paper",
-            borderRadius: 1,
-            border: "1px dashed",
-            borderColor: "divider",
-          }}
-        >
-          <Typography color="text.secondary">
-            No commissions available
-          </Typography>
-        </Box>
-      ) : (
-        <Grid container spacing={2}>
-          {commissions.map((c) => (
-            <Grid item xs={12} key={c._id.toString()}>
-              <CommissionCard
-                commission={c}
-                isOwner={isOwner}
-                username={username}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      )}
+      {loading
+        ? renderLoadingSkeleton()
+        : error
+        ? renderErrorMessage()
+        : commissions.length === 0
+        ? renderEmptyCommissions()
+        : renderCommissionsList()}
     </Box>
   );
 }

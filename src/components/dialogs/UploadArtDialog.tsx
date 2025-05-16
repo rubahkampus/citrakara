@@ -22,15 +22,20 @@ import {
   Alert,
   useMediaQuery,
   useTheme,
+  Stack,
+  Fade,
+  Tooltip,
 } from "@mui/material";
 import {
   Close as CloseIcon,
   AddPhotoAlternate,
   Delete,
+  Info as InfoIcon,
 } from "@mui/icons-material";
 import { KButton } from "@/components/KButton";
 import { axiosClient } from "@/lib/utils/axiosClient";
 
+// Types & Interfaces
 interface Gallery {
   _id: string;
   name: string;
@@ -47,15 +52,27 @@ interface UploadArtDialogProps {
   initialGalleryId?: string;
 }
 
+// Constants
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const SUPPORTED_FORMATS = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
+const AUTO_CLOSE_DELAY = 1500; // 1.5 seconds
+
 export default function UploadArtDialog({
   open,
   onClose,
   initialGalleryId,
 }: UploadArtDialogProps) {
+  // Hooks
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // State
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [galleriesLoading, setGalleriesLoading] = useState(false);
   const [images, setImages] = useState<File[]>([]);
@@ -64,6 +81,7 @@ export default function UploadArtDialog({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Form
   const {
     control,
     handleSubmit,
@@ -77,10 +95,11 @@ export default function UploadArtDialog({
     },
   });
 
-  // Determine if there are any changes to enable the submit button
+  // Derived state
   const hasChanges = isDirty || images.length > 0;
+  const canSubmit = images.length > 0 && hasChanges && !loading;
 
-  // Load galleries and check for default selection
+  // Fetch galleries on open
   useEffect(() => {
     if (!open) return;
 
@@ -91,26 +110,24 @@ export default function UploadArtDialog({
         const response = await axiosClient.get("/api/gallery");
         setGalleries(response.data.galleries || []);
 
-        // Use initialGalleryId if provided or check in localStorage
+        // Set gallery selection priority:
+        // 1. initialGalleryId (prop)
+        // 2. defaultGalleryId (localStorage)
+        // 3. First gallery in the list
         if (initialGalleryId) {
           setValue("galleryId", initialGalleryId);
         } else {
-          // Check for default gallery from localStorage
           const defaultGalleryId = localStorage.getItem("defaultGalleryId");
           if (defaultGalleryId) {
             setValue("galleryId", defaultGalleryId);
-            localStorage.removeItem("defaultGalleryId"); // Clear it after use
-          } else if (
-            response.data.galleries &&
-            response.data.galleries.length > 0
-          ) {
-            // Otherwise default to first gallery
+            localStorage.removeItem("defaultGalleryId"); // Clear after use
+          } else if (response.data.galleries?.length > 0) {
             setValue("galleryId", response.data.galleries[0]._id);
           }
         }
       } catch (error) {
         console.error("Error fetching galleries:", error);
-        setError("Failed to load galleries");
+        setError("Gagal memuat galeri");
       } finally {
         setGalleriesLoading(false);
       }
@@ -119,6 +136,7 @@ export default function UploadArtDialog({
     fetchGalleries();
   }, [open, setValue, initialGalleryId]);
 
+  // File handling methods
   const handleAddImages = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -131,14 +149,14 @@ export default function UploadArtDialog({
       const file = files[i];
 
       // Check file type
-      if (!file.type.startsWith("image/")) {
-        invalidFiles.push(`${file.name} (not an image)`);
+      if (!SUPPORTED_FORMATS.includes(file.type)) {
+        invalidFiles.push(`${file.name} (bukan gambar yang didukung)`);
         continue;
       }
 
-      // Check file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        invalidFiles.push(`${file.name} (exceeds 5MB limit)`);
+      // Check file size
+      if (file.size > MAX_FILE_SIZE) {
+        invalidFiles.push(`${file.name} (melebihi batas 5MB)`);
         continue;
       }
 
@@ -148,7 +166,7 @@ export default function UploadArtDialog({
     // Show error for invalid files
     if (invalidFiles.length > 0) {
       setError(
-        `The following files couldn't be added: ${invalidFiles.join(", ")}`
+        `File berikut tidak dapat ditambahkan: ${invalidFiles.join(", ")}`
       );
     } else {
       setError(null);
@@ -187,12 +205,13 @@ export default function UploadArtDialog({
     setPreviewUrls(newPreviews);
   };
 
+  // Dialog management
   const handleClose = () => {
     // Confirm if there are unsaved changes
     if (hasChanges) {
       if (
         window.confirm(
-          "You have unsaved changes. Are you sure you want to close?"
+          "Anda memiliki perubahan yang belum disimpan. Yakin ingin menutup?"
         )
       ) {
         cleanupAndClose();
@@ -206,7 +225,7 @@ export default function UploadArtDialog({
     // Clean up preview URLs
     previewUrls.forEach((url) => URL.revokeObjectURL(url));
 
-    // Reset form
+    // Reset state
     reset();
     setImages([]);
     setPreviewUrls([]);
@@ -217,9 +236,10 @@ export default function UploadArtDialog({
     onClose();
   };
 
+  // Form submission
   const onSubmit = async (data: FormValues) => {
     if (images.length === 0) {
-      setError("Please add at least one image");
+      setError("Harap tambahkan minimal satu gambar");
       return;
     }
 
@@ -241,16 +261,16 @@ export default function UploadArtDialog({
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setSuccess("Artwork uploaded successfully");
+      setSuccess("Karya berhasil diunggah");
 
       // Auto close after success
       setTimeout(() => {
         cleanupAndClose();
-      }, 1500);
+      }, AUTO_CLOSE_DELAY);
     } catch (err: any) {
       setError(
         err.response?.data?.error ||
-          "Failed to upload artwork. Please try again."
+          "Gagal mengunggah karya. Silakan coba lagi."
       );
     } finally {
       setLoading(false);
@@ -264,7 +284,12 @@ export default function UploadArtDialog({
       fullScreen={fullScreen}
       fullWidth
       maxWidth="md"
-      PaperProps={{ sx: { borderRadius: fullScreen ? 0 : 2 } }}
+      PaperProps={{
+        sx: {
+          borderRadius: fullScreen ? 0 : 2,
+          overflow: "visible", // Allows tooltips to be visible outside dialog
+        },
+      }}
     >
       <DialogTitle
         sx={{
@@ -275,55 +300,57 @@ export default function UploadArtDialog({
         }}
       >
         <Typography variant="h6" fontWeight="bold">
-          Upload New Artwork
+          Unggah Karya Baru
         </Typography>
-        <IconButton onClick={handleClose} edge="end">
+        <IconButton onClick={handleClose} edge="end" aria-label="tutup">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
       <Divider />
 
       <DialogContent sx={{ py: 3 }}>
-        {/* Status messages */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
+        {/* Status messages with Fade transition */}
+        <Box sx={{ mb: 3 }}>
+          {error && (
+            <Fade in={!!error}>
+              <Alert severity="error" onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            </Fade>
+          )}
 
-        {success && (
-          <Alert
-            severity="success"
-            sx={{ mb: 3 }}
-            onClose={() => setSuccess(null)}
-          >
-            {success}
-          </Alert>
-        )}
+          {success && (
+            <Fade in={!!success}>
+              <Alert severity="success" onClose={() => setSuccess(null)}>
+                {success}
+              </Alert>
+            </Fade>
+          )}
+        </Box>
 
         <form>
           {/* Gallery Selection */}
           <Controller
             name="galleryId"
             control={control}
-            rules={{ required: "Please select a gallery" }}
+            rules={{ required: "Silakan pilih galeri" }}
             render={({ field }) => (
               <FormControl fullWidth margin="normal" error={!!errors.galleryId}>
-                <InputLabel id="gallery-select-label">Gallery</InputLabel>
+                <InputLabel id="gallery-select-label">Galeri</InputLabel>
                 <Select
                   {...field}
                   labelId="gallery-select-label"
-                  label="Gallery"
+                  label="Galeri"
                   disabled={galleriesLoading}
                 >
                   {galleriesLoading ? (
                     <MenuItem value="">
                       <CircularProgress size={20} sx={{ mr: 1 }} />
-                      Loading galleries...
+                      Memuat galeri...
                     </MenuItem>
                   ) : galleries.length === 0 ? (
                     <MenuItem value="" disabled>
-                      No galleries available
+                      Tidak ada galeri tersedia
                     </MenuItem>
                   ) : (
                     galleries.map((gallery) => (
@@ -347,127 +374,160 @@ export default function UploadArtDialog({
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Description"
+                label="Deskripsi"
                 multiline
                 rows={3}
                 fullWidth
                 margin="normal"
-                placeholder="Describe your artwork (optional)"
+                placeholder="Deskripsikan karya Anda (opsional)"
               />
             )}
           />
 
-          {/* Image Upload */}
-          <Typography
-            variant="subtitle1"
-            fontWeight="medium"
+          {/* Image Upload Section */}
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1}
             sx={{ mt: 3, mb: 1 }}
           >
-            Images
-          </Typography>
+            <Typography variant="subtitle1" fontWeight="medium">
+              Gambar
+            </Typography>
+            <Tooltip title="Format yang didukung: JPG, PNG, GIF, WebP. Ukuran maksimum: 5MB per gambar.">
+              <InfoIcon fontSize="small" color="action" />
+            </Tooltip>
+          </Stack>
 
           {/* Image preview grid */}
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              mb: 2,
+              minHeight: 150,
+            }}
+          >
             {/* Preview of uploaded images */}
             {previewUrls.map((url, index) => (
               <Paper
                 key={index}
+                elevation={2}
                 sx={{
                   width: 150,
                   height: 150,
                   overflow: "hidden",
                   position: "relative",
                   borderRadius: 2,
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                    boxShadow: 6,
+                  },
                 }}
               >
                 <Box
                   component="img"
                   src={url}
-                  alt={`Preview ${index + 1}`}
+                  alt={`Pratinjau ${index + 1}`}
                   sx={{
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
                   }}
                 />
-                <IconButton
-                  onClick={() => handleRemoveImage(index)}
-                  sx={{
-                    position: "absolute",
-                    top: 4,
-                    right: 4,
-                    bgcolor: "rgba(0,0,0,0.5)",
-                    color: "white",
-                    "&:hover": {
-                      bgcolor: "rgba(0,0,0,0.7)",
-                    },
-                    p: 0.5,
-                  }}
-                >
-                  <Delete fontSize="small" />
-                </IconButton>
+                <Tooltip title="Hapus gambar">
+                  <IconButton
+                    onClick={() => handleRemoveImage(index)}
+                    aria-label="hapus gambar"
+                    sx={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      bgcolor: "rgba(0,0,0,0.5)",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "rgba(0,0,0,0.7)",
+                      },
+                      p: 0.5,
+                    }}
+                  >
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Paper>
             ))}
 
             {/* Upload button */}
-            <Paper
-              onClick={() => fileInputRef.current?.click()}
-              sx={{
-                width: 150,
-                height: 150,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                border: "2px dashed",
-                borderColor: "divider",
-                borderRadius: 2,
-                p: 2,
-                "&:hover": {
-                  borderColor: "primary.main",
-                  bgcolor: "action.hover",
-                },
-              }}
-            >
-              <AddPhotoAlternate
-                sx={{ fontSize: 40, color: "text.secondary", mb: 1 }}
-              />
-              <Typography variant="body2" color="text.secondary" align="center">
-                Click to add image
-              </Typography>
-            </Paper>
+            <Tooltip title="Klik untuk menambahkan gambar">
+              <Paper
+                onClick={() => fileInputRef.current?.click()}
+                elevation={1}
+                sx={{
+                  width: 150,
+                  height: 150,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  border: "2px dashed",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  p: 2,
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    borderColor: "primary.main",
+                    bgcolor: "action.hover",
+                    transform: "scale(1.03)",
+                  },
+                }}
+              >
+                <AddPhotoAlternate
+                  sx={{ fontSize: 40, color: "text.secondary", mb: 1 }}
+                />
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  align="center"
+                >
+                  Klik untuk menambah gambar
+                </Typography>
+              </Paper>
+            </Tooltip>
           </Box>
 
           {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif,image/webp"
             multiple
             style={{ display: "none" }}
             onChange={handleAddImages}
+            aria-label="Unggah gambar"
           />
-
-          {/* Upload instructions */}
-          <Typography variant="caption" color="text.secondary">
-            Supported formats: JPG, PNG, GIF, WebP. Maximum size: 5MB per image.
-          </Typography>
         </form>
       </DialogContent>
 
       <Divider />
 
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={handleClose} disabled={loading} variant="outlined">
-          Cancel
+        <Button
+          onClick={handleClose}
+          disabled={loading}
+          variant="outlined"
+          color="inherit"
+        >
+          Batal
         </Button>
         <KButton
           onClick={handleSubmit(onSubmit)}
-          disabled={loading || images.length === 0 || !hasChanges}
+          disabled={!canSubmit}
           loading={loading}
         >
-          {loading ? "Uploading..." : "Upload Artwork"}
+          {loading ? "Mengunggah..." : "Unggah Karya"}
         </KButton>
       </DialogActions>
     </Dialog>

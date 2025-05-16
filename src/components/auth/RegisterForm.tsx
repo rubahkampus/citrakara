@@ -28,6 +28,8 @@ import {
   CheckCircle,
   Error as ErrorIcon,
   HelpOutline,
+  ArrowBack,
+  PersonAdd,
 } from "@mui/icons-material";
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -57,7 +59,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
     color: "",
   });
 
-  const steps = ["Account Details", "Choose Username"];
+  const steps = ["Detail Akun", "Pilih Nama Pengguna"];
 
   const {
     register,
@@ -94,11 +96,11 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
     if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
     const strengthMap = [
-      { message: "Very weak", color: "#f44336" },
-      { message: "Weak", color: "#ff9800" },
-      { message: "Medium", color: "#ffeb3b" },
-      { message: "Strong", color: "#8bc34a" },
-      { message: "Very strong", color: "#4caf50" },
+      { message: "Sangat lemah", color: "#f44336" },
+      { message: "Lemah", color: "#ff9800" },
+      { message: "Sedang", color: "#ffeb3b" },
+      { message: "Kuat", color: "#8bc34a" },
+      { message: "Sangat kuat", color: "#4caf50" },
     ];
 
     setPasswordStrength({
@@ -124,10 +126,18 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
       if (res.data?.message?.includes("Available")) {
         onSuccess();
       } else {
-        throw new Error(res.data?.error || `This ${type} is already taken`);
+        throw new Error(
+          res.data?.error ||
+            `${
+              type === "email" ? "Email" : "Nama pengguna"
+            } ini sudah digunakan`
+        );
       }
     } catch (err: any) {
-      setError(err.message || `Error checking ${type}`);
+      setError(
+        err.message ||
+          `Error memeriksa ${type === "email" ? "email" : "nama pengguna"}`
+      );
     } finally {
       setCheckingAvailability(false);
     }
@@ -160,7 +170,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
               router.refresh();
             } catch (err: any) {
               setUsernameError(
-                err?.response?.data?.error || "Registration failed"
+                err?.response?.data?.error || "Pendaftaran gagal"
               );
             }
           }
@@ -204,12 +214,12 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             <Box>
               <StyledPaper elevation={0}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Enter your email address and create a secure password to get
-                  started.
+                  Masukkan alamat email Anda dan buat kata sandi yang aman untuk
+                  memulai.
                 </Typography>
 
                 <TextField
-                  label="Email Address"
+                  label="Alamat Email"
                   fullWidth
                   margin="normal"
                   variant="outlined"
@@ -229,10 +239,10 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                     ),
                   }}
                   {...register("email", {
-                    required: "Email is required",
+                    required: "Email wajib diisi",
                     pattern: {
                       value: /^[^@]+@[^@]+\.[^@]+$/,
-                      message: "Invalid email format",
+                      message: "Format email tidak valid",
                     },
                   })}
                   error={!!errors.email || !!emailError}
@@ -240,7 +250,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                 />
 
                 <TextField
-                  label="Password"
+                  label="Kata Sandi"
                   type={showPassword ? "text" : "password"}
                   fullWidth
                   margin="normal"
@@ -260,10 +270,10 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                     ),
                   }}
                   {...register("password", {
-                    required: "Password is required",
+                    required: "Kata sandi wajib diisi",
                     minLength: {
                       value: 8,
-                      message: "Password must be at least 8 characters",
+                      message: "Kata sandi minimal 8 karakter",
                     },
                   })}
                   error={!!errors.password}
@@ -276,7 +286,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                       sx={{ display: "flex", alignItems: "center", mb: 0.5 }}
                     >
                       <Typography variant="body2" sx={{ mr: 1 }}>
-                        Password strength:
+                        Kekuatan kata sandi:
                       </Typography>
                       <Typography
                         variant="body2"
@@ -285,7 +295,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                       >
                         {passwordStrength.message}
                       </Typography>
-                      <Tooltip title="Use at least 8 characters with uppercase letters, numbers, and symbols for a strong password">
+                      <Tooltip title="Gunakan minimal 8 karakter dengan huruf besar, angka, dan simbol untuk kata sandi yang kuat">
                         <HelpOutline
                           fontSize="small"
                           sx={{ ml: 1, color: "text.secondary", fontSize: 16 }}
@@ -335,10 +345,10 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                   {checkingAvailability ? (
                     <>
                       <CircularProgress size={20} sx={{ mr: 1 }} />
-                      Checking...
+                      Memeriksa...
                     </>
                   ) : (
-                    "Continue"
+                    "Lanjutkan"
                   )}
                 </Button>
               </Box>
@@ -351,12 +361,12 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             <Box>
               <StyledPaper elevation={0}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Choose a unique username for your account. This will be your
-                  identity on the platform.
+                  Pilih nama pengguna unik untuk akun Anda. Ini akan menjadi
+                  identitas Anda di platform.
                 </Typography>
 
                 <TextField
-                  label="Username"
+                  label="Nama Pengguna"
                   fullWidth
                   margin="normal"
                   variant="outlined"
@@ -366,7 +376,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                   helperText={
                     errors.username?.message ||
                     usernameError ||
-                    "Only lowercase letters and numbers allowed"
+                    "Hanya huruf kecil dan angka yang diperbolehkan"
                   }
                   InputProps={{
                     endAdornment: username &&
@@ -378,18 +388,18 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                       ),
                   }}
                   {...register("username", {
-                    required: "Username is required",
+                    required: "Nama pengguna wajib diisi",
                     minLength: {
                       value: 3,
-                      message: "Username must be at least 3 characters",
+                      message: "Nama pengguna minimal 3 karakter",
                     },
                     maxLength: {
                       value: 20,
-                      message: "Username must be less than 20 characters",
+                      message: "Nama pengguna maksimal 20 karakter",
                     },
                     pattern: {
                       value: /^[a-z0-9]+$/,
-                      message: "Only lowercase letters and numbers allowed",
+                      message: "Hanya huruf kecil dan angka yang diperbolehkan",
                     },
                     onChange: (e) => {
                       const sanitized = e.target.value
@@ -414,8 +424,9 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                   onClick={handleBack}
                   disabled={isSubmitting || checkingAvailability}
                   sx={{ flex: 1, py: 1.5 }}
+                  startIcon={<ArrowBack />}
                 >
-                  Back
+                  Kembali
                 </Button>
                 <Button
                   type="submit"
@@ -428,19 +439,24 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                     checkingAvailability
                   }
                   sx={{ flex: 2, py: 1.5 }}
+                  startIcon={
+                    !checkingAvailability && !isSubmitting ? (
+                      <PersonAdd />
+                    ) : null
+                  }
                 >
                   {checkingAvailability ? (
                     <>
                       <CircularProgress size={20} sx={{ mr: 1 }} />
-                      Checking...
+                      Memeriksa...
                     </>
                   ) : isSubmitting ? (
                     <>
                       <CircularProgress size={20} sx={{ mr: 1 }} />
-                      Creating Account...
+                      Membuat Akun...
                     </>
                   ) : (
-                    "Create Account"
+                    "Buat Akun"
                   )}
                 </Button>
               </Box>

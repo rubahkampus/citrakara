@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Chip,
@@ -7,10 +7,7 @@ import {
   Button,
   Typography,
   Paper,
-  Divider,
-  IconButton,
   Tooltip,
-  Alert,
   Stack,
 } from "@mui/material";
 import {
@@ -21,6 +18,7 @@ import {
 import { useFormContext } from "react-hook-form";
 import { CommissionFormValues } from "../CommissionFormPage";
 
+// Constants
 const POPULAR_TAGS = [
   "anime",
   "fantasy",
@@ -33,58 +31,57 @@ const POPULAR_TAGS = [
   "illustration",
   "cartoon",
 ];
-
 const MAX_TAGS = 10;
 
-const TagsSection: React.FC = () => {
+const TagsSection = () => {
+  // Form context
   const { setValue, watch } = useFormContext<CommissionFormValues>();
   const tags = watch("tags") || [];
+
+  // Local state
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
 
-  // Filter out suggestions that are already selected
+  // Filtered suggestions
   const availableSuggestions = POPULAR_TAGS.filter(
     (tag) => !tags.includes(tag)
   );
 
+  // Tag validation
   const validateTag = (tag: string): boolean => {
     const trimmed = tag.trim().toLowerCase();
 
-    // Check if empty
     if (!trimmed) {
-      setError("Tag cannot be empty");
+      setError("Tag tidak boleh kosong");
       return false;
     }
 
-    // Check for length
     if (trimmed.length < 2) {
-      setError("Tag must be at least 2 characters");
+      setError("Tag minimal 2 karakter");
       return false;
     }
 
     if (trimmed.length > 20) {
-      setError("Tag must be less than 20 characters");
+      setError("Tag maksimal 20 karakter");
       return false;
     }
 
-    // Check if already exists
     if (tags.includes(trimmed)) {
-      setError("Tag already added");
+      setError("Tag sudah ditambahkan");
       return false;
     }
 
-    // Check max tags limit
     if (tags.length >= MAX_TAGS) {
-      setError(`Maximum ${MAX_TAGS} tags allowed`);
+      setError(`Maksimal ${MAX_TAGS} tag diperbolehkan`);
       return false;
     }
 
-    // Valid tag
     setError(null);
     return true;
   };
 
+  // Tag management handlers
   const addTag = () => {
     const trimmed = input.trim().toLowerCase();
     if (validateTag(trimmed)) {
@@ -93,7 +90,7 @@ const TagsSection: React.FC = () => {
         shouldValidate: true,
       });
       setInput("");
-      // Hide suggestions after adding a few tags
+
       if (tags.length >= 4) {
         setShowSuggestions(false);
       }
@@ -107,7 +104,6 @@ const TagsSection: React.FC = () => {
       { shouldDirty: true, shouldValidate: true }
     );
 
-    // Show suggestions again if removing brings us under threshold
     if (tags.length <= 5) {
       setShowSuggestions(true);
     }
@@ -120,7 +116,6 @@ const TagsSection: React.FC = () => {
         shouldValidate: true,
       });
 
-      // Hide suggestions after adding a few tags
       if (tags.length >= 4) {
         setShowSuggestions(false);
       }
@@ -128,7 +123,7 @@ const TagsSection: React.FC = () => {
   };
 
   const clearAllTags = () => {
-    if (confirm("Are you sure you want to remove all tags?")) {
+    if (confirm("Apakah Anda yakin ingin menghapus semua tag?")) {
       setValue("tags", [], {
         shouldDirty: true,
         shouldValidate: true,
@@ -137,6 +132,7 @@ const TagsSection: React.FC = () => {
     }
   };
 
+  // Event handlers
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -144,13 +140,13 @@ const TagsSection: React.FC = () => {
     }
   };
 
-  // Toggle suggestions visibility
   const toggleSuggestions = () => {
     setShowSuggestions(!showSuggestions);
   };
 
   return (
     <Box>
+      {/* Header */}
       <Box
         sx={{
           display: "flex",
@@ -160,11 +156,11 @@ const TagsSection: React.FC = () => {
         }}
       >
         <Typography variant="h6" fontWeight="bold">
-          Tags
+          Tag
         </Typography>
 
         {tags.length > 0 && (
-          <Tooltip title="Clear all tags">
+          <Tooltip title="Hapus semua tag">
             <Button
               variant="text"
               color="error"
@@ -172,20 +168,22 @@ const TagsSection: React.FC = () => {
               onClick={clearAllTags}
               startIcon={<DeleteIcon />}
             >
-              Clear All
+              Hapus Semua
             </Button>
           </Tooltip>
         )}
       </Box>
 
+      {/* Description */}
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Add tags to help potential clients find your commission. Maximum{" "}
-        {MAX_TAGS} tags.
+        Tambahkan tag untuk membantu klien potensial menemukan komisi Anda.
+        Maksimal {MAX_TAGS} tag.
       </Typography>
 
+      {/* Tag Input */}
       <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
         <TextField
-          label="Add tag"
+          label="Tambah tag"
           size="small"
           value={input}
           onChange={(e) => {
@@ -195,8 +193,8 @@ const TagsSection: React.FC = () => {
           onKeyDown={handleKeyDown}
           fullWidth
           error={!!error}
-          helperText={error || `${tags.length}/${MAX_TAGS} tags used`}
-          placeholder="Enter a tag and press Enter or Add"
+          helperText={error || `${tags.length}/${MAX_TAGS} tag digunakan`}
+          placeholder="Masukkan tag dan tekan Enter atau Tambah"
           disabled={tags.length >= MAX_TAGS}
           InputProps={{
             endAdornment: (
@@ -207,14 +205,14 @@ const TagsSection: React.FC = () => {
                 disabled={tags.length >= MAX_TAGS || !input.trim()}
                 sx={{ ml: 1 }}
               >
-                Add
+                Tambah
               </Button>
             ),
           }}
         />
       </Box>
 
-      {/* Current tags */}
+      {/* Current Tags Display */}
       <Paper
         variant="outlined"
         sx={{ p: 2, mb: 3, borderRadius: 2, minHeight: 60 }}
@@ -234,12 +232,13 @@ const TagsSection: React.FC = () => {
           </Stack>
         ) : (
           <Typography variant="body2" color="text.secondary" align="center">
-            No tags added yet. Tags help clients find your commissions.
+            Belum ada tag yang ditambahkan. Tag membantu klien menemukan komisi
+            Anda.
           </Typography>
         )}
       </Paper>
 
-      {/* Popular tag suggestions */}
+      {/* Popular Tag Suggestions */}
       {availableSuggestions.length > 0 && (
         <Box>
           <Box
@@ -255,10 +254,10 @@ const TagsSection: React.FC = () => {
                 fontSize="small"
                 sx={{ mr: 0.5, verticalAlign: "middle" }}
               />
-              Popular Tags
+              Tag Populer
             </Typography>
             <Button size="small" onClick={toggleSuggestions} variant="text">
-              {showSuggestions ? "Hide" : "Show"} Suggestions
+              {showSuggestions ? "Sembunyikan" : "Tampilkan"} Saran
             </Button>
           </Box>
 

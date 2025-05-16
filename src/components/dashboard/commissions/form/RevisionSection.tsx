@@ -15,14 +15,31 @@ import {
   Paper,
   Divider,
   Tooltip,
+  FormHelperText,
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { CommissionFormValues } from "../CommissionFormPage";
 
+// Constants for better organization
+const REVISION_TYPES = {
+  NONE: "none",
+  STANDARD: "standard",
+  MILESTONE: "milestone",
+};
+
+const FLOW_TYPES = {
+  STANDARD: "standard",
+  MILESTONE: "milestone",
+};
+
+const DEFAULT_VALUES = {
+  revFree: 2,
+  revFee: 50000,
+};
+
 const RevisionSection: React.FC = () => {
-  const { control, setValue, watch, getValues } =
-    useFormContext<CommissionFormValues>();
+  const { control, setValue, watch } = useFormContext<CommissionFormValues>();
 
   // Watch necessary fields
   const flow = useWatch({ name: "flow" });
@@ -34,17 +51,20 @@ const RevisionSection: React.FC = () => {
   // Auto-select "standard" revisionType when flow changes
   useEffect(() => {
     // If switching back to standard flow, reset to "standard"
-    if (flow !== "milestone" && revisionType === "milestone") {
+    if (
+      flow !== FLOW_TYPES.MILESTONE &&
+      revisionType === REVISION_TYPES.MILESTONE
+    ) {
       console.log("Setting revisionType to standard");
-      setValue("revisionType", "standard");
+      setValue("revisionType", REVISION_TYPES.STANDARD as "standard");
     }
   }, [flow, revisionType, setValue]);
 
   // Initialize revision policy settings for "standard" if not set
   useEffect(() => {
-    if (revisionType === "standard" && revLimit === undefined) {
+    if (revisionType === REVISION_TYPES.STANDARD && revLimit === undefined) {
       setValue("revLimit", false);
-      setValue("revFree", 2);
+      setValue("revFree", DEFAULT_VALUES.revFree);
       setValue("revExtraAllowed", true);
       setValue("revFee", 0);
     }
@@ -52,39 +72,65 @@ const RevisionSection: React.FC = () => {
 
   // Build options dynamically
   const revisionOptions = [
-    { label: "None", value: "none" },
-    { label: "Standard", value: "standard" },
+    { label: "Tidak Ada", value: REVISION_TYPES.NONE },
+    { label: "Standar", value: REVISION_TYPES.STANDARD },
   ];
-  if (flow === "milestone") {
-    revisionOptions.push({ label: "Milestone", value: "milestone" });
+
+  if (flow === FLOW_TYPES.MILESTONE) {
+    revisionOptions.push({
+      label: "Per Milestone",
+      value: REVISION_TYPES.MILESTONE,
+    });
   }
 
   // Determine which form to show
-  const showStandardRevisionForm = revisionType === "standard";
+  const showStandardRevisionForm = revisionType === REVISION_TYPES.STANDARD;
 
   // Check if "Paid Revisions Only" mode is active
   const isPaidOnly =
     revLimit === true && revFree === 0 && revExtraAllowed === true;
 
   return (
-    <Box>
+    <Box
+      sx={{
+        mb: 4,
+        p: 3,
+        border: "1px solid #e0e0e0",
+        borderRadius: 2,
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+        transition: "all 0.3s ease",
+        "&:hover": {
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+        },
+      }}
+    >
+      <Typography variant="h6" fontWeight="bold" gutterBottom>
+        Kebijakan Revisi
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Tentukan bagaimana revisi akan ditangani untuk komisi ini
+      </Typography>
+
       <Grid container spacing={3}>
         {/* Revision Type Selector */}
         <Grid item xs={12} sm={4}>
           <Controller
             control={control}
             name="revisionType"
-            defaultValue="standard"
+            defaultValue={REVISION_TYPES.STANDARD as "standard"}
             render={({ field }) => (
               <FormControl fullWidth>
-                <InputLabel>Revision Type</InputLabel>
-                <Select {...field} label="Revision Type">
+                <InputLabel>Tipe Revisi</InputLabel>
+                <Select {...field} label="Tipe Revisi">
                   {revisionOptions.map((opt) => (
                     <MenuItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </MenuItem>
                   ))}
                 </Select>
+                <FormHelperText>
+                  Pilih bagaimana revisi akan dikelola
+                </FormHelperText>
               </FormControl>
             )}
           />
@@ -93,7 +139,17 @@ const RevisionSection: React.FC = () => {
         {/* Standard Revision Form */}
         {showStandardRevisionForm && (
           <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                },
+              }}
+            >
               <Grid container spacing={3}>
                 {/* Unlimited & Paid Only Toggles */}
                 <Grid item xs={12} sm={6}>
@@ -110,15 +166,15 @@ const RevisionSection: React.FC = () => {
                               setValue("revExtraAllowed", false);
                               setValue("revFee", 0);
                             } else {
-                              setValue("revFree", 2);
+                              setValue("revFree", DEFAULT_VALUES.revFree);
                               setValue("revExtraAllowed", true);
                             }
                           }}
                         />
                       }
-                      label="Unlimited Revisions"
+                      label="Revisi Tidak Terbatas"
                     />
-                    <Tooltip title="Allow clients to request unlimited revisions">
+                    <Tooltip title="Izinkan klien meminta revisi tanpa batas">
                       <InfoIcon
                         fontSize="small"
                         color="action"
@@ -140,9 +196,9 @@ const RevisionSection: React.FC = () => {
                               setValue("revLimit", true);
                               setValue("revFree", 0);
                               setValue("revExtraAllowed", true);
-                              setValue("revFee", 50000);
+                              setValue("revFee", DEFAULT_VALUES.revFee);
                             } else {
-                              setValue("revFree", 2);
+                              setValue("revFree", DEFAULT_VALUES.revFree);
                               // Keep extraAllowed as true when unchecking paid-only mode
                               setValue("revExtraAllowed", true);
                             }
@@ -150,9 +206,9 @@ const RevisionSection: React.FC = () => {
                           disabled={revLimit === false}
                         />
                       }
-                      label="Paid Revisions Only"
+                      label="Hanya Revisi Berbayar"
                     />
-                    <Tooltip title="All revisions will require payment">
+                    <Tooltip title="Semua revisi akan memerlukan pembayaran">
                       <InfoIcon
                         fontSize="small"
                         color="action"
@@ -163,23 +219,35 @@ const RevisionSection: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Divider />
+                  <Divider sx={{ my: 1 }} />
                 </Grid>
 
                 {/* Revision Fields */}
                 <Grid item xs={12} sm={4}>
                   <Controller
                     control={control}
-                    defaultValue={2}
+                    defaultValue={DEFAULT_VALUES.revFree}
                     name="revFree"
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="Revision Slots"
+                        label="Slot Revisi Gratis"
                         type="number"
                         fullWidth
-                        InputProps={{ inputProps: { min: 0 } }}
+                        InputProps={{
+                          inputProps: { min: 0 },
+                          endAdornment: (
+                            <Tooltip title="Jumlah revisi yang diberikan tanpa biaya tambahan">
+                              <InfoIcon
+                                fontSize="small"
+                                color="action"
+                                sx={{ ml: 1 }}
+                              />
+                            </Tooltip>
+                          ),
+                        }}
                         disabled={revLimit === false || isPaidOnly}
+                        helperText="Jumlah revisi gratis yang disediakan"
                       />
                     )}
                   />
@@ -199,7 +267,7 @@ const RevisionSection: React.FC = () => {
                             disabled={revLimit === false || isPaidOnly}
                           />
                         }
-                        label="Allow Paid Revisions (Extra Revisions)"
+                        label="Izinkan Revisi Berbayar (Revisi Tambahan)"
                       />
                     )}
                   />
@@ -213,13 +281,13 @@ const RevisionSection: React.FC = () => {
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        label="Fee Per Revision"
+                        label="Biaya Per Revisi"
                         type="number"
                         fullWidth
                         InputProps={{
                           inputProps: { min: 0 },
                           startAdornment: (
-                            <span style={{ marginRight: 4 }}>Rp</span>
+                            <span style={{ marginRight: 8 }}>Rp</span>
                           ),
                         }}
                         disabled={
@@ -228,6 +296,7 @@ const RevisionSection: React.FC = () => {
                             revExtraAllowed === false &&
                             !isPaidOnly)
                         }
+                        helperText="Biaya untuk setiap revisi tambahan"
                       />
                     )}
                   />
@@ -238,12 +307,38 @@ const RevisionSection: React.FC = () => {
         )}
 
         {/* Milestone Message */}
-        {revisionType === "milestone" && (
+        {revisionType === REVISION_TYPES.MILESTONE && (
           <Grid item xs={12}>
-            <Paper sx={{ p: 2, bgcolor: "info.lighter", borderRadius: 2 }}>
+            <Paper
+              sx={{
+                p: 2,
+                bgcolor: "info.lighter",
+                borderRadius: 2,
+                border: "1px solid rgba(41, 182, 246, 0.2)",
+              }}
+            >
               <Typography variant="body2">
-                Revision policies will be defined separately for each milestone
-                in the Milestones section.
+                Kebijakan revisi akan didefinisikan secara terpisah untuk setiap
+                milestone di bagian Milestone.
+              </Typography>
+            </Paper>
+          </Grid>
+        )}
+
+        {/* No Revisions Message */}
+        {revisionType === REVISION_TYPES.NONE && (
+          <Grid item xs={12}>
+            <Paper
+              sx={{
+                p: 2,
+                bgcolor: "warning.lighter",
+                borderRadius: 2,
+                border: "1px solid rgba(255, 160, 0, 0.2)",
+              }}
+            >
+              <Typography variant="body2">
+                Tidak ada revisi yang akan ditawarkan kepada klien. Pastikan hal
+                ini dijelaskan dalam deskripsi komisi.
               </Typography>
             </Paper>
           </Grid>

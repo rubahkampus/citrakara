@@ -43,6 +43,7 @@ import TwitterIcon from "@mui/icons-material/Twitter";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import PublicIcon from "@mui/icons-material/Public";
 import LinkIcon from "@mui/icons-material/Link";
+import { Session } from "@/lib/utils/session";
 
 const getSocialIcon = (platform: string) => {
   switch (platform.toLowerCase()) {
@@ -63,14 +64,16 @@ const getSocialIcon = (platform: string) => {
 interface ProfileContentProps {
   profile: any;
   isOwner: boolean;
+  session: Session
 }
 
 export default function ProfileContent({
   profile,
   isOwner,
+  session
 }: ProfileContentProps) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isAuthenticated = !!session;
   const router = useRouter();
   const openDialog = useDialogStore((s) => s.open);
   const [activeTab, setActiveTab] = useState(0);
@@ -88,9 +91,7 @@ export default function ProfileContent({
   };
 
   const handleMessageCreator = () => {
-    // Replace with real auth check
-    const loggedIn = true;
-    if (loggedIn) router.push("/dashboard/chat");
+    if (isAuthenticated) router.push("/dashboard/chat");
     else openDialog("login");
   };
 

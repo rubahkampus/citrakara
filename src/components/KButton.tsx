@@ -29,7 +29,7 @@ export const KButton = forwardRef<HTMLButtonElement, KButtonProps>(
     <Button
       ref={ref}
       sx={{
-        borderRadius: 2,
+        borderRadius: 1,
         textTransform: 'none',
         fontWeight: 500,
         ...variantStyles[variantType],

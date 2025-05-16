@@ -2,8 +2,9 @@
 import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import SearchCommissionListingPage from "@/components/search/SearchCommissionListingPage ";
-import { getAuthSession } from "@/lib/utils/session";
+import { getAuthSession, Session } from "@/lib/utils/session";
 import { searchCommissionListings } from "@/lib/services/commissionListing.service";
+import { getUserBookmarkedCommissions } from "@/lib/services/user.service";
 
 interface SearchCommissionsPageProps {
   searchParams?: {
@@ -22,11 +23,15 @@ export default async function SearchCommissionsPage({
   const session = await getAuthSession();
 
   // Parse search parameters
-  const searchParam = await searchParams
+  const searchParam = await searchParams;
   const { q, tags, type, flow, minPrice, maxPrice } = searchParam;
 
   // Fetch initial results
   let initialResults = null;
+
+  const bookmarkedCommission = getUserBookmarkedCommissions(
+    (session as Session).id
+  );
 
   try {
     initialResults = await searchCommissionListings({

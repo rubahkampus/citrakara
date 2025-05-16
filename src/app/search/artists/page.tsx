@@ -2,8 +2,8 @@
 import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import SearchArtistPage from "@/components/search/SearchArtistPage";
-import { getAuthSession } from "@/lib/utils/session";
-import { searchArtistsService } from "@/lib/services/user.service";
+import { getAuthSession, Session } from "@/lib/utils/session";
+import { getUserBookmarkedArtists, searchArtistsService } from "@/lib/services/user.service";
 
 interface SearchArtistsPageProps {
   searchParams?: {
@@ -24,6 +24,8 @@ export default async function SearchArtistsPage({
 
   // Fetch initial results
   let initialResults = null;
+
+  const bookmarkedArtist = getUserBookmarkedArtists((session as Session).id);
 
   try {
     initialResults = await searchArtistsService({

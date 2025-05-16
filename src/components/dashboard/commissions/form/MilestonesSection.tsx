@@ -14,6 +14,7 @@ import {
   Alert,
   InputAdornment,
   Chip,
+  Stack,
 } from "@mui/material";
 import {
   Controller,
@@ -28,6 +29,173 @@ import InfoIcon from "@mui/icons-material/Info";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 
+// Extracted components for better organization
+const MilestoneHeader = () => (
+  <>
+    <Typography variant="h6" fontWeight="bold" gutterBottom>
+      Milestone
+    </Typography>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      Bagi komisi Anda menjadi beberapa tahap dengan hasil dan pembayaran
+      terpisah
+    </Typography>
+  </>
+);
+
+const PercentageIndicator: React.FC<{ totalPercent: number; isValid: boolean }> = ({ totalPercent, isValid }) => (
+  <Box sx={{ mt: 2, display: "flex", alignItems: "center" }}>
+    <InfoIcon color="info" fontSize="small" sx={{ mr: 1 }} />
+    <Typography component="div" variant="body2" color="text.secondary">
+      Persentase milestone: {totalPercent.toFixed(1)}% dari 100%{" "}
+      {isValid && (
+        <Chip
+          component="span"
+          label="Seimbang"
+          color="success"
+          size="small"
+          sx={{ ml: 1, height: 24 }}
+        />
+      )}
+    </Typography>
+  </Box>
+);
+
+type RevisionPolicySectionProps = {
+  index: number;
+  control: any; // Replace 'any' with the correct type from react-hook-form if available
+  watch: (name: string) => any;
+  unlimitedRevisions: Record<number, boolean>;
+  paidRevisionsOnly: Record<number, boolean>;
+  handleUnlimitedChange: (index: number, checked: boolean) => void;
+  handlePaidOnlyChange: (index: number, checked: boolean) => void;
+};
+
+const RevisionPolicySection: React.FC<RevisionPolicySectionProps> = ({
+  index,
+  control,
+  watch,
+  unlimitedRevisions,
+  paidRevisionsOnly,
+  handleUnlimitedChange,
+  handlePaidOnlyChange,
+}) => {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        borderRadius: 1,
+        mt: 1,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+      }}
+    >
+      <Typography variant="subtitle2" gutterBottom fontWeight="medium">
+        Kebijakan Revisi untuk Milestone Ini
+      </Typography>
+
+      {/* Revision options */}
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!unlimitedRevisions[index]}
+                onChange={(e) => handleUnlimitedChange(index, e.target.checked)}
+              />
+            }
+            label="Revisi Tak Terbatas"
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!paidRevisionsOnly[index]}
+                onChange={(e) => handlePaidOnlyChange(index, e.target.checked)}
+                disabled={!!unlimitedRevisions[index]}
+              />
+            }
+            label="Hanya Revisi Berbayar"
+          />
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 2 }} />
+
+      {/* Revision field settings */}
+      <Grid container spacing={2} alignItems="center">
+        <Grid item xs={12} sm={4}>
+          <Controller
+            control={control}
+            name={`milestones.${index}.policy.free`}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                type="number"
+                fullWidth
+                label="Revisi Gratis"
+                InputProps={{ inputProps: { min: 0 } }}
+                disabled={
+                  !!unlimitedRevisions[index] || !!paidRevisionsOnly[index]
+                }
+              />
+            )}
+          />
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <Controller
+            control={control}
+            name={`milestones.${index}.policy.extraAllowed`}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    {...field}
+                    checked={!!field.value}
+                    disabled={
+                      unlimitedRevisions[index] || paidRevisionsOnly[index]
+                    }
+                  />
+                }
+                label="Izinkan Revisi Berbayar"
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={5}>
+          <Controller
+            control={control}
+            name={`milestones.${index}.policy.fee`}
+            render={({ field }) => {
+              const extraAllowed = watch(
+                `milestones.${index}.policy.extraAllowed`
+              );
+              return (
+                <TextField
+                  {...field}
+                  type="number"
+                  fullWidth
+                  label="Biaya Per Revisi"
+                  InputProps={{
+                    inputProps: { min: 0 },
+                    startAdornment: <span style={{ marginRight: 4 }}>Rp</span>,
+                  }}
+                  disabled={
+                    !!unlimitedRevisions[index] ||
+                    (!extraAllowed && !paidRevisionsOnly[index])
+                  }
+                />
+              );
+            }}
+          />
+        </Grid>
+      </Grid>
+    </Paper>
+  );
+};
+
 const MilestonesSection: React.FC = () => {
   const { control, setValue, getValues, watch } =
     useFormContext<CommissionFormValues>();
@@ -35,15 +203,11 @@ const MilestonesSection: React.FC = () => {
   const revisionType = useWatch({ control, name: "revisionType" });
   const milestones = useWatch({ control, name: "milestones" }) || [];
 
-  // Tracking locked milestones with local state
+  // Tracking states with local state hooks
   const [lockedMilestones, setLockedMilestones] = useState<
     Record<number, boolean>
   >({});
-
-  // Track if we've already initialized the first milestone
   const [initialized, setInitialized] = useState(false);
-
-  // Track unlimited/paid only states for each milestone
   const [unlimitedRevisions, setUnlimitedRevisions] = useState<
     Record<number, boolean>
   >({});
@@ -336,304 +500,202 @@ const MilestonesSection: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Milestones
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Break your commission into stages with separate deliverables and
-        payments
-      </Typography>
+      <MilestoneHeader />
 
+      {/* Status alerts */}
       {!isValid && fields.length > 0 && (
         <Alert
           severity={totalPercent > 100 ? "error" : "warning"}
           sx={{ mb: 2 }}
         >
           {totalPercent > 100
-            ? "Total milestone percentages exceed 100%. Please adjust."
-            : `Total milestone percentages: ${totalPercent.toFixed(
+            ? "Persentase milestone melebihi 100%. Mohon disesuaikan."
+            : `Total persentase milestone: ${totalPercent.toFixed(
                 1
-              )}%. Should add up to 100%.`}
+              )}%. Harus berjumlah 100%.`}
         </Alert>
       )}
 
       {fields.length === 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Add at least one milestone to define your commission workflow.
+          Tambahkan minimal satu milestone untuk menentukan alur kerja komisi
+          Anda.
         </Alert>
       )}
 
-      {fields.map((milestone, index) => (
-        <Paper
-          key={milestone.id}
-          variant="outlined"
-          sx={{ p: 2, mb: 2, borderRadius: 1, position: "relative" }}
-        >
-          {/* Delete button - positioned at the top right */}
-          <IconButton
-            color="error"
-            onClick={() => handleRemoveMilestone(index)}
-            size="small"
+      {/* Milestone Cards */}
+      <Stack spacing={2} sx={{ mb: 2 }}>
+        {fields.map((milestone, index) => (
+          <Paper
+            key={milestone.id}
+            variant="outlined"
             sx={{
-              position: "absolute",
-              top: 25,
-              right: 20,
-              zIndex: 1,
+              p: 2,
+              borderRadius: 1,
+              position: "relative",
+              transition: "all 0.2s",
+              "&:hover": {
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              },
             }}
-            // Disable delete if this is the only milestone
-            disabled={fields.length <= 1}
           >
-            <DeleteIcon />
-          </IconButton>
+            {/* Delete button - positioned at the top right */}
+            <IconButton
+              color="error"
+              onClick={() => handleRemoveMilestone(index)}
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 25,
+                right: 20,
+                zIndex: 1,
+              }}
+              // Disable delete if this is the only milestone
+              disabled={fields.length <= 1}
+            >
+              <DeleteIcon />
+            </IconButton>
 
-          <Grid container spacing={2}>
-            {/* Title and Payment % row */}
-            <Grid item xs={12} sm={8}>
-              <Controller
-                control={control}
-                name={`milestones.${index}.title`}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Milestone Title"
-                    placeholder="e.g. Sketch, Lineart, Coloring"
-                  />
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
-              <Controller
-                control={control}
-                name={`milestones.${index}.percent`}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    sx={{ width: "80%" }}
-                    type="number"
-                    fullWidth
-                    label="Payment %"
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Box sx={{ display: "flex", alignItems: "center" }}>
-                            %
-                            <IconButton
-                              onClick={() => toggleLock(index)}
-                              edge="end"
-                              size="small"
-                              sx={{ ml: 1 }}
-                              // Disable lock toggle if this is the only milestone
-                              disabled={fields.length <= 1}
-                            >
-                              {lockedMilestones[index] ? (
-                                <LockIcon fontSize="small" color="primary" />
-                              ) : (
-                                <LockOpenIcon fontSize="small" color="action" />
-                              )}
-                            </IconButton>
-                          </Box>
-                        </InputAdornment>
-                      ),
-                      inputProps: {
-                        min: 0,
-                        max: 100,
-                        readOnly: lockedMilestones[index] || fields.length <= 1,
-                        step: 0.1,
-                      },
-                    }}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val)) {
-                        handlePercentChange(index, val);
-                      }
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-
-            {lockedMilestones[index] && (
-              <Typography
-                variant="caption"
-                color="primary"
-                sx={{
-                  position: "absolute",
-                  top: 75,
-                  right: 95,
-                  zIndex: 1,
-                }}
-              >
-                This percentage is locked
-              </Typography>
-            )}
-            {fields.length <= 1 && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{
-                  position: "absolute",
-                  top: 75,
-                  right: 95,
-                  zIndex: 1,
-                }}
-              >
-                Single milestone is always 100%
-              </Typography>
-            )}
-
-            {/* Revision policy section */}
-            {showRevisionFields && (
-              <Grid item xs={12}>
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, mt: 1 }}>
-                  <Typography
-                    variant="subtitle2"
-                    gutterBottom
-                    fontWeight="medium"
-                  >
-                    Revision Policy for this Milestone
-                  </Typography>
-
-                  {/* Revision options */}
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={!!unlimitedRevisions[index]}
-                            onChange={(e) =>
-                              handleUnlimitedChange(index, e.target.checked)
-                            }
-                          />
-                        }
-                        label="Unlimited Revisions"
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={!!paidRevisionsOnly[index]}
-                            onChange={(e) =>
-                              handlePaidOnlyChange(index, e.target.checked)
-                            }
-                            disabled={!!unlimitedRevisions[index]}
-                          />
-                        }
-                        label="Paid Revisions Only"
-                      />
-                    </Grid>
-                  </Grid>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  {/* Revision field settings */}
-                  <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={4}>
-                      <Controller
-                        control={control}
-                        name={`milestones.${index}.policy.free`}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            type="number"
-                            fullWidth
-                            label="Free Revisions"
-                            InputProps={{ inputProps: { min: 0 } }}
-                            disabled={
-                              !!unlimitedRevisions[index] ||
-                              !!paidRevisionsOnly[index]
-                            }
-                          />
-                        )}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={3}>
-                      <Controller
-                        control={control}
-                        name={`milestones.${index}.policy.extraAllowed`}
-                        render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                {...field}
-                                checked={!!field.value}
-                                disabled={
-                                  unlimitedRevisions[index] ||
-                                  paidRevisionsOnly[index]
-                                }
-                              />
-                            }
-                            label="Allow Paid Revisions"
-                          />
-                        )}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={5}>
-                      <Controller
-                        control={control}
-                        name={`milestones.${index}.policy.fee`}
-                        render={({ field }) => {
-                          const extraAllowed = watch(
-                            `milestones.${index}.policy.extraAllowed`
-                          );
-                          return (
-                            <TextField
-                              {...field}
-                              type="number"
-                              fullWidth
-                              label="Fee Per Revision"
-                              InputProps={{
-                                inputProps: { min: 0 },
-                                startAdornment: (
-                                  <span style={{ marginRight: 4 }}>Rp</span>
-                                ),
-                              }}
-                              disabled={
-                                !!unlimitedRevisions[index] ||
-                                (!extraAllowed && !paidRevisionsOnly[index])
-                              }
-                            />
-                          );
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Paper>
+            <Grid container spacing={2}>
+              {/* Title and Payment % row */}
+              <Grid item xs={12} sm={8}>
+                <Controller
+                  control={control}
+                  name={`milestones.${index}.title`}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Judul Milestone"
+                      placeholder="Contoh: Sketsa, Lineart, Pewarnaan"
+                    />
+                  )}
+                />
               </Grid>
-            )}
-          </Grid>
-        </Paper>
-      ))}
+
+              <Grid item xs={12} sm={4}>
+                <Controller
+                  control={control}
+                  name={`milestones.${index}.percent`}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      sx={{ width: "80%" }}
+                      type="number"
+                      fullWidth
+                      label="Persentase Pembayaran"
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Box sx={{ display: "flex", alignItems: "center" }}>
+                              %
+                              <IconButton
+                                onClick={() => toggleLock(index)}
+                                edge="end"
+                                size="small"
+                                sx={{ ml: 1 }}
+                                // Disable lock toggle if this is the only milestone
+                                disabled={fields.length <= 1}
+                              >
+                                {lockedMilestones[index] ? (
+                                  <LockIcon fontSize="small" color="primary" />
+                                ) : (
+                                  <LockOpenIcon
+                                    fontSize="small"
+                                    color="action"
+                                  />
+                                )}
+                              </IconButton>
+                            </Box>
+                          </InputAdornment>
+                        ),
+                        inputProps: {
+                          min: 0,
+                          max: 100,
+                          readOnly:
+                            lockedMilestones[index] || fields.length <= 1,
+                          step: 0.1,
+                        },
+                      }}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          handlePercentChange(index, val);
+                        }
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+
+              {lockedMilestones[index] && (
+                <Typography
+                  variant="caption"
+                  color="primary"
+                  sx={{
+                    position: "absolute",
+                    top: 75,
+                    right: 95,
+                    zIndex: 1,
+                  }}
+                >
+                  Persentase ini terkunci
+                </Typography>
+              )}
+              {fields.length <= 1 && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    position: "absolute",
+                    top: 75,
+                    right: 95,
+                    zIndex: 1,
+                  }}
+                >
+                  Milestone tunggal selalu 100%
+                </Typography>
+              )}
+
+              {/* Revision policy section */}
+              {showRevisionFields && (
+                <Grid item xs={12}>
+                  <RevisionPolicySection
+                    index={index}
+                    control={control}
+                    watch={watch}
+                    unlimitedRevisions={unlimitedRevisions}
+                    paidRevisionsOnly={paidRevisionsOnly}
+                    handleUnlimitedChange={handleUnlimitedChange}
+                    handlePaidOnlyChange={handlePaidOnlyChange}
+                  />
+                </Grid>
+              )}
+            </Grid>
+          </Paper>
+        ))}
+      </Stack>
 
       <Button
         variant="contained"
         startIcon={<AddIcon />}
         onClick={handleAddMilestone}
-        sx={{ mt: 1 }}
+        sx={{
+          mt: 1,
+          background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+          fontWeight: "medium",
+          boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
+          "&:hover": {
+            background: "linear-gradient(45deg, #1976D2 30%, #0CA8C4 90%)",
+            boxShadow: "0 5px 10px 2px rgba(33, 203, 243, .4)",
+          },
+        }}
       >
-        Add Milestone
+        Tambah Milestone
       </Button>
 
       {fields.length > 0 && (
-        <Box sx={{ mt: 2, display: "flex", alignItems: "center" }}>
-          <InfoIcon color="info" fontSize="small" sx={{ mr: 1 }} />
-          <Typography component="div" variant="body2" color="text.secondary">
-            Milestone percentages: {totalPercent.toFixed(1)}% of 100% +{" "}
-            {isValid && (
-              <Chip
-                component="span"
-                label="Balanced"
-                color="success"
-                size="small"
-                sx={{ ml: 1, height: 24 }}
-              />
-            )}
-          </Typography>
-        </Box>
+        <PercentageIndicator totalPercent={totalPercent} isValid={isValid} />
       )}
     </Box>
   );

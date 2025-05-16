@@ -12,6 +12,8 @@ import {
   Typography,
   Snackbar,
   IconButton,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
@@ -31,6 +33,13 @@ import GeneralOptionsSection from "./form/GeneralOptionsSection";
 import SubjectOptionsSection from "./form/SubjectOptionsSection";
 import TagsSection from "./form/TagsSection";
 import TemplateSection from "./form/TemplateSection";
+import {
+  NavigateNext,
+  Home,
+  BrushRounded,
+  ArrowBack,
+  Add,
+} from "@mui/icons-material";
 
 // Type definitions updated for new ID-based model
 type ID = number;
@@ -357,26 +366,70 @@ export default function CommissionFormPage({
     <FormProvider {...methods}>
       <Box sx={{ maxWidth: 1200, mx: "auto", pb: 8 }}>
         {/* Header & Navigation */}
+
         <Box
           sx={{
+            mb: 3,
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
+            alignItems: "flex-start",
           }}
         >
-          <Button
-            startIcon={<ArrowBackIcon />}
-            variant="outlined"
-            onClick={() => router.back()}
-            disabled={loading}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
           >
-            Back to Listings
-          </Button>
+            <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+              <Link
+                component={Link}
+                href={`/${username}/dashboard`}
+                underline="hover"
+                color="inherit"
+                sx={{ display: "flex", alignItems: "center" }}
+              >
+                <Home fontSize="small" sx={{ mr: 0.5 }} />
+                Dashboard
+              </Link>
+              <Link
+                component={Link}
+                href={`/${username}/dashboard/commissions`}
+                underline="hover"
+                color="inherit"
+                sx={{ display: "flex", alignItems: "center" }}
+              >
+                <BrushRounded fontSize="small" sx={{ mr: 0.5 }} />
+                Komisi
+              </Link>
+              <Typography
+                color="text.primary"
+                sx={{ display: "flex", alignItems: "center" }}
+              >
+                <Add fontSize="small" sx={{ mr: 0.5 }} />
+                Buat Komisi
+              </Typography>
+            </Breadcrumbs>
 
-          <Typography variant="h5" fontWeight="bold">
-            {mode === "create" ? "New Commission" : "Edit Commission"}
-          </Typography>
+            <Box display="flex" alignItems="center" mt={4} ml={-0.5}>
+              <Add sx={{ mr: 1, color: "primary.main", fontSize: 32 }} />
+              <Typography variant="h4" fontWeight="bold">
+                {mode === "create" ? "Buat Komisi" : "Edit Komisi"}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Button
+            component={Link}
+            href={`/${username}/dashboard/commissions`}
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            size="small"
+            mt={-2}
+          >
+            Kembali ke Daftar Komisi
+          </Button>
         </Box>
 
         {/* Error Display */}
@@ -427,9 +480,6 @@ export default function CommissionFormPage({
 
           {/* Basic Info Section */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Commission Details
-            </Typography>
             <BasicInfoSection mode={mode} />
           </Box>
           <Divider sx={{ my: 4 }} />
@@ -442,9 +492,6 @@ export default function CommissionFormPage({
 
           {/* Description Section */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Description
-            </Typography>
             <DescriptionSection />
           </Box>
           <Divider sx={{ my: 4 }} />
@@ -460,7 +507,7 @@ export default function CommissionFormPage({
           {/* Revision Section */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Revision Policy
+              Aturan Revisi
             </Typography>
             <RevisionSection />
           </Box>
@@ -505,10 +552,10 @@ export default function CommissionFormPage({
               onClick={() => router.back()}
               disabled={loading}
             >
-              Cancel
+              Batal
             </Button>
             <KButton type="submit" loading={loading} disabled={loading}>
-              {mode === "create" ? "Create Commission" : "Save Changes"}
+              {mode === "create" ? "Buat Komisi" : "Simpan Perubahan"}
             </KButton>
           </Box>
         </Paper>

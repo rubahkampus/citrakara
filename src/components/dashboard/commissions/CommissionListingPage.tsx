@@ -3,8 +3,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Grid, Paper, Typography, Alert, Button } from "@mui/material";
-import { Add as AddIcon } from "@mui/icons-material";
+import {
+  Box,
+  Grid,
+  Paper,
+  Typography,
+  Alert,
+  Button,
+  Breadcrumbs,
+  Link,
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  ArrowBack,
+  BookmarksOutlined,
+  BrushRounded,
+  Home,
+  NavigateNext,
+} from "@mui/icons-material";
 import { KButton } from "@/components/KButton";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
@@ -82,17 +98,69 @@ export default function CommissionListingPage({
       {/* Header with action button */}
       <Box
         sx={{
+          mb: 3,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <BrushRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Komisi
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5}>
+            <BrushRounded sx={{ mr: 1, color: "primary.main", fontSize: 32 }} />
+            <Typography variant="h4" fontWeight="bold">
+              Komisi Saya
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+          mt={-1}
+        >
+          Kembali ke Profil
+        </Button>
+      </Box>
+
+      <Box
+        sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           mb: 3,
         }}
       >
-        <Typography variant="h5" component="h1" fontWeight={600}>
-          Commission Listings
-        </Typography>
-        <KButton startIcon={<AddIcon />} onClick={handleCreateNew}>
-          Create New Commission
+        <KButton startIcon={<AddIcon />} onClick={handleCreateNew} sx={{px: 5}}>
+          Buat Komisi Baru
         </KButton>
       </Box>
 
@@ -127,7 +195,7 @@ export default function CommissionListingPage({
           }}
         >
           <Typography variant="body1" color="text.secondary" gutterBottom>
-            You don't have any commission listings yet.
+            Kamu belum punya daftar komisi saat ini.
           </Typography>
           <Button
             variant="contained"
@@ -136,7 +204,7 @@ export default function CommissionListingPage({
             onClick={handleCreateNew}
             sx={{ mt: 2 }}
           >
-            Create Your First Commission
+            Buat Listing Komisi Pertamamu
           </Button>
         </Paper>
       ) : (

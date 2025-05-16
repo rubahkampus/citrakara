@@ -46,10 +46,6 @@ export default async function CommissionsPage({
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        My Commission Listings
-      </Typography>
-
       <Suspense fallback={<CommissionListingSkeleton />}>
         <CommissionListingPage
           username={username}

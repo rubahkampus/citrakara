@@ -2,6 +2,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { JSX, useEffect } from "react";
 import {
   Avatar,
   Box,
@@ -14,9 +16,7 @@ import {
   Collapse,
   IconButton,
   Divider,
-  Badge,
 } from "@mui/material";
-import { usePathname } from "next/navigation";
 import {
   Person as ProfileIcon,
   Chat as ChatIcon,
@@ -29,11 +29,20 @@ import {
   AccountBalanceWallet as WalletIcon,
   ExpandMore as ExpandMoreIcon,
   ChevronRight as ChevronRightIcon,
+  BookmarkBorderRounded,
+  Bookmarks,
 } from "@mui/icons-material";
 import { useUIStore } from "@/lib/stores";
-import { useEffect, useState } from "react";
 
-interface Props {
+// Types
+interface NavLink {
+  label: string;
+  href: (username: string) => string;
+  icon: JSX.Element;
+  exact?: boolean;
+}
+
+interface SidebarProps {
   username: string;
   profilePicture: string;
   displayName?: string;
@@ -46,91 +55,121 @@ export default function DashboardSidebar({
   profilePicture,
   displayName,
   expanded,
-  isAdmin = false, // Set to true for admin users
-}: Props) {
+  isAdmin = false,
+}: SidebarProps) {
   const pathname = usePathname();
   const { toggleSidebar } = useUIStore();
-  const [pendingResolutions, setPendingResolutions] = useState(0);
 
-  // Fetch pending resolutions count for admins
-  useEffect(() => {
-    if (isAdmin) {
-      // This would be replaced with a real API call
-      const fetchPendingResolutions = async () => {
-        try {
-          // const response = await fetch('/api/admin/resolution/pending-count');
-          // const data = await response.json();
-          // setPendingResolutions(data.count);
-
-          // For demonstration, set a static number
-          setPendingResolutions(3);
-        } catch (error) {
-          console.error("Failed to fetch pending resolutions:", error);
-        }
-      };
-
-      fetchPendingResolutions();
-    }
-  }, [isAdmin]);
-
-  const links = [
+  // Navigation links configuration
+  const navLinks: NavLink[] = [
     {
       label: "Profil",
-      href: (u: string) => `/${u}/dashboard`,
+      href: (u) => `/${u}/dashboard`,
       icon: <ProfileIcon fontSize="small" />,
       exact: true,
     },
     {
-      label: "Chat",
-      href: (u: string) => `/${u}/dashboard/chat`,
+      label: "Bookmark",
+      href: (u) => `/${u}/dashboard/bookmarks`,
+      icon: <Bookmarks fontSize="small" />,
+      exact: true,
+    },
+    {
+      label: "Galeri",
+      href: (u) => `/${u}/dashboard/galleries`,
+      icon: <GalleryIcon fontSize="small" />,
+    },
+    {
+      label: "Pesan",
+      href: (u) => `/${u}/dashboard/chat`,
       icon: <ChatIcon fontSize="small" />,
     },
     {
       label: "Komisi",
-      href: (u: string) => `/${u}/dashboard/commissions`,
+      href: (u) => `/${u}/dashboard/commissions`,
       icon: <CommissionIcon fontSize="small" />,
     },
     {
-      label: "Galeri",
-      href: (u: string) => `/${u}/dashboard/galleries`,
-      icon: <GalleryIcon fontSize="small" />,
-    },
-    {
       label: "Proposal",
-      href: (u: string) => `/${u}/dashboard/proposals`,
+      href: (u) => `/${u}/dashboard/proposals`,
       icon: <ProposalIcon fontSize="small" />,
     },
     {
       label: "Kontrak",
-      href: (u: string) => `/${u}/dashboard/contracts`,
+      href: (u) => `/${u}/dashboard/contracts`,
       icon: <ContractIcon fontSize="small" />,
     },
     {
-      label: "Wallet",
-      href: (u: string) => `/${u}/dashboard/wallet`,
+      label: "Dompet",
+      href: (u) => `/${u}/dashboard/wallet`,
       icon: <WalletIcon fontSize="small" />,
     },
     {
-      label: "Resolution",
-      href: (u: string) => `/${u}/dashboard/resolution`,
+      label: "Resolusi",
+      href: (u) => `/${u}/dashboard/resolution`,
       icon: <ResolutionIcon fontSize="small" />,
     },
   ];
 
   // Admin-only links
-  const adminLinks = [
+  const adminLinks: NavLink[] = [
     {
-      label: "Admin Resolution",
-      href: (u: string) => `/${u}/dashboard/admin-resolution`,
+      label: "Admin Resolusi",
+      href: (u) => `/${u}/dashboard/admin-resolution`,
       icon: <AdminIcon fontSize="small" />,
-      badge: pendingResolutions,
     },
   ];
 
-  const isPathActive = (path: string, exact = false) => {
+  // Helper to check if a path is active
+  const isPathActive = (path: string, exact = false): boolean => {
     if (pathname === path) return true;
     if (!exact && pathname.startsWith(path)) return true;
     return false;
+  };
+
+  // Render a navigation link
+  const renderNavLink = (link: NavLink) => {
+    const href = link.href(username);
+    const active = isPathActive(href, link.exact);
+
+    return (
+      <Link
+        key={href}
+        href={href}
+        passHref
+        style={{ textDecoration: "none", color: "inherit" }}
+      >
+        <ListItemButton
+          selected={active}
+          sx={{
+            borderRadius: 1.5,
+            mb: 0.75,
+            transition: "all 0.2s ease",
+            color: active ? "primary.main" : "text.primary",
+            "&.Mui-selected": {
+              bgcolor: "primary.lighter",
+              "&:hover": { bgcolor: "primary.light" },
+            },
+          }}
+        >
+          <ListItemIcon
+            sx={{
+              minWidth: 36,
+              color: active ? "primary.main" : "inherit",
+            }}
+          >
+            {link.icon}
+          </ListItemIcon>
+          <ListItemText
+            primary={link.label}
+            primaryTypographyProps={{
+              fontSize: 14,
+              fontWeight: active ? 600 : 400,
+            }}
+          />
+        </ListItemButton>
+      </Link>
+    );
   };
 
   return (
@@ -144,10 +183,12 @@ export default function DashboardSidebar({
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        transition: "width 0.3s ease",
       }}
     >
+      {/* User Profile Header */}
       <Link
-        href={`/${username}/dashboard`}
+        href={`/${username}`}
         style={{ textDecoration: "none", color: "inherit" }}
       >
         <Box
@@ -160,6 +201,10 @@ export default function DashboardSidebar({
             borderBottom: "1px solid",
             borderColor: "divider",
             cursor: "pointer",
+            transition: "background-color 0.2s",
+            "&:hover": {
+              bgcolor: "action.hover",
+            },
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -170,6 +215,7 @@ export default function DashboardSidebar({
                 width: 40,
                 height: 40,
                 mr: { xs: 2, md: expanded ? 2 : 0 },
+                transition: "all 0.2s",
               }}
             />
             {expanded && (
@@ -197,130 +243,27 @@ export default function DashboardSidebar({
         </Box>
       </Link>
 
+      {/* Navigation Links */}
       <Collapse in={expanded} sx={{ display: { md: "block" }, flexGrow: 1 }}>
-        <Box sx={{ p: 1 }}>
+        <Box sx={{ p: 1.5 }}>
           <List disablePadding>
-            {links.map((link) => {
-              const href = link.href(username);
-              const active = isPathActive(href, link.exact);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  passHref
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <ListItemButton
-                    selected={active}
-                    sx={{
-                      borderRadius: 1,
-                      mb: 0.5,
-                      color: active ? "primary.main" : "text.primary",
-                      "&.Mui-selected": {
-                        bgcolor: "primary.lighter",
-                        "&:hover": { bgcolor: "primary.light" },
-                      },
-                    }}
-                  >
-                    <ListItemIcon
-                      sx={{
-                        minWidth: 36,
-                        color: active ? "primary.main" : "inherit",
-                      }}
-                    >
-                      {link.icon}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={link.label}
-                      primaryTypographyProps={{
-                        fontSize: 14,
-                        fontWeight: active ? 600 : 400,
-                      }}
-                    />
-                  </ListItemButton>
-                </Link>
-              );
-            })}
+            {navLinks.map(renderNavLink)}
 
-            {/* Admin-only links */}
+            {/* Admin-only section */}
             {isAdmin && (
               <>
-                <Divider sx={{ my: 1 }} />
+                <Divider sx={{ my: 1.5 }} />
                 <Typography
                   variant="caption"
                   color="text.secondary"
-                  sx={{ pl: 2, display: "block", mb: 0.5 }}
+                  sx={{ pl: 2, display: "block", mb: 1, fontWeight: 500 }}
                 >
-                  Admin Controls
+                  Kontrol Admin
                 </Typography>
-
-                {adminLinks.map((link) => {
-                  const href = link.href(username);
-                  const active = isPathActive(href);
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      passHref
-                      style={{ textDecoration: "none", color: "inherit" }}
-                    >
-                      <ListItemButton
-                        selected={active}
-                        sx={{
-                          borderRadius: 1,
-                          mb: 0.5,
-                          color: active ? "primary.main" : "text.primary",
-                          "&.Mui-selected": {
-                            bgcolor: "primary.lighter",
-                            "&:hover": { bgcolor: "primary.light" },
-                          },
-                        }}
-                      >
-                        <ListItemIcon
-                          sx={{
-                            minWidth: 36,
-                            color: active ? "primary.main" : "inherit",
-                          }}
-                        >
-                          {link.badge > 0 ? (
-                            <Badge badgeContent={link.badge} color="error">
-                              {link.icon}
-                            </Badge>
-                          ) : (
-                            link.icon
-                          )}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={link.label}
-                          primaryTypographyProps={{
-                            fontSize: 14,
-                            fontWeight: active ? 600 : 400,
-                          }}
-                        />
-                      </ListItemButton>
-                    </Link>
-                  );
-                })}
+                {adminLinks.map(renderNavLink)}
               </>
             )}
           </List>
-        </Box>
-
-        <Box sx={{ p: 2, textAlign: "center", mt: "auto" }}>
-          <Typography variant="caption" color="text.secondary">
-            Need help with Komis?
-          </Typography>
-          <Typography
-            variant="body2"
-            color="primary"
-            sx={{
-              cursor: "pointer",
-              fontWeight: 500,
-              "&:hover": { textDecoration: "underline" },
-            }}
-          >
-            View Help Center
-          </Typography>
         </Box>
       </Collapse>
     </Paper>

@@ -2,10 +2,20 @@
 import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import HomePage from "@/components/home/HomePage";
-import { getAuthSession } from "@/lib/utils/session";
+import { getAuthSession, Session } from "@/lib/utils/session";
+import {
+  getUserBookmarkedArtists,
+  getUserBookmarkedCommissions,
+} from "@/lib/services/user.service";
 
 export default async function Home() {
   const session = await getAuthSession();
+
+  const bookmarkedArtist = getUserBookmarkedArtists((session as Session).id);
+
+  const bookmarkedCommission = getUserBookmarkedCommissions(
+    (session as Session).id
+  );
 
   return (
     <Suspense

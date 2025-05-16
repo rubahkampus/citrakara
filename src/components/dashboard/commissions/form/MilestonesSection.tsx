@@ -53,7 +53,7 @@ const PercentageIndicator: React.FC<{ totalPercent: number; isValid: boolean }> 
           label="Seimbang"
           color="success"
           size="small"
-          sx={{ ml: 1, height: 24 }}
+          sx={{ ml: 1, height: 24, color:'white' }}
         />
       )}
     </Typography>
@@ -682,13 +682,7 @@ const MilestonesSection: React.FC = () => {
         onClick={handleAddMilestone}
         sx={{
           mt: 1,
-          background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
           fontWeight: "medium",
-          boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
-          "&:hover": {
-            background: "linear-gradient(45deg, #1976D2 30%, #0CA8C4 90%)",
-            boxShadow: "0 5px 10px 2px rgba(33, 203, 243, .4)",
-          },
         }}
       >
         Tambah Milestone

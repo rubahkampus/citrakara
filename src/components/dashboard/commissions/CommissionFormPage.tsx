@@ -15,8 +15,14 @@ import {
   Breadcrumbs,
   Link,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import CheckIcon from "@mui/icons-material/Check";
+import {
+  NavigateNext,
+  Home,
+  BrushRounded,
+  ArrowBack,
+  Add,
+  Check as CheckIcon,
+} from "@mui/icons-material";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { KButton } from "@/components/KButton";
 
@@ -33,13 +39,90 @@ import GeneralOptionsSection from "./form/GeneralOptionsSection";
 import SubjectOptionsSection from "./form/SubjectOptionsSection";
 import TagsSection from "./form/TagsSection";
 import TemplateSection from "./form/TemplateSection";
-import {
-  NavigateNext,
-  Home,
-  BrushRounded,
-  ArrowBack,
-  Add,
-} from "@mui/icons-material";
+
+// Constants
+const TEXT = {
+  pageTitle: {
+    create: "Buat Komisi",
+    edit: "Edit Komisi",
+  },
+  breadcrumbs: {
+    dashboard: "Dashboard",
+    commissions: "Komisi",
+    create: "Buat Komisi",
+  },
+  backButton: "Kembali ke Daftar Komisi",
+  cancelButton: "Batal",
+  submitButton: {
+    create: "Buat Komisi",
+    edit: "Simpan Perubahan",
+  },
+  success: {
+    create: "Daftar komisi berhasil dibuat!",
+    edit: "Daftar komisi berhasil diperbarui!",
+  },
+  errors: {
+    missingFields: "Mohon lengkapi bidang berikut: ",
+    fixErrors: "Mohon perbaiki kesalahan yang ditandai.",
+    sampleRequired: "Setidaknya satu contoh gambar diperlukan",
+    milestoneRequired:
+      "Anda harus menambahkan setidaknya satu milestone saat menggunakan alur milestone",
+    milestoneTotal:
+      "Persentase milestone harus berjumlah 100%. Total saat ini: ",
+    saveFailed: "Gagal menyimpan. Silakan coba lagi.",
+  },
+  sections: {
+    revisionRules: "Aturan Revisi",
+  },
+  fieldNames: {
+    title: "Judul",
+    slots: "Jumlah Slot",
+    samples: "Contoh Gambar",
+    description: "Deskripsi",
+    cancelKind: "Jenis Pembatalan",
+    cancelAmount: "Jumlah Pembatalan",
+    revisionType: "Kebijakan Revisi",
+  },
+};
+
+// UI spacing & styling constants
+const SPACING = {
+  sectionMargin: { mb: 4 },
+  sectionDivider: { my: 4 },
+  formContainer: {
+    p: 4,
+    border: 1,
+    borderColor: "divider",
+    borderRadius: 2,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+  },
+  formControls: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 2,
+    mt: 4,
+    pt: 3,
+    borderTop: 1,
+    borderColor: "divider",
+  },
+  headerWrapper: {
+    mb: 3,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  titleContainer: {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+  },
+  pageTitle: {
+    display: "flex",
+    alignItems: "center",
+    mt: 4,
+    ml: -0.5,
+  },
+};
 
 // Type definitions updated for new ID-based model
 type ID = number;
@@ -170,7 +253,7 @@ export default function CommissionFormPage({
       if (!values.samples.length) {
         setFormError("samples", {
           type: "manual",
-          message: "At least one sample image is required",
+          message: TEXT.errors.sampleRequired,
         });
         setLoading(false);
         return;
@@ -178,9 +261,7 @@ export default function CommissionFormPage({
 
       // Validate milestones if using milestone flow
       if (values.flow === "milestone" && values.milestones.length === 0) {
-        setError(
-          "You must add at least one milestone when using milestone flow"
-        );
+        setError(TEXT.errors.milestoneRequired);
         setLoading(false);
         return;
       }
@@ -192,11 +273,7 @@ export default function CommissionFormPage({
           0
         );
         if (Math.abs(total - 100) > 0.1) {
-          setError(
-            `Milestone percentages must add up to 100%. Current total: ${total.toFixed(
-              2
-            )}%`
-          );
+          setError(`${TEXT.errors.milestoneTotal}${total.toFixed(2)}%`);
           setLoading(false);
           return;
         }
@@ -209,7 +286,6 @@ export default function CommissionFormPage({
       fd.append("currency", values.currency);
       fd.append("type", values.type);
       fd.append("flow", values.flow);
-      // fd.append("tos", values.tos);
       fd.append("thumbnailIdx", values.thumbnailIdx.toString());
 
       // Handle other samples
@@ -333,9 +409,7 @@ export default function CommissionFormPage({
       }, 1500);
       // cleanup if unmounted
     } catch (e: any) {
-      setError(
-        e.response?.data?.error || "Save operation failed. Please try again."
-      );
+      setError(e.response?.data?.error || TEXT.errors.saveFailed);
     } finally {
       setLoading(false);
     }
@@ -344,44 +418,19 @@ export default function CommissionFormPage({
   const getMissingFieldsMessage = () => {
     if (Object.keys(errors).length === 0) return null;
 
-    const fieldNames: Record<string, string> = {
-      title: "Title",
-      slots: "Slot Count",
-      // tos: "Terms of Service",
-      samples: "Sample Images",
-      description: "Description",
-      cancelKind: "Cancelation Type",
-      cancelAmount: "Cancelation Amount",
-      revisionType: "Revision Policy",
-    };
-
     const missingFields = Object.keys(errors)
-      .map((key) => fieldNames[key] || key)
+      .map((key) => TEXT.fieldNames[key as keyof typeof TEXT.fieldNames] || key)
       .join(", ");
 
-    return `Please complete the following required fields: ${missingFields}`;
+    return `${TEXT.errors.missingFields}${missingFields}`;
   };
 
   return (
     <FormProvider {...methods}>
       <Box sx={{ maxWidth: 1200, mx: "auto", pb: 8 }}>
         {/* Header & Navigation */}
-
-        <Box
-          sx={{
-            mb: 3,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}
-          >
+        <Box sx={SPACING.headerWrapper}>
+          <Box sx={SPACING.titleContainer}>
             <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
               <Link
                 component={Link}
@@ -391,7 +440,7 @@ export default function CommissionFormPage({
                 sx={{ display: "flex", alignItems: "center" }}
               >
                 <Home fontSize="small" sx={{ mr: 0.5 }} />
-                Dashboard
+                {TEXT.breadcrumbs.dashboard}
               </Link>
               <Link
                 component={Link}
@@ -401,21 +450,21 @@ export default function CommissionFormPage({
                 sx={{ display: "flex", alignItems: "center" }}
               >
                 <BrushRounded fontSize="small" sx={{ mr: 0.5 }} />
-                Komisi
+                {TEXT.breadcrumbs.commissions}
               </Link>
               <Typography
                 color="text.primary"
                 sx={{ display: "flex", alignItems: "center" }}
               >
                 <Add fontSize="small" sx={{ mr: 0.5 }} />
-                Buat Komisi
+                {TEXT.breadcrumbs.create}
               </Typography>
             </Breadcrumbs>
 
-            <Box display="flex" alignItems="center" mt={4} ml={-0.5}>
+            <Box sx={SPACING.pageTitle}>
               <Add sx={{ mr: 1, color: "primary.main", fontSize: 32 }} />
               <Typography variant="h4" fontWeight="bold">
-                {mode === "create" ? "Buat Komisi" : "Edit Komisi"}
+                {TEXT.pageTitle[mode]}
               </Typography>
             </Box>
           </Box>
@@ -426,9 +475,9 @@ export default function CommissionFormPage({
             variant="outlined"
             startIcon={<ArrowBack />}
             size="small"
-            mt={-2}
+            sx={{ mt: 1 }}
           >
-            Kembali ke Daftar Komisi
+            {TEXT.backButton}
           </Button>
         </Box>
 
@@ -444,11 +493,9 @@ export default function CommissionFormPage({
           open={saveSuccess}
           autoHideDuration={3000}
           onClose={() => setSaveSuccess(false)}
-          message={`Commission listing ${
-            mode === "create" ? "created" : "updated"
-          } successfully!`}
+          message={TEXT.success[mode]}
           action={
-            <IconButton size="small" color="inherit">
+            <IconButton size="small" color="inherit" aria-label="Selesai">
               <CheckIcon fontSize="small" />
             </IconButton>
           }
@@ -458,104 +505,83 @@ export default function CommissionFormPage({
         <Paper
           component="form"
           onSubmit={handleSubmit(onSubmit, (errors) => {
-            setError(
-              getMissingFieldsMessage() || "Please fix the highlighted errors."
-            );
+            setError(getMissingFieldsMessage() || TEXT.errors.fixErrors);
           })}
-          sx={{
-            p: 4,
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 2,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-          }}
+          sx={SPACING.formContainer}
         >
           {/* Template Section (only in create mode) */}
           {mode === "create" && (
             <>
               <TemplateSection />
-              <Divider sx={{ my: 4 }} />
+              <Divider sx={SPACING.sectionDivider} />
             </>
           )}
 
           {/* Basic Info Section */}
-          <Box sx={{ mb: 4 }}>
+          <Box sx={SPACING.sectionMargin}>
             <BasicInfoSection mode={mode} />
           </Box>
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Samples Section */}
-          <Box sx={{ mb: 4 }}>
+          <Box sx={SPACING.sectionMargin}>
             <SamplesSection />
           </Box>
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Description Section */}
-          <Box sx={{ mb: 4 }}>
+          <Box sx={SPACING.sectionMargin}>
             <DescriptionSection />
           </Box>
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Deadline Section */}
           <DeadlineSection />
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Cancelation Fee Section */}
           <CancelationFeeSection />
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Revision Section */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Aturan Revisi
-            </Typography>
+          <Box sx={SPACING.sectionMargin}>
             <RevisionSection />
           </Box>
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Milestones Section (conditional) */}
           {flow === "milestone" && (
             <>
               <MilestonesSection />
-              <Divider sx={{ my: 4 }} />
+              <Divider sx={SPACING.sectionDivider} />
             </>
           )}
 
           {/* Contract Section */}
           <ContractSection />
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Options Sections */}
           <GeneralOptionsSection />
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           <SubjectOptionsSection />
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={SPACING.sectionDivider} />
 
           {/* Tags Section */}
           <TagsSection />
 
           {/* Form Controls */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 2,
-              mt: 4,
-              pt: 3,
-              borderTop: 1,
-              borderColor: "divider",
-            }}
-          >
+          <Box sx={SPACING.formControls}>
             <Button
               variant="outlined"
               onClick={() => router.back()}
               disabled={loading}
             >
-              Batal
+              {TEXT.cancelButton}
             </Button>
             <KButton type="submit" loading={loading} disabled={loading}>
-              {mode === "create" ? "Buat Komisi" : "Simpan Perubahan"}
+              {TEXT.submitButton[mode]}
             </KButton>
           </Box>
         </Paper>
@@ -662,7 +688,6 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
       slots: data.slots ?? -1,
       type: data.type || "template",
       flow: data.flow || "standard",
-      // tos: data.tos || "",
       samples: data.samples || [],
       thumbnailIdx:
         typeof data.thumbnailIdx === "number" && data.thumbnailIdx >= 0
@@ -704,7 +729,6 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
     slots: -1,
     type: "template",
     flow: "standard",
-    // tos: "",
     samples: [],
     thumbnailIdx: 0,
     description: [{ title: "Overview", detail: "" }],

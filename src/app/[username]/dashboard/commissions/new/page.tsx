@@ -41,10 +41,6 @@ export default async function NewCommissionPage({
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        Create New Commission
-      </Typography>
-
       <CommissionFormPage username={username} mode="create" />
     </Box>
   );

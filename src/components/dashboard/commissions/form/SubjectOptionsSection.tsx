@@ -18,6 +18,68 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoIcon from "@mui/icons-material/Info";
 
+// Constants for UI spacing
+const SPACING = {
+  sectionMargin: { mb: 4 },
+  itemMargin: { mb: 2 },
+  smallMargin: { mb: 1 },
+};
+
+// Text constants
+const TEXT = {
+  subjectOptions: "Opsi Subjek",
+  subjectOptionsDescription:
+    "Tentukan subjek berbeda dengan opsi, layanan tambahan, dan pertanyaan mereka sendiri",
+  emptySubjects: "Belum ada grup subjek yang ditambahkan",
+  emptySubjectsDescription:
+    "Grup subjek membantu mengatur opsi pesanan Anda berdasarkan kategori",
+  emptyOptionGroups: "Belum ada grup opsi yang ditambahkan",
+  emptyAddons: "Belum ada layanan tambahan yang dibuat",
+  emptyQuestions: "Belum ada pertanyaan yang ditambahkan",
+  addSubjectGroup: "Tambah Grup Subjek",
+  addOptionGroup: "Tambah Grup Opsi",
+  addOption: "Tambah Opsi",
+  addAddon: "Tambah Layanan",
+  addQuestion: "Tambah Pertanyaan",
+  delete: "Hapus",
+  subjectTitle: "Judul Subjek",
+  subjectTitleHelper: "Nama kategori (mis. Karakter, Latar Belakang)",
+  maxItems: "Maks. Item",
+  maxItemsHelper: "Berapa banyak subjek yang dapat dimasukkan",
+  maxItemsError: "Minimal harus 1",
+  maxItemsTooltip: "Jumlah maksimum item yang dapat dipilih klien",
+  discount: "Diskon %",
+  discountHelper: "Berlaku untuk setiap subjek setelah subjek pertama",
+  discountError: "Harus 0-100%",
+  optionGroups: "Grup Opsi",
+  optionGroupsDescription:
+    "Buat grup opsi di mana klien dapat memilih satu opsi",
+  additionalServices: "Layanan Tambahan",
+  additionalServicesDescription:
+    "Layanan tambahan yang dapat ditambahkan klien ke pesanan mereka",
+  questions: "Pertanyaan",
+  questionsDescription: "Pertanyaan khusus untuk kategori subjek ini",
+  groupTitle: "Judul Grup",
+  optionsWithPriceAdjustment: "Opsi (masing-masing dengan penyesuaian harga)",
+  labelField: "Label",
+  priceField: "Harga",
+  questionField: "Pertanyaan",
+};
+
+/**
+ * Section component for the form
+ */
+const SectionHeader: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <Box sx={SPACING.itemMargin}>
+    <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+      {title}
+    </Typography>
+    <Typography variant="body2" color="text.secondary" gutterBottom>
+      {description}
+    </Typography>
+  </Box>
+);
+
 /**
  * Component for handling selections within a subject option group
  */
@@ -39,7 +101,7 @@ const SubjectOptionSelections: React.FC<{
           container
           spacing={1}
           alignItems="center"
-          sx={{ mb: 1 }}
+          sx={SPACING.smallMargin}
           key={field.id}
         >
           <Grid item xs={6}>
@@ -47,7 +109,12 @@ const SubjectOptionSelections: React.FC<{
               control={control}
               name={`subjectOptions.${subjectIndex}.optionGroups.${groupIndex}.selections.${index}.label`}
               render={({ field }) => (
-                <TextField label="Label" fullWidth size="small" {...field} />
+                <TextField
+                  label={TEXT.labelField}
+                  fullWidth
+                  size="small"
+                  {...field}
+                />
               )}
             />
           </Grid>
@@ -58,7 +125,7 @@ const SubjectOptionSelections: React.FC<{
               defaultValue={0}
               render={({ field }) => (
                 <TextField
-                  label="Price"
+                  label={TEXT.priceField}
                   type="number"
                   fullWidth
                   size="small"
@@ -82,6 +149,7 @@ const SubjectOptionSelections: React.FC<{
               size="small"
               color="error"
               onClick={() => remove(index)}
+              aria-label="Hapus opsi"
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -96,7 +164,7 @@ const SubjectOptionSelections: React.FC<{
         sx={{ mt: 1 }}
         variant="text"
       >
-        Add Option
+        {TEXT.addOption}
       </Button>
     </Box>
   );
@@ -118,8 +186,12 @@ const SubjectOptionGroup: React.FC<{
   return (
     <Box>
       {fields.length === 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          No option groups added yet
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={SPACING.itemMargin}
+        >
+          {TEXT.emptyOptionGroups}
         </Typography>
       )}
 
@@ -127,6 +199,7 @@ const SubjectOptionGroup: React.FC<{
         <Paper
           key={group.id}
           variant="outlined"
+          elevation={0}
           sx={{ p: 2, mb: 2, borderRadius: 1 }}
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
@@ -135,7 +208,7 @@ const SubjectOptionGroup: React.FC<{
               name={`subjectOptions.${subjectIndex}.optionGroups.${groupIndex}.title`}
               render={({ field }) => (
                 <TextField
-                  label="Group Title"
+                  label={TEXT.groupTitle}
                   fullWidth
                   size="small"
                   sx={{ mr: 1, flexGrow: 1 }}
@@ -143,14 +216,18 @@ const SubjectOptionGroup: React.FC<{
                 />
               )}
             />
-            <IconButton color="error" onClick={() => remove(groupIndex)}>
+            <IconButton
+              color="error"
+              onClick={() => remove(groupIndex)}
+              aria-label="Hapus grup"
+            >
               <DeleteIcon />
             </IconButton>
           </Box>
 
           <Divider sx={{ my: 1 }} />
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Options (each with price adjustment)
+          <Typography variant="subtitle2" sx={SPACING.smallMargin}>
+            {TEXT.optionsWithPriceAdjustment}
           </Typography>
 
           {/* Nested field array for selections within the group */}
@@ -170,7 +247,7 @@ const SubjectOptionGroup: React.FC<{
         size="small"
         sx={{ mt: 1 }}
       >
-        Add Option Group
+        {TEXT.addOptionGroup}
       </Button>
     </Box>
   );
@@ -192,8 +269,12 @@ const SubjectAddonList: React.FC<{
   return (
     <Box>
       {fields.length === 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          No addons created yet
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={SPACING.itemMargin}
+        >
+          {TEXT.emptyAddons}
         </Typography>
       )}
 
@@ -202,7 +283,7 @@ const SubjectAddonList: React.FC<{
           container
           spacing={1}
           alignItems="center"
-          sx={{ mb: 1 }}
+          sx={SPACING.smallMargin}
           key={field.id}
         >
           <Grid item xs={6}>
@@ -210,7 +291,12 @@ const SubjectAddonList: React.FC<{
               control={control}
               name={`subjectOptions.${subjectIndex}.addons.${index}.label`}
               render={({ field }) => (
-                <TextField label="Label" fullWidth size="small" {...field} />
+                <TextField
+                  label={TEXT.labelField}
+                  fullWidth
+                  size="small"
+                  {...field}
+                />
               )}
             />
           </Grid>
@@ -221,7 +307,7 @@ const SubjectAddonList: React.FC<{
               defaultValue={0}
               render={({ field }) => (
                 <TextField
-                  label="Price"
+                  label={TEXT.priceField}
                   type="number"
                   fullWidth
                   size="small"
@@ -245,6 +331,7 @@ const SubjectAddonList: React.FC<{
               size="small"
               color="error"
               onClick={() => remove(index)}
+              aria-label="Hapus layanan"
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -259,7 +346,7 @@ const SubjectAddonList: React.FC<{
         size="small"
         sx={{ mt: 1 }}
       >
-        Add Addon
+        {TEXT.addAddon}
       </Button>
     </Box>
   );
@@ -280,8 +367,12 @@ const SubjectQuestionList: React.FC<{
   return (
     <Box>
       {fields.length === 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          No questions added yet
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={SPACING.itemMargin}
+        >
+          {TEXT.emptyQuestions}
         </Typography>
       )}
 
@@ -291,14 +382,19 @@ const SubjectQuestionList: React.FC<{
           spacing={1}
           key={field.id}
           alignItems="center"
-          sx={{ mb: 1 }}
+          sx={SPACING.smallMargin}
         >
           <Grid item xs={10}>
             <Controller
               control={control}
               name={`subjectOptions.${subjectIndex}.questions.${index}.label`}
               render={({ field }) => (
-                <TextField label="Question" fullWidth size="small" {...field} />
+                <TextField
+                  label={TEXT.questionField}
+                  fullWidth
+                  size="small"
+                  {...field}
+                />
               )}
             />
           </Grid>
@@ -307,6 +403,7 @@ const SubjectQuestionList: React.FC<{
               size="small"
               color="error"
               onClick={() => remove(index)}
+              aria-label="Hapus pertanyaan"
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -321,7 +418,7 @@ const SubjectQuestionList: React.FC<{
         size="small"
         sx={{ mt: 1 }}
       >
-        Add Question
+        {TEXT.addQuestion}
       </Button>
     </Box>
   );
@@ -344,11 +441,14 @@ const SubjectOptionsSection = () => {
   return (
     <Box>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Opsi Subjek
+        {TEXT.subjectOptions}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Tentukan subjek berbeda dengan opsi, layanan tambahan, dan pertanyaan
-        mereka sendiri
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={SPACING.sectionMargin}
+      >
+        {TEXT.subjectOptionsDescription}
       </Typography>
 
       {subjects.length === 0 && (
@@ -362,10 +462,14 @@ const SubjectOptionsSection = () => {
           }}
         >
           <Typography color="text.secondary" gutterBottom>
-            Belum ada grup subjek yang ditambahkan
+            {TEXT.emptySubjects}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Grup subjek membantu mengatur opsi pesanan Anda berdasarkan kategori
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={SPACING.itemMargin}
+          >
+            {TEXT.emptySubjectsDescription}
           </Typography>
         </Box>
       )}
@@ -374,18 +478,24 @@ const SubjectOptionsSection = () => {
         <Paper
           key={subject.id}
           variant="outlined"
+          elevation={0}
           sx={{ p: 3, mb: 3, borderRadius: 2 }}
         >
-          <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <Grid
+            container
+            spacing={2}
+            alignItems="center"
+            sx={SPACING.sectionMargin}
+          >
             <Grid item xs={12} md={4}>
               <Controller
                 control={control}
                 name={`subjectOptions.${subjectIndex}.title`}
                 render={({ field }) => (
                   <TextField
-                    label="Judul Subjek"
+                    label={TEXT.subjectTitle}
                     fullWidth
-                    helperText="Nama kategori (mis. Karakter, Latar Belakang)"
+                    helperText={TEXT.subjectTitleHelper}
                     {...field}
                   />
                 )}
@@ -399,19 +509,19 @@ const SubjectOptionsSection = () => {
                 rules={{ min: 1 }}
                 render={({ field, fieldState }) => (
                   <TextField
-                    label="Maks. Item"
+                    label={TEXT.maxItems}
                     type="number"
                     fullWidth
                     error={!!fieldState.error}
                     helperText={
                       fieldState.error
-                        ? "Minimal harus 1"
-                        : "Berapa banyak yang dapat dipilih"
+                        ? TEXT.maxItemsError
+                        : TEXT.maxItemsHelper
                     }
                     InputProps={{
                       inputProps: { min: 1 },
                       endAdornment: (
-                        <Tooltip title="Jumlah maksimum item yang dapat dipilih klien">
+                        <Tooltip title={TEXT.maxItemsTooltip}>
                           <InputAdornment position="end">
                             <InfoIcon fontSize="small" color="action" />
                           </InputAdornment>
@@ -435,14 +545,14 @@ const SubjectOptionsSection = () => {
                 rules={{ min: 0, max: 100 }}
                 render={({ field, fieldState }) => (
                   <TextField
-                    label="Diskon %"
+                    label={TEXT.discount}
                     type="number"
                     fullWidth
                     error={!!fieldState.error}
                     helperText={
                       fieldState.error
-                        ? "Harus 0-100%"
-                        : "Untuk pemilihan ganda"
+                        ? TEXT.discountError
+                        : TEXT.discountHelper
                     }
                     InputProps={{
                       inputProps: { min: 0, max: 100 },
@@ -473,22 +583,21 @@ const SubjectOptionsSection = () => {
                 color="error"
                 startIcon={<DeleteIcon />}
                 onClick={() => removeSubject(subjectIndex)}
+                aria-label="Hapus subjek"
               >
-                Hapus
+                {TEXT.delete}
               </Button>
             </Grid>
           </Grid>
 
-          <Divider sx={{ mb: 3 }} />
+          <Divider sx={SPACING.sectionMargin} />
 
           {/* Option Groups */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-              Grup Opsi
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Buat grup opsi di mana klien dapat memilih satu opsi
-            </Typography>
+          <Box sx={SPACING.sectionMargin}>
+            <SectionHeader
+              title={TEXT.optionGroups}
+              description={TEXT.optionGroupsDescription}
+            />
             <SubjectOptionGroup
               control={control}
               subjectIndex={subjectIndex}
@@ -497,13 +606,11 @@ const SubjectOptionsSection = () => {
           </Box>
 
           {/* Addons */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-              Layanan Tambahan
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Layanan tambahan yang dapat ditambahkan klien ke pesanan mereka
-            </Typography>
+          <Box sx={SPACING.sectionMargin}>
+            <SectionHeader
+              title={TEXT.additionalServices}
+              description={TEXT.additionalServicesDescription}
+            />
             <SubjectAddonList
               control={control}
               subjectIndex={subjectIndex}
@@ -513,12 +620,10 @@ const SubjectOptionsSection = () => {
 
           {/* Questions */}
           <Box>
-            <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-              Pertanyaan
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Pertanyaan khusus untuk kategori subjek ini
-            </Typography>
+            <SectionHeader
+              title={TEXT.questions}
+              description={TEXT.questionsDescription}
+            />
             <SubjectQuestionList
               control={control}
               subjectIndex={subjectIndex}
@@ -542,7 +647,7 @@ const SubjectOptionsSection = () => {
         }
         sx={{ mt: 1 }}
       >
-        Tambah Grup Subjek
+        {TEXT.addSubjectGroup}
       </Button>
     </Box>
   );

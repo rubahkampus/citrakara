@@ -144,7 +144,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ mode }) => {
       }}
     >
       <Typography variant="h5" fontWeight="bold" gutterBottom mb={2}>
-        Aturan Umum
+        Pengaturan
       </Typography>
 
       <Grid container spacing={3}>

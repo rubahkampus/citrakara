@@ -88,7 +88,7 @@ const TEMPLATES: TemplateData[] = [
   {
     id: "1",
     title:
-      "Furry Anthro Character Commission (Milestone-Deadline-Per-Milestone Revisions)",
+      "Komisi Karakter Anthro Furry (Milestone-Tenggat-Per-Milestone Revisi)",
     basePrice: 300000,
     currency: "IDR",
     slots: 5,
@@ -96,17 +96,18 @@ const TEMPLATES: TemplateData[] = [
     flow: "milestone",
     description: [
       {
-        title: "Concept & Sketch",
-        detail: "Initial sketch of your character based on your references.",
+        title: "Konsep & Sketsa",
+        detail:
+          "Sketsa awal karakter Anda berdasarkan referensi yang diberikan.",
       },
-      { title: "Lineart", detail: "Clean line art of your character." },
+      { title: "Lineart", detail: "Garis bersih karakter Anda." },
       {
-        title: "Base Colors",
-        detail: "Base colors applied to your character.",
+        title: "Warna Dasar",
+        detail: "Warna dasar diaplikasikan pada karakter Anda.",
       },
       {
-        title: "Shading & Final Details",
-        detail: "Shadows, highlights, and final touches.",
+        title: "Shading & Detail Akhir",
+        detail: "Bayangan, highlight, dan sentuhan akhir.",
       },
     ],
     deadlineMode: "withDeadline",
@@ -123,84 +124,84 @@ const TEMPLATES: TemplateData[] = [
       "generalOptions",
       "subjectOptions",
     ],
-    tags: ["furry", "anthro", "character", "milestone"],
+    tags: ["furry", "anthro", "karakter", "milestone"],
     generalOptions: {
       optionGroups: [
         {
-          title: "Commercial Usage?",
+          title: "Penggunaan Komersial?",
           selections: [
-            { label: "No", price: 0 },
-            { label: "Yes", price: 50000 },
+            { label: "Tidak", price: 0 },
+            { label: "Ya", price: 50000 },
           ],
         },
         {
-          title: "Public Posting?",
+          title: "Posting Publik?",
           selections: [
-            { label: "No", price: 0 },
-            { label: "Yes", price: 50000 },
+            { label: "Tidak", price: 0 },
+            { label: "Ya", price: 50000 },
           ],
         },
       ],
-      addons: [{ label: "Twitch Stream", price: 100000 }],
+      addons: [{ label: "Streaming Twitch", price: 100000 }],
       questions: [
-        "What mood do you want for this commission?",
-        "Do you have a specific color palette in mind?",
-        "What tone would you like for the commission?",
+        "Mood apa yang Anda inginkan untuk komisi ini?",
+        "Apakah Anda memiliki palet warna tertentu dalam pikiran?",
+        "Nada seperti apa yang Anda inginkan untuk komisi ini?",
       ],
     },
     subjectOptions: [
       {
-        title: "Character",
+        title: "Karakter",
         limit: 3,
         discount: 50,
         optionGroups: [
           {
-            title: "View Type",
+            title: "Tipe Tampilan",
             selections: [
               { label: "Headshot", price: 0 },
-              { label: "Half Body", price: 100000 },
-              { label: "Full Body", price: 200000 },
+              { label: "Setengah Badan", price: 100000 },
+              { label: "Badan Penuh", price: 200000 },
             ],
           },
           {
-            title: "Clothing?",
+            title: "Pakaian?",
             selections: [
-              { label: "No", price: 20000 },
-              { label: "Yes", price: 50000 },
+              { label: "Tidak", price: 20000 },
+              { label: "Ya", price: 50000 },
             ],
           },
         ],
         addons: [
           {
-            label: "NSFW Anatomy (Half Body and Full Body only)",
+            label: "Anatomi NSFW (hanya untuk Setengah Badan dan Badan Penuh)",
             price: 50000,
           },
         ],
         questions: [
-          "What species is your character and do you have reference images?",
-          "Any specific pose or expression desired?",
+          "Apa jenis/spesies karakter Anda dan apakah Anda memiliki gambar referensi?",
+          "Ada pose atau ekspresi tertentu yang diinginkan?",
         ],
       },
       {
-        title: "Background",
+        title: "Latar Belakang",
         limit: 1,
         discount: 0,
         optionGroups: [
           {
-            title: "Detail Level",
+            title: "Tingkat Detail",
             selections: [
-              { label: "Simple Solid Color", price: 0 },
-              { label: "Detailed Background", price: 150000 },
+              { label: "Warna Solid Sederhana", price: 0 },
+              { label: "Latar Belakang Detail", price: 150000 },
             ],
           },
         ],
         addons: [],
-        questions: ["What type of background would you like?"],
+        questions: ["Tipe latar belakang seperti apa yang Anda inginkan?"],
       },
     ],
     milestones: [
       {
-        title: "Concept & Sketch",
+        title: "Konsep & Sketsa",
         percent: 25,
         policy: {
           limit: true,
@@ -220,7 +221,7 @@ const TEMPLATES: TemplateData[] = [
         },
       },
       {
-        title: "Base Colors",
+        title: "Warna Dasar",
         percent: 25,
         policy: {
           limit: true,
@@ -230,7 +231,7 @@ const TEMPLATES: TemplateData[] = [
         },
       },
       {
-        title: "Shading & Final Details",
+        title: "Shading & Detail Akhir",
         percent: 25,
         policy: {
           limit: true,
@@ -243,7 +244,7 @@ const TEMPLATES: TemplateData[] = [
   },
   {
     id: "2",
-    title: "Furry Chibi (Standard-Rush perDay-No Revisions)",
+    title: "Furry Chibi (Standar-Rush perHari-Tanpa Revisi)",
     basePrice: 150000,
     currency: "IDR",
     slots: 10,
@@ -251,14 +252,14 @@ const TEMPLATES: TemplateData[] = [
     flow: "standard",
     description: [
       {
-        title: "Chibi Illustration",
+        title: "Ilustrasi Chibi",
         detail:
-          "Cute and simple chibi-style illustration of your furry character.",
+          "Ilustrasi gaya chibi yang lucu dan sederhana untuk karakter furry Anda.",
       },
       {
-        title: "Flat Color Style",
+        title: "Gaya Warna Datar",
         detail:
-          "Using solid colors with minimal shading for a minimalist style.",
+          "Menggunakan warna solid dengan shading minimal untuk gaya minimalis.",
       },
     ],
     deadlineMode: "withRush",
@@ -271,29 +272,29 @@ const TEMPLATES: TemplateData[] = [
     revisionType: "none",
     allowContractChange: true,
     changeable: ["deadline", "generalDescription", "referenceImages"],
-    tags: ["furry", "chibi", "flat color"],
+    tags: ["furry", "chibi", "warna datar"],
     generalOptions: {
       optionGroups: [
         {
-          title: "Number of Characters",
+          title: "Jumlah Karakter",
           selections: [
-            { label: "1 Character", price: 0 },
-            { label: "2 Characters", price: 125000 },
-            { label: "3 Characters", price: 250000 },
+            { label: "1 Karakter", price: 0 },
+            { label: "2 Karakter", price: 125000 },
+            { label: "3 Karakter", price: 250000 },
           ],
         },
       ],
       addons: [],
       questions: [
-        "Brief character description (species, colors, clothing)",
-        "Desired pose or expression?",
+        "Deskripsi singkat karakter (spesies, warna, pakaian)",
+        "Pose atau ekspresi yang diinginkan?",
       ],
     },
     subjectOptions: [],
   },
   {
     id: "3",
-    title: "Furry Scene (Standard-Rush Flat-Standard Revision with Quota)",
+    title: "Adegan Furry (Standar-Rush Flat-Revisi Standar dengan Kuota)",
     basePrice: 600000,
     currency: "IDR",
     slots: 1,
@@ -301,13 +302,13 @@ const TEMPLATES: TemplateData[] = [
     flow: "standard",
     description: [
       {
-        title: "Complex Scene",
+        title: "Adegan Kompleks",
         detail:
-          "Full scene illustration with furry characters and detailed background.",
+          "Ilustrasi adegan lengkap dengan karakter furry dan latar belakang detail.",
       },
       {
-        title: "High Quality",
-        detail: "Full rendering with shading and lighting effects.",
+        title: "Kualitas Tinggi",
+        detail: "Rendering penuh dengan efek shading dan pencahayaan.",
       },
     ],
     deadlineMode: "withRush",
@@ -324,71 +325,71 @@ const TEMPLATES: TemplateData[] = [
     revFee: 150000,
     allowContractChange: true,
     changeable: ["deadline", "generalDescription", "referenceImages"],
-    tags: ["furry", "scene", "illustration"],
+    tags: ["furry", "adegan", "ilustrasi"],
     generalOptions: {
       optionGroups: [
         {
-          title: "Art Style",
+          title: "Gaya Seni",
           selections: [
-            { label: "Cartoon", price: 0 },
-            { label: "Semi-Realistic", price: 200000 },
+            { label: "Kartun", price: 0 },
+            { label: "Semi-Realistis", price: 200000 },
             { label: "Anime", price: 100000 },
           ],
         },
       ],
       addons: [
-        { label: "Special Effects (fire, water, etc)", price: 150000 },
-        { label: "Print-Ready Version", price: 100000 },
+        { label: "Efek Khusus (api, air, dll)", price: 150000 },
+        { label: "Versi Siap Cetak", price: 100000 },
       ],
       questions: [
-        "Desired atmosphere or mood for the scene?",
-        "Time of day in the scene (morning, afternoon, night)?",
+        "Atmosfer atau suasana yang diinginkan untuk adegan?",
+        "Waktu hari dalam adegan (pagi, siang, malam)?",
       ],
     },
     subjectOptions: [
       {
-        title: "Character",
+        title: "Karakter",
         limit: 5,
         discount: 20,
         optionGroups: [
           {
-            title: "Size in Scene",
+            title: "Ukuran dalam Adegan",
             selections: [
-              { label: "Main Character", price: 200000 },
-              { label: "Secondary Character", price: 100000 },
-              { label: "Background Character", price: 50000 },
+              { label: "Karakter Utama", price: 200000 },
+              { label: "Karakter Sekunder", price: 100000 },
+              { label: "Karakter Latar Belakang", price: 50000 },
             ],
           },
         ],
-        addons: [{ label: "Add Special Detail", price: 50000 }],
+        addons: [{ label: "Tambah Detail Khusus", price: 50000 }],
         questions: [
-          "Character description and position in scene?",
-          "Desired interaction between characters?",
+          "Deskripsi karakter dan posisi dalam adegan?",
+          "Interaksi yang diinginkan antar karakter?",
         ],
       },
       {
-        title: "Setting",
+        title: "Latar",
         limit: 1,
         discount: 0,
         optionGroups: [
           {
-            title: "Complexity",
+            title: "Kompleksitas",
             selections: [
-              { label: "Simple", price: 0 },
-              { label: "Medium", price: 200000 },
-              { label: "Complex", price: 400000 },
+              { label: "Sederhana", price: 0 },
+              { label: "Menengah", price: 200000 },
+              { label: "Kompleks", price: 400000 },
             ],
           },
         ],
-        addons: [{ label: "Custom Architecture", price: 200000 }],
-        questions: ["Description of desired setting?"],
+        addons: [{ label: "Arsitektur Kustom", price: 200000 }],
+        questions: ["Deskripsi latar yang diinginkan?"],
       },
     ],
   },
   {
     id: "4",
     title:
-      "Furry Reference Sheet (Standard-Standard Deadline-Unlimited Revisions)",
+      "Lembar Referensi Furry (Standar-Tenggat Standar-Revisi Tidak Terbatas)",
     basePrice: 400000,
     currency: "IDR",
     slots: 3,
@@ -396,14 +397,13 @@ const TEMPLATES: TemplateData[] = [
     flow: "standard",
     description: [
       {
-        title: "Character Reference Sheet",
+        title: "Lembar Referensi Karakter",
         detail:
-          "Complete reference sheet for your furry character, including front, side, and back views with full details.",
+          "Lembar referensi lengkap untuk karakter furry Anda, termasuk tampilan depan, samping, dan belakang dengan detail lengkap.",
       },
       {
-        title: "Inclusive",
-        detail:
-          "Includes facial expressions, anatomy details, and color palette.",
+        title: "Inklusif",
+        detail: "Termasuk ekspresi wajah, detail anatomi, dan palet warna.",
       },
     ],
     deadlineMode: "standard",
@@ -417,24 +417,24 @@ const TEMPLATES: TemplateData[] = [
     revExtraAllowed: false,
     allowContractChange: false,
     changeable: [],
-    tags: ["furry", "reference", "sheet"],
+    tags: ["furry", "referensi", "lembar"],
     generalOptions: {
       optionGroups: [
         {
-          title: "Copyright",
+          title: "Hak Cipta",
           selections: [
-            { label: "Personal Use", price: 0 },
-            { label: "Commercial Use", price: 200000 },
+            { label: "Penggunaan Pribadi", price: 0 },
+            { label: "Penggunaan Komersial", price: 200000 },
           ],
         },
       ],
       addons: [
-        { label: "Add Action Pose", price: 150000 },
-        { label: "Add Clothing Details", price: 100000 },
+        { label: "Tambah Pose Aksi", price: 150000 },
+        { label: "Tambah Detail Pakaian", price: 100000 },
       ],
       questions: [
-        "What animal is your character?",
-        "Do you have references or a description of your character?",
+        "Hewan apa karakter Anda?",
+        "Apakah Anda memiliki referensi atau deskripsi karakter Anda?",
       ],
     },
     subjectOptions: [],
@@ -709,10 +709,10 @@ export const TemplateSection: React.FC = () => {
   return (
     <Box>
       <Typography variant="h6" fontWeight="bold">
-        Start From Template
+        Mulai Dari Template
       </Typography>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        Choose a starting point or start from scratch
+        Pilih template atau mulai dari awal
       </Typography>
       <Paper sx={{ mt: 3 }}>
         <Tabs
@@ -723,8 +723,8 @@ export const TemplateSection: React.FC = () => {
           }}
           sx={{ borderBottom: 1, borderColor: "divider" }}
         >
-          <Tab label="Templates" />
-          <Tab label="Your Commissions" />
+          <Tab label="Template" />
+          <Tab label="Komisi Sebelumnya" />
         </Tabs>
         <Box sx={{ p: 3 }}>
           {tab === 0 ? (
@@ -750,15 +750,13 @@ export const TemplateSection: React.FC = () => {
               ))}
             </Grid>
           ) : (
-            <Alert severity="info">
-              You haven't created any commissions yet.
-            </Alert>
+            <Alert severity="info">Kamu belum mempunyai komisi.</Alert>
           )}
         </Box>
       </Paper>
       {selected && (
         <Alert severity="success" sx={{ mt: 3 }}>
-          Template values loaded! You can now customize them below.
+          Template telah dimuat! Kamu dapat mengubahnya di bawah.
         </Alert>
       )}
     </Box>

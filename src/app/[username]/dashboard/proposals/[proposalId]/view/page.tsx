@@ -45,10 +45,6 @@ export default async function viewProposalPage({
 
     return (
       <Box>
-        <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-          Proposal: {proposal.listingSnapshot.title}
-        </Typography>
-
         <ProposalDetailsPage
           username={username}
           role={role}

@@ -11,7 +11,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tosId = params.id;
+    const param = await params
+    const tosId = param.id;
     
     // const session = await getAuthSession();
     

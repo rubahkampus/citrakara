@@ -528,28 +528,6 @@ export default function ProfileDialog({
                     />
                   )}
                 />
-
-                {/* <Controller
-                  name="defaultCurrency"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      select
-                      label="Mata Uang"
-                      value={field.value}
-                      onChange={field.onChange}
-                      variant="outlined"
-                      size="small"
-                      sx={{ width: 120 }}
-                    >
-                      {CURRENCIES.map((currency) => (
-                        <MenuItem key={currency} value={currency}>
-                          {currency}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  )}
-                /> */}
               </Box>
             </Paper>
 

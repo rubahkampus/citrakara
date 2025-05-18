@@ -10,11 +10,12 @@ import {
   Grid,
   Paper,
   Skeleton,
-  ButtonGroup,
   Button,
   Chip,
   Stack,
   useTheme,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
 import ProposalListingItem from "./ProposalListingItem";
 import { IProposal } from "@/lib/db/models/proposal.model";
@@ -23,8 +24,14 @@ import {
   Send as SendIcon,
   Inbox as InboxIcon,
   FilterList as FilterIcon,
+  Description,
+  ArrowBack,
+  Home,
+  NavigateNext,
+  DescriptionRounded,
 } from "@mui/icons-material";
 
+// Type definitions
 interface ProposalListingPageProps {
   username: string;
   incoming: IProposal[];
@@ -39,18 +46,26 @@ interface TabPanelProps {
   value: number;
 }
 
-function TabPanel({ children, value, index }: TabPanelProps) {
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`proposal-tabpanel-${index}`}
-      aria-labelledby={`proposal-tab-${index}`}
-    >
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+// Separate TabPanel component for better organization
+const TabPanel = ({ children, value, index }: TabPanelProps) => (
+  <div
+    role="tabpanel"
+    hidden={value !== index}
+    id={`proposal-tabpanel-${index}`}
+    aria-labelledby={`proposal-tab-${index}`}
+  >
+    {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
+  </div>
+);
+
+// Status options for filtering
+const STATUS_OPTIONS = [
+  { value: "pendingArtist", label: "Menunggu Seniman" },
+  { value: "pendingClient", label: "Menunggu Klien" },
+  { value: "accepted", label: "Diterima" },
+  { value: "rejectedArtist", label: "Ditolak oleh Seniman" },
+  { value: "rejectedClient", label: "Ditolak oleh Klien" },
+];
 
 export default function ProposalListingPage({
   username,
@@ -78,49 +93,103 @@ export default function ProposalListingPage({
     return proposals.filter((proposal) => proposal.status === filter);
   };
 
+  // Extract skeleton loader to a separate component for readability
+  const renderSkeletonLoaders = () => (
+    <Grid container spacing={3}>
+      {[1, 2, 3, 4, 5, 6].map((item) => (
+        <Grid item xs={12} sm={6} lg={4} key={item}>
+          <Skeleton variant="rectangular" height={350} animation="wave" />
+        </Grid>
+      ))}
+    </Grid>
+  );
+
+  // Component for empty state
+  const renderEmptyState = (isIncoming: boolean) => (
+    <Paper
+      elevation={1}
+      sx={{
+        textAlign: "center",
+        py: 8,
+        px: 3,
+        mt: 2,
+        borderRadius: 2,
+        backgroundColor: theme.palette.background.paper,
+      }}
+    >
+      <Typography variant="h6" color="text.secondary" gutterBottom>
+        {filter
+          ? `Tidak ada proposal dengan status "${filter}"`
+          : `Tidak ada proposal ${isIncoming ? "masuk" : "keluar"} saat ini.`}
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        {filter
+          ? "Coba ubah filter Anda atau periksa kembali nanti."
+          : isIncoming
+          ? "Ketika seniman mengirimkan proposal kepada Anda, proposal tersebut akan muncul di sini."
+          : "Ketika Anda mengirimkan proposal kepada seniman, proposal tersebut akan muncul di sini."}
+      </Typography>
+      {filter && (
+        <Button
+          variant="outlined"
+          onClick={() => setFilter(null)}
+          startIcon={<FilterIcon />}
+          sx={{ borderRadius: 2 }}
+        >
+          Hapus Filter
+        </Button>
+      )}
+    </Paper>
+  );
+
+  // Component for filters
+  const renderFilters = () => (
+    <Box sx={{ mb: 3, mt: 2 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        sx={{ flexWrap: "wrap", gap: 1 }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Filter:
+        </Typography>
+        {STATUS_OPTIONS.map((status) => (
+          <Chip
+            key={status.value}
+            label={status.label}
+            onClick={() => setFilter(status.value)}
+            onDelete={
+              filter === status.value ? () => setFilter(null) : undefined
+            }
+            color={filter === status.value ? "primary" : "default"}
+            variant={filter === status.value ? "filled" : "outlined"}
+            size="small"
+            sx={{
+              borderRadius: "16px",
+              "&:hover": {
+                backgroundColor:
+                  filter === status.value
+                    ? theme.palette.primary.main
+                    : theme.palette.action.hover,
+              },
+            }}
+          />
+        ))}
+      </Stack>
+    </Box>
+  );
+
+  // Component for proposal list
   const renderProposalList = (proposals: IProposal[], isIncoming: boolean) => {
     if (loading) {
-      return (
-        <Grid container spacing={3}>
-          {[1, 2, 3, 4, 5, 6].map((item) => (
-            <Grid item xs={12} sm={6} lg={4} key={item}>
-              <Skeleton variant="rectangular" height={350} />
-            </Grid>
-          ))}
-        </Grid>
-      );
+      return renderSkeletonLoaders();
     }
 
     const filteredProposals = filterProposals(proposals);
 
     if (filteredProposals.length === 0) {
-      return (
-        <Paper sx={{ textAlign: "center", py: 8, px: 3, mt: 2 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {filter
-              ? `Tidak ada proposal dengan status "${filter}"`
-              : `Tidak ada proposal ${
-                  isIncoming ? "masuk" : "keluar"
-                } saat ini.`}
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            {filter
-              ? "Coba ubah filter Anda atau periksa kembali nanti."
-              : isIncoming
-              ? "Ketika artis mengirimkan proposal kepada Anda, proposal tersebut akan muncul di sini."
-              : "Ketika Anda mengirimkan proposal kepada artis, proposal tersebut akan muncul di sini."}
-          </Typography>
-          {filter && (
-            <Button
-              variant="outlined"
-              onClick={() => setFilter(null)}
-              startIcon={<FilterIcon />}
-            >
-              Hapus Filter
-            </Button>
-          )}
-        </Paper>
-      );
+      return renderEmptyState(isIncoming);
     }
 
     return (
@@ -134,49 +203,89 @@ export default function ProposalListingPage({
     );
   };
 
-  const renderFilters = () => {
-    const statuses = [
-      { value: "pendingArtist", label: "Awaiting Artist" },
-      { value: "pendingClient", label: "Awaiting Client" },
-      { value: "accepted", label: "Accepted" },
-      { value: "rejectedArtist", label: "Rejected by Artist" },
-      { value: "rejectedClient", label: "Rejected by Client" },
-    ];
-
-    return (
-      <Box sx={{ mb: 3, mt: 2 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            Filter:
-          </Typography>
-          {statuses.map((status) => (
-            <Chip
-              key={status.value}
-              label={status.label}
-              onClick={() => setFilter(status.value)}
-              onDelete={
-                filter === status.value ? () => setFilter(null) : undefined
-              }
-              color={filter === status.value ? "primary" : "default"}
-              variant={filter === status.value ? "filled" : "outlined"}
-              size="small"
-            />
-          ))}
-        </Stack>
-      </Box>
-    );
-  };
-
   return (
-    <Box>
+    <Box sx={{ width: "100%", py: 4 }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <DescriptionRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Proposal
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5}>
+            <DescriptionRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              Proposal Saya
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+          sx={{ mt: 1 }}
+        >
+          Kembali ke Profil
+        </Button>
+      </Box>
+
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
           {error}
         </Alert>
       )}
 
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
+      <Box
+        sx={{
+          borderBottom: 1,
+          borderColor: "divider",
+          mb: -2,
+        }}
+      >
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="fullWidth"
+          sx={{
+            "& .MuiTab-root": {
+              transition: "all 0.2s",
+              py: 1.5,
+            },
+          }}
+        >
           <Tab
             label={
               <Box sx={{ display: "flex", alignItems: "center" }}>

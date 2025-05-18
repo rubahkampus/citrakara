@@ -4,12 +4,10 @@ import { useFormContext } from "react-hook-form";
 import {
   Box,
   Typography,
-  Paper,
   Divider,
   Card,
   Tooltip,
   alpha,
-  Fade,
   Chip,
   Grid,
 } from "@mui/material";
@@ -23,6 +21,29 @@ import {
 import { ProposalFormValues } from "@/types/proposal";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
+// Constants - Indonesian text translations
+const TEXT = {
+  PRICE_BREAKDOWN: "Rincian Harga",
+  BASE_PRICE: "Harga Dasar",
+  SELECTED_OPTIONS: "Opsi Terpilih",
+  ADDITIONAL_SERVICES: "Layanan Tambahan",
+  RUSH_FEE: "Biaya Kilat",
+  MULTI_ITEM_DISCOUNT: "Diskon Multi-Item",
+  SURCHARGE: "Biaya Tambahan",
+  TOTAL_PRICE: "Total Harga",
+  DAYS_RUSH_FEE: "hari biaya kilat",
+  FLAT_FEE: "Biaya tetap",
+  PER_DAY: "per hari",
+  OFF_FOR: "diskon untuk",
+  ADDITIONAL_ITEMS: "item tambahan",
+  DISCOUNT_NOTE: "Diskon berlaku untuk semua item setelah item pertama",
+  FULL_PAYMENT_DUE: "Pembayaran penuh saat proposal disetujui.",
+  MILESTONE_PAYMENT: "Pembayaran akan diproses sesuai jadwal milestone.",
+  CANCELLATION_FEE: "Biaya pembatalan:",
+  OF_TOTAL: "dari total",
+};
+
+// Types
 interface PriceBreakdownSectionProps {
   listing: ICommissionListing;
 }
@@ -35,12 +56,19 @@ interface DiscountDetail {
   count: number;
 }
 
+// Component
 export default function PriceBreakdownSection({
   listing,
 }: PriceBreakdownSectionProps) {
   const { watch } = useFormContext<ProposalFormValues>();
   const watched = watch();
 
+  // Format currency helper
+  const formatCurrency = (amount: number) => {
+    return `${listing.currency} ${amount.toLocaleString()}`;
+  };
+
+  // Price calculation
   const priceBreakdown = useMemo(() => {
     let base = listing.basePrice || 0;
     let optionGroups = 0;
@@ -250,10 +278,76 @@ export default function PriceBreakdownSection({
     };
   }, [watched, listing]);
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return `${listing.currency} ${amount.toLocaleString()}`;
-  };
+  // UI Rendering Components
+  const renderPriceItem = (
+    label: string,
+    amount: number,
+    tooltip?: React.ReactNode
+  ) => (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        mb: 1.5,
+        alignItems: "center",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        <Typography variant="body1">{label}</Typography>
+        {tooltip && (
+          <Tooltip title={tooltip} arrow>
+            <InfoIcon
+              fontSize="small"
+              sx={{ ml: 1, color: "text.secondary", cursor: "pointer" }}
+            />
+          </Tooltip>
+        )}
+      </Box>
+      <Typography variant="body1" fontWeight="medium">
+        {formatCurrency(amount)}
+      </Typography>
+    </Box>
+  );
+
+  type PaletteColor = "primary" | "secondary" | "error" | "warning" | "info" | "success";
+
+  const renderHighlightedItem = (
+    label: string,
+    amount: number,
+    color: PaletteColor,
+    icon: React.ReactNode,
+    tooltip?: React.ReactNode,
+    isNegative: boolean = false
+  ) => (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        mb: 1.5,
+        alignItems: "center",
+        p: 1,
+        bgcolor: (theme) => alpha(theme.palette[color].main, 0.08),
+        borderRadius: 1,
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        {icon}
+        <Typography color={`${color}.main`}>{label}</Typography>
+        {tooltip && (
+          <Tooltip title={tooltip} arrow>
+            <InfoIcon
+              fontSize="small"
+              sx={{ ml: 1, color: `${color}.main`, cursor: "pointer" }}
+            />
+          </Tooltip>
+        )}
+      </Box>
+      <Typography color={`${color}.main`} fontWeight="medium">
+        {isNegative ? "-" : ""}
+        {formatCurrency(amount)}
+      </Typography>
+    </Box>
+  );
 
   return (
     <Card
@@ -268,6 +362,7 @@ export default function PriceBreakdownSection({
         boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
       }}
     >
+      {/* Header */}
       <Box
         sx={{
           display: "flex",
@@ -279,7 +374,7 @@ export default function PriceBreakdownSection({
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <PriceCheckIcon color="primary" sx={{ mr: 1 }} />
           <Typography variant="h6" fontWeight="medium" color="primary.main">
-            Price Breakdown
+            {TEXT.PRICE_BREAKDOWN}
           </Typography>
         </Box>
         <Chip
@@ -294,223 +389,100 @@ export default function PriceBreakdownSection({
       </Box>
       <Divider sx={{ mb: 2 }} />
 
+      {/* Price Details */}
       <Grid container spacing={2}>
+        {/* Left Column */}
         <Grid item xs={12} md={6}>
           {/* Base Price */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              mb: 1.5,
-              alignItems: "center",
-            }}
-          >
-            <Typography variant="body1">Base Price</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {formatCurrency(priceBreakdown.base)}
-            </Typography>
-          </Box>
+          {renderPriceItem(TEXT.BASE_PRICE, priceBreakdown.base)}
 
           {/* Option Groups */}
-          {priceBreakdown.optionGroups > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mb: 1.5,
-                alignItems: "center",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Typography variant="body1">Selected Options</Typography>
-                <Tooltip
-                  title={
-                    <Box>
-                      {priceBreakdown.optionGroupDetails.map((detail, i) => (
-                        <Box key={i} sx={{ mb: 0.5 }}>
-                          <Typography variant="body2">
-                            {detail.name}: {formatCurrency(detail.price)}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
-                  }
-                  arrow
-                >
-                  <InfoIcon
-                    fontSize="small"
-                    sx={{ ml: 1, color: "text.secondary", cursor: "pointer" }}
-                  />
-                </Tooltip>
+          {priceBreakdown.optionGroups > 0 &&
+            renderPriceItem(
+              TEXT.SELECTED_OPTIONS,
+              priceBreakdown.optionGroups,
+              <Box>
+                {priceBreakdown.optionGroupDetails.map((detail, i) => (
+                  <Box key={i} sx={{ mb: 0.5 }}>
+                    <Typography variant="body2">
+                      {detail.name}: {formatCurrency(detail.price)}
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
-              <Typography variant="body1" fontWeight="medium">
-                {formatCurrency(priceBreakdown.optionGroups)}
-              </Typography>
-            </Box>
-          )}
+            )}
 
           {/* Addons */}
-          {priceBreakdown.addons > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mb: 1.5,
-                alignItems: "center",
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Typography variant="body1">Additional Services</Typography>
-                <Tooltip
-                  title={
-                    <Box>
-                      {priceBreakdown.addonDetails.map((detail, i) => (
-                        <Box key={i} sx={{ mb: 0.5 }}>
-                          <Typography variant="body2">
-                            {detail.name}: {formatCurrency(detail.price)}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
-                  }
-                  arrow
-                >
-                  <InfoIcon
-                    fontSize="small"
-                    sx={{ ml: 1, color: "text.secondary", cursor: "pointer" }}
-                  />
-                </Tooltip>
+          {priceBreakdown.addons > 0 &&
+            renderPriceItem(
+              TEXT.ADDITIONAL_SERVICES,
+              priceBreakdown.addons,
+              <Box>
+                {priceBreakdown.addonDetails.map((detail, i) => (
+                  <Box key={i} sx={{ mb: 0.5 }}>
+                    <Typography variant="body2">
+                      {detail.name}: {formatCurrency(detail.price)}
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
-              <Typography variant="body1" fontWeight="medium">
-                {formatCurrency(priceBreakdown.addons)}
-              </Typography>
-            </Box>
-          )}
+            )}
         </Grid>
 
+        {/* Right Column */}
         <Grid item xs={12} md={6}>
           {/* Rush Fee */}
-          {priceBreakdown.rush > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mb: 1.5,
-                alignItems: "center",
-                p: 1,
-                bgcolor: alpha("#ff9800", 0.08),
-                borderRadius: 1,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <BoltIcon color="warning" fontSize="small" sx={{ mr: 1 }} />
-                <Typography color="warning.main">Rush Fee</Typography>
-                <Tooltip
-                  title={
-                    <Box>
-                      <Typography variant="body2">
-                        {priceBreakdown.rushDetails.days} day(s) rush fee
-                      </Typography>
-                      <Typography variant="body2">
-                        {listing.deadline.rushFee?.kind === "flat"
-                          ? "Flat fee"
-                          : `${formatCurrency(
-                              listing.deadline.rushFee?.amount || 0
-                            )} per day`}
-                      </Typography>
-                    </Box>
-                  }
-                  arrow
-                >
-                  <InfoIcon
-                    fontSize="small"
-                    sx={{ ml: 1, color: "warning.main", cursor: "pointer" }}
-                  />
-                </Tooltip>
+          {priceBreakdown.rush > 0 &&
+            renderHighlightedItem(
+              TEXT.RUSH_FEE,
+              priceBreakdown.rush,
+              "warning",
+              <BoltIcon color="warning" fontSize="small" sx={{ mr: 1 }} />,
+              <Box>
+                <Typography variant="body2">
+                  {priceBreakdown.rushDetails.days} {TEXT.DAYS_RUSH_FEE}
+                </Typography>
+                <Typography variant="body2">
+                  {listing.deadline.rushFee?.kind === "flat"
+                    ? TEXT.FLAT_FEE
+                    : `${formatCurrency(
+                        listing.deadline.rushFee?.amount || 0
+                      )} ${TEXT.PER_DAY}`}
+                </Typography>
               </Box>
-              <Typography color="warning.main" fontWeight="medium">
-                {formatCurrency(priceBreakdown.rush)}
-              </Typography>
-            </Box>
-          )}
+            )}
 
           {/* Discount */}
-          {priceBreakdown.discount > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mb: 1.5,
-                alignItems: "center",
-                p: 1,
-                bgcolor: alpha("#4caf50", 0.08),
-                borderRadius: 1,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <DiscountIcon color="success" fontSize="small" sx={{ mr: 1 }} />
-                <Typography color="success.main">
-                  Multi-Item Discount
+          {priceBreakdown.discount > 0 &&
+            renderHighlightedItem(
+              TEXT.MULTI_ITEM_DISCOUNT,
+              priceBreakdown.discount,
+              "success",
+              <DiscountIcon color="success" fontSize="small" sx={{ mr: 1 }} />,
+              <Box>
+                {priceBreakdown.discountDetails.map((detail, i) => (
+                  <Box key={i} sx={{ mb: 0.5 }}>
+                    <Typography variant="body2">
+                      {detail.subjectTitle}: {detail.discountPercentage}%{" "}
+                      {TEXT.OFF_FOR} {detail.count} {TEXT.ADDITIONAL_ITEMS}
+                    </Typography>
+                  </Box>
+                ))}
+                <Typography variant="body2" sx={{ mt: 1, fontStyle: "italic" }}>
+                  {TEXT.DISCOUNT_NOTE}
                 </Typography>
-                <Tooltip
-                  title={
-                    <Box>
-                      {priceBreakdown.discountDetails.map((detail, i) => (
-                        <Box key={i} sx={{ mb: 0.5 }}>
-                          <Typography variant="body2">
-                            {detail.subjectTitle}: {detail.discountPercentage}%
-                            off for {detail.count} additional item(s)
-                          </Typography>
-                        </Box>
-                      ))}
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 1, fontStyle: "italic" }}
-                      >
-                        Discount applies to all items after the first one
-                      </Typography>
-                    </Box>
-                  }
-                  arrow
-                >
-                  <InfoIcon
-                    fontSize="small"
-                    sx={{ ml: 1, color: "success.main", cursor: "pointer" }}
-                  />
-                </Tooltip>
-              </Box>
-              <Typography color="success.main" fontWeight="medium">
-                -{formatCurrency(priceBreakdown.discount)}
-              </Typography>
-            </Box>
-          )}
+              </Box>,
+              true
+            )}
 
-          {/* Surcharge (if applicable) */}
-          {priceBreakdown.surcharge > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mb: 1.5,
-                alignItems: "center",
-                p: 1,
-                bgcolor: alpha("#f44336", 0.08),
-                borderRadius: 1,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <ErrorOutlineIcon
-                  color="error"
-                  fontSize="small"
-                  sx={{ mr: 1 }}
-                />
-                <Typography color="error.main">Surcharge</Typography>
-              </Box>
-              <Typography color="error.main" fontWeight="medium">
-                {formatCurrency(priceBreakdown.surcharge)}
-              </Typography>
-            </Box>
-          )}
+          {/* Surcharge */}
+          {priceBreakdown.surcharge > 0 &&
+            renderHighlightedItem(
+              TEXT.SURCHARGE,
+              priceBreakdown.surcharge,
+              "error",
+              <ErrorOutlineIcon color="error" fontSize="small" sx={{ mr: 1 }} />
+            )}
         </Grid>
       </Grid>
 
@@ -525,7 +497,7 @@ export default function PriceBreakdownSection({
           borderRadius: 2,
         }}
       >
-        <Typography variant="h6">Total Price</Typography>
+        <Typography variant="h6">{TEXT.TOTAL_PRICE}</Typography>
         <Typography variant="h6" color="primary.main" fontWeight="bold">
           {formatCurrency(priceBreakdown.total)}
         </Typography>
@@ -544,8 +516,8 @@ export default function PriceBreakdownSection({
       >
         <Typography variant="caption" color="text.secondary">
           {listing.flow === "standard"
-            ? "Full payment is due upon approval of this proposal."
-            : "Payment will be processed according to the milestone schedule."}
+            ? TEXT.FULL_PAYMENT_DUE
+            : TEXT.MILESTONE_PAYMENT}
         </Typography>
         {listing.cancelationFee && (
           <Typography
@@ -554,10 +526,10 @@ export default function PriceBreakdownSection({
             display="block"
             sx={{ mt: 0.5 }}
           >
-            Cancellation fee:{" "}
+            {TEXT.CANCELLATION_FEE}{" "}
             {listing.cancelationFee.kind === "flat"
               ? `${formatCurrency(listing.cancelationFee.amount)}`
-              : `${listing.cancelationFee.amount}% of total`}
+              : `${listing.cancelationFee.amount}% ${TEXT.OF_TOTAL}`}
           </Typography>
         )}
       </Box>

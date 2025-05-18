@@ -1,4 +1,4 @@
-// src/components/dashboard/bookmarks/BookmarkPage.tsx
+// src/app/[username]/dashboard/bookmarks/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,7 +16,6 @@ import {
   useTheme,
   useMediaQuery,
   Breadcrumbs,
-  Link,
 } from "@mui/material";
 import {
   Bookmark as BookmarkIcon,
@@ -26,17 +25,19 @@ import {
   CollectionsBookmark as EmptyBookmarkIcon,
   ArrowBack,
   Home,
-  LocalAtm,
   NavigateNext,
   BookmarksOutlined,
 } from "@mui/icons-material";
-import { CommissionListingItem } from "../../dashboard/commissions/CommissionListingItem";
-import ArtistItem from "../../artist/ArtistItem";
+import { CommissionListingItem } from "@/components/dashboard/commissions/CommissionListingItem";
+import ArtistItem from "@/components/artist/ArtistItem";
+import Link from "next/link";
+import { axiosClient } from "@/lib/utils/axiosClient";
+import { useRouter } from "next/navigation";
+import { Session } from "@/lib/utils/session";
 
 // Types
 interface BookmarkPageProps {
-  username: string;
-  session?: any;
+  session: Session
 }
 
 interface TabPanelProps {
@@ -82,15 +83,18 @@ const EmptyState = ({
     <Button
       variant="contained"
       color="primary"
-      onClick={() => (window.location.href = buttonLink)}
+      component={Link}
+      href={buttonLink}
     >
       {buttonText}
     </Button>
   </Paper>
 );
 
-export default function BookmarkPage({ username, session }: BookmarkPageProps) {
+export default function BookmarkPage({ session }: BookmarkPageProps) {
+  const username = session.username;
   const theme = useTheme();
+  const router = useRouter();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [activeTab, setActiveTab] = useState(0);
@@ -98,22 +102,42 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
   const [bookmarkedArtists, setBookmarkedArtists] = useState<any[]>([]);
   const [bookmarkedCommissions, setBookmarkedCommissions] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        setIsAuthenticated(!!session);
+
+        if (session) {
+          fetchBookmarks();
+        } else {
+          setLoading(false);
+          setError("Silakan masuk untuk melihat bookmark Anda");
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+        setLoading(false);
+        setError("Gagal memuat informasi pengguna");
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const fetchBookmarks = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/user/bookmarks");
+      const response = await axiosClient.get("/api/user/bookmarks");
 
-      if (!response.ok) {
-        throw new Error("Gagal mengambil bookmark");
+      console.log(response.data.commissions)
+
+      if (response.data) {
+        setBookmarkedArtists(response.data.artists || []);
+        setBookmarkedCommissions(response.data.commissions || []);
       }
-
-      const data = await response.json();
-
-      setBookmarkedArtists(data.artists || []);
-      setBookmarkedCommissions(data.commissions || []);
     } catch (error) {
       console.error("Error fetching bookmarks:", error);
       setError("Gagal memuat bookmark Anda. Silakan coba lagi.");
@@ -121,10 +145,6 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchBookmarks();
-  }, []);
 
   const handleChangeTab = (_: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -135,15 +155,10 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
     action: "bookmark" | "unbookmark"
   ) => {
     try {
-      const response = await fetch("/api/bookmark/artist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artistId, action }),
+      await axiosClient.post("/api/bookmark/artist", {
+        artistId,
+        action,
       });
-
-      if (!response.ok) {
-        throw new Error("Gagal memperbarui bookmark");
-      }
 
       // Remove the artist from the list if unbookmarked
       if (action === "unbookmark") {
@@ -161,15 +176,10 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
     action: "bookmark" | "unbookmark"
   ) => {
     try {
-      const response = await fetch("/api/bookmark/commission", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commissionId, action }),
+      await axiosClient.post("/api/bookmark/commission", {
+        commissionId,
+        action,
       });
-
-      if (!response.ok) {
-        throw new Error("Gagal memperbarui bookmark");
-      }
 
       // Remove the commission from the list if unbookmarked
       if (action === "unbookmark") {
@@ -185,7 +195,7 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Box maxWidth="lg" sx={{ py: 4 }}>
       <Box
         sx={{
           mb: 3,
@@ -203,11 +213,13 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
         >
           <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
             <Link
-              component={Link}
               href={`/${username}/dashboard`}
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                textDecoration: "none",
+                color: theme.palette.text.primary,
+              }}
             >
               <Home fontSize="small" sx={{ mr: 0.5 }} />
               Dashboard
@@ -235,7 +247,7 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
           variant="outlined"
           startIcon={<ArrowBack />}
           size="small"
-          mt={-1}
+          sx={{ mt: 1 }}
         >
           Kembali ke Profil
         </Button>
@@ -324,7 +336,7 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
                       listing={commission}
                       username={commission.artistId?.username || "unknown"}
                       isOwner={false}
-                      isAuthenticated={true}
+                      isAuthenticated={isAuthenticated}
                       isBookmarked={true}
                       onToggleBookmark={handleToggleCommissionBookmark}
                     />
@@ -353,7 +365,7 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
                   <Grid item xs={12} sm={6} md={4} key={artist._id}>
                     <ArtistItem
                       artist={artist}
-                      isAuthenticated={true}
+                      isAuthenticated={isAuthenticated}
                       isBookmarked={true}
                       onToggleBookmark={handleToggleArtistBookmark}
                     />
@@ -370,6 +382,6 @@ export default function BookmarkPage({ username, session }: BookmarkPageProps) {
           </TabPanel>
         </>
       )}
-    </Container>
+    </Box>
   );
 }

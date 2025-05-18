@@ -50,10 +50,6 @@ export default async function NewProposalPage({
   // 4. Pass it into the form as a JSON string
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        Create New Proposal
-      </Typography>
-
       <ProposalFormPage
         username={username}
         mode="create"

@@ -7,7 +7,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { listingId: string } }
 ) {
-  const { listingId } = params;
+  const param = await params
+  const listingId = param.listingId;
 
   try {
     const estimate = await getDynamicEstimate(listingId);

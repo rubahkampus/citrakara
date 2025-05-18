@@ -195,8 +195,6 @@ export async function getBookmarkedCommissions(
     .select("commissionBookmarks")
     .populate({
       path: "commissionBookmarks",
-      select:
-        "title price samples thumbnailIdx tags type flow slots slotsUsed isActive artistId",
       match: { isDeleted: false },
     });
 

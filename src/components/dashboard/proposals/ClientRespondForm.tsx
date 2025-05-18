@@ -25,12 +25,14 @@ interface ClientRespondFormProps {
     acceptAdjustments?: boolean;
     cancel?: boolean;
   }) => void;
+  username: string;
 }
 
 export default function ClientRespondForm({
   proposal,
   onSubmit,
   loading = false,
+  username,
 }: ClientRespondFormProps) {
   const router = useRouter();
 
@@ -304,7 +306,7 @@ export default function ClientRespondForm({
                 // Tangani keberhasilan (Anda bisa menambahkan logika tambahan di sini)
                 // Misalnya, mengarahkan ke halaman kontrak
                 if (response.data.contractId) {
-                  router.push(`/contracts/${response.data.contractId}`);
+                  window.location.href = `/${username}/contracts/${response.data.contractId}`;
                 }
               } catch (err: any) {
                 console.error("Error membuat kontrak:", err);

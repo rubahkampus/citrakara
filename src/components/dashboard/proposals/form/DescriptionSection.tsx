@@ -4,18 +4,24 @@ import { Typography, Paper } from "@mui/material";
 import { ProposalFormValues } from "@/types/proposal";
 
 /**
- * DescriptionSection with Direct DOM Manipulation
- * ----------------------------------------------
- * Uses native DOM APIs for maximum performance
+ * DescriptionSection Component
+ * ----------------------------
+ * Handles project description input with direct DOM manipulation
+ * for maximum performance while maintaining clean code structure
  */
 const DescriptionSection = () => {
+  // Form hooks
   const { setValue, formState, setError, clearErrors, getValues } =
     useFormContext<ProposalFormValues>();
+
+  // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const errMsgRef = useRef<HTMLDivElement>(null);
+
+  // Constants
   const fieldName = "generalDescription";
 
-  // Initialize the textarea with the form value if it exists (for edit mode)
+  // Initialize textarea with existing form value (for edit mode)
   useEffect(() => {
     const initialValue = getValues(fieldName) || "";
     if (textareaRef.current) {
@@ -23,7 +29,7 @@ const DescriptionSection = () => {
     }
   }, [getValues, fieldName]);
 
-  // Set up validation and update form on blur
+  // Validation and form update on blur
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -31,16 +37,16 @@ const DescriptionSection = () => {
     const handleBlur = () => {
       const value = textarea.value;
 
-      // Validate
+      // Validation logic
       if (!value) {
         setError(fieldName, {
           type: "required",
-          message: "Description is required",
+          message: "Deskripsi wajib diisi",
         });
       } else if (value.length > 500) {
         setError(fieldName, {
           type: "maxLength",
-          message: "Max 500 characters",
+          message: "Maksimal 500 karakter",
         });
       } else {
         clearErrors(fieldName);
@@ -56,7 +62,7 @@ const DescriptionSection = () => {
     };
   }, [setValue, setError, clearErrors, fieldName]);
 
-  // Update error message from form state
+  // Update error message display based on form state
   useEffect(() => {
     const errorElement = errMsgRef.current;
     if (!errorElement) return;
@@ -81,9 +87,8 @@ const DescriptionSection = () => {
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-        Project Description
+        Deskripsi Proyek
       </Typography>
-
       <div
         className="textarea-container"
         style={{ position: "relative", marginBottom: "20px" }}
@@ -92,7 +97,7 @@ const DescriptionSection = () => {
           ref={textareaRef}
           name={fieldName}
           rows={4}
-          placeholder="Provide details about your commission request. Be specific about what you want and any special requirements."
+          placeholder="Berikan detail tentang permintaan komisi Anda. Jelaskan secara spesifik apa yang Anda inginkan dan persyaratan khusus lainnya."
           style={{
             width: "95%",
             padding: "16.5px 14px",

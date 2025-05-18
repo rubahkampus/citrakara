@@ -1,7 +1,7 @@
-// src/components/profile/ProfileContent.tsx
+// Updated ProfileContent with Artist Bookmark functionality
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Avatar,
@@ -17,14 +17,15 @@ import {
   Tabs,
   Tooltip,
   Typography,
-  useMediaQuery,
   useTheme,
   Fade,
   Zoom,
+  CircularProgress,
+  alpha,
 } from "@mui/material";
 import {
-  Message as MessageIcon,
-  BookmarkBorder as BookmarkIcon,
+  BookmarkBorder as BookmarkBorderIcon,
+  Bookmark as BookmarkIcon,
   ChatBubbleOutline as ChatBubbleOutlineIcon,
   Edit as EditIcon,
   Dashboard as DashboardIcon,
@@ -32,10 +33,10 @@ import {
   CalendarMonth as CalendarIcon,
 } from "@mui/icons-material";
 
-import { KButton } from "@/components/KButton";
 import GallerySection from "@/components/profile/GallerySection";
 import CommissionSection from "@/components/profile/CommissionSection";
 import { useDialogStore } from "@/lib/stores";
+import { axiosClient } from "@/lib/utils/axiosClient";
 
 // Helper to get social icon
 import InstagramIcon from "@mui/icons-material/Instagram";
@@ -46,6 +47,8 @@ import LinkIcon from "@mui/icons-material/Link";
 import { Session } from "@/lib/utils/session";
 
 const getSocialIcon = (platform: string) => {
+  if (!platform) return <LinkIcon fontSize="small" />;
+
   switch (platform.toLowerCase()) {
     case "instagram":
       return <InstagramIcon fontSize="small" />;
@@ -64,19 +67,71 @@ const getSocialIcon = (platform: string) => {
 interface ProfileContentProps {
   profile: any;
   isOwner: boolean;
-  session: Session
+  session: Session;
 }
 
 export default function ProfileContent({
   profile,
   isOwner,
-  session
+  session,
 }: ProfileContentProps) {
   const theme = useTheme();
   const isAuthenticated = !!session;
   const router = useRouter();
   const openDialog = useDialogStore((s) => s.open);
   const [activeTab, setActiveTab] = useState(0);
+
+  // Artist bookmark state
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+
+  // Fetch artist bookmark status
+  useEffect(() => {
+    if (isAuthenticated && !isOwner && profile._id) {
+      fetchArtistBookmarkStatus();
+    }
+  }, [isAuthenticated, isOwner, profile._id]);
+
+  const fetchArtistBookmarkStatus = async () => {
+    try {
+      const response = await axiosClient.get(
+        `/api/user/bookmarks?type=artists`
+      );
+
+      if (response.data?.bookmarks) {
+        const isMarked = response.data.bookmarks.some(
+          (bookmark: any) => bookmark._id.toString() === profile._id.toString()
+        );
+        setIsBookmarked(isMarked);
+      }
+    } catch (error) {
+      console.error("Error fetching artist bookmark status:", error);
+    }
+  };
+
+  const handleToggleArtistBookmark = async () => {
+    if (!isAuthenticated) {
+      openDialog("login");
+      return;
+    }
+
+    try {
+      setIsBookmarkLoading(true);
+      const action = isBookmarked ? "unbookmark" : "bookmark";
+
+      const response = await axiosClient.post("/api/bookmark/artist", {
+        artistId: profile._id.toString(),
+        action,
+      });
+
+      setIsBookmarked(response.data.isBookmarked);
+
+    } catch (error) {
+      console.error("Error toggling artist bookmark:", error);
+    } finally {
+      setIsBookmarkLoading(false);
+    }
+  };
 
   const handleTabChange = (_: any, newVal: number) => {
     setActiveTab(newVal);
@@ -287,17 +342,40 @@ export default function ProfileContent({
                     alignItems="center"
                     sx={{ width: { xs: "100%", sm: "auto" } }}
                   >
-                    <Tooltip title="Simpan Kreator">
+                    <Tooltip
+                      title={
+                        isBookmarked ? "Hapus dari Tersimpan" : "Simpan Kreator"
+                      }
+                    >
                       <IconButton
+                        onClick={handleToggleArtistBookmark}
+                        disabled={isBookmarkLoading}
                         sx={{
                           transition: "all 0.3s ease",
+                          color: isBookmarked
+                            ? theme.palette.primary.main
+                            : "inherit",
+                          backgroundColor: isBookmarked
+                            ? alpha(theme.palette.primary.main, 0.1)
+                            : "transparent",
                           "&:hover": {
                             transform: "translateY(-2px)",
-                            color: theme.palette.primary.main,
+                            backgroundColor: isBookmarked
+                              ? alpha(theme.palette.primary.main, 0.2)
+                              : alpha(theme.palette.action.hover, 0.8),
+                            color: isBookmarked
+                              ? theme.palette.primary.dark
+                              : theme.palette.primary.main,
                           },
                         }}
                       >
-                        <BookmarkIcon />
+                        {isBookmarkLoading ? (
+                          <CircularProgress size={20} color="inherit" />
+                        ) : isBookmarked ? (
+                          <BookmarkIcon />
+                        ) : (
+                          <BookmarkBorderIcon />
+                        )}
                       </IconButton>
                     </Tooltip>
                     <Button
@@ -334,6 +412,7 @@ export default function ProfileContent({
             justifyContent: "center",
             mt: -2,
             backgroundColor: "#EEEEEE",
+            pb: 8,
           }}
         >
           <Box
@@ -342,7 +421,7 @@ export default function ProfileContent({
               display: "flex",
               flexDirection: { xs: "column", md: "row" },
               gap: 4,
-              mt: 4
+              mt: 4,
             }}
           >
             {/* Sidebar */}
@@ -592,8 +671,8 @@ export default function ProfileContent({
                         },
                       }}
                     >
-                      <Tab label="Komisi" sx={{px: 10}}/>
-                      <Tab label="Galeri" sx={{px: 10}}/>
+                      <Tab label="Komisi" sx={{ px: { xs: 4, sm: 10 } }} />
+                      <Tab label="Galeri" sx={{ px: { xs: 4, sm: 10 } }} />
                     </Tabs>
                   </Box>
 
@@ -602,6 +681,7 @@ export default function ProfileContent({
                       <CommissionSection
                         username={profile.username}
                         isOwner={isOwner}
+                        isAuthenticated={isAuthenticated}
                       />
                     )}
                     {activeTab === 1 && (

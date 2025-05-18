@@ -30,8 +30,23 @@ import ReferenceImagesSection from "./form/ReferenceImagesSection";
 import GeneralOptionsSection from "./form/GeneralOptionsSection";
 import SubjectOptionsSection from "./form/SubjectOptionsSection";
 import PriceBreakdownSection from "./form/PriceBreakdownSection";
-import { Button, Box, Alert, Snackbar, Paper } from "@mui/material";
+import {
+  Button,
+  Box,
+  Alert,
+  Snackbar,
+  Paper,
+  Breadcrumbs,
+  Link,
+  Typography,
+} from "@mui/material";
 import { IProposal } from "@/lib/db/models/proposal.model";
+import {
+  NavigateNext,
+  Home,
+  DescriptionRounded,
+  ArrowBack,
+} from "@mui/icons-material";
 
 interface ProposalFormPageProps {
   username: string;
@@ -200,6 +215,73 @@ export default function ProposalFormPage({
   return (
     <FormProvider {...methods}>
       <Box
+        sx={{
+          pt: 4,
+          mb: 3,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/proposals`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <DescriptionRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Proposal
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              {mode === "create" ? "Buat Proposal" : "Ubah Proposal"}
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5}>
+            <DescriptionRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              {mode === "create" ? "Buat Proposal" : "Ubah Proposal"}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard/proposals`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+          sx={{ mt: 1 }}
+        >
+          Kembali ke Daftar Proposal
+        </Button>
+      </Box>
+
+      <Box
         component="form"
         onSubmit={handleSubmit(
           (values) => {
@@ -212,7 +294,6 @@ export default function ProposalFormPage({
             );
           }
         )}
-        sx={{ maxWidth: 800, mx: "auto" }}
       >
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>

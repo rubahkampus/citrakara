@@ -18,11 +18,13 @@ const EMPTY_CONTAINER_HEIGHT = 150;
 interface CommissionSectionProps {
   username: string;
   isOwner: boolean;
+  isAuthenticated?: boolean;
 }
 
 export default function CommissionSection({
   username,
   isOwner,
+  isAuthenticated = false,
 }: CommissionSectionProps) {
   // Hooks
   const router = useRouter();
@@ -32,6 +34,10 @@ export default function CommissionSection({
   const [commissions, setCommissions] = useState<ICommissionListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bookmarkedCommissions, setBookmarkedCommissions] = useState<string[]>(
+    []
+  );
+  const [bookmarksLoading, setBookmarksLoading] = useState(false);
 
   // Helpers
   const fetchCommissions = async () => {
@@ -45,15 +51,42 @@ export default function CommissionSection({
     }
   };
 
+  const fetchBookmarkedCommissions = async () => {
+    if (!isAuthenticated) return [];
+
+    setBookmarksLoading(true);
+    try {
+      const response = await axiosClient.get(
+        `/api/user/bookmarks?type=commissions`
+      );
+
+      if (response.data?.bookmarks) {
+        // Extract commission IDs
+        return response.data.bookmarks.map((item: any) => item._id.toString());
+      }
+      return [];
+    } catch (err) {
+      console.error("Error fetching bookmarks:", err);
+      return [];
+    } finally {
+      setBookmarksLoading(false);
+    }
+  };
+
   // Effects
   useEffect(() => {
-    const loadCommissions = async () => {
+    const loadData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const listings = await fetchCommissions();
+        const [listings, bookmarkedIds] = await Promise.all([
+          fetchCommissions(),
+          isAuthenticated ? fetchBookmarkedCommissions() : [],
+        ]);
+
         setCommissions(listings);
+        setBookmarkedCommissions(bookmarkedIds);
       } catch (err) {
         setError((err as Error).message);
         setCommissions([]);
@@ -62,8 +95,8 @@ export default function CommissionSection({
       }
     };
 
-    loadCommissions();
-  }, [username]);
+    loadData();
+  }, [username, isAuthenticated]);
 
   // Event handlers
   const handleCreate = () => {
@@ -72,6 +105,11 @@ export default function CommissionSection({
 
   const handleManage = () => {
     router.push(`/${username}/dashboard/commissions`);
+  };
+
+  // Check if a commission is bookmarked
+  const isCommissionBookmarked = (commissionId: string) => {
+    return bookmarkedCommissions.includes(commissionId);
   };
 
   // UI Components
@@ -162,6 +200,10 @@ export default function CommissionSection({
             commission={commission}
             isOwner={isOwner}
             username={username}
+            isAuthenticated={isAuthenticated}
+            initialBookmarkStatus={isCommissionBookmarked(
+              commission._id.toString()
+            )}
           />
         </Grid>
       ))}

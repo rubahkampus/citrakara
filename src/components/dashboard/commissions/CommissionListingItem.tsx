@@ -168,6 +168,7 @@ export const CommissionListingItem = ({
     e.stopPropagation();
     openDialog("viewCommission", listing._id.toString(), listing, isOwner);
   };
+  
 
   function ListItemIcon({ children, sx }: ListItemIconProps) {
     return (
@@ -297,6 +298,7 @@ export const CommissionListingItem = ({
             backdropFilter: "blur(4px)",
             boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
             px: 1,
+            color: "white"
           }}
         />
       </Box>
@@ -569,7 +571,7 @@ export const CommissionListingItem = ({
             sx={{ fontWeight: 500 }}
           >
             {listing.slots === -1
-              ? "Slot tidak terbatas tersedia"
+              ? "Slot tidak terbatas"
               : `${slotsLeft}/${listing.slots} slot tersedia`}
           </Typography>
         </Box>

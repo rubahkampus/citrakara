@@ -2,7 +2,7 @@
 import { Suspense } from "react";
 import { Box, CircularProgress, Alert } from "@mui/material";
 import BookmarkPage from "@/components/dashboard/bookmarks/BookmarkPage";
-import { getAuthSession } from "@/lib/utils/session";
+import { getAuthSession, Session } from "@/lib/utils/session";
 
 interface BookmarksPageProps {
   params: { username: string };
@@ -32,7 +32,7 @@ export default async function BookmarksPage({ params }: BookmarksPageProps) {
         </Box>
       }
     >
-      <BookmarkPage username={username} session={session} />
+      <BookmarkPage session={session as Session} />
     </Suspense>
   );
 }

@@ -8,7 +8,6 @@ import {
   Tab,
   Paper,
   Alert,
-  CircularProgress,
   Badge,
   useTheme,
   Divider,
@@ -26,7 +25,55 @@ import { IResolutionTicket } from "@/lib/db/models/ticket.model";
 import ResolutionListTable from "./ResolutionListTable";
 import ResolutionListSkeleton from "./ResolutionListSkeleton";
 
-// Types for the props passed to this component
+// Constants for tab categories and their configurations
+const TAB_CATEGORIES = [
+  {
+    id: "all",
+    label: "Semua",
+    icon: GavelIcon,
+    color: "primary",
+    filter: () => true,
+  },
+  {
+    id: "submitted",
+    label: "Dikirim",
+    icon: SentIcon,
+    color: "secondary",
+    filter: (ticket: IResolutionTicket, userId: string) =>
+      ticket.submittedById.toString() === userId,
+  },
+  {
+    id: "responding",
+    label: "Merespon",
+    icon: InboxIcon,
+    color: "info",
+    filter: (ticket: IResolutionTicket, userId: string) =>
+      ticket.submittedById.toString() !== userId,
+  },
+  {
+    id: "open",
+    label: "Terbuka",
+    icon: PendingIcon,
+    color: "primary",
+    filter: (ticket: IResolutionTicket) => ticket.status === "open",
+  },
+  {
+    id: "awaiting",
+    label: "Menunggu Tinjauan",
+    icon: VisibilityIcon,
+    color: "warning",
+    filter: (ticket: IResolutionTicket) => ticket.status === "awaitingReview",
+  },
+  {
+    id: "resolved",
+    label: "Terselesaikan",
+    icon: ResolvedIcon,
+    color: "success",
+    filter: (ticket: IResolutionTicket) => ticket.status === "resolved",
+  },
+];
+
+// Types for the props
 interface ResolutionListPageProps {
   username: string;
   tickets: IResolutionTicket[];
@@ -54,68 +101,109 @@ export default function ResolutionListPage({
 
   // Filter tickets based on the selected tab
   useEffect(() => {
-    if (tabValue === 0) {
-      // All tickets
-      setFilteredTickets(tickets);
-    } else if (tabValue === 1) {
-      // Submitted by me
-      setFilteredTickets(
-        tickets.filter((ticket) => ticket.submittedById.toString() === userId)
-      );
-    } else if (tabValue === 2) {
-      // Responding to
-      setFilteredTickets(
-        tickets.filter((ticket) => ticket.submittedById.toString() !== userId)
-      );
-    } else if (tabValue === 3) {
-      // Open tickets
-      setFilteredTickets(tickets.filter((ticket) => ticket.status === "open"));
-    } else if (tabValue === 4) {
-      // Awaiting admin review
-      setFilteredTickets(
-        tickets.filter((ticket) => ticket.status === "awaitingReview")
-      );
-    } else if (tabValue === 5) {
-      // Resolved tickets
-      setFilteredTickets(
-        tickets.filter((ticket) => ticket.status === "resolved")
-      );
-    }
+    const activeTab = TAB_CATEGORIES[tabValue];
+    const filtered = tickets.filter((ticket) =>
+      typeof activeTab.filter === "function"
+        ? activeTab.filter(ticket, userId)
+        : true
+    );
+    setFilteredTickets(filtered);
   }, [tabValue, tickets, userId]);
 
-  // Calculate counts for the badges
-  const countByCategory = {
-    all: tickets.length,
-    submitted: tickets.filter(
-      (ticket) => ticket.submittedById.toString() === userId
-    ).length,
-    responding: tickets.filter(
-      (ticket) => ticket.submittedById.toString() !== userId
-    ).length,
-    open: tickets.filter((ticket) => ticket.status === "open").length,
-    awaiting: tickets.filter((ticket) => ticket.status === "awaitingReview")
-      .length,
-    resolved: tickets.filter((ticket) => ticket.status === "resolved").length,
-  };
+  // Calculate counts for each tab category
+  const countByCategory = TAB_CATEGORIES.reduce((counts, category) => {
+    counts[category.id] = tickets.filter((ticket) =>
+      typeof category.filter === "function"
+        ? category.filter(ticket, userId)
+        : true
+    ).length;
+    return counts;
+  }, {} as Record<string, number>);
 
   if (loading) {
     return <ResolutionListSkeleton />;
   }
 
+  // Render tab with badge
+  const renderTabWithBadge = (
+    category: (typeof TAB_CATEGORIES)[0],
+    index: number
+  ) => {
+    const Icon = category.icon;
+
+    return (
+      <Tab
+        key={category.id}
+        label={
+          <Badge
+            badgeContent={countByCategory[category.id]}
+            color={category.color as any}
+            max={99}
+            showZero
+            sx={{
+              "& .MuiBadge-badge": {
+                fontSize: "0.7rem",
+                height: "18px",
+                minWidth: "18px",
+              },
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                transition: "all 0.2s",
+              }}
+            >
+              <Icon
+                sx={{
+                  mr: 0.5,
+                  fontSize: 18
+                }}
+              />
+              <span style={{ marginRight: 8 }}>{category.label}</span>
+            </Box>
+          </Badge>
+        }
+        sx={{
+          minHeight: "48px",
+          opacity: 1,
+          "&.Mui-selected": {
+            fontWeight: "medium",
+          },
+          "&:hover": {
+            backgroundColor: theme.palette.action.hover,
+          },
+        }}
+      />
+    );
+  };
+
   return (
-    <Box>
+    <Box sx={{ width: "100%" }}>
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert
+          severity="error"
+          sx={{
+            mb: 3,
+            borderRadius: 2,
+          }}
+        >
           {error}
         </Alert>
       )}
 
       <Paper
+        elevation={1}
         sx={{
-          borderRadius: 1,
+          borderRadius: 2,
           overflow: "hidden",
           mb: 3,
           boxShadow: theme.shadows[1],
+          transition: "box-shadow 0.3s",
+          "&:hover": {
+            boxShadow: theme.shadows[2],
+          },
         }}
       >
         <Tabs
@@ -123,98 +211,19 @@ export default function ResolutionListPage({
           onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: "divider" }}
+          sx={{
+            borderBottom: 1,
+            borderColor: "divider",
+            "& .MuiTabs-indicator": {
+              height: 3,
+              borderTopLeftRadius: 3,
+              borderTopRightRadius: 3,
+            },
+          }}
         >
-          <Tab
-            label={
-              <Badge
-                badgeContent={countByCategory.all}
-                color="primary"
-                max={99}
-                showZero
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <GavelIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                  <span style={{ marginRight: 8 }}>All</span>
-                </Box>
-              </Badge>
-            }
-          />
-          <Tab
-            label={
-              <Badge
-                badgeContent={countByCategory.submitted}
-                color="secondary"
-                max={99}
-                showZero
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <SentIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                  <span style={{ marginRight: 8 }}>Submitted</span>
-                </Box>
-              </Badge>
-            }
-          />
-          <Tab
-            label={
-              <Badge
-                badgeContent={countByCategory.responding}
-                color="info"
-                max={99}
-                showZero
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <InboxIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                  <span style={{ marginRight: 8 }}>Responding</span>
-                </Box>
-              </Badge>
-            }
-          />
-          <Tab
-            label={
-              <Badge
-                badgeContent={countByCategory.open}
-                color="primary"
-                max={99}
-                showZero
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <PendingIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                  <span style={{ marginRight: 8 }}>Open</span>
-                </Box>
-              </Badge>
-            }
-          />
-          <Tab
-            label={
-              <Badge
-                badgeContent={countByCategory.awaiting}
-                color="warning"
-                max={99}
-                showZero
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <VisibilityIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                  <span style={{ marginRight: 8 }}>Awaiting Review</span>
-                </Box>
-              </Badge>
-            }
-          />
-          <Tab
-            label={
-              <Badge
-                badgeContent={countByCategory.resolved}
-                color="success"
-                max={99}
-                showZero
-              >
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <ResolvedIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                  <span style={{ marginRight: 8 }}>Resolved</span>
-                </Box>
-              </Badge>
-            }
-          />
+          {TAB_CATEGORIES.map((category, index) =>
+            renderTabWithBadge(category, index)
+          )}
         </Tabs>
       </Paper>
 
@@ -222,29 +231,40 @@ export default function ResolutionListPage({
         tickets={filteredTickets}
         username={username}
         userId={userId}
-        emptyMessage={`No resolution tickets found in this category.`}
+        emptyMessage={`Tidak ada tiket resolusi dalam kategori ini.`}
       />
 
-      <Paper sx={{ p: 2, borderRadius: 1, mt: 4, bgcolor: "background.paper" }}>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          borderRadius: 2,
+          mt: 4,
+          bgcolor: "background.paper",
+          "&:hover": {
+            boxShadow: theme.shadows[2],
+          },
+        }}
+      >
         <Typography
           variant="subtitle1"
           color="primary"
           gutterBottom
           fontWeight="medium"
         >
-          About Dispute Resolution
+          Tentang Resolusi Sengketa
         </Typography>
         <Divider sx={{ mb: 2 }} />
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Resolution tickets are used to resolve disputes between clients and
-          artists when there's a disagreement about contract deliverables or
-          terms.
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Tiket resolusi digunakan untuk menyelesaikan sengketa antara klien dan
+          seniman ketika terjadi ketidaksepakatan tentang hasil kerja atau
+          persyaratan kontrak.
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          If you need to escalate an issue with a contract, please use the{" "}
-          <strong>"Open Dispute"</strong> button on the contract's tickets page.
-          Both parties will have 24 hours to provide evidence before an admin
-          reviews the case.
+          Jika Anda perlu mengeskalasi masalah terkait kontrak, silakan gunakan
+          tombol <strong>"Buka Sengketa"</strong> di halaman tiket atau unggahan kontrak.
+          Kedua pihak akan memiliki waktu 24 jam untuk memberikan bukti sebelum
+          admin meninjau kasus tersebut.
         </Typography>
       </Paper>
     </Box>

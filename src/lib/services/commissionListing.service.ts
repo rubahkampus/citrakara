@@ -182,12 +182,8 @@ function validateListingPayload(payload: Partial<CommissionListingPayload>) {
   }
 
   // Enforce correct revision policy based on flow
-  if (payload.flow === "standard" && payload.revisions?.type !== "standard") {
-    throw new HttpError("Standard flow requires standard revision type");
-  }
-
-  if (payload.flow === "milestone" && payload.revisions?.type === "standard") {
-    throw new HttpError("Milestone flow cannot use standard revision type");
+  if (payload.flow === "standard" && payload.revisions?.type === "milestone") {
+    throw new HttpError("Standard flow cannot have milestone revision type");
   }
 
   // Validate slots
@@ -335,12 +331,14 @@ export async function createListingFromForm(artistId: string, form: FormData) {
 
   console.log("Form data (raw):", form);
 
+  const tos = (await getUserDefaultTos(artistId))._id.toString()
+
   // 3. Build our partial listingData (without thumbnail/samples yet)
   const listingData: Partial<CommissionListingPayload> = {
     ...jsonPayload,
     artistId: toObjectId(artistId),
     title: form.get("title")!.toString(),
-    tos: await getUserDefaultTos(artistId).toString(),
+    tos: tos,
     type: form.get("type") as "template" | "custom",
     flow: form.get("flow") as "standard" | "milestone",
     basePrice: Number(form.get("basePrice") ?? 0),

@@ -9,6 +9,8 @@
  */
 import React, { useCallback, useMemo, useEffect } from "react";
 import { useFormContext, useFieldArray } from "react-hook-form";
+
+// MUI Components
 import {
   Box,
   Typography,
@@ -34,6 +36,8 @@ import {
   Tooltip,
   FormHelperText,
 } from "@mui/material";
+
+// MUI Icons
 import {
   ExpandMore as ExpandMoreIcon,
   Add as AddIcon,
@@ -42,6 +46,8 @@ import {
   Layers as LayersIcon,
   Info as InfoIcon,
 } from "@mui/icons-material";
+
+// Types
 import {
   ProposalFormValues,
   GeneralOptionGroupInput,
@@ -49,6 +55,10 @@ import {
 } from "@/types/proposal";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 import { Cents } from "@/types/common";
+
+// ===================================
+// Types & Constants
+// ===================================
 
 interface SubjectOptionsSectionProps {
   listing: ICommissionListing;
@@ -67,6 +77,10 @@ const applyDiscount = (price: Cents, discount: number): Cents => {
   if (discount <= 0) return price;
   return Math.round(price * ((100 - discount) / 100));
 };
+
+// ===================================
+// Main Component
+// ===================================
 
 export default function SubjectOptionsSection({
   listing,
@@ -89,8 +103,21 @@ export default function SubjectOptionsSection({
   }
 
   return (
-    <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-      <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
+    <Paper
+      sx={{
+        p: 3,
+        mb: 3,
+        borderRadius: 2,
+        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.05)",
+      }}
+    >
+      <Typography
+        variant="h6"
+        gutterBottom
+        color="primary"
+        fontWeight="medium"
+        sx={{ mb: 2 }}
+      >
         Opsi Subjek
       </Typography>
       <Divider sx={{ mb: 3 }} />
@@ -110,7 +137,10 @@ export default function SubjectOptionsSection({
   );
 }
 
-// SubjectSection component using useFieldArray for better form control
+// ===================================
+// Subject Section Component
+// ===================================
+
 const SubjectSection = React.memo(
   ({
     subject,
@@ -259,11 +289,18 @@ const SubjectSection = React.memo(
             justifyContent: "space-between",
             alignItems: "center",
             mb: 2,
+            backgroundColor: "background.paper",
+            p: 1.5,
+            borderRadius: 1,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center" }}>
             {getSubjectIcon(subject.title)}
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ ml: 1 }}>
+            <Typography
+              variant="subtitle1"
+              fontWeight="bold"
+              sx={{ ml: 1, color: "text.primary" }}
+            >
               {subject.title}
             </Typography>
 
@@ -278,7 +315,7 @@ const SubjectSection = React.memo(
                   label={`${subject.discount}% Diskon-Multi`}
                   size="small"
                   color="secondary"
-                  sx={{ ml: 2 }}
+                  sx={{ ml: 2, fontWeight: 500 }}
                 />
               </Tooltip>
             )}
@@ -286,7 +323,11 @@ const SubjectSection = React.memo(
 
           {!isSingleInstanceOnly && (
             <Box sx={{ display: "flex", alignItems: "center" }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mr: 2, fontWeight: 500 }}
+              >
                 {remainingSlots}
               </Typography>
 
@@ -299,6 +340,11 @@ const SubjectSection = React.memo(
                 disabled={
                   subject.limit !== -1 && fields.length >= subject.limit
                 }
+                sx={{
+                  boxShadow: 1,
+                  px: 2,
+                  "&:hover": { boxShadow: 2 },
+                }}
               >
                 Tambah {subject.title}
               </Button>
@@ -330,6 +376,11 @@ const SubjectSection = React.memo(
             sx={{
               borderStyle: "dashed",
               backgroundColor: "background.default",
+              borderRadius: 2,
+              transition: "all 0.2s ease",
+              "&:hover": {
+                borderColor: "primary.main",
+              },
             }}
           >
             <CardContent sx={{ textAlign: "center", py: 4 }}>
@@ -353,7 +404,10 @@ const SubjectSection = React.memo(
   }
 );
 
-// Memoize InstanceCard to prevent unnecessary re-renders
+// ===================================
+// Instance Card Component
+// ===================================
+
 const InstanceCard = React.memo(
   ({
     instanceIndex,
@@ -423,7 +477,11 @@ const InstanceCard = React.memo(
               >
                 {listing.currency} {basePrice.toLocaleString()}
               </Typography>
-              <Typography component="span" color="secondary.main">
+              <Typography
+                component="span"
+                color="secondary.main"
+                fontWeight="medium"
+              >
                 {listing.currency} {discountedPrice.toLocaleString()}
               </Typography>
             </>
@@ -546,12 +604,20 @@ const InstanceCard = React.memo(
         sx={{
           mb: 2,
           position: "relative",
-          boxShadow: hasErrors ? "0 0 0 2px #f44336" : "none",
+          boxShadow: hasErrors
+            ? "0 0 0 2px #f44336"
+            : "0 1px 3px rgba(0,0,0,0.1)",
           border: "1px solid",
           borderColor: hasErrors ? "error.main" : "divider",
           borderRadius: "8px !important",
           "&:before": {
             display: "none",
+          },
+          transition: "box-shadow 0.2s ease",
+          "&:hover": {
+            boxShadow: hasErrors
+              ? "0 0 0 2px #f44336"
+              : "0 2px 5px rgba(0,0,0,0.15)",
           },
         }}
       >
@@ -562,6 +628,7 @@ const InstanceCard = React.memo(
               ? "error.lightest"
               : "background.default",
             borderRadius: "8px 8px 0 0",
+            padding: "0 16px",
           }}
         >
           <Box
@@ -576,18 +643,21 @@ const InstanceCard = React.memo(
             <Badge
               badgeContent={instanceIndex + 1}
               color="primary"
-              sx={{ mr: 2 }}
+              sx={{ ml: 3, mr: 3 }}
             >
               {getSubjectIcon(subject.title)}
             </Badge>
-            <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{ flexGrow: 1, fontWeight: 600 }}
+            >
               {subject.title} #{instanceIndex + 1}
               {isDiscountApplicable && subject.discount > 0 && (
                 <Chip
                   label={`${subject.discount}% diskon`}
                   color="secondary"
                   size="small"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 2, fontWeight: 500 }}
                 />
               )}
               {hasErrors && (
@@ -595,7 +665,7 @@ const InstanceCard = React.memo(
                   component="span"
                   variant="caption"
                   color="error"
-                  sx={{ ml: 1 }}
+                  sx={{ ml: 1, fontWeight: 500 }}
                 >
                   (ada error)
                 </Typography>
@@ -603,8 +673,9 @@ const InstanceCard = React.memo(
             </Typography>
           </Box>
         </AccordionSummary>
+
         {/* Only show remove button if showRemoveButton is true */}
-        {showRemoveButton && (
+        {showRemoveButton && instanceIndex > 0 && (
           <Box
             sx={{ position: "absolute", top: "12px", right: "40px", zIndex: 1 }}
           >
@@ -615,20 +686,26 @@ const InstanceCard = React.memo(
                   e.stopPropagation();
                   onRemove();
                 }}
-                sx={{ color: "error.main" }}
+                sx={{
+                  color: "error.main",
+                  "&:hover": {
+                    backgroundColor: "error.lightest",
+                  },
+                }}
               >
                 <DeleteIcon />
               </IconButton>
             </Tooltip>
           </Box>
         )}
+
         <AccordionDetails sx={{ p: 3 }}>
           {/* Option Groups */}
           {subject.optionGroups?.length > 0 && (
             <Box sx={{ mb: 3 }}>
               <Typography
                 variant="subtitle2"
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, color: "text.primary" }}
                 fontWeight="medium"
               >
                 Pilih Opsi
@@ -675,6 +752,11 @@ const InstanceCard = React.memo(
                               String(selectedLabel)
                             );
                           }}
+                          sx={{
+                            "& .MuiOutlinedInput-notchedOutline": {
+                              borderColor: hasErrors ? "error.main" : "divider",
+                            },
+                          }}
                         >
                           {group.selections.map((selection) => (
                             <MenuItem
@@ -710,7 +792,7 @@ const InstanceCard = React.memo(
             <Box sx={{ mb: 3 }}>
               <Typography
                 variant="subtitle2"
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, color: "text.primary" }}
                 fontWeight="medium"
               >
                 Layanan Tambahan
@@ -724,6 +806,7 @@ const InstanceCard = React.memo(
                   borderColor: "grey.300",
                   borderRadius: 2,
                   padding: 1,
+                  backgroundColor: "background.paper",
                 }}
               >
                 {subject.addons.map(
@@ -795,6 +878,11 @@ const InstanceCard = React.memo(
                         "&:last-child": {
                           borderBottom: "none",
                         },
+                        "&:hover": {
+                          backgroundColor: "action.hover",
+                        },
+                        transition: "background-color 0.2s ease",
+                        borderRadius: 1,
                       }}
                     />
                   )
@@ -808,12 +896,19 @@ const InstanceCard = React.memo(
             <Box>
               <Typography
                 variant="subtitle2"
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, color: "text.primary" }}
                 fontWeight="medium"
               >
                 Informasi Tambahan
               </Typography>
-              <Card variant="outlined">
+              <Card
+                variant="outlined"
+                sx={{
+                  borderRadius: 2,
+                  backgroundColor: "background.paper",
+                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                }}
+              >
                 <CardContent>
                   {subject.questions.map(
                     (
@@ -841,6 +936,10 @@ const InstanceCard = React.memo(
     );
   }
 );
+
+// ===================================
+// Question Field Component
+// ===================================
 
 // Isolated component for question field to prevent rerender issues
 const QuestionField = React.memo(
@@ -890,7 +989,17 @@ const QuestionField = React.memo(
         multiline
         rows={2}
         fullWidth
-        sx={{ mb: isLastQuestion ? 0 : 3 }}
+        sx={{
+          mb: isLastQuestion ? 0 : 3,
+          "& .MuiOutlinedInput-root": {
+            "&:hover fieldset": {
+              borderColor: error ? "error.main" : "primary.main",
+            },
+            "&.Mui-focused fieldset": {
+              borderColor: error ? "error.main" : "primary.main",
+            },
+          },
+        }}
         defaultValue={value}
         onInput={debouncedChange}
         onBlur={() => {

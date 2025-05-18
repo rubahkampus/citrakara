@@ -16,11 +16,10 @@ import {
   Paper,
   Tabs,
   Tab,
-  Card,
-  CardContent,
   useTheme,
   alpha,
   ButtonGroup,
+  Alert,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -28,12 +27,10 @@ import {
   ArrowForward as ArrowForwardIcon,
   Palette as PaletteIcon,
   Person as PersonIcon,
-  Explore as ExploreIcon,
-  Brush as BrushIcon,
-  Star as StarIcon,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import { CommissionListingItem } from "../dashboard/commissions/CommissionListingItem";
+import ArtistItem from "../artist/ArtistItem"; // Import ArtistItem component
 
 interface HomePageProps {
   session?: any;
@@ -46,10 +43,18 @@ export default function HomePage({ session }: HomePageProps) {
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
   const [popularTags, setPopularTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"commissions" | "artists">(
     "commissions"
   );
+
+  // Bookmark states
+  const [bookmarkedCommissions, setBookmarkedCommissions] = useState<string[]>(
+    []
+  );
+  const [bookmarkedArtists, setBookmarkedArtists] = useState<string[]>([]);
 
   const isAuthenticated = !!session;
 
@@ -84,6 +89,7 @@ export default function HomePage({ session }: HomePageProps) {
         }
       } catch (error) {
         console.error("Error fetching home data:", error);
+        setErrorMessage("Gagal memuat data. Silakan coba lagi nanti.");
       } finally {
         setLoading(false);
       }
@@ -91,6 +97,33 @@ export default function HomePage({ session }: HomePageProps) {
 
     fetchHomeData();
   }, []);
+
+  // Fetch user's bookmarks when authenticated
+  useEffect(() => {
+    const fetchBookmarks = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        const response = await fetch("/api/user/bookmarks");
+        if (!response.ok) throw new Error("Failed to fetch bookmarks");
+
+        const data = await response.json();
+
+        // Extract IDs from bookmark objects
+        const commissionIds =
+          data.commissions?.map((item: any) => item._id.toString()) || [];
+        const artistIds =
+          data.artists?.map((item: any) => item._id.toString()) || [];
+
+        setBookmarkedCommissions(commissionIds);
+        setBookmarkedArtists(artistIds);
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+      }
+    };
+
+    fetchBookmarks();
+  }, [isAuthenticated]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,11 +142,14 @@ export default function HomePage({ session }: HomePageProps) {
     type: "commission" | "artist"
   ) => {
     if (!isAuthenticated) {
-      // Redirect to login
+      // TODO
       return;
     }
 
     try {
+      setBookmarkLoading(true);
+      setErrorMessage(null);
+
       const endpoint =
         type === "commission"
           ? "/api/bookmark/commission"
@@ -123,13 +159,39 @@ export default function HomePage({ session }: HomePageProps) {
           ? { commissionId: id, action }
           : { artistId: id, action };
 
-      await fetch(endpoint, {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to update bookmark");
+      }
+
+      // Update local state based on the action and type
+      if (type === "commission") {
+        if (action === "bookmark") {
+          setBookmarkedCommissions((prev) => [...prev, id]);
+        } else {
+          setBookmarkedCommissions((prev) =>
+            prev.filter((itemId) => itemId !== id)
+          );
+        }
+      } else {
+        if (action === "bookmark") {
+          setBookmarkedArtists((prev) => [...prev, id]);
+        } else {
+          setBookmarkedArtists((prev) =>
+            prev.filter((itemId) => itemId !== id)
+          );
+        }
+      }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
+      setErrorMessage("Gagal memperbarui bookmark. Silakan coba lagi.");
+    } finally {
+      setBookmarkLoading(false);
     }
   };
 
@@ -306,7 +368,7 @@ export default function HomePage({ session }: HomePageProps) {
                         borderRadius: 2,
                         background:
                           "linear-gradient(90deg, #A8FF00 0%, #00FFD1 100%)",
-                        color: "black",
+                        color: "white",
                         fontWeight: "bold",
                         "&:hover": {
                           background:
@@ -372,27 +434,6 @@ export default function HomePage({ session }: HomePageProps) {
               <TrendingUpIcon sx={{ verticalAlign: "middle", mr: 1 }} />
               Jelajahi KOMIS
             </Typography>
-
-            {/* <Box>
-              <Button
-                variant="text"
-                color="primary"
-                endIcon={<ArrowForwardIcon />}
-                onClick={() => router.push("/search/commissions")}
-                sx={{ mr: 2 }}
-              >
-                Semua Komisi
-              </Button>
-
-              <Button
-                variant="text"
-                color="primary"
-                endIcon={<ArrowForwardIcon />}
-                onClick={() => router.push("/search/artists")}
-              >
-                Semua Seniman
-              </Button>
-            </Box> */}
           </Box>
 
           <Tabs
@@ -426,6 +467,12 @@ export default function HomePage({ session }: HomePageProps) {
                 Komisi Unggulan
               </Typography>
 
+              {errorMessage && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {errorMessage}
+                </Alert>
+              )}
+
               <Grid container spacing={3}>
                 {featuredListings.map((listing) => (
                   <Grid item xs={12} sm={6} md={3} key={listing._id}>
@@ -434,7 +481,9 @@ export default function HomePage({ session }: HomePageProps) {
                       username={listing.artistId?.username || "unknown"}
                       isOwner={false}
                       isAuthenticated={isAuthenticated}
-                      isBookmarked={false}
+                      isBookmarked={bookmarkedCommissions.includes(
+                        listing._id.toString()
+                      )}
                       onToggleBookmark={async (listingId, action) => {
                         await handleToggleBookmark(
                           listingId,
@@ -442,6 +491,7 @@ export default function HomePage({ session }: HomePageProps) {
                           "commission"
                         );
                       }}
+                      loading={bookmarkLoading}
                     />
                   </Grid>
                 ))}
@@ -467,7 +517,7 @@ export default function HomePage({ session }: HomePageProps) {
                     py: 1.2,
                     background:
                       "linear-gradient(90deg, #A8FF00 0%, #00FFD1 100%)",
-                    color: "black",
+                    color: "white",
                     fontWeight: "bold",
                     "&:hover": {
                       background:
@@ -479,7 +529,7 @@ export default function HomePage({ session }: HomePageProps) {
                 </Button>
               </Box>
 
-              {/* Popular Artists */}
+              {/* Popular Artists - Now using ArtistItem component */}
               <Typography variant="h5" fontWeight="bold" mb={3} mt={8}>
                 Seniman Populer
               </Typography>
@@ -487,151 +537,26 @@ export default function HomePage({ session }: HomePageProps) {
               <Grid container spacing={3}>
                 {popularArtists.map((artist) => (
                   <Grid item xs={12} sm={6} md={3} key={artist._id}>
-                    <Card
-                      sx={{
-                        height: "100%",
-                        display: "flex",
-                        flexDirection: "column",
-                        borderRadius: 3,
-                        overflow: "hidden",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-                        transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                        "&:hover": {
-                          transform: "translateY(-5px)",
-                          boxShadow: "0 12px 24px rgba(0,0,0,0.1)",
-                        },
-                        cursor: "pointer",
+                    <ArtistItem
+                      artist={artist}
+                      isAuthenticated={isAuthenticated}
+                      isBookmarked={bookmarkedArtists.includes(
+                        artist._id.toString()
+                      )}
+                      onToggleBookmark={async (artistId, action) => {
+                        await handleToggleBookmark(artistId, action, "artist");
                       }}
-                      onClick={() => router.push(`/${artist.username}`)}
-                    >
-                      <Box
-                        sx={{
-                          position: "relative",
-                          pt: 3,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Box
-                          component="img"
-                          src={artist.profilePicture}
-                          alt={artist.displayName}
-                          sx={{
-                            width: 80,
-                            height: 80,
-                            borderRadius: "50%",
-                            objectFit: "cover",
-                            border: "3px solid white",
-                            boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                          }}
-                        />
-                      </Box>
-
-                      <CardContent
-                        sx={{ flexGrow: 1, textAlign: "center", p: 2 }}
-                      >
-                        <Typography
-                          variant="h6"
-                          component="div"
-                          fontWeight="bold"
-                        >
-                          {artist.displayName}
-                        </Typography>
-
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mb: 1 }}
-                        >
-                          @{artist.username}
-                        </Typography>
-
-                        {artist.rating && artist.rating.count > 0 && (
-                          <Box
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                            mb={1}
-                          >
-                            <StarIcon
-                              sx={{
-                                color: "warning.main",
-                                fontSize: 18,
-                                mr: 0.5,
-                              }}
-                            />
-                            <Typography variant="body2" fontWeight="medium">
-                              {artist.rating.avg.toFixed(1)} (
-                              {artist.rating.count})
-                            </Typography>
-                          </Box>
-                        )}
-
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 0.5,
-                            justifyContent: "center",
-                            mt: 1,
-                          }}
-                        >
-                          {artist.tags?.slice(0, 3).map((tag: string) => (
-                            <Chip
-                              key={tag}
-                              label={tag}
-                              size="small"
-                              sx={{
-                                fontSize: "0.7rem",
-                                height: 20,
-                                "& .MuiChip-label": { px: 1 },
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      </CardContent>
-
-                      <Box
-                        sx={{
-                          p: 1.5,
-                          borderTop: "1px solid",
-                          borderTopColor: "divider",
-                          bgcolor: alpha(theme.palette.primary.main, 0.03),
-                        }}
-                      >
-                        <Button
-                          fullWidth
-                          variant={
-                            artist.openForCommissions ? "contained" : "outlined"
-                          }
-                          size="small"
-                          disableElevation
-                          sx={{
-                            borderRadius: 6,
-                            textTransform: "none",
-                            fontWeight: 600,
-                            background: artist.openForCommissions
-                              ? "linear-gradient(90deg, #A8FF00 0%, #00FFD1 100%)"
-                              : undefined,
-                            color: artist.openForCommissions
-                              ? "common.black"
-                              : undefined,
-                            "&:hover": {
-                              background: artist.openForCommissions
-                                ? "linear-gradient(90deg, #A8FF00 0%, #00FFD1 100%)"
-                                : undefined,
-                            },
-                          }}
-                        >
-                          {artist.openForCommissions
-                            ? "Tersedia untuk Komisi"
-                            : "Lihat Profil"}
-                        </Button>
-                      </Box>
-                    </Card>
+                    />
                   </Grid>
                 ))}
+
+                {popularArtists.length === 0 && !loading && (
+                  <Box width="100%" textAlign="center" py={4}>
+                    <Typography variant="subtitle1" color="text.secondary">
+                      Tidak ada seniman ditemukan. Periksa kembali nanti!
+                    </Typography>
+                  </Box>
+                )}
               </Grid>
 
               <Box sx={{ textAlign: "center", mt: 4 }}>

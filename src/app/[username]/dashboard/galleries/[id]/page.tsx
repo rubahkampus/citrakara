@@ -24,7 +24,10 @@ interface Props {
   params: { id: string; username: string };
 }
 
-export default async function GalleryDetailPage({ params: { id, username } }: Props) {
+export default async function GalleryDetailPage({ params }: Props) {
+  const param = await params
+  const id = param.id
+  const username = param.username
   const gallery = await findGalleryById(id).catch(() => null);
   if (!gallery) return notFound();
 

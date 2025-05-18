@@ -1,6 +1,6 @@
 // src/components/dashboard/proposals/form/GeneralOptionsSection.tsx
 
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, memo, useRef } from "react";
 import { Control, useController, useFormContext } from "react-hook-form";
 import {
   Box,
@@ -18,24 +18,41 @@ import {
   CardContent,
   Grid,
   FormHelperText,
+  alpha,
 } from "@mui/material";
 import { ProposalFormValues, GeneralOptionGroupInput } from "@/types/proposal";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
-import { Cents } from "@/types/common";
 
 // Helper functions for encoding/decoding question text
 const encodeQuestionKey = (question: string): string => {
   return encodeURIComponent(question);
 };
 
-const decodeQuestionKey = (key: string): string => {
-  return decodeURIComponent(key);
+// Constants for translating UI text to Indonesian
+const TRANSLATIONS = {
+  generalOptions: "Opsi Umum",
+  selectOptions: "Pilih Opsi",
+  additionalServices: "Layanan Tambahan",
+  additionalInformation: "Informasi Tambahan",
+  thisFieldIsRequired: "Bidang ini wajib diisi",
+  yourAnswer: "Jawaban Anda...",
 };
 
+// Component types
 interface GeneralOptionsSectionProps {
   listing: ICommissionListing;
 }
 
+interface QuestionFieldProps {
+  questionId: number;
+  questionText: string;
+  control: Control<ProposalFormValues>;
+  error?: { message?: string };
+}
+
+/**
+ * GeneralOptionsSection component for handling commission proposals options
+ */
 export default function GeneralOptionsSection({
   listing,
 }: GeneralOptionsSectionProps) {
@@ -55,7 +72,12 @@ export default function GeneralOptionsSection({
 
   // Initialize default values on component mount
   useEffect(() => {
-    // Set default values for option groups on first render
+    initializeOptionGroups();
+    initializeQuestionAnswers();
+  }, [generalOptions.optionGroups, generalOptions.questions]);
+
+  // Initialize option groups with default values
+  const initializeOptionGroups = () => {
     if (
       (generalOptions?.optionGroups?.length ?? 0) > 0 &&
       Object.keys(watchedOptions.optionGroups || {}).length === 0
@@ -79,8 +101,10 @@ export default function GeneralOptionsSection({
         });
       }
     }
+  };
 
-    // Initialize answers with encoded question keys
+  // Initialize question answers with empty values
+  const initializeQuestionAnswers = () => {
     if (
       (generalOptions?.questions?.length ?? 0) > 0 &&
       Object.keys(watchedOptions.answers || {}).length === 0
@@ -99,13 +123,7 @@ export default function GeneralOptionsSection({
         });
       }
     }
-  }, [
-    generalOptions.optionGroups,
-    generalOptions.questions,
-    setValue,
-    watchedOptions.optionGroups,
-    watchedOptions.answers,
-  ]);
+  };
 
   // Safety check - if any section is missing, don't render the component
   if (
@@ -161,7 +179,7 @@ export default function GeneralOptionsSection({
     }
   };
 
-  // Create a memoized debounce function
+  // Create a debounce function
   const debounce = (fn: (...args: any[]) => void, delay: number) => {
     let timer: NodeJS.Timeout | null;
     return function (...args: any[]) {
@@ -172,8 +190,8 @@ export default function GeneralOptionsSection({
     };
   };
 
-  // Debounced question change handler - created once per component instance
-  const debouncedQuestionChange = React.useCallback(
+  // Debounced question change handler
+  const debouncedQuestionChange = useCallback(
     debounce((questionId, value) => {
       setValue(`generalOptions.answers.${questionId}`, value, {
         shouldValidate: true,
@@ -183,25 +201,64 @@ export default function GeneralOptionsSection({
   );
 
   return (
-    <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-      <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
-        General Options
+    <Paper
+      elevation={0}
+      sx={{
+        p: 3.5,
+        mb: 3,
+        borderRadius: 2.5,
+        border: "1px solid",
+        borderColor: "divider",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+      }}
+    >
+      <Typography
+        variant="h6"
+        gutterBottom
+        color="primary"
+        sx={{
+          fontWeight: 600,
+          fontSize: "1.1rem",
+          mb: 1.5,
+        }}
+      >
+        {TRANSLATIONS.generalOptions}
       </Typography>
-      <Divider sx={{ mb: 3 }} />
+      <Divider sx={{ mb: 3.5 }} />
 
       {/* Option Groups */}
       {generalOptions.optionGroups &&
         generalOptions.optionGroups.length > 0 && (
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
-              Select Options
+          <Box sx={{ mb: 4.5 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                mb: 2,
+                fontWeight: 500,
+                color: "text.primary",
+              }}
+            >
+              {TRANSLATIONS.selectOptions}
             </Typography>
 
-            <Card variant="outlined" sx={{ height: "100%", pb: 2, pr: 2 }}>
+            <Card
+              variant="outlined"
+              sx={{
+                height: "100%",
+                pb: 2,
+                pr: 2,
+                borderRadius: 2,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                },
+              }}
+            >
               <Grid container spacing={-2}>
                 {generalOptions.optionGroups.map((group) => (
                   <Grid item xs={12} md={12} key={group.id}>
-                    <CardContent>
+                    <CardContent sx={{ pt: 2.5, pb: 1.5 }}>
                       <FormControl
                         fullWidth
                         error={
@@ -222,6 +279,14 @@ export default function GeneralOptionsSection({
                           onChange={(e) =>
                             handleOptionGroupChange(group.id, e.target.value)
                           }
+                          sx={{
+                            "& .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "divider",
+                            },
+                            "&:hover .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "primary.light",
+                            },
+                          }}
                         >
                           {group.selections.map((selection) => (
                             <MenuItem
@@ -235,7 +300,7 @@ export default function GeneralOptionsSection({
                         </Select>
                         {errors?.generalOptions?.optionGroups?.[group.id] && (
                           <FormHelperText error>
-                            This field is required
+                            {TRANSLATIONS.thisFieldIsRequired}
                           </FormHelperText>
                         )}
                       </FormControl>
@@ -257,99 +322,109 @@ export default function GeneralOptionsSection({
               fontWeight: 600,
               position: "relative",
               paddingBottom: 1,
+              fontSize: "1rem",
+              color: "text.primary",
             }}
           >
-            Additional Services
+            {TRANSLATIONS.additionalServices}
           </Typography>
 
-          <Card
-            variant="outlined"
+          <Box
             sx={{
+              display: "flex",
+              flexDirection: "column",
+              border: "1px solid",
+              borderColor: "grey.300",
               borderRadius: 2,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-              transition: "all 0.2s ease-in-out",
-              "&:hover": {
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              },
+              padding: 1,
+              backgroundColor: "background.paper",
             }}
           >
-            <CardContent sx={{ py: 2.5 }}>
-              <Box sx={{ display: "flex", flexDirection: "column" }}>
-                {(generalOptions.addons ?? []).map((addon) => (
-                  <FormControlLabel
-                    key={addon.id}
-                    control={
-                      <Checkbox
-                        checked={!!watchedOptions?.addons?.[addon.id]}
-                        onChange={(e) =>
-                          handleAddonToggle(addon.id, e.target.checked)
-                        }
-                        color="primary"
-                        sx={{
-                          "&.Mui-checked": {
-                            color: "primary.main",
-                          },
-                        }}
-                      />
+            {(generalOptions.addons ?? []).map((addon) => (
+              <FormControlLabel
+                key={addon.id}
+                control={
+                  <Checkbox
+                    checked={!!watchedOptions?.addons?.[addon.id]}
+                    onChange={(e) =>
+                      handleAddonToggle(addon.id, e.target.checked)
                     }
-                    label={
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          width: "100%",
-                          flexWrap: { xs: "wrap", sm: "nowrap" },
-                          paddingTop: { xs: 0.5, sm: 0.75 },
-                        }}
-                      >
-                        <Typography fontWeight={500} sx={{ mr: 1, ml: 2 }}>
-                          {addon.label}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            color: "text.secondary",
-                            fontWeight: 500,
-                            backgroundColor: "action.hover",
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: 1,
-                            fontSize: "0.875rem",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            ml: "auto",
-                            mt: { xs: 0.5, sm: 0 },
-                          }}
-                        >
-                          {listing.currency} {addon.price.toLocaleString()}
-                        </Typography>
-                      </Box>
-                    }
+                    color="primary"
                     sx={{
-                      display: "flex",
-                      py: 1.5,
-                      alignItems: "flex-start",
-                      borderBottom: "1px solid",
-                      borderColor: "divider",
-                      width: "100%",
-                      margin: 0,
-                      "&:last-child": {
-                        borderBottom: "none",
+                      "&.Mui-checked": {
+                        color: "primary.main",
                       },
                     }}
                   />
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
+                }
+                label={
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      width: "100%",
+                      flexWrap: { xs: "wrap", sm: "nowrap" },
+                      paddingTop: { xs: 0.5, sm: 0.75 },
+                    }}
+                  >
+                    <Typography fontWeight={500} sx={{ mr: 1, ml: 2 }}>
+                      {addon.label}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: "text.secondary",
+                        fontWeight: 500,
+                        backgroundColor: "action.hover",
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: 1,
+                        fontSize: "0.875rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        ml: "auto",
+                        mt: { xs: 0.5, sm: 0 },
+                      }}
+                    >
+                      {listing.currency} {addon.price.toLocaleString()}
+                    </Typography>
+                  </Box>
+                }
+                sx={{
+                  display: "flex",
+                  py: 1.5,
+                  alignItems: "flex-start",
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                  width: "100%",
+                  margin: 0,
+                  "&:last-child": {
+                    borderBottom: "none",
+                  },
+                  "&:hover": {
+                    backgroundColor: "action.hover",
+                  },
+                  transition: "background-color 0.2s ease",
+                  borderRadius: 1,
+                }}
+              />
+            ))}
+          </Box>
         </Box>
       )}
 
       {/* Questions */}
       {(generalOptions.questions ?? []).length > 0 && (
         <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" sx={{ mb: 2 }} fontWeight="medium">
-            Additional Information
+          <Typography
+            variant="subtitle1"
+            sx={{
+              mb: 2.5,
+              fontWeight: 500,
+              color: "text.primary",
+            }}
+          >
+            {TRANSLATIONS.additionalInformation}
           </Typography>
 
           {(generalOptions.questions ?? []).map((question) => (
@@ -371,17 +446,12 @@ export default function GeneralOptionsSection({
  * A memoized single‐question component that only
  * re‐renders when its own value or error changes.
  */
-const QuestionField = React.memo(function QuestionField({
+const QuestionField = memo(function QuestionField({
   questionId,
   questionText,
   control,
   error,
-}: {
-  questionId: number;
-  questionText: string;
-  control: Control<ProposalFormValues>;
-  error?: { message?: string };
-}) {
+}: QuestionFieldProps) {
   // Get current value from form controller
   const { field } = useController({
     name: `generalOptions.answers.${questionId}`,
@@ -390,17 +460,17 @@ const QuestionField = React.memo(function QuestionField({
   });
 
   // Use uncontrolled input pattern with refs for performance
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Set initial value when mounted or value changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (inputRef.current && inputRef.current.value !== field.value) {
       inputRef.current.value = field.value;
     }
   }, [field.value]);
 
   // Handle input changes with debounce
-  const debouncedChange = React.useCallback(
+  const debouncedChange = useCallback(
     (function () {
       let timer: NodeJS.Timeout | null = null;
       return function () {
@@ -430,7 +500,18 @@ const QuestionField = React.memo(function QuestionField({
       multiline
       rows={2}
       fullWidth
-      sx={{ mb: isLastQuestion ? 0 : 3 }}
+      sx={{
+        mb: isLastQuestion ? 0 : 3.5,
+        "& .MuiOutlinedInput-root": {
+          transition: "all 0.2s ease",
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "primary.light",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderWidth: "1px",
+          },
+        },
+      }}
       defaultValue={field.value}
       onInput={debouncedChange}
       onBlur={() => {
@@ -440,7 +521,7 @@ const QuestionField = React.memo(function QuestionField({
       }}
       error={!!error}
       helperText={error?.message}
-      placeholder="Your answer..."
+      placeholder={TRANSLATIONS.yourAnswer}
     />
   );
 });

@@ -142,7 +142,8 @@ export default function CommissionDialog({
   }, [commissionId, open, initialData]);
 
   const formatPrice = (cents: number) =>
-    `Rp ${new Intl.NumberFormat("id-ID").format(Math.floor(cents / 100))}`;
+    new Intl.NumberFormat("id-ID").format(cents);
+  // Removed destructuring and priceDisplay since they are not used and may cause errors if initialData is undefined
 
   const handleChat = () => {
     if (isOwner) {
@@ -235,6 +236,8 @@ export default function CommissionDialog({
 
   const { slots, slotsUsed, reviewsSummary, tos } = commission;
 
+  console.log(tos);
+
   const slotsAvailable = slots === -1 || slotsUsed < slots;
 
   return (
@@ -253,7 +256,7 @@ export default function CommissionDialog({
         },
       }}
     >
-      <DialogContent sx={{ p: 0, height: "100%", overflow: 'hidden' }}>
+      <DialogContent sx={{ p: 0, height: "100%", overflow: "hidden" }}>
         <Grid container sx={{ height: "100%" }}>
           {/* Image Section */}
           {activeTab === 0 && (
@@ -445,7 +448,7 @@ export default function CommissionDialog({
                         color="primary"
                         sx={{ fontWeight: 600 }}
                       >
-                        {formatPrice(commission.price.min)}
+                        IDR {formatPrice(commission.price.min)}
                         {commission.price.min !== commission.price.max
                           ? ` - ${formatPrice(commission.price.max)}`
                           : ""}
@@ -522,7 +525,7 @@ export default function CommissionDialog({
                       direction="row"
                       alignItems="center"
                       spacing={2}
-                      sx={{ mb: 2 }}
+                      sx={{ mb: 2, ml: 2 }}
                     >
                       <FormControlLabel
                         control={
@@ -643,7 +646,11 @@ export default function CommissionDialog({
                       ) : (
                         <Send sx={{ mr: 1 }} />
                       )}
-                      {authLoading
+                      {initialData?.isDeleted
+                        ? "Komisi Sudah Dihapus"
+                        : !initialData?.isActive
+                        ? "Komisi Tidak Dibuka"
+                        : authLoading
                         ? "Memeriksa..."
                         : !slotsAvailable
                         ? "Tidak Ada Slot Kosong"

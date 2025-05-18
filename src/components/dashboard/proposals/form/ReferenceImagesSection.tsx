@@ -15,7 +15,18 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { ProposalFormValues } from "@/types/proposal";
 import { IProposal } from "@/lib/db/models/proposal.model";
 
+// Constants
 const MAX_FILES = 5;
+
+// Indonesian text translations
+const TEXT = {
+  REFERENCE_IMAGES: "Gambar Referensi",
+  UPLOAD_DESCRIPTION: `Unggah hingga ${MAX_FILES} gambar referensi untuk membantu mengilustrasikan komisi Anda`,
+  UPLOAD_IMAGES: "Unggah Gambar",
+  UPLOAD_MORE_IMAGES: "Unggah Lebih Banyak Gambar",
+  NO_IMAGES: "Belum ada gambar referensi yang diunggah",
+  EXISTING: "Sudah Ada",
+};
 
 // Unified type for handling both existing images and new files
 type ImageItem = {
@@ -39,6 +50,11 @@ export default function ReferenceImagesSection() {
 
   // Initialize on component mount
   useEffect(() => {
+    initializeImages();
+  }, []);
+
+  // Initialize existing images if in edit mode
+  const initializeImages = () => {
     const formValues = getValues();
 
     if (formValues.id) {
@@ -63,10 +79,20 @@ export default function ReferenceImagesSection() {
         setImageItems(existingImageItems);
       }
     }
-  }, [getValues]);
+  };
 
   // Update form value when imageItems change
   useEffect(() => {
+    updateFormValues();
+
+    // Cleanup blob URLs on unmount
+    return () => {
+      cleanupBlobUrls();
+    };
+  }, [imageItems]);
+
+  // Update form values based on current image items
+  const updateFormValues = () => {
     // For form submission, we need:
     // 1. New files as File objects
     // 2. Existing images as URLs (strings)
@@ -86,17 +112,18 @@ export default function ReferenceImagesSection() {
       // In create mode, we only need the files
       setValue("referenceImages", files);
     }
+  };
 
-    // Cleanup blob URLs on unmount
-    return () => {
-      imageItems.forEach((item) => {
-        if (!item.isExisting && item.url.startsWith("blob:")) {
-          URL.revokeObjectURL(item.url);
-        }
-      });
-    };
-  }, [imageItems, setValue, isEditMode]);
+  // Cleanup blob URLs
+  const cleanupBlobUrls = () => {
+    imageItems.forEach((item) => {
+      if (!item.isExisting && item.url.startsWith("blob:")) {
+        URL.revokeObjectURL(item.url);
+      }
+    });
+  };
 
+  // Handle file uploads
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList) return;
@@ -127,6 +154,7 @@ export default function ReferenceImagesSection() {
     e.target.value = "";
   };
 
+  // Remove an image
   const removeImage = (idToRemove: string) => {
     setImageItems((prev) => {
       const itemToRemove = prev.find((item) => item.id === idToRemove);
@@ -144,97 +172,152 @@ export default function ReferenceImagesSection() {
     });
   };
 
-  return (
-    <Paper sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Reference Images
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Upload up to {MAX_FILES} reference images to help illustrate your
-        commission
-      </Typography>
+  // Render upload button
+  const renderUploadButton = () => (
+    <Button
+      variant="outlined"
+      component="label"
+      startIcon={<CloudUploadIcon />}
+      fullWidth
+      disabled={imageItems.length >= MAX_FILES}
+      sx={{
+        mb: 3,
+        py: 1.5,
+        borderRadius: 2,
+        borderWidth: 2,
+        "&:hover": {
+          borderWidth: 2,
+        },
+      }}
+    >
+      {imageItems.length === 0 ? TEXT.UPLOAD_IMAGES : TEXT.UPLOAD_MORE_IMAGES} (
+      {imageItems.length}/{MAX_FILES})
+      <input
+        type="file"
+        hidden
+        multiple
+        accept="image/*"
+        onChange={handleFiles}
+      />
+    </Button>
+  );
 
-      <Button
-        variant="outlined"
-        component="label"
-        startIcon={<CloudUploadIcon />}
-        fullWidth
-        disabled={imageItems.length >= MAX_FILES}
-        sx={{ mb: 3 }}
-      >
-        {imageItems.length === 0 ? "Upload Images" : "Upload More Images"} (
-        {imageItems.length}/{MAX_FILES})
-        <input
-          type="file"
-          hidden
-          multiple
-          accept="image/*"
-          onChange={handleFiles}
-        />
-      </Button>
-
-      {imageItems.length > 0 ? (
-        <Grid container spacing={2}>
-          {imageItems.map((item) => (
-            <Grid item xs={6} sm={4} md={3} key={item.id}>
-              <Card sx={{ position: "relative" }}>
-                <CardMedia
-                  component="img"
-                  height={140}
-                  image={item.url}
-                  alt="Reference image"
-                  sx={{ objectFit: "cover" }}
-                />
-                <IconButton
-                  size="small"
-                  onClick={() => removeImage(item.id)}
-                  sx={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    bgcolor: "rgba(255, 255, 255, 0.9)",
-                    "&:hover": { bgcolor: "rgba(255, 255, 255, 1)" },
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-                {item.isExisting && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      bgcolor: "rgba(0, 0, 0, 0.6)",
-                      color: "white",
-                      fontSize: "0.75rem",
-                      padding: "2px 8px",
-                      textAlign: "center",
-                    }}
-                  >
-                    Existing
-                  </Box>
-                )}
-              </Card>
-            </Grid>
-          ))}
+  // Render image grid
+  const renderImageGrid = () => (
+    <Grid container spacing={2}>
+      {imageItems.map((item) => (
+        <Grid item xs={6} sm={4} md={3} key={item.id}>
+          <Card
+            sx={{
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              transition: "transform 0.2s ease-in-out",
+              "&:hover": {
+                transform: "translateY(-4px)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              },
+            }}
+          >
+            <CardMedia
+              component="img"
+              height={140}
+              image={item.url}
+              alt="Reference image"
+              sx={{ objectFit: "cover" }}
+            />
+            <IconButton
+              size="small"
+              onClick={() => removeImage(item.id)}
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                bgcolor: "rgba(255, 255, 255, 0.9)",
+                "&:hover": {
+                  bgcolor: "rgba(255, 255, 255, 1)",
+                  color: "error.main",
+                },
+                transition: "all 0.2s ease",
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+            {item.isExisting && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  bgcolor: "rgba(0, 0, 0, 0.6)",
+                  color: "white",
+                  fontSize: "0.75rem",
+                  padding: "2px 8px",
+                  textAlign: "center",
+                }}
+              >
+                {TEXT.EXISTING}
+              </Box>
+            )}
+          </Card>
         </Grid>
-      ) : (
-        <Box
-          sx={{
-            p: 3,
-            border: "2px dashed",
-            borderColor: "divider",
-            borderRadius: 1,
-            textAlign: "center",
-            bgcolor: "background.default",
-          }}
-        >
-          <Typography color="text.secondary">
-            No reference images uploaded yet
-          </Typography>
-        </Box>
-      )}
+      ))}
+    </Grid>
+  );
+
+  // Render empty state
+  const renderEmptyState = () => (
+    <Box
+      sx={{
+        p: 3,
+        border: "2px dashed",
+        borderColor: "divider",
+        borderRadius: 2,
+        textAlign: "center",
+        bgcolor: "background.default",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "140px",
+      }}
+    >
+      <CloudUploadIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
+      <Typography color="text.secondary">{TEXT.NO_IMAGES}</Typography>
+    </Box>
+  );
+
+  return (
+    <Paper
+      sx={{
+        p: 3,
+        mb: 3,
+        borderRadius: 2,
+        boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+      }}
+    >
+      <Typography
+        variant="h6"
+        gutterBottom
+        sx={{
+          fontWeight: 600,
+          display: "flex",
+          alignItems: "center",
+          mb: 1,
+        }}
+      >
+        {TEXT.REFERENCE_IMAGES}
+      </Typography>
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {TEXT.UPLOAD_DESCRIPTION}
+      </Typography>
+
+      {renderUploadButton()}
+
+      {imageItems.length > 0 ? renderImageGrid() : renderEmptyState()}
     </Paper>
   );
 }

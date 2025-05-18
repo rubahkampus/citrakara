@@ -8,63 +8,39 @@ import {
   Snackbar,
   Typography,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Button,
   Chip,
   Divider,
   Grid,
-  Stepper,
-  Step,
-  StepLabel,
-  Link,
-  CircularProgress,
-  Card,
-  CardContent,
-  CardMedia,
   IconButton,
-  Tooltip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
-import {
-  Timeline,
-  TimelineItem,
-  TimelineSeparator,
-  TimelineContent,
-  TimelineDot,
-  TimelineConnector,
-} from "@mui/lab";
 import {
   ExpandMore as ExpandMoreIcon,
   AccessTime as AccessTimeIcon,
   AttachMoney as AttachMoneyIcon,
   Description as DescriptionIcon,
-  Image as ImageIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   ArrowBack as ArrowBackIcon,
   CalendarToday as CalendarTodayIcon,
-  Info as InfoIcon,
   Person as PersonIcon,
-  MessageOutlined as MessageOutlinedIcon,
   Edit as EditIcon,
+  ArrowBack,
+  DescriptionRounded,
+  Home,
+  NavigateNext,
 } from "@mui/icons-material";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { IProposal } from "@/lib/db/models/proposal.model";
 import ArtistRespondForm from "./ArtistRespondForm";
 import ClientRespondForm from "./ClientRespondForm";
 import CommissionDetails from "./CommissionDetailsPage";
-import {
-  IAddon,
-  IOptionGroup,
-  IQuestion,
-} from "@/lib/db/models/commissionListing.model";
+import ProposalOptionsDetails from "./ProposalOptionsDetails";
 
 interface ContractDetailsPageProps {
   username: string;
@@ -87,7 +63,6 @@ export default function ProposalDetailsPage({
   const [expandedSection, setExpandedSection] = useState<string | false>(
     "basicInfo"
   );
-  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   // Handle section expansion
   const handleSectionToggle =
@@ -115,49 +90,50 @@ export default function ProposalDetailsPage({
   // Status display mapping
   const statusMap = {
     pendingArtist: {
-      text: "Pending Artist Response",
+      text: "Menunggu Respons Seniman",
       color: "warning.main",
       icon: <AccessTimeIcon />,
-      description: "The artist needs to review and respond to this proposal.",
+      description: "Seniman perlu meninjau dan merespons proposal ini.",
     },
     pendingClient: {
-      text: "Pending Client Response",
+      text: "Menunggu Respons Klien",
       color: "warning.main",
       icon: <AccessTimeIcon />,
-      description: "The client needs to review the artist's adjustments.",
+      description: "Klien perlu meninjau penyesuaian yang diajukan seniman.",
     },
     accepted: {
-      text: "Accepted",
-      color: "success.main",
+      text: "Diterima",
+      color: "white",
       icon: <CheckCircleIcon />,
-      description: "Both parties have agreed to the terms of this contract.",
+      description:
+        "Kedua belah pihak telah menyetujui persyaratan kontrak ini.",
     },
     rejectedArtist: {
-      text: "Rejected by Artist",
+      text: "Ditolak oleh Seniman",
       color: "error.main",
       icon: <CancelIcon />,
-      description: "The artist has declined this commission proposal.",
+      description: "Seniman telah menolak proposal komisi ini.",
     },
     rejectedClient: {
-      text: "Rejected by Client",
+      text: "Ditolak oleh Klien",
       color: "error.main",
       icon: <CancelIcon />,
-      description: "The client has rejected the artist's proposed adjustments.",
+      description:
+        "Klien telah menolak penyesuaian yang diajukan oleh seniman.",
     },
     expired: {
-      text: "Expired",
+      text: "Kedaluwarsa",
       color: "text.disabled",
       icon: <AccessTimeIcon />,
-      description: "This proposal has expired without receiving a response.",
+      description: "Proposal ini telah kedaluwarsa tanpa mendapatkan respons.",
     },
     paid: {
-      text: "Paid",
+      text: "Dibayar",
       color: "success.dark",
       icon: <AttachMoneyIcon />,
-      description: "Payment has been received for this commission.",
+      description: "Pembayaran telah diterima untuk komisi ini.",
     },
   };
-
   // Handle artist response submission
   const handleArtistSubmit = async (decision: {
     acceptProposal: boolean;
@@ -241,16 +217,6 @@ export default function ProposalDetailsPage({
     });
   };
 
-  // Format date helper without time
-  const formatDateNoTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString("id-ID", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   // Calculate days remaining until deadline
   const calculateDaysRemaining = (deadline: string) => {
     const deadlineDate = new Date(deadline);
@@ -264,418 +230,81 @@ export default function ProposalDetailsPage({
     new Date(proposal.deadline).toISOString()
   );
 
-  // Helper to find option group, selection, or addon details from the listing snapshot
-  const findOptionDetails = (type: string, id: number) => {
-    if (type === "group") {
-      return proposal.listingSnapshot.generalOptions?.optionGroups?.find(
-        (group) => group.id === id
-      );
-    } else if (type === "addon") {
-      return proposal.listingSnapshot.generalOptions?.addons?.find(
-        (addon) => addon.id === id
-      );
-    } else if (type === "question") {
-      return proposal.listingSnapshot.generalOptions?.questions?.find(
-        (question) => question.id === id
-      );
-    }
-    return null;
-  };
-
-  // Helper to find subject option details from the listing snapshot
-  const findSubjectDetails = (subjectId: number) => {
-    return proposal.listingSnapshot.subjectOptions?.find(
-      (subject) => subject.id === subjectId
-    );
-  };
-
-  // Helper to find subject option group, selection, or addon details
-  const findSubjectOptionDetails = (
-    subjectId: number,
-    type: string,
-    id: number
-  ) => {
-    const subject = findSubjectDetails(subjectId);
-    if (!subject) return null;
-
-    if (type === "group") {
-      return subject.optionGroups?.find((group) => group.id === id);
-    } else if (type === "addon") {
-      return subject.addons?.find((addon) => addon.id === id);
-    } else if (type === "question") {
-      return subject.questions?.find((question) => question.id === id);
-    }
-    return null;
-  };
-
-  // Helper to find selection details from a group
-  const findSelectionDetails = (groupDetails: any, selectionId: number) => {
-    if (!groupDetails || !groupDetails.selections) return null;
-    return groupDetails.selections.find(
-      (selection: any) => selection.id === selectionId
-    );
-  };
-
-  // Menampilkan opsi umum dengan cara yang lebih intuitif
-  const renderGeneralOptions = () => {
-    if (!proposal.generalOptions) {
-      return <Typography>Tidak ada opsi yang dipilih</Typography>;
-    }
-
-    return (
-      <Card sx={{ mb: 3, overflow: "visible" }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-            Opsi Umum
-          </Typography>
-
-          {/* Grup Opsi */}
-          {proposal.generalOptions.optionGroups &&
-            proposal.generalOptions.optionGroups.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
-                >
-                  Grup Opsi
-                </Typography>
-                <TableContainer
-                  component={Paper}
-                  variant="outlined"
-                  sx={{ borderRadius: 1 }}
-                >
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: "background.default" }}>
-                        <TableCell>Opsi</TableCell>
-                        <TableCell>Pilihan</TableCell>
-                        <TableCell align="right">Harga</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {proposal.generalOptions.optionGroups.map((option) => {
-                        const groupDetails = findOptionDetails(
-                          "group",
-                          option.groupId
-                        ) as IOptionGroup;
-                        const selectionDetails = groupDetails
-                          ? findSelectionDetails(
-                              groupDetails,
-                              option.selectedSelectionID
-                            )
-                          : null;
-
-                        return (
-                          <TableRow key={option.id}>
-                            <TableCell>
-                              {groupDetails?.title ||
-                                `Grup Opsi ${option.groupId}`}
-                            </TableCell>
-                            <TableCell>
-                              {option.selectedSelectionLabel}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCurrency(option.price)}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-
-          {/* Add-on */}
-          {proposal.generalOptions.addons &&
-            proposal.generalOptions.addons.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
-                >
-                  Tambahan
-                </Typography>
-                <TableContainer
-                  component={Paper}
-                  variant="outlined"
-                  sx={{ borderRadius: 1 }}
-                >
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: "background.default" }}>
-                        <TableCell>Tambahan</TableCell>
-                        <TableCell align="right">Harga</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {proposal.generalOptions.addons.map((addon) => {
-                        const addonDetails = findOptionDetails(
-                          "addon",
-                          addon.addonId
-                        ) as IAddon;
-
-                        return (
-                          <TableRow key={addon.id}>
-                            <TableCell>
-                              {addonDetails?.label || `Add-on ${addon.addonId}`}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCurrency(addon.price)}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-
-          {/* Jawaban Klien */}
-          {proposal.generalOptions.answers &&
-            proposal.generalOptions.answers.length > 0 && (
-              <Box>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
-                >
-                  Jawaban dari Klien
-                </Typography>
-                {proposal.generalOptions.answers.map((answer) => {
-                  const questionDetails = findOptionDetails(
-                    "question",
-                    answer.questionId
-                  ) as IQuestion;
-
-                  return (
-                    <Box
-                      key={answer.id}
-                      sx={{
-                        mb: 2,
-                        bgcolor: "background.default",
-                        p: 2,
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        gutterBottom
-                      >
-                        {questionDetails?.text ||
-                          `Pertanyaan ${answer.questionId}`}
-                      </Typography>
-                      <Typography variant="body1">{answer.answer}</Typography>
-                    </Box>
-                  );
-                })}
-              </Box>
-            )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // Render subject options in a more intuitive way
-  // Menampilkan opsi subjek dengan cara yang lebih intuitif
-  const renderSubjectOptions = () => {
-    if (!proposal.subjectOptions || proposal.subjectOptions.length === 0) {
-      return (
-        <Typography variant="body2">Tidak ada subjek yang dipilih</Typography>
-      );
-    }
-
-    return proposal.subjectOptions.map((subject) => {
-      const subjectDetails = findSubjectDetails(subject.subjectId);
-
-      return (
-        <Card key={subject.subjectId} sx={{ mb: 3, overflow: "visible" }}>
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-              {subjectDetails?.title || `Subjek ${subject.subjectId}`}
-            </Typography>
-
-            {subject.instances.map((instance) => (
-              <Box
-                key={instance.id}
-                sx={{
-                  mb: 3,
-                  pl: 2,
-                  borderLeft: "2px solid",
-                  borderColor: "primary.light",
-                }}
-              >
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 2, fontWeight: "medium" }}
-                >
-                  Instansi {instance.id}
-                </Typography>
-
-                {/* Grup Opsi Instansi */}
-                {instance.optionGroups && instance.optionGroups.length > 0 && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: "primary.main" }}
-                    >
-                      Opsi
-                    </Typography>
-                    <TableContainer
-                      component={Paper}
-                      variant="outlined"
-                      sx={{ borderRadius: 1 }}
-                    >
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Opsi</TableCell>
-                            <TableCell>Pilihan</TableCell>
-                            <TableCell align="right">Harga</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {instance.optionGroups.map((option) => {
-                            const groupDetails = findSubjectOptionDetails(
-                              subject.subjectId,
-                              "group",
-                              option.groupId
-                            ) as IOptionGroup;
-                            const selectionDetails = groupDetails
-                              ? findSelectionDetails(
-                                  groupDetails,
-                                  option.selectedSelectionID
-                                )
-                              : null;
-
-                            return (
-                              <TableRow key={option.id}>
-                                <TableCell>
-                                  {groupDetails?.title ||
-                                    `Opsi ${option.groupId}`}
-                                </TableCell>
-                                <TableCell>
-                                  {option.selectedSelectionLabel}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCurrency(option.price)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                )}
-
-                {/* Add-on Instansi */}
-                {instance.addons && instance.addons.length > 0 && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: "primary.main" }}
-                    >
-                      Tambahan
-                    </Typography>
-                    <TableContainer
-                      component={Paper}
-                      variant="outlined"
-                      sx={{ borderRadius: 1 }}
-                    >
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Tambahan</TableCell>
-                            <TableCell align="right">Harga</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {instance.addons.map((addon) => {
-                            const addonDetails = findSubjectOptionDetails(
-                              subject.subjectId,
-                              "addon",
-                              addon.addonId
-                            ) as IAddon;
-
-                            return (
-                              <TableRow key={addon.id}>
-                                <TableCell>
-                                  {addonDetails?.label ||
-                                    `Tambahan ${addon.addonId}`}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCurrency(addon.price)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                )}
-
-                {/* Jawaban Klien Instansi */}
-                {instance.answers && instance.answers.length > 0 && (
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: "primary.main" }}
-                    >
-                      Jawaban Klien
-                    </Typography>
-                    {instance.answers.map((answer) => {
-                      const questionDetails = findSubjectOptionDetails(
-                        subject.subjectId,
-                        "question",
-                        answer.questionId
-                      ) as IQuestion;
-
-                      return (
-                        <Box
-                          key={answer.id}
-                          sx={{
-                            mb: 2,
-                            bgcolor: "background.default",
-                            p: 2,
-                            borderRadius: 1,
-                          }}
-                        >
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            gutterBottom
-                          >
-                            {questionDetails?.text ||
-                              `Pertanyaan ${answer.questionId}`}
-                          </Typography>
-                          <Typography variant="body1">
-                            {answer.answer}
-                          </Typography>
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                )}
-              </Box>
-            ))}
-          </CardContent>
-        </Card>
-      );
-    });
-  };
-
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", px: 2, py: 4 }}>
+    <Box sx={{ mx: "auto", py: 4 }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/proposals`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <DescriptionRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Proposal
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Detail Proposal
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5}>
+            <DescriptionRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              Detail Proposal
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard/proposals`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+          sx={{ mt: 1 }}
+        >
+          Kembali ke Daftar Proposal
+        </Button>
+      </Box>
+
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {/* Tombol kembali dan header */}
+      {/* Back button and header */}
       <Box
         sx={{
           display: "flex",
@@ -684,19 +313,7 @@ export default function ProposalDetailsPage({
           justifyContent: "space-between",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <IconButton
-            onClick={() => router.push(`/${username}/dashboard/proposals`)}
-            sx={{ mr: 2 }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h4" fontWeight="bold">
-            Kontrak Komisi
-          </Typography>
-        </Box>
-
-        {/* Tombol edit */}
+        {/* Edit button */}
         {canEditProposal && (
           <Button
             variant="outlined"
@@ -707,408 +324,257 @@ export default function ProposalDetailsPage({
                 `/${username}/dashboard/proposals/${proposal._id}/edit`
               )
             }
-            sx={{ borderRadius: 2 }}
+            sx={{ borderRadius: 1 }}
           >
             Edit Proposal
           </Button>
         )}
       </Box>
 
-      {/* Kartu status proposal */}
+      {/* Proposal status card */}
       <Paper
-        elevation={3}
+        component="div"
         sx={{
-          p: 3,
-          mb: 4,
-          bgcolor: "background.paper",
+          p: 4,
+          border: 1,
+          borderColor: "divider",
           borderRadius: 2,
-          position: "relative",
-          overflow: "hidden",
-          borderLeft: 5,
-          borderColor: proposal.status.includes("reject")
-            ? "error.main"
-            : proposal.status === "accepted" || proposal.status === "paid"
-            ? "success.main"
-            : "warning.main",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          {statusMap[isExpired() ? "expired" : proposal.status]?.icon}
-          <Typography variant="h5" fontWeight="medium" sx={{ ml: 1 }}>
-            {statusMap[isExpired() ? "expired" : proposal.status]?.text ||
-              "Status Tidak Dikenal"}
-          </Typography>
-          <Chip
-            label={
-              statusMap[isExpired() ? "expired" : proposal.status]?.text ||
-              "Tidak Diketahui"
-            }
-            color={
-              proposal.status.includes("reject")
-                ? "error"
-                : proposal.status === "accepted" || proposal.status === "paid"
-                ? "success"
-                : "warning"
-            }
-            sx={{ ml: "auto", fontWeight: "medium", px: 1 }}
-          />
-        </Box>
-
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-          {statusMap[isExpired() ? "expired" : proposal.status]?.description}
-        </Typography>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <DescriptionIcon
-                fontSize="small"
-                color="primary"
-                sx={{ mr: 1 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                Proyek
-              </Typography>
-            </Box>
-            <Typography
-              variant="body1"
-              sx={{ fontWeight: "medium", ml: 4, mb: 2 }}
-            >
-              {proposal.listingSnapshot.title}
-            </Typography>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <CalendarTodayIcon
-                fontSize="small"
-                color="primary"
-                sx={{ mr: 1 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                Tenggat Waktu
-              </Typography>
-            </Box>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: "medium",
-                ml: 4,
-                mb: 2,
-                color:
-                  daysRemaining < 3
-                    ? "error.main"
-                    : daysRemaining < 7
-                    ? "warning.main"
-                    : "inherit",
-              }}
-            >
-              {formatDate(new Date(proposal.deadline).toISOString())}
-              {daysRemaining > 0
-                ? ` (${daysRemaining} hari lagi)`
-                : " (Hari terakhir!)"}
-            </Typography>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <PersonIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
-              <Typography variant="body2" color="text.secondary">
-                {role === "client" ? "Ilustrator" : "Klien"}
-              </Typography>
-            </Box>
-            <Typography
-              variant="body1"
-              sx={{ fontWeight: "medium", ml: 4, mb: 2 }}
-            >
-              {role === "client"
-                ? otherPartyInfo?.username || "Ilustrator"
-                : otherPartyInfo?.username || "Klien"}
-            </Typography>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <AttachMoneyIcon
-                fontSize="small"
-                color="primary"
-                sx={{ mr: 1 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                Total Harga
-              </Typography>
-            </Box>
-            <Typography
-              variant="body1"
-              sx={{ fontWeight: "medium", ml: 4, mb: 2 }}
-            >
-              {formatCurrency(proposal.calculatedPrice.total)}
-            </Typography>
-          </Grid>
-        </Grid>
-
-        {/* Garis waktu (jika ada, bisa ditambahkan di sini) */}
-        <Box
-          sx={{ mt: 3, pt: 2, borderTop: "1px dashed", borderColor: "divider" }}
-        ></Box>
-      </Paper>
-
-      {/* Formulir Respons */}
-      {(canArtistRespond || canClientRespond) && (
-        <Box sx={{ mb: 4 }}>
-          {role === "artist" && canArtistRespond ? (
-            <ArtistRespondForm
-              proposal={proposal}
-              onSubmit={handleArtistSubmit}
-              loading={loading}
-            />
-          ) : role === "client" && canClientRespond ? (
-            <ClientRespondForm
-              proposal={proposal}
-              onSubmit={handleClientSubmit}
-              loading={loading}
-            />
-          ) : null}
-        </Box>
-      )}
-
-      {/* Pesan Status */}
-      {!(canArtistRespond || canClientRespond) && (
-        <Alert
-          severity={
-            proposal.status === "accepted"
-              ? "success"
-              : proposal.status === "rejectedArtist" ||
-                proposal.status === "rejectedClient"
-              ? "error"
-              : proposal.status === "expired"
-              ? "warning"
-              : proposal.status === "paid"
-              ? "success"
-              : "info"
-          }
-          sx={{ mb: 4 }}
-          icon={statusMap[isExpired() ? "expired" : proposal.status]?.icon}
+        <Paper
+          elevation={3}
+          sx={{
+            p: 3,
+            mb: 4,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            position: "relative",
+            overflow: "hidden",
+            borderLeft: 5,
+            borderColor: proposal.status.includes("reject")
+              ? "error.main"
+              : proposal.status === "accepted" || proposal.status === "paid"
+              ? "success.main"
+              : "warning.main",
+          }}
         >
-          <Typography variant="body1">
-            {proposal.status === "accepted"
-              ? "Proposal ini telah diterima. Ilustrator akan mulai bekerja sesuai dengan jadwal yang disepakati."
-              : proposal.status === "rejectedArtist"
-              ? "Proposal ini ditolak oleh ilustrator. Anda dapat membuat proposal baru dengan kebutuhan yang berbeda."
-              : proposal.status === "rejectedClient"
-              ? "Anda menolak penyesuaian dari ilustrator. Ilustrator dapat mengajukan penyesuaian baru."
-              : proposal.status === "expired"
-              ? "Proposal ini telah kedaluwarsa dan tidak dapat diterima lagi."
-              : proposal.status === "paid"
-              ? "Proposal ini telah dibayar. Ilustrator akan menyelesaikan karya sesuai kesepakatan."
-              : "Menunggu tanggapan dari pihak lainnya terhadap proposal ini."}
-          </Typography>
-        </Alert>
-      )}
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            {statusMap[isExpired() ? "expired" : proposal.status]?.icon}
+            <Typography variant="h5" fontWeight="medium" sx={{ ml: 1 }}>
+              {statusMap[isExpired() ? "expired" : proposal.status]?.text ||
+                "Status Tidak Dikenal"}
+            </Typography>
+            <Chip
+              label={
+                statusMap[isExpired() ? "expired" : proposal.status]?.text ||
+                "Tidak Diketahui"
+              }
+              color={
+                proposal.status.includes("reject")
+                  ? "error"
+                  : proposal.status === "accepted" || proposal.status === "paid"
+                  ? "success"
+                  : "warning"
+              }
+              sx={{ ml: "auto", fontWeight: "medium", px: 1 }}
+            />
+          </Box>
 
-      {/* Tombol Batalkan Proposal (hanya untuk klien) */}
-      {role === "client" &&
-        !["expired", "rejectedArtist", "rejectedClient", "paid"].includes(
-          proposal.status
-        ) &&
-        !canClientRespond && (
-          <Box sx={{ mb: 4, display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={() => handleClientSubmit({ cancel: true })}
-              disabled={loading || isExpired()}
-              startIcon={<CancelIcon />}
-              sx={{ borderRadius: 2 }}
-            >
-              Batalkan Proposal
-            </Button>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            {statusMap[isExpired() ? "expired" : proposal.status]?.description}
+          </Typography>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <DescriptionIcon
+                  fontSize="small"
+                  color="primary"
+                  sx={{ mr: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Proyek
+                </Typography>
+              </Box>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: "medium", ml: 4, mb: 2 }}
+              >
+                {proposal.listingSnapshot.title}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <CalendarTodayIcon
+                  fontSize="small"
+                  color="primary"
+                  sx={{ mr: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Tenggat Waktu
+                </Typography>
+              </Box>
+              <Typography
+                variant="body1"
+                sx={{
+                  fontWeight: "medium",
+                  ml: 4,
+                  mb: 2,
+                  color:
+                    daysRemaining < 3
+                      ? "error.main"
+                      : daysRemaining < 7
+                      ? "warning.main"
+                      : "inherit",
+                }}
+              >
+                {formatDate(new Date(proposal.deadline).toISOString())}
+                {daysRemaining > 0
+                  ? ` (${daysRemaining} hari lagi)`
+                  : " (Hari terakhir!)"}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <PersonIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
+                <Typography variant="body2" color="text.secondary">
+                  {role === "client" ? "Ilustrator" : "Klien"}
+                </Typography>
+              </Box>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: "medium", ml: 4, mb: 2 }}
+              >
+                {role === "client"
+                  ? otherPartyInfo?.username || "Ilustrator"
+                  : otherPartyInfo?.username || "Klien"}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <AttachMoneyIcon
+                  fontSize="small"
+                  color="primary"
+                  sx={{ mr: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Total Harga
+                </Typography>
+              </Box>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: "medium", ml: 4, mb: 2 }}
+              >
+                {formatCurrency(proposal.calculatedPrice.total)}
+              </Typography>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* Response Form */}
+        {(canArtistRespond || canClientRespond) && (
+          <Box sx={{ mb: 4 }}>
+            {role === "artist" && canArtistRespond ? (
+              <ArtistRespondForm
+                proposal={proposal}
+                onSubmit={handleArtistSubmit}
+                loading={loading}
+              />
+            ) : role === "client" && canClientRespond ? (
+              <ClientRespondForm
+                proposal={proposal}
+                onSubmit={handleClientSubmit}
+                loading={loading}
+                username={username}
+              />
+            ) : null}
           </Box>
         )}
 
-      {/* Deskripsi Proyek */}
-      <Paper
-        elevation={2}
-        sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 2,
-          bgcolor: "background.paper",
-        }}
-      >
-        <Typography
-          variant="h5"
-          color="primary"
-          sx={{ mb: 2, fontWeight: "medium" }}
-        >
-          Deskripsi Proyek
-        </Typography>
-        <Typography variant="body1" paragraph>
-          {proposal.generalDescription}
-        </Typography>
-      </Paper>
-
-      {/* Opsi yang Dipilih */}
-      <Paper
-        elevation={2}
-        sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 2,
-          bgcolor: "background.paper",
-        }}
-      >
-        <Typography
-          variant="h5"
-          color="primary"
-          sx={{ mb: 3, fontWeight: "medium" }}
-        >
-          Opsi yang Dipilih
-        </Typography>
-        {renderGeneralOptions()}
-        {renderSubjectOptions()}
-      </Paper>
-
-      {/* Rincian Listing Komisi */}
-      <Accordion
-        expanded={expandedSection === "listingDetails"}
-        onChange={handleSectionToggle("listingDetails")}
-        sx={{ mb: 2, borderRadius: "8px !important", overflow: "hidden" }}
-      >
-        <AccordionSummary
-          expandIcon={<ExpandMoreIcon />}
-          sx={{ bgcolor: "background.paper" }}
-        >
-          <Typography
-            variant="h6"
-            color="primary"
-            sx={{ display: "flex", alignItems: "center" }}
+        {/* Status Message */}
+        {!(canArtistRespond || canClientRespond) && (
+          <Alert
+            severity={
+              proposal.status === "accepted"
+                ? "success"
+                : proposal.status === "rejectedArtist" ||
+                  proposal.status === "rejectedClient"
+                ? "error"
+                : proposal.status === "expired"
+                ? "warning"
+                : proposal.status === "paid"
+                ? "success"
+                : "info"
+            }
+            sx={{ mb: 4 }}
+            icon={statusMap[isExpired() ? "expired" : proposal.status]?.icon}
           >
-            <DescriptionIcon sx={{ mr: 1 }} /> Rincian Listing Komisi
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <CommissionDetails listing={proposal.listingSnapshot} />
-        </AccordionDetails>
-      </Accordion>
+            <Typography variant="body1">
+              {proposal.status === "accepted"
+                ? "Proposal ini telah diterima. Ilustrator akan mulai bekerja sesuai dengan jadwal yang disepakati."
+                : proposal.status === "rejectedArtist"
+                ? "Proposal ini ditolak oleh ilustrator. Anda dapat membuat proposal baru dengan kebutuhan yang berbeda."
+                : proposal.status === "rejectedClient"
+                ? "Anda menolak penyesuaian dari ilustrator. Ilustrator dapat mengajukan penyesuaian baru."
+                : proposal.status === "expired"
+                ? "Proposal ini telah kedaluwarsa dan tidak dapat diterima lagi."
+                : proposal.status === "paid"
+                ? "Proposal ini telah dibayar. Ilustrator akan menyelesaikan karya sesuai kesepakatan."
+                : "Menunggu tanggapan dari pihak lainnya terhadap proposal ini."}
+            </Typography>
+          </Alert>
+        )}
 
-      {/* Rincian Harga */}
-      <Paper
-        elevation={2}
-        sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 2,
-          bgcolor: "background.paper",
-        }}
-      >
-        <Typography
-          variant="h5"
-          color="primary"
-          sx={{ mb: 3, fontWeight: "medium" }}
-        >
-          Rincian Harga
-        </Typography>
+        {/* Rejection Reason (if applicable) */}
+        {proposal.rejectionReason && (
+          <Paper
+            elevation={2}
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: 2,
+              bgcolor: "error.lighter",
+              borderLeft: 5,
+              borderColor: "error.main",
+            }}
+          >
+            <Typography
+              variant="h5"
+              sx={{ mb: 3, fontWeight: "medium", color: "error.main" }}
+            >
+              Alasan Penolakan
+            </Typography>
+            <Typography variant="body1">{proposal.rejectionReason}</Typography>
+          </Paper>
+        )}
 
-        <TableContainer sx={{ mb: 3 }}>
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell>Harga Dasar</TableCell>
-                <TableCell align="right">
-                  {formatCurrency(proposal.calculatedPrice.base)}
-                </TableCell>
-              </TableRow>
-              {proposal.calculatedPrice.optionGroups > 0 && (
-                <TableRow>
-                  <TableCell>Opsi Tambahan</TableCell>
-                  <TableCell align="right">
-                    {formatCurrency(proposal.calculatedPrice.optionGroups)}
-                  </TableCell>
-                </TableRow>
-              )}
-              {proposal.calculatedPrice.addons > 0 && (
-                <TableRow>
-                  <TableCell>Add-on</TableCell>
-                  <TableCell align="right">
-                    {formatCurrency(proposal.calculatedPrice.addons)}
-                  </TableCell>
-                </TableRow>
-              )}
-              {proposal.calculatedPrice.rush > 0 && (
-                <TableRow>
-                  <TableCell>
-                    <Tooltip
-                      title={`Biaya ekspres untuk ${proposal.rush?.days} hari dipercepat`}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        Biaya Ekspres{" "}
-                        <InfoIcon
-                          fontSize="small"
-                          sx={{ ml: 1, color: "text.secondary" }}
-                        />
-                      </Box>
-                    </Tooltip>
-                  </TableCell>
-                  <TableCell align="right" sx={{ color: "warning.main" }}>
-                    {formatCurrency(proposal.calculatedPrice.rush)}
-                  </TableCell>
-                </TableRow>
-              )}
-              {proposal.calculatedPrice.discount > 0 && (
-                <TableRow>
-                  <TableCell>Diskon</TableCell>
-                  <TableCell align="right" sx={{ color: "success.main" }}>
-                    -{formatCurrency(proposal.calculatedPrice.discount)}
-                  </TableCell>
-                </TableRow>
-              )}
-              {proposal.artistAdjustments?.acceptedSurcharge && (
-                <TableRow>
-                  <TableCell>Tambahan dari Ilustrator</TableCell>
-                  <TableCell align="right" sx={{ color: "error.main" }}>
-                    +
-                    {formatCurrency(
-                      proposal.artistAdjustments.acceptedSurcharge
-                    )}
-                  </TableCell>
-                </TableRow>
-              )}
-              {proposal.artistAdjustments?.acceptedDiscount && (
-                <TableRow>
-                  <TableCell>Diskon dari Ilustrator</TableCell>
-                  <TableCell align="right" sx={{ color: "success.main" }}>
-                    -
-                    {formatCurrency(
-                      proposal.artistAdjustments.acceptedDiscount
-                    )}
-                  </TableCell>
-                </TableRow>
-              )}
-              <TableRow
-                sx={{
-                  "& td": {
-                    fontWeight: "bold",
-                    py: 2,
-                    borderTop: "1px solid rgba(224, 224, 224, 1)",
-                    fontSize: "1.1rem",
-                  },
-                }}
+        {/* Cancel Proposal Button (client only) */}
+        {role === "client" &&
+          !["expired", "rejectedArtist", "rejectedClient", "paid"].includes(
+            proposal.status
+          ) &&
+          !canClientRespond && (
+            <Box sx={{ mb: 4, display: "flex", justifyContent: "flex-end" }}>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => handleClientSubmit({ cancel: true })}
+                disabled={loading || isExpired()}
+                startIcon={<CancelIcon />}
+                sx={{ borderRadius: 2 }}
               >
-                <TableCell>Total Akhir</TableCell>
-                <TableCell align="right">
-                  {formatCurrency(proposal.calculatedPrice.total)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                Batalkan Proposal
+              </Button>
+            </Box>
+          )}
 
-      {/* Gambar Referensi */}
-      {proposal.referenceImages && proposal.referenceImages.length > 0 && (
+        {/* Project Description */}
         <Paper
           elevation={2}
           sx={{
@@ -1121,138 +587,51 @@ export default function ProposalDetailsPage({
           <Typography
             variant="h5"
             color="primary"
-            sx={{ mb: 3, fontWeight: "medium" }}
+            sx={{ mb: 2, fontWeight: "medium" }}
           >
-            Gambar Referensi
+            Deskripsi Proyek
           </Typography>
-          <Grid container spacing={2}>
-            {proposal.referenceImages.map((imgUrl, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
-                <Card
-                  sx={{
-                    height: "100%",
-                    cursor: "pointer",
-                    transition: "transform 0.2s",
-                    "&:hover": {
-                      transform: "scale(1.02)",
-                      boxShadow: 3,
-                    },
-                    borderRadius: 1,
-                    overflow: "hidden",
-                  }}
-                  onClick={() => setEnlargedImage(imgUrl)}
-                >
-                  <CardMedia
-                    component="img"
-                    image={imgUrl}
-                    alt={`Referensi ${index + 1}`}
-                    sx={{
-                      height: 200,
-                      objectFit: "cover",
-                    }}
-                  />
-                  <CardContent sx={{ p: 1, bgcolor: "background.default" }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Gambar Referensi {index + 1}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+          <Typography variant="body1" paragraph>
+            {proposal.generalDescription}
+          </Typography>
+        </Paper>
 
-          {/* Image Modal */}
-          {enlargedImage && (
-            <Box
-              sx={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                bgcolor: "rgba(0, 0, 0, 0.8)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-                p: 4,
-              }}
-              onClick={() => setEnlargedImage(null)}
+        {/* Selected Options - Now using the separated component */}
+        <ProposalOptionsDetails
+          proposal={proposal}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+        />
+
+        {/* Commission Listing Details */}
+        <Accordion
+          expanded={expandedSection === "listingDetails"}
+          onChange={handleSectionToggle("listingDetails")}
+          sx={{ mb: 2, borderRadius: "8px !important", overflow: "hidden" }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            sx={{ bgcolor: "background.paper" }}
+          >
+            <Typography
+              variant="h6"
+              color="primary"
+              sx={{ display: "flex", alignItems: "center" }}
             >
-              <Box
-                component="img"
-                src={enlargedImage}
-                alt="Enlarged reference"
-                sx={{
-                  maxWidth: "90%",
-                  maxHeight: "90%",
-                  objectFit: "contain",
-                  borderRadius: 1,
-                }}
-              />
-              <IconButton
-                sx={{
-                  position: "absolute",
-                  top: 16,
-                  right: 16,
-                  color: "white",
-                  bgcolor: "rgba(0, 0, 0, 0.3)",
-                  "&:hover": {
-                    bgcolor: "rgba(0, 0, 0, 0.5)",
-                  },
-                }}
-                onClick={() => setEnlargedImage(null)}
-              >
-                <CancelIcon />
-              </IconButton>
-            </Box>
-          )}
-        </Paper>
-      )}
-
-      {/* Rejection Reason (if applicable) */}
-      {proposal.rejectionReason && (
-        <Paper
-          elevation={2}
-          sx={{
-            p: 3,
-            mb: 4,
-            borderRadius: 2,
-            bgcolor: "error.lighter",
-            borderLeft: 5,
-            borderColor: "error.main",
-          }}
-        >
-          <Typography
-            variant="h5"
-            sx={{ mb: 3, fontWeight: "medium", color: "error.main" }}
-          >
-            Alasan Penolakan
-          </Typography>
-          <Typography variant="body1">{proposal.rejectionReason}</Typography>
-        </Paper>
-      )}
-
-      {/* Action Buttons */}
-      <Box
-        sx={{ display: "flex", justifyContent: "space-between", mt: 4, mb: 2 }}
-      >
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => router.push(`/${username}/dashboard/proposals`)}
-          sx={{ borderRadius: 2 }}
-        >
-          Kembali ke Proposal
-        </Button>
-      </Box>
-
-      <Snackbar
-        open={success}
-        message="Response submitted successfully!"
-        autoHideDuration={2000}
-        onClose={() => setSuccess(false)}
-      />
+              <DescriptionIcon sx={{ mr: 1 }} /> Rincian Listing Komisi
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <CommissionDetails listing={proposal.listingSnapshot} />
+          </AccordionDetails>
+        </Accordion>
+        <Snackbar
+          open={success}
+          message="Response submitted successfully!"
+          autoHideDuration={2000}
+          onClose={() => setSuccess(false)}
+        />
+      </Paper>
     </Box>
   );
 }

@@ -5,43 +5,73 @@ import {
   TextField,
   Typography,
   Box,
-  Paper,
   CircularProgress,
   Grid,
   Divider,
-  Tooltip,
   Card,
   alpha,
 } from "@mui/material";
-import InfoIcon from "@mui/icons-material/Info";
 import { ProposalFormValues } from "@/types/proposal";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { ICommissionListing } from "@/lib/db/models/commissionListing.model";
 
+// Types
 interface DeadlineSectionProps {
   listing: ICommissionListing;
 }
 
 interface DateEstimate {
-  baseDate: string; // When artist starts working
-  earliestDate: string; // Earliest possible completion
-  latestDate: string; // Latest estimated completion
+  baseDate: string; // Tanggal mulai pengerjaan
+  earliestDate: string; // Estimasi selesai paling cepat
+  latestDate: string; // Estimasi selesai paling lambat
 }
 
+// Constants
+const RUSH_MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export default function DeadlineSection({ listing }: DeadlineSectionProps) {
+  // Hooks
   const { control, setValue, getValues, watch } =
     useFormContext<ProposalFormValues>();
+
+  // State
   const [loading, setLoading] = useState(true);
   const [dateEstimate, setDateEstimate] = useState<DateEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Watch deadline to calculate rush fee
+  // Watch for changes to calculate rush fee
   const watchedDeadline = watch("deadline");
-
   const listingDeadline = listing.deadline;
 
-  // Check if we're in edit mode
+  // Helper functions
+  const formatReadableDate = (date: Date) => {
+    try {
+      if (!date || isNaN(date.getTime())) {
+        return "Tanggal tidak tersedia";
+      }
+      return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return "Tanggal tidak tersedia";
+    }
+  };
+
+  const safeGetDate = (dateString: string): Date => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      // Fallback to valid date (tomorrow)
+      const now = new Date();
+      return new Date(now.getTime() + RUSH_MS_PER_DAY);
+    }
+    return date;
+  };
+
+  // Effects
   useEffect(() => {
     const formValues = getValues();
     if (formValues.id) {
@@ -49,7 +79,6 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
     }
   }, [getValues]);
 
-  // Fetch dynamic date estimates when component mounts
   useEffect(() => {
     const fetchDateEstimates = async () => {
       try {
@@ -58,18 +87,17 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
           `/api/proposal/estimate/${listing._id}`
         );
 
-        // Validate that each date is valid before processing
+        // Validate dates
         const baseDate = new Date(response.data.baseDate);
         const earliestDate = new Date(response.data.earliestDate);
         const latestDate = new Date(response.data.latestDate);
 
-        // Check if any of the dates are invalid
         if (
           isNaN(baseDate.getTime()) ||
           isNaN(earliestDate.getTime()) ||
           isNaN(latestDate.getTime())
         ) {
-          throw new Error("Invalid date received from API");
+          throw new Error("Tanggal tidak valid dari API");
         }
 
         setDateEstimate({
@@ -78,35 +106,30 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
           latestDate: latestDate.toISOString(),
         });
 
-        // Get the current form values to check if we're in edit mode and have an existing deadline
+        // Handle deadline values
         const formValues = getValues();
         const existingDeadline = formValues.deadline;
         const isEditing = !!formValues.id;
 
-        // Default deadline is two weeks after latestDate
+        // Default deadline (2 weeks after latestDate)
         const defaultDeadline = new Date(latestDate);
         defaultDeadline.setDate(defaultDeadline.getDate() + 14);
         const defaultDeadlineStr = defaultDeadline.toISOString().slice(0, 10);
 
-        // Only set a value automatically if this is a new proposal (not edit mode)
-        // OR if we're in standard mode (which forces a specific deadline)
         if (
           listingDeadline.mode === "standard" ||
           !isEditing ||
           !existingDeadline
         ) {
           if (listingDeadline.mode === "standard") {
-            // For standard mode, always set the deadline to 2 weeks after latestDate
             setValue("deadline", defaultDeadlineStr);
           } else if (!isEditing) {
-            // For new proposals, set a default deadline
             setValue("deadline", defaultDeadlineStr);
           }
         }
 
         // Handle existing deadline in edit mode
         if (isEditing && existingDeadline) {
-          // If the deadline is a full ISO string, convert it to YYYY-MM-DD format
           if (existingDeadline.includes("T")) {
             const formattedDate = new Date(existingDeadline)
               .toISOString()
@@ -118,18 +141,20 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
         setError(null);
       } catch (err: any) {
         console.error("Error fetching date estimates:", err);
-        setError(err.response?.data?.error || "Failed to fetch date estimates");
+        setError(
+          err.response?.data?.error || "Gagal mengambil estimasi tanggal"
+        );
 
-        // Fallback to calculate dates locally
+        // Fallback calculation
         const now = new Date();
         const baseDate = new Date(
-          now.getTime() + (listingDeadline.min / 2) * 24 * 60 * 60 * 1000
+          now.getTime() + (listingDeadline.min / 2) * RUSH_MS_PER_DAY
         );
         const minDate = new Date(
-          now.getTime() + listingDeadline.min * 24 * 60 * 60 * 1000
+          now.getTime() + listingDeadline.min * RUSH_MS_PER_DAY
         );
         const maxDate = new Date(
-          now.getTime() + listingDeadline.max * 24 * 60 * 60 * 1000
+          now.getTime() + listingDeadline.max * RUSH_MS_PER_DAY
         );
 
         setDateEstimate({
@@ -152,39 +177,31 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
     getValues,
   ]);
 
+  // Loading state
   if (loading) {
     return (
       <Card sx={{ p: 3, mb: 3, display: "flex", justifyContent: "center" }}>
         <CircularProgress size={24} sx={{ mr: 2 }} />
-        <Typography>Calculating available dates...</Typography>
+        <Typography>Menghitung tanggal yang tersedia...</Typography>
       </Card>
     );
   }
 
+  // Error state
   if (error || !dateEstimate) {
     return (
       <Card sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" color="error" gutterBottom>
-          Error loading date estimates
+          Gagal memuat estimasi tanggal
         </Typography>
         <Typography color="text.secondary">
-          {error || "Please try again later."}
+          {error || "Silakan coba lagi nanti."}
         </Typography>
       </Card>
     );
   }
 
-  // Format dates for display and validation
-  const safeGetDate = (dateString: string): Date => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      // Return a valid date as fallback (today + some offset)
-      const now = new Date();
-      return new Date(now.getTime() + 24 * 60 * 60 * 1000); // tomorrow
-    }
-    return date;
-  };
-
+  // Process dates
   const baseDate = safeGetDate(dateEstimate.baseDate);
   const earliestDate = safeGetDate(dateEstimate.earliestDate);
   const latestDate = safeGetDate(dateEstimate.latestDate);
@@ -193,29 +210,12 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
   const earliestStr = earliestDate.toISOString().slice(0, 10);
   const latestStr = latestDate.toISOString().slice(0, 10);
 
-  // Calculate standard deadline (2 weeks after latest date) for standard mode
+  // Calculate standard deadline (2 weeks after latest date)
   const standardDeadline = new Date(latestDate);
   standardDeadline.setDate(standardDeadline.getDate() + 14);
   const standardDeadlineStr = standardDeadline.toISOString().slice(0, 10);
 
-  // Format dates for display in human-readable format
-  const formatReadableDate = (date: Date) => {
-    try {
-      if (!date || isNaN(date.getTime())) {
-        return "Date unavailable";
-      }
-      return date.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return "Date unavailable";
-    }
-  };
-
-  // Determine if the selected deadline qualifies for rush fee (only applicable for withRush mode)
+  // Rush fee calculations
   const isRushDeadline = () => {
     if (!watchedDeadline || listingDeadline.mode !== "withRush") return false;
 
@@ -227,7 +227,6 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
     }
   };
 
-  // Calculate days being rushed (for withRush mode)
   const getRushDays = () => {
     if (!watchedDeadline || !isRushDeadline()) return 0;
 
@@ -236,13 +235,12 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
       const timeDiff = Math.abs(
         earliestDate.getTime() - selectedDate.getTime()
       );
-      return Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+      return Math.ceil(timeDiff / RUSH_MS_PER_DAY);
     } catch (e) {
       return 0;
     }
   };
 
-  // Calculate rush fee based on listing rules
   const calculateRushFee = () => {
     if (!isRushDeadline() || !listingDeadline.rushFee) return 0;
 
@@ -255,12 +253,14 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
     }
   };
 
+  // Render content
   return (
     <Card sx={{ p: 3, mb: 3, borderRadius: 2 }}>
       <Grid container spacing={3}>
+        {/* Timeline Section */}
         <Grid item xs={12} md={6}>
           <Typography variant="h6" gutterBottom color="primary">
-            Project Timeline
+            Jadwal Proyek
           </Typography>
 
           <Box sx={{ mb: 3 }}>
@@ -268,7 +268,7 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
               sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
             >
               <Typography variant="body2" color="text.secondary">
-                Artist starts work:
+                Seniman mulai bekerja:
               </Typography>
               <Typography variant="body2" fontWeight="medium">
                 {formatReadableDate(baseDate)}
@@ -279,7 +279,7 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
               sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
             >
               <Typography variant="body2" color="text.secondary">
-                Estimated completion:
+                Estimasi penyelesaian:
               </Typography>
               <Typography variant="body2" fontWeight="medium">
                 {formatReadableDate(earliestDate)} -{" "}
@@ -298,7 +298,7 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
                   fontWeight="medium"
                   color="text.primary"
                 >
-                  Your deadline:
+                  Tenggat waktu Anda:
                 </Typography>
                 <Typography variant="body1" fontWeight="bold" color="primary">
                   {formatReadableDate(standardDeadline)}
@@ -312,26 +312,33 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
                   color="text.primary"
                   gutterBottom
                 >
-                  Select Your Deadline:
+                  Pilih Tenggat Waktu Anda:
                 </Typography>
                 <Controller
                   name="deadline"
                   control={control}
                   rules={{
-                    required: "Deadline is required",
+                    required: "Tenggat waktu diperlukan",
                     validate: (val: string) => {
-                      if (!val) return "Deadline is required";
+                      if (!val) return "Tenggat waktu diperlukan";
 
                       try {
                         const d = new Date(val);
                         if (isNaN(d.getTime())) {
-                          return "Please enter a valid date";
+                          return "Silakan masukkan tanggal yang valid";
                         }
 
                         // Mode-specific validations
                         if (listingDeadline.mode === "withDeadline") {
-                          if (d < earliestDate) {
-                            return `Date cannot be before ${formatReadableDate(
+                          // Compare dates by setting time to 00:00:00 for fair comparison
+                          const selectedDate = new Date(val);
+                          selectedDate.setHours(0, 0, 0, 0);
+
+                          const minDate = new Date(earliestDate);
+                          minDate.setHours(0, 0, 0, 0);
+
+                          if (selectedDate < minDate) {
+                            return `Tanggal tidak boleh sebelum ${formatReadableDate(
                               earliestDate
                             )}`;
                           }
@@ -339,47 +346,101 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
                           // For withRush, deadline must be at least 1 day after baseDate
                           const minAllowedDate = new Date(baseDate);
                           minAllowedDate.setDate(minAllowedDate.getDate() + 1);
+                          minAllowedDate.setHours(0, 0, 0, 0);
 
-                          if (d <= baseDate) {
-                            return `Deadline must be after ${formatReadableDate(
+                          const selectedDate = new Date(val);
+                          selectedDate.setHours(0, 0, 0, 0);
+
+                          if (selectedDate <= baseDate) {
+                            return `Tenggat waktu harus setelah ${formatReadableDate(
                               baseDate
                             )}`;
                           }
                         }
                         return true;
                       } catch (e) {
-                        return "Invalid date format";
+                        return "Format tanggal tidak valid";
                       }
                     },
                   }}
-                  render={({ field, fieldState }) => (
-                    <TextField
-                      {...field}
-                      type="date"
-                      fullWidth
-                      InputLabelProps={{ shrink: true }}
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      inputProps={{
-                        min:
-                          listingDeadline.mode === "withDeadline"
-                            ? earliestStr
-                            : new Date(baseDate.getTime() + 24 * 60 * 60 * 1000)
-                                .toISOString()
-                                .slice(0, 10),
-                      }}
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          "& fieldset": {
-                            borderColor: isRushDeadline()
-                              ? "warning.main"
-                              : "primary.light",
-                            borderWidth: isRushDeadline() ? 2 : 1,
+                  render={({ field, fieldState }) => {
+                    // Add this function to handle date changes and enforce min date
+                    const handleDateChange = (
+                      e: React.ChangeEvent<HTMLInputElement>
+                    ) => {
+                      const inputDate = e.target.value;
+                      field.onChange(inputDate);
+
+                      // Immediately validate and correct if entered date is too early
+                      if (listingDeadline.mode === "withDeadline") {
+                        try {
+                          const selectedDate = new Date(inputDate);
+                          const minDate = new Date(earliestStr);
+
+                          if (selectedDate < minDate) {
+                            // If invalid date, reset to min date with slight delay
+                            // This allows the validation error to show briefly
+                            setTimeout(() => field.onChange(earliestStr), 100);
+                          }
+                        } catch (e) {
+                          // If parsing fails, do nothing (will be caught by validate)
+                        }
+                      }
+                    };
+
+                    return (
+                      <TextField
+                        {...field}
+                        type="date"
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        inputProps={{
+                          min:
+                            listingDeadline.mode === "withDeadline"
+                              ? (() => {
+                                  // Add one day to earliestStr
+                                  const minDate = new Date(earliestStr);
+                                  minDate.setDate(minDate.getDate()); // Add one day
+                                  return minDate.toISOString().slice(0, 10);
+                                })()
+                              : new Date(baseDate.getTime() + RUSH_MS_PER_DAY)
+                                  .toISOString()
+                                  .slice(0, 10),
+                        }}
+                        // Override onChange with our custom handler
+                        onChange={handleDateChange}
+                        // Add onBlur to enforce min date
+                        onBlur={(e) => {
+                          field.onBlur();
+                          if (listingDeadline.mode === "withDeadline") {
+                            try {
+                              const currentValue = field.value;
+                              const selectedDate = new Date(currentValue);
+                              const minDate = new Date(earliestStr);
+
+                              if (selectedDate < minDate) {
+                                field.onChange(earliestStr);
+                              }
+                            } catch (e) {
+                              // If parsing fails, will be caught by validate
+                            }
+                          }
+                        }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            "& fieldset": {
+                              borderColor: isRushDeadline()
+                                ? "warning.main"
+                                : "primary.light",
+                              borderWidth: isRushDeadline() ? 2 : 1,
+                            },
                           },
-                        },
-                      }}
-                    />
-                  )}
+                        }}
+                      />
+                    );
+                  }}
                 />
               </Box>
             )}
@@ -402,9 +463,10 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
           </Box>
         </Grid>
 
+        {/* Rules Section */}
         <Grid item xs={12} md={6}>
           <Typography variant="h6" gutterBottom color="primary">
-            Deadline Rules
+            Aturan Tenggat Waktu
           </Typography>
 
           <Box
@@ -416,52 +478,60 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
               borderColor: "divider",
             }}
           >
+            {/* Standard mode explanation */}
             {listingDeadline.mode === "standard" && (
               <Typography variant="body2" color="text.secondary">
-                This commission uses a standard deadline which is automatically
-                set to
-                <strong> 2 weeks after</strong> the estimated completion date to
-                ensure sufficient time for high-quality work.
+                Komisi ini menggunakan tenggat waktu standar yang otomatis
+                ditetapkan
+                <strong> 2 minggu setelah</strong> tanggal penyelesaian yang
+                diperkirakan untuk memastikan waktu yang cukup untuk pekerjaan
+                berkualitas tinggi.
               </Typography>
             )}
 
+            {/* WithDeadline mode explanation */}
             {listingDeadline.mode === "withDeadline" && (
               <Typography variant="body2" color="text.secondary">
-                You can choose any date{" "}
-                <strong>on or after {formatReadableDate(earliestDate)}</strong>.
-                This flexibility allows you to align the deadline with your
-                project timeline.
+                Anda dapat memilih tanggal apa pun{" "}
+                <strong>
+                  pada atau setelah {formatReadableDate(earliestDate)}
+                </strong>
+                . Fleksibilitas ini memungkinkan Anda untuk menyelaraskan
+                tenggat waktu dengan jadwal proyek Anda.
               </Typography>
             )}
 
+            {/* WithRush mode explanation */}
             {listingDeadline.mode === "withRush" && (
               <>
                 <Typography variant="body2" color="text.secondary" paragraph>
-                  You have two options:
+                  Anda memiliki dua pilihan:
                 </Typography>
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{ display: "block", mb: 1 }}
                 >
-                  • <strong>Standard completion</strong> (no fee): On or after{" "}
-                  {formatReadableDate(earliestDate)}
+                  • <strong>Penyelesaian standar</strong> (tanpa biaya): Pada
+                  atau setelah {formatReadableDate(earliestDate)}
                 </Typography>
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{ display: "block", mb: 1 }}
                 >
-                  • <strong>Rush completion</strong> (fee applies): Between{" "}
+                  • <strong>Penyelesaian dipercepat</strong> (biaya tambahan):
+                  Antara{" "}
                   {formatReadableDate(
-                    new Date(baseDate.getTime() + 24 * 60 * 60 * 1000)
+                    new Date(baseDate.getTime() + RUSH_MS_PER_DAY)
                   )}{" "}
-                  and{" "}
+                  dan{" "}
                   {formatReadableDate(
-                    new Date(earliestDate.getTime() - 24 * 60 * 60 * 1000)
+                    new Date(earliestDate.getTime() - RUSH_MS_PER_DAY)
                   )}
                 </Typography>
 
+                {/* Rush fee information */}
                 {isRushDeadline() && (
                   <Box
                     sx={{
@@ -478,7 +548,7 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
                       color="warning.dark"
                       fontWeight="medium"
                     >
-                      Rush Fee: {listing.currency}{" "}
+                      Biaya Percepatan: {listing.currency}{" "}
                       {calculateRushFee().toLocaleString()}
                     </Typography>
                     <Typography
@@ -486,10 +556,10 @@ export default function DeadlineSection({ listing }: DeadlineSectionProps) {
                       color="text.secondary"
                       sx={{ mt: 1 }}
                     >
-                      {getRushDays()} day(s) rushed •{" "}
+                      {getRushDays()} hari dipercepat •{" "}
                       {listingDeadline.rushFee?.kind === "flat"
-                        ? "Flat fee"
-                        : "Per-day fee"}
+                        ? "Biaya tetap"
+                        : "Biaya per hari"}
                     </Typography>
                   </Box>
                 )}

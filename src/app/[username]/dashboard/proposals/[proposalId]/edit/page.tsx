@@ -3,9 +3,7 @@ import { Box, Typography, Alert } from "@mui/material";
 import { getAuthSession } from "@/lib/utils/session";
 import { notFound } from "next/navigation";
 import ProposalFormPage from "@/components/dashboard/proposals/ProposalFormPage";
-import {
-  fetchProposalById,
-} from "@/lib/services/proposal.service";
+import { fetchProposalById } from "@/lib/services/proposal.service";
 
 interface EditProposalPageProps {
   params: { username: string; proposalId: string };
@@ -14,9 +12,9 @@ interface EditProposalPageProps {
 export default async function EditProposalPage({
   params,
 }: EditProposalPageProps) {
-  const param = await params
-  const username = param.username
-  const proposalId = param.proposalId
+  const param = await params;
+  const username = param.username;
+  const proposalId = param.proposalId;
 
   const session = await getAuthSession();
   if (
@@ -31,11 +29,14 @@ export default async function EditProposalPage({
     const proposal = await fetchProposalById(proposalId, session.id);
     if (!proposal) notFound();
 
-    console.log(proposal.status)
+    // console.log(proposal.status)
 
     // Only the client who created it can edit, and only when pendingArtist
     if (
-      proposal.clientId.toString() !== session.id || ["rejectedArtist", "expired", "accepted", "paid"].includes(proposal.status)
+      proposal.clientId.toString() !== session.id ||
+      ["rejectedArtist", "expired", "accepted", "paid"].includes(
+        proposal.status
+      )
       // proposal.status !== "pendingArtist"
     ) {
       return (
@@ -55,10 +56,6 @@ export default async function EditProposalPage({
 
     return (
       <Box>
-        <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-          Edit Proposal
-        </Typography>
-
         <ProposalFormPage
           username={username}
           mode="edit"

@@ -24,6 +24,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { proposalId: string } }
 ) {
+  const param = await params
   try {
     const body = await req.json();
     const role = body.role as "artist" | "client";
@@ -41,7 +42,7 @@ export async function PATCH(
 
         proposal = await artistRespond(
           session.id,
-          params.proposalId,
+          param.proposalId,
           artistDecision
         );
       } else if (role === "client") {
@@ -52,7 +53,7 @@ export async function PATCH(
 
         proposal = await clientRespond(
           session.id,
-          params.proposalId,
+          param.proposalId,
           clientDecision
         );
       } else {

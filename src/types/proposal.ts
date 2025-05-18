@@ -136,13 +136,15 @@ export const convertToModelFormat = (formValues: ProposalFormValues) => {
         price,
       })
     ),
-    answers: Object.entries(formValues.generalOptions.answers).map(
-      ([questionId, answer], index) => ({
+    answers: Object.entries(formValues.generalOptions.answers)
+      .filter(
+        ([questionId, answer]) => answer !== undefined && answer.trim() !== ""
+      )
+      .map(([questionId, answer], index) => ({
         id: index + 1,
         questionId: Number(questionId),
         answer,
-      })
-    ),
+      })),
   };
 
   // Convert subject options
@@ -168,13 +170,16 @@ export const convertToModelFormat = (formValues: ProposalFormValues) => {
               price: typeof price === "object" ? (price as any).price : price,
             })
           ),
-          answers: Object.entries(instance.answers).map(
-            ([questionId, answer], index) => ({
+          answers: Object.entries(instance.answers)
+            .filter(
+              ([questionId, answer]) =>
+                answer !== undefined && answer.trim() !== ""
+            )
+            .map(([questionId, answer], index) => ({
               id: index + 1,
               questionId: Number(questionId),
               answer,
-            })
-          ),
+            })),
         })),
       })
     ),

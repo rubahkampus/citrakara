@@ -50,6 +50,7 @@ const TEXT = {
     dashboard: "Dashboard",
     commissions: "Komisi",
     create: "Buat Komisi",
+    edit: "Edit Komisi"
   },
   backButton: "Kembali ke Daftar Komisi",
   cancelButton: "Batal",
@@ -427,7 +428,7 @@ export default function CommissionFormPage({
 
   return (
     <FormProvider {...methods}>
-      <Box sx={{ maxWidth: 1200, mx: "auto", pb: 8 }}>
+      <Box sx={{ maxWidth: 1200, mx: "auto", pb: 8, py: 4  }} maxWidth="lg">
         {/* Header & Navigation */}
         <Box sx={SPACING.headerWrapper}>
           <Box sx={SPACING.titleContainer}>
@@ -456,8 +457,7 @@ export default function CommissionFormPage({
                 color="text.primary"
                 sx={{ display: "flex", alignItems: "center" }}
               >
-                <Add fontSize="small" sx={{ mr: 0.5 }} />
-                {TEXT.breadcrumbs.create}
+                {mode == "create" ? TEXT.breadcrumbs.create : TEXT.breadcrumbs.edit}
               </Typography>
             </Breadcrumbs>
 

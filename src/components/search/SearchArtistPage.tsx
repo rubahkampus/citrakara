@@ -21,6 +21,7 @@ import {
   Switch,
   InputAdornment,
   Paper,
+  Alert,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -42,7 +43,7 @@ export default function SearchArtistPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isAuthenticated = !!session;
-  const initialResultsParsed = initialResults ? JSON.parse(initialResults) : []
+  const initialResultsParsed = initialResults ? JSON.parse(initialResults) : [];
 
   // Search state
   const [searchQuery, setSearchQuery] = useState(searchParams?.get("q") || "");
@@ -60,6 +61,11 @@ export default function SearchArtistPage({
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const resultsPerPage = 12;
+
+  // Bookmark states
+  const [bookmarkedArtists, setBookmarkedArtists] = useState<string[]>([]);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Load results based on current filters
   const fetchResults = async (newPage = 1) => {
@@ -86,10 +92,35 @@ export default function SearchArtistPage({
       setTotalResults(data.total || 0);
     } catch (error) {
       console.error("Error fetching results:", error);
+      setErrorMessage("Gagal memuat data. Silakan coba lagi nanti.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Fetch user's bookmarks when authenticated
+  useEffect(() => {
+    const fetchBookmarks = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        const response = await fetch("/api/user/bookmarks?type=artists");
+        if (!response.ok) throw new Error("Failed to fetch bookmarks");
+
+        const data = await response.json();
+
+        // Extract IDs from bookmark objects
+        const artistIds =
+          data.bookmarks?.map((item: any) => item._id.toString()) || [];
+
+        setBookmarkedArtists(artistIds);
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+      }
+    };
+
+    fetchBookmarks();
+  }, [isAuthenticated]);
 
   // Handle search submission
   const handleSearch = (e: React.FormEvent) => {
@@ -110,8 +141,6 @@ export default function SearchArtistPage({
 
     router.push(`/search/artists?${params.toString()}`);
   };
-
-  console.log(results)
 
   // Handle page change
   const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
@@ -142,11 +171,14 @@ export default function SearchArtistPage({
     action: "bookmark" | "unbookmark"
   ) => {
     if (!isAuthenticated) {
-      // Redirect to login or show login prompt
+      // TODO LOGIN
       return;
     }
 
     try {
+      setBookmarkLoading(true);
+      setErrorMessage(null);
+
       const response = await fetch("/api/bookmark/artist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -154,16 +186,29 @@ export default function SearchArtistPage({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to bookmark artist");
+        throw new Error("Failed to update bookmark");
+      }
+
+      // Update local state based on the action
+      if (action === "bookmark") {
+        setBookmarkedArtists((prev) => [...prev, artistId]);
+      } else {
+        setBookmarkedArtists((prev) => prev.filter((id) => id !== artistId));
       }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
+      setErrorMessage("Gagal memperbarui bookmark. Silakan coba lagi.");
+    } finally {
+      setBookmarkLoading(false);
     }
   };
 
   // Fetch initial results
   useEffect(() => {
-    if (!initialResultsParsed) {
+    if (
+      !initialResultsParsed.artists ||
+      initialResultsParsed.artists.length === 0
+    ) {
       fetchResults();
     } else {
       // Ensure initial results are plain objects
@@ -195,6 +240,12 @@ export default function SearchArtistPage({
           Filter
         </Button>
       </Box>
+
+      {errorMessage && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {errorMessage}
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
         {/* Filters sidebar - desktop */}
@@ -447,7 +498,9 @@ export default function SearchArtistPage({
                     <ArtistItem
                       artist={artist}
                       isAuthenticated={isAuthenticated}
-                      isBookmarked={false} // You would need to check this against user's bookmarks
+                      isBookmarked={bookmarkedArtists.includes(
+                        artist._id.toString()
+                      )}
                       onToggleBookmark={handleToggleBookmark}
                     />
                   </Grid>

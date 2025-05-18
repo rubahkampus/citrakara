@@ -22,6 +22,53 @@ import {
   ArrowForward as ArrowIcon,
 } from "@mui/icons-material";
 
+// Constants for display formats
+const TARGET_TYPE_MAP = {
+  cancelTicket: {
+    display: "Pembatalan",
+    color: "error",
+  },
+  revisionTicket: {
+    display: "Revisi",
+    color: "info",
+  },
+  changeTicket: {
+    display: "Permintaan Perubahan",
+    color: "secondary",
+  },
+  finalUpload: {
+    display: "Pengiriman Akhir",
+    color: "success",
+  },
+  progressMilestoneUpload: {
+    display: "Unggahan Progres",
+    color: "warning",
+  },
+  revisionUpload: {
+    display: "Unggahan Revisi",
+    color: "info",
+  },
+};
+
+const STATUS_MAP = {
+  open: {
+    display: "Terbuka",
+    color: "primary",
+  },
+  awaitingReview: {
+    display: "Menunggu Tinjauan",
+    color: "warning",
+  },
+  resolved: {
+    display: "Terselesaikan",
+    color: "success",
+  },
+  cancelled: {
+    display: "Dibatalkan",
+    color: "error",
+  },
+};
+
 interface ResolutionListTableProps {
   tickets: IResolutionTicket[];
   username: string;
@@ -45,66 +92,47 @@ export default function ResolutionListTable({
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
+    return new Date(dateString).toLocaleDateString("id-ID", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
   };
 
-  // Get status chip color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "open":
-        return "primary";
-      case "awaitingReview":
-        return "warning";
-      case "resolved":
-        return "success";
-      case "cancelled":
-        return "error";
-      default:
-        return "default";
+  // Get status chip color and display text
+  const getStatusInfo = (status: string, decision?: string) => {
+    const statusInfo = STATUS_MAP[status as keyof typeof STATUS_MAP] || {
+      display: status,
+      color: "default",
+    };
+
+    // Handle special case for resolved status with decision
+    if (status === "resolved" && decision) {
+      return {
+        display:
+          decision === "favorClient"
+            ? "Terselesaikan (Klien)"
+            : "Terselesaikan (Artis)",
+        color: statusInfo.color,
+      };
     }
+
+    return statusInfo;
   };
 
-  // Get target type display name
-  const getTargetTypeDisplay = (type: string): string => {
-    switch (type) {
-      case "cancelTicket":
-        return "Cancellation";
-      case "revisionTicket":
-        return "Revision";
-      case "changeTicket":
-        return "Change Request";
-      case "finalUpload":
-        return "Final Delivery";
-      case "progressMilestoneUpload":
-        return "Progress Upload";
-      case "revisionUpload":
-        return "Revision Upload";
-      default:
-        return type.charAt(0).toUpperCase() + type.slice(1);
-    }
-  };
+  // Get target type display info
+  const getTargetTypeInfo = (type: string) => {
+    const typeInfo = TARGET_TYPE_MAP[type as keyof typeof TARGET_TYPE_MAP];
 
-  // Get target type chip color
-  const getTargetTypeColor = (targetType: string) => {
-    switch (targetType) {
-      case "cancelTicket":
-        return "error";
-      case "revisionTicket":
-      case "revisionUpload":
-        return "info";
-      case "changeTicket":
-        return "secondary";
-      case "finalUpload":
-        return "success";
-      case "progressMilestone":
-        return "warning";
-      default:
-        return "default";
+    if (typeInfo) {
+      return typeInfo;
     }
+
+    // Default behavior for unknown types
+    return {
+      display: type.charAt(0).toUpperCase() + type.slice(1),
+      color: "default",
+    };
   };
 
   // Check if the user needs to respond to a ticket
@@ -116,6 +144,7 @@ export default function ResolutionListTable({
     );
   };
 
+  // Render empty state
   if (tickets.length === 0) {
     return (
       <Box
@@ -123,8 +152,12 @@ export default function ResolutionListTable({
           p: 4,
           textAlign: "center",
           bgcolor: "background.paper",
-          borderRadius: 1,
+          borderRadius: 2,
           boxShadow: theme.shadows[1],
+          transition: "box-shadow 0.2s",
+          "&:hover": {
+            boxShadow: theme.shadows[2],
+          },
         }}
       >
         <Typography variant="body1" color="text.secondary">
@@ -134,114 +167,163 @@ export default function ResolutionListTable({
     );
   }
 
+  // Column definitions for better organization
+  const columns = [
+    { id: "date", label: "Tanggal" },
+    { id: "contract", label: "Kontrak" },
+    { id: "type", label: "Tipe" },
+    { id: "submittedBy", label: "Diajukan Oleh" },
+    { id: "status", label: "Status" },
+    { id: "action", label: "Tindakan", align: "center" },
+  ];
+
   return (
     <TableContainer
       component={Paper}
       sx={{
-        borderRadius: 1,
+        borderRadius: 2,
         boxShadow: theme.shadows[1],
         overflow: "hidden",
+        transition: "box-shadow 0.2s",
+        "&:hover": {
+          boxShadow: theme.shadows[2],
+        },
       }}
     >
       <Table size="medium">
-        <TableHead sx={{ bgcolor: theme.palette.background.default }}>
+        <TableHead
+          sx={{
+            bgcolor: theme.palette.background.default,
+            "& .MuiTableRow-root": {
+              borderBottom: `2px solid ${theme.palette.divider}`,
+            },
+          }}
+        >
           <TableRow>
-            <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
-            <TableCell sx={{ fontWeight: "bold" }}>Contract</TableCell>
-            <TableCell sx={{ fontWeight: "bold" }}>Type</TableCell>
-            <TableCell sx={{ fontWeight: "bold" }}>Submitted By</TableCell>
-            <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-            <TableCell align="center" sx={{ fontWeight: "bold" }}>
-              Action
-            </TableCell>
+            {columns.map((column) => (
+              <TableCell
+                key={column.id}
+                align={column.align as any}
+                sx={{
+                  fontWeight: "bold",
+                  py: 1.5,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {column.label}
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {tickets.map((ticket) => (
-            <TableRow
-              key={ticket._id.toString()}
-              sx={{
-                "&:hover": {
-                  backgroundColor: "background.paper",
-                },
-                ...(needsResponse(ticket) && {
-                  backgroundColor: theme.palette.warning.lighter,
-                }),
-              }}
-            >
-              <TableCell>{formatDate(ticket.createdAt.toString())}</TableCell>
-              <TableCell>
-                {/* Truncate contract ID for display */}
-                {ticket.contractId
-                  ? `${ticket.contractId.toString().substring(0, 8)}...`
-                  : "N/A"}
-              </TableCell>
-              <TableCell>
-                <Chip
-                  label={getTargetTypeDisplay(ticket.targetType)}
-                  size="small"
-                  variant="outlined"
-                  color={getTargetTypeColor(ticket.targetType) as any}
-                />
-              </TableCell>
-              <TableCell>
-                <Chip
-                  label={
-                    ticket.submittedById.toString() === userId
-                      ? "You"
-                      : ticket.submittedBy === "client"
-                      ? "Client"
-                      : "Artist"
-                  }
-                  size="small"
-                  variant="filled"
-                  sx={{
-                    bgcolor:
+          {tickets.map((ticket) => {
+            const requiresResponse = needsResponse(ticket);
+            const targetTypeInfo = getTargetTypeInfo(ticket.targetType);
+            const statusInfo = getStatusInfo(ticket.status, ticket.decision);
+
+            return (
+              <TableRow
+                key={ticket._id.toString()}
+                sx={{
+                  transition: "background-color 0.2s",
+                  "&:hover": {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                  ...(requiresResponse && {
+                    backgroundColor: `${theme.palette.warning.lighter}`,
+                  }),
+                }}
+              >
+                <TableCell>{formatDate(ticket.createdAt.toString())}</TableCell>
+                <TableCell>
+                  {/* Truncate contract ID for display */}
+                  {ticket.contractId
+                    ? `${ticket.contractId.toString().substring(0, 8)}...`
+                    : "N/A"}
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    label={targetTypeInfo.display}
+                    size="small"
+                    variant="outlined"
+                    color={targetTypeInfo.color as any}
+                    sx={{
+                      borderRadius: "16px",
+                      fontWeight: 500
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    label={
                       ticket.submittedById.toString() === userId
-                        ? theme.palette.primary.lighter
-                        : theme.palette.grey[200],
-                    color:
-                      ticket.submittedById.toString() === userId
-                        ? theme.palette.primary.dark
-                        : theme.palette.text.secondary,
-                    fontWeight: "medium",
-                  }}
-                />
-              </TableCell>
-              <TableCell>
-                <Chip
-                  label={
-                    ticket.status === "open"
-                      ? "Open"
-                      : ticket.status === "awaitingReview"
-                      ? "Awaiting Review"
-                      : ticket.status === "resolved"
-                      ? ticket.decision === "favorClient"
-                        ? "Resolved (Client)"
-                        : "Resolved (Artist)"
-                      : "Cancelled"
-                  }
-                  size="small"
-                  color={getStatusColor(ticket.status) as any}
-                />
-              </TableCell>
-              <TableCell align="center">
-                <Button
-                  variant={needsResponse(ticket) ? "contained" : "outlined"}
-                  size="small"
-                  onClick={() => handleViewTicket(ticket._id.toString())}
-                  endIcon={needsResponse(ticket) ? <ArrowIcon /> : <ViewIcon />}
-                  color={needsResponse(ticket) ? "warning" : "primary"}
-                  sx={{
-                    minWidth: 100,
-                    borderRadius: 1,
-                  }}
-                >
-                  {needsResponse(ticket) ? "Respond" : "View"}
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+                        ? "Anda"
+                        : ticket.submittedBy === "client"
+                        ? "Klien"
+                        : "Artis"
+                    }
+                    size="small"
+                    variant="filled"
+                    sx={{
+                      borderRadius: "16px",
+                      bgcolor:
+                        ticket.submittedById.toString() === userId
+                          ? theme.palette.primary.lighter
+                          : theme.palette.grey[200],
+                      color:
+                        ticket.submittedById.toString() === userId
+                          ? theme.palette.primary.dark
+                          : theme.palette.text.secondary,
+                      fontWeight: 500,
+                      transition: "all 0.2s",
+                      "&:hover": {
+                        boxShadow: `0 0 0 1px ${
+                          ticket.submittedById.toString() === userId
+                            ? theme.palette.primary.main
+                            : theme.palette.grey[400]
+                        }`,
+                      },
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    label={statusInfo.display}
+                    size="small"
+                    color={statusInfo.color as any}
+                    sx={{
+                      borderRadius: "16px",
+                      fontWeight: 500,
+                      transition: "all 0.2s"
+                    }}
+                  />
+                </TableCell>
+                <TableCell align="center">
+                  <Button
+                    variant={requiresResponse ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => handleViewTicket(ticket._id.toString())}
+                    endIcon={requiresResponse ? <ArrowIcon /> : <ViewIcon />}
+                    color={requiresResponse ? "warning" : "primary"}
+                    sx={{
+                      minWidth: 100,
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      py: 0.5,
+                      fontWeight: 500,
+                      transition: "all 0.2s",
+                      boxShadow: requiresResponse ? 2 : 0,
+                      "&:hover": {
+                        boxShadow: requiresResponse ? 3 : 1,
+                      },
+                    }}
+                  >
+                    {requiresResponse ? "Merespon" : "Lihat"}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </TableContainer>

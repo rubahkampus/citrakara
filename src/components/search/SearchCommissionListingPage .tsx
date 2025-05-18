@@ -20,6 +20,7 @@ import {
   Slider,
   InputAdornment,
   Paper,
+  Alert,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -41,7 +42,7 @@ export default function SearchCommissionListingPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isAuthenticated = !!session;
-  const initialResultsParsed = initialResults ? JSON.parse(initialResults) : []
+  const initialResultsParsed = initialResults ? JSON.parse(initialResults) : [];
 
   // Search state
   const [searchQuery, setSearchQuery] = useState(searchParams?.get("q") || "");
@@ -62,6 +63,13 @@ export default function SearchCommissionListingPage({
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const resultsPerPage = 12;
+
+  // Bookmark states
+  const [bookmarkedCommissions, setBookmarkedCommissions] = useState<string[]>(
+    []
+  );
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Load results based on current filters
   const fetchResults = async (newPage = 1) => {
@@ -95,10 +103,35 @@ export default function SearchCommissionListingPage({
       setTotalResults(data.total || 0);
     } catch (error) {
       console.error("Error fetching results:", error);
+      setErrorMessage("Gagal memuat data. Silakan coba lagi nanti.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Fetch user's bookmarks when authenticated
+  useEffect(() => {
+    const fetchBookmarks = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        const response = await fetch("/api/user/bookmarks?type=commissions");
+        if (!response.ok) throw new Error("Failed to fetch bookmarks");
+
+        const data = await response.json();
+
+        // Extract IDs from bookmark objects
+        const commissionIds =
+          data.bookmarks?.map((item: any) => item._id.toString()) || [];
+
+        setBookmarkedCommissions(commissionIds);
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+      }
+    };
+
+    fetchBookmarks();
+  }, [isAuthenticated]);
 
   // Handle search submission
   const handleSearch = (e: React.FormEvent) => {
@@ -155,11 +188,14 @@ export default function SearchCommissionListingPage({
     action: "bookmark" | "unbookmark"
   ) => {
     if (!isAuthenticated) {
-      // Redirect to login or show login prompt
+      // TODO LOGIN
       return;
     }
 
     try {
+      setBookmarkLoading(true);
+      setErrorMessage(null);
+
       const response = await fetch("/api/bookmark/commission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -167,16 +203,31 @@ export default function SearchCommissionListingPage({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to bookmark commission");
+        throw new Error("Failed to update bookmark");
+      }
+
+      // Update local state based on the action
+      if (action === "bookmark") {
+        setBookmarkedCommissions((prev) => [...prev, listingId]);
+      } else {
+        setBookmarkedCommissions((prev) =>
+          prev.filter((id) => id !== listingId)
+        );
       }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
+      setErrorMessage("Gagal memperbarui bookmark. Silakan coba lagi.");
+    } finally {
+      setBookmarkLoading(false);
     }
   };
 
   // Fetch initial results
   useEffect(() => {
-    if (!initialResultsParsed) {
+    if (
+      !initialResultsParsed.items ||
+      initialResultsParsed.items.length === 0
+    ) {
       fetchResults();
     } else {
       // Ensure initial results are plain objects
@@ -209,6 +260,12 @@ export default function SearchCommissionListingPage({
           Filter
         </Button>
       </Box>
+
+      {errorMessage && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {errorMessage}
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
         {/* Filters sidebar - desktop */}
@@ -560,8 +617,11 @@ export default function SearchCommissionListingPage({
                       username={listing.artistId?.username || "unknown"}
                       isOwner={false}
                       isAuthenticated={isAuthenticated}
-                      isBookmarked={false}
+                      isBookmarked={bookmarkedCommissions.includes(
+                        listing._id.toString()
+                      )}
                       onToggleBookmark={handleToggleBookmark}
+                      loading={bookmarkLoading}
                     />
                   </Grid>
                 ))}

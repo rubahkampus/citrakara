@@ -1,6 +1,7 @@
+// Updated CommissionCard.tsx with bookmark functionality
 "use client";
 
-import React, { useState, MouseEvent } from "react";
+import React, { useState, MouseEvent, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,12 +12,14 @@ import {
   Chip,
   Tooltip,
   alpha,
+  CircularProgress,
 } from "@mui/material";
 import Image from "next/image";
 import {
   ArrowBackIosNew,
   ArrowForwardIos,
   BookmarkBorderRounded,
+  BookmarkRounded,
   ChatRounded,
   AccessTimeRounded,
   LocalOfferRounded,
@@ -25,22 +28,30 @@ import {
 import { useDialogStore } from "@/lib/stores";
 import { useRouter } from "next/navigation";
 import type { ICommissionListing } from "@/lib/db/models/commissionListing.model";
+import { axiosClient } from "@/lib/utils/axiosClient";
 
 interface CommissionCardProps {
   commission: ICommissionListing;
   username: string;
   isOwner: boolean;
+  isAuthenticated?: boolean;
+  initialBookmarkStatus?: boolean;
 }
 
 export default function CommissionCard({
   commission,
   username,
   isOwner,
+  isAuthenticated = false,
+  initialBookmarkStatus = false,
 }: CommissionCardProps) {
   const theme = useTheme();
   const openDialog = useDialogStore((state) => state.open);
-
   const router = useRouter();
+
+  // Bookmark state
+  const [isBookmarked, setIsBookmarked] = useState(initialBookmarkStatus);
+  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
 
   // Samples carousel
   const samples = commission.samples || [];
@@ -49,6 +60,31 @@ export default function CommissionCard({
       ? commission.thumbnailIdx
       : 0;
   const [activeIndex, setActiveIndex] = useState<number>(initialIdx);
+
+  const handleToggleBookmark = async (e: MouseEvent) => {
+    e.stopPropagation();
+
+    if (!isAuthenticated) {
+      openDialog("login");
+      return;
+    }
+
+    try {
+      setIsBookmarkLoading(true);
+      const action = isBookmarked ? "unbookmark" : "bookmark";
+
+      const response = await axiosClient.post("/api/bookmark/commission", {
+        commissionId: commission._id.toString(),
+        action,
+      });
+
+      setIsBookmarked(response.data.isBookmarked);
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+    } finally {
+      setIsBookmarkLoading(false);
+    }
+  };
 
   const handlePrev = (e: MouseEvent) => {
     e.stopPropagation();
@@ -77,6 +113,7 @@ export default function CommissionCard({
     (min !== max ? ` - ${formatPrice(max)}` : "");
 
   const handleRequest = (e: MouseEvent) => {
+    if (!commission.isActive || !slotsAvailable) return
     e.stopPropagation();
     openDialog(
       "viewCommission",
@@ -133,6 +170,8 @@ export default function CommissionCard({
         },
         position: "relative",
         height: { sm: 320 }, // Fixed height to match image height on larger screens
+        opacity: commission.isActive ? 1 : 0.8,
+        filter: commission.isActive ? "none" : "grayscale(40%)",
       }}
     >
       {/* Image Carousel */}
@@ -253,27 +292,44 @@ export default function CommissionCard({
           }}
         />
 
-        {/* Bookmark - improved styling */}
+        {/* Bookmark button with loading and active states */}
         <IconButton
-          onClick={(e) => e.stopPropagation()}
+          onClick={handleToggleBookmark}
+          disabled={isBookmarkLoading || isOwner}
           sx={{
             position: "absolute",
             top: 12,
             right: 12,
-            backgroundColor: alpha(theme.palette.common.white, 0.85),
+            backgroundColor: alpha(
+              isBookmarked
+                ? theme.palette.primary.light
+                : theme.palette.common.white,
+              0.85
+            ),
             width: 36,
             height: 36,
             "&:hover": {
-              backgroundColor: theme.palette.common.white,
+              backgroundColor: isBookmarked
+                ? theme.palette.primary.main
+                : theme.palette.common.white,
               transform: "scale(1.1)",
             },
             transition: "all 0.2s ease",
             zIndex: 2,
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            color: isBookmarked
+              ? theme.palette.common.white
+              : theme.palette.action.active,
           }}
           size="small"
         >
-          <BookmarkBorderRounded sx={{ fontSize: 20 }} />
+          {isBookmarkLoading ? (
+            <CircularProgress size={16} color="inherit" />
+          ) : isBookmarked ? (
+            <BookmarkRounded sx={{ fontSize: 20 }} />
+          ) : (
+            <BookmarkBorderRounded sx={{ fontSize: 20 }} />
+          )}
         </IconButton>
 
         {/* Dots Indicator - improved styling */}
@@ -327,13 +383,13 @@ export default function CommissionCard({
           p: { xs: 2.5, sm: 3 },
           display: "flex",
           flexDirection: "column",
-          height: "100%", // Ensures content area fills full height
+          height: "85%", // Ensures content area fills full height
           justifyContent: "space-between", // Better distribution of elements
-          overflow: "auto", // Allow scrolling if content overflows
+          overflow: "hidden", // Allow scrolling if content overflow
         }}
       >
         {/* Content wrapper to manage scrolling */}
-        <Box sx={{ overflow: "auto", height: "100%" }}>
+        <Box sx={{ overflow: "hidden", height: "100%" }}>
           {/* Top info area with stats */}
           <Stack
             direction="row"
@@ -341,7 +397,7 @@ export default function CommissionCard({
             spacing={2}
             sx={{ mb: 1.5 }}
           >
-            {firstTag && (
+            {/* {firstTag && (
               <Chip
                 label={firstTag}
                 size="small"
@@ -350,6 +406,45 @@ export default function CommissionCard({
                   color: theme.palette.primary.main,
                   fontWeight: 500,
                   height: 24,
+                }}
+              />
+            )} */}
+
+            {/* Status chip */}
+            {!commission.isActive ? (
+              <Chip
+                label="Komisi tidak tersedia"
+                size="small"
+                sx={{
+                  bgcolor: alpha(theme.palette.grey[400], 0.1),
+                  color: theme.palette.grey[400],
+                  fontWeight: 500,
+                  mb: 2,
+                  width: "fit-content",
+                }}
+              />
+            ) : !slotsAvailable ? (
+              <Chip
+                label="Slot tidak tersedia"
+                size="small"
+                sx={{
+                  bgcolor: alpha(theme.palette.error.main, 0.1),
+                  color: theme.palette.error.main,
+                  fontWeight: 500,
+                  mb: 2,
+                  width: "fit-content",
+                }}
+              />
+            ) : (
+              <Chip
+                label="Slot tersedia"
+                size="small"
+                sx={{
+                  bgcolor: alpha(theme.palette.success.main, 0.1),
+                  color: theme.palette.success.main,
+                  fontWeight: 500,
+                  mb: 2,
+                  width: "fit-content",
                 }}
               />
             )}
@@ -409,7 +504,7 @@ export default function CommissionCard({
                 letterSpacing: "-0.02em",
               }}
             >
-              Mulai {priceDisplay}
+              Mulai dari {priceDisplay}
             </Typography>
           </Stack>
 
@@ -428,21 +523,6 @@ export default function CommissionCard({
           >
             {descriptionText}
           </Typography>
-
-          {/* Status chip */}
-          {!slotsAvailable && (
-            <Chip
-              label="Slot tidak tersedia"
-              size="small"
-              sx={{
-                bgcolor: alpha(theme.palette.error.main, 0.1),
-                color: theme.palette.error.main,
-                fontWeight: 500,
-                mb: 2,
-                width: "fit-content",
-              }}
-            />
-          )}
         </Box>
 
         {/* Actions - fixed at bottom */}
@@ -457,7 +537,7 @@ export default function CommissionCard({
           {!isOwner && (
             <Button
               onClick={handleRequest}
-              disabled={!slotsAvailable}
+              disabled={!slotsAvailable || !commission.isActive}
               fullWidth
               variant="contained"
               sx={{
@@ -468,7 +548,7 @@ export default function CommissionCard({
                   ? "linear-gradient(90deg, #A8FF00 0%, #00FFD1 100%)"
                   : theme.palette.action.disabledBackground,
                 color: slotsAvailable
-                  ? theme.palette.common.black
+                  ? 'white'
                   : theme.palette.text.disabled,
                 fontWeight: 700,
                 fontSize: "1rem",
@@ -486,7 +566,9 @@ export default function CommissionCard({
                 transition: "all 0.3s ease",
               }}
             >
-              {slotsAvailable ? "Ajukan Komisi" : "Saat Ini Tidak Tersedia"}
+              {slotsAvailable && commission.isActive
+                ? "Ajukan Komisi"
+                : "Saat Ini Tidak Tersedia"}
             </Button>
           )}
 

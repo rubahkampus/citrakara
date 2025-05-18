@@ -94,7 +94,7 @@ export default function CommissionListingPage({
   };
 
   return (
-    <Box>
+    <Box maxWidth="lg" sx={{ py: 4 }}>
       {/* Header with action button */}
       <Box
         sx={{

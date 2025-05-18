@@ -38,14 +38,13 @@ export default async function ProposalsPage({ params }: ProposalsPageProps) {
   const serializedIncoming = JSON.parse(JSON.stringify(incoming));
   const serializedOutgoing = JSON.parse(JSON.stringify(outgoing));
 
-  console.log("serializedOutgoing:", JSON.stringify(outgoing[outgoing.length-1]));
+  console.log(
+    "serializedOutgoing:",
+    JSON.stringify(outgoing[outgoing.length - 1])
+  );
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        My Proposals
-      </Typography>
-
       <Suspense fallback={<ProposalListingSkeleton />}>
         <ProposalListingPage
           username={username}

@@ -82,7 +82,7 @@ export default function ProposalListingItem({
     const now = new Date();
     const expiresAt = new Date(proposal.expiresAt);
 
-    return now > expiresAt;
+    return now > expiresAt && proposal.status !== 'rejectedArtist' && proposal.status !== 'paid';
   };
 
   // Determine the current status, checking for expiration first
@@ -287,7 +287,7 @@ export default function ProposalListingItem({
               </Paper>
 
               {/* Pemberitahuan Kedaluwarsa */}
-              {!isExpired() && proposal.status !== 'rejectedArtist' && proposal.status !== 'paid' && proposal.expiresAt && (
+              {!isExpired() && !(proposal.status === 'rejectedArtist' || proposal.status === 'paid') && proposal.expiresAt && (
                 <Paper
                   elevation={0}
                   sx={{

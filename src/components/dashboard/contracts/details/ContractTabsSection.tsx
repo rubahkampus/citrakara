@@ -1,4 +1,3 @@
-// src/components/dashboard/contracts/ContractTabsSection.tsx
 import React, { useState } from "react";
 import { Box, Tabs, Tab, Paper } from "@mui/material";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -16,11 +15,52 @@ interface ContractTabsSectionProps {
   username: string;
 }
 
+interface TabConfig {
+  id: string;
+  label: string;
+  icon: React.ReactElement;
+  component: React.ReactNode;
+}
+
+/**
+ * Component to display contract tabs with different sections
+ */
 const ContractTabsSection: React.FC<ContractTabsSectionProps> = ({
   contract,
   username,
 }) => {
   const [tabValue, setTabValue] = useState(0);
+
+  // Common tab style
+  const tabIconPosition = "start";
+
+  // Define tab configuration
+  const tabs: TabConfig[] = [
+    {
+      id: "terms",
+      label: "Ketentuan",
+      icon: <DescriptionIcon />,
+      component: <ContractTermsTab contract={contract} />,
+    },
+    {
+      id: "status-history",
+      label: "Riwayat Status",
+      icon: <HistoryIcon />,
+      component: <StatusHistoryTab statusHistory={contract.statusHistory} />,
+    },
+    {
+      id: "tickets",
+      label: "Tiket",
+      icon: <ConfirmationNumberIcon />,
+      component: <TicketsTab contract={contract} username={username} />,
+    },
+    {
+      id: "uploads",
+      label: "Unggahan",
+      icon: <CloudUploadIcon />,
+      component: <UploadsTab contract={contract} username={username} />,
+    },
+  ];
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -36,37 +76,18 @@ const ContractTabsSection: React.FC<ContractTabsSectionProps> = ({
           indicatorColor="primary"
           textColor="primary"
         >
-          <Tab icon={<DescriptionIcon />} iconPosition="start" label="Terms" />
-          <Tab
-            icon={<HistoryIcon />}
-            iconPosition="start"
-            label="Riwayat Status"
-          />
-          <Tab
-            icon={<ConfirmationNumberIcon />}
-            iconPosition="start"
-            label="Tiket"
-          />
-          <Tab
-            icon={<CloudUploadIcon />}
-            iconPosition="start"
-            label="Unggahan"
-          />
+          {tabs.map((tab, index) => (
+            <Tab
+              key={tab.id}
+              icon={tab.icon}
+              iconPosition={tabIconPosition}
+              label={tab.label}
+            />
+          ))}
         </Tabs>
       </Box>
 
-      <Box p={3}>
-        {tabValue === 0 && <ContractTermsTab contract={contract} />}
-        {tabValue === 1 && (
-          <StatusHistoryTab statusHistory={contract.statusHistory} />
-        )}
-        {tabValue === 2 && (
-          <TicketsTab contract={contract} username={username} />
-        )}
-        {tabValue === 3 && (
-          <UploadsTab contract={contract} username={username} />
-        )}
-      </Box>
+      <Box p={3}>{tabs[tabValue].component}</Box>
     </Paper>
   );
 };

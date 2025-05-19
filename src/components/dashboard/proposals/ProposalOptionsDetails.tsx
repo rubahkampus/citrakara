@@ -496,10 +496,10 @@ export default function ProposalOptionsDetails({
               <TableRow>
                 <TableCell>
                   <Tooltip
-                    title={`Biaya ekspres untuk ${proposal.rush?.days} hari dipercepat`}
+                    title={`Biaya percepatan untuk ${proposal.rush?.days} hari dipercepat`}
                   >
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      Biaya Ekspres{" "}
+                      Biaya Percepatan{" "}
                       <InfoIcon
                         fontSize="small"
                         sx={{ ml: 1, color: "text.secondary" }}

@@ -8,11 +8,9 @@ import {
   Link,
   Button,
 } from "@mui/material";
-import HomeIcon from "@mui/icons-material/Home";
-import ArticleIcon from "@mui/icons-material/Article";
+import { NavigateNext, Home, LocalAtm, ArrowBack } from "@mui/icons-material";
 import { IContract } from "@/lib/db/models/contract.model";
 import ContractStatusBadge from "../ContractStatusBadge";
-import { NavigateNext, Home, LocalAtm, ArrowBack } from "@mui/icons-material";
 
 interface ContractHeaderProps {
   contract: IContract;
@@ -23,6 +21,21 @@ const ContractHeader: React.FC<ContractHeaderProps> = ({
   contract,
   username,
 }) => {
+  // Extract common styling patterns
+  const linkStyle = {
+    display: "flex",
+    alignItems: "center",
+  };
+
+  const iconStyle = { mr: 0.5 };
+
+  // Extract contract ID for readability
+  const contractId = contract._id.toString().substring(0, 8);
+
+  // Extract contract title with fallback
+  const contractTitle =
+    contract.proposalSnapshot.listingSnapshot.title || "Detail Kontrak";
+
   return (
     <>
       <Box sx={{ mb: 3 }}>
@@ -32,25 +45,22 @@ const ContractHeader: React.FC<ContractHeaderProps> = ({
             href={`/${username}/dashboard`}
             underline="hover"
             color="inherit"
-            sx={{ display: "flex", alignItems: "center" }}
+            sx={linkStyle}
           >
-            <Home fontSize="small" sx={{ mr: 0.5 }} />
-            Dashboard
+            <Home fontSize="small" sx={iconStyle} />
+            Dasbor
           </Link>
           <Link
             component={Link}
             href={`/${username}/dashboard/contracts`}
             underline="hover"
             color="inherit"
-            sx={{ display: "flex", alignItems: "center" }}
+            sx={linkStyle}
           >
-            <LocalAtm fontSize="small" sx={{ mr: 0.5 }} />
+            <LocalAtm fontSize="small" sx={iconStyle} />
             Kontrak
           </Link>
-          <Typography
-            color="text.primary"
-            sx={{ display: "flex", alignItems: "center" }}
-          >
+          <Typography color="text.primary" sx={linkStyle}>
             Detail Kontrak
           </Typography>
         </Breadcrumbs>
@@ -86,11 +96,10 @@ const ContractHeader: React.FC<ContractHeaderProps> = ({
       >
         <Box>
           <Typography variant="h5" fontWeight="medium">
-            {contract.proposalSnapshot.listingSnapshot.title ||
-              "Contract Details"}
+            {contractTitle}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            ID: {contract._id.toString().substring(0, 8)}...
+            ID: {contractId}...
           </Typography>
         </Box>
         <ContractStatusBadge status={contract.status} />

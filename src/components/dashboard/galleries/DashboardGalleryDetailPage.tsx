@@ -393,7 +393,17 @@ export default function DashboardGalleryDetailPage({
   );
 
   return (
-    <Box maxWidth="lg" sx={{ py: 4 }}>
+    <Box
+      sx={{
+        py: 4,
+        maxWidth: "100%",
+        animation: "fadeIn 0.3s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+      }}
+    >
       {/* Header */}
       <Box
         sx={{
@@ -419,7 +429,7 @@ export default function DashboardGalleryDetailPage({
             </IconButton>
           </Tooltip>
           <Stack direction="row" spacing={2} alignItems="center">
-            <GalleryIcon color="primary"/>
+            <GalleryIcon color="primary" />
             <Box>
               <Typography variant="h5" fontWeight="bold">
                 {gallery.name}

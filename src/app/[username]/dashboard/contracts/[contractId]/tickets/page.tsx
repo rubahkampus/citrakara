@@ -52,10 +52,6 @@ export default async function TicketsListPage({
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        Contract Tickets
-      </Typography>
-
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
         <TicketsListPageWrapper

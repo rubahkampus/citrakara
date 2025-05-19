@@ -442,7 +442,17 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
   const hasNoContracts = !hasArtistContracts && !hasClientContracts;
 
   return (
-    <Box>
+    <Box
+      sx={{
+        py: 4,
+        maxWidth: "100%",
+        animation: "fadeIn 0.3s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+      }}
+    >
       {/* Navigation */}
       <Box sx={{ mb: 3 }}>
         <Breadcrumbs separator={<NavigateNext fontSize="small" />}>

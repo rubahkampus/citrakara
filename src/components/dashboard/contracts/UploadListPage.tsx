@@ -11,6 +11,7 @@ import {
   Badge,
   Paper,
   useTheme,
+  Tooltip,
 } from "@mui/material";
 import Link from "next/link";
 import {
@@ -33,6 +34,18 @@ import {
 // Import utilities
 import { formatDate, getStatusColor } from "@/lib/utils/formatters";
 
+// Constants - Indonesian translations
+const TRANSLATIONS = {
+  contractUploads: "Unggahan Kontrak",
+  progress: "Kemajuan",
+  milestone: "Milestone Pencapaian",
+  revision: "Revisi",
+  final: "Final",
+  all: "Semua",
+  finalDelivery: "Pengiriman Final",
+};
+
+// Types definition
 interface UploadsListPageProps {
   username: string;
   contractId: string;
@@ -59,55 +72,6 @@ const UploadsListPage: React.FC<UploadsListPageProps> = ({
   const [tabValue, setTabValue] = useState(0);
   const isActive = contractStatus === "active";
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  // Action Buttons rendering
-  const renderActionButtons = () => {
-    if (!isActive || !isArtist) return null;
-
-    return (
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1}
-        sx={{ mt: { xs: 2, sm: 0 } }}
-      >
-        <Link
-          href={`/${username}/dashboard/contracts/${contractId}/uploads/progress/new`}
-          passHref
-        >
-          <Button size="small" variant="outlined" startIcon={<UploadFile />}>
-            Progress
-          </Button>
-        </Link>
-
-        <Link
-          href={`/${username}/dashboard/contracts/${contractId}/uploads/milestone/new`}
-          passHref
-        >
-          <Button size="small" variant="outlined" startIcon={<HighlightAlt />}>
-            Milestone
-          </Button>
-        </Link>
-
-        <Link
-          href={`/${username}/dashboard/contracts/${contractId}/uploads/final/new`}
-          passHref
-        >
-          <Button
-            size="small"
-            variant="contained"
-            color="primary"
-            startIcon={<CheckCircleOutline />}
-          >
-            Final Delivery
-          </Button>
-        </Link>
-      </Stack>
-    );
-  };
-
   // Calculate total uploads for badges
   const totalUploads = {
     progress: uploads.progressStandard.length,
@@ -121,28 +85,176 @@ const UploadsListPage: React.FC<UploadsListPageProps> = ({
       uploads.final.length,
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  // Action Buttons rendering
+  const renderActionButtons = () => {
+    if (!isActive || !isArtist) return null;
+
+    return (
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        sx={{ mt: { xs: 2, sm: 0 } }}
+      >
+        <Tooltip title={`Unggah ${TRANSLATIONS.progress}`} arrow>
+          <Link
+            href={`/${username}/dashboard/contracts/${contractId}/uploads/progress/new`}
+            passHref
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UploadFile />}
+              sx={{ borderRadius: 1.5 }}
+            >
+              {TRANSLATIONS.progress}
+            </Button>
+          </Link>
+        </Tooltip>
+
+        <Tooltip title={`Unggah ${TRANSLATIONS.milestone}`} arrow>
+          <Link
+            href={`/${username}/dashboard/contracts/${contractId}/uploads/milestone/new`}
+            passHref
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<HighlightAlt />}
+              sx={{ borderRadius: 1.5 }}
+            >
+              {TRANSLATIONS.milestone}
+            </Button>
+          </Link>
+        </Tooltip>
+
+        <Tooltip title={TRANSLATIONS.finalDelivery} arrow>
+          <Link
+            href={`/${username}/dashboard/contracts/${contractId}/uploads/final/new`}
+            passHref
+          >
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              startIcon={<CheckCircleOutline />}
+              sx={{
+                borderRadius: 1.5,
+                boxShadow: theme.shadows[2],
+                "&:hover": {
+                  boxShadow: theme.shadows[4],
+                },
+              }}
+            >
+              {TRANSLATIONS.finalDelivery}
+            </Button>
+          </Link>
+        </Tooltip>
+      </Stack>
+    );
+  };
+
+  // Tab badge component to reduce repetition
+  interface TabBadgeProps {
+    count: number;
+    color: "primary" | "secondary" | "default" | "error" | "info" | "success" | "warning";
+    label: string;
+  }
+  const TabBadge: React.FC<TabBadgeProps> = ({ count, color, label }) => (
+    <Badge
+      badgeContent={count}
+      color={color}
+      max={99}
+      showZero
+      sx={{ "& .MuiBadge-badge": { fontWeight: 600 } }}
+    >
+      <span style={{ marginRight: "8px" }}>{label}</span>
+    </Badge>
+  );
+
+  // Tab panel content renderer
+  const renderTabContent = () => {
+    const sharedProps = {
+      username,
+      contractId,
+      formatDate,
+      getStatusColor,
+      isClient,
+    };
+
+    switch (tabValue) {
+      case 0:
+        return <AllUploadsList uploads={uploads} {...sharedProps} />;
+      case 1:
+        return (
+          <ProgressUploadsList
+            uploads={uploads.progressStandard}
+            {...sharedProps}
+          />
+        );
+      case 2:
+        return (
+          <MilestoneUploadsList
+            uploads={uploads.progressMilestone}
+            {...sharedProps}
+          />
+        );
+      case 3:
+        return (
+          <RevisionUploadsList uploads={uploads.revision} {...sharedProps} />
+        );
+      case 4:
+        return <FinalUploadsList uploads={uploads.final} {...sharedProps} />;
+      default:
+        return <AllUploadsList uploads={uploads} {...sharedProps} />;
+    }
+  };
+
   return (
     <Box>
+      {/* Header section */}
       <Box
         mb={3}
         display="flex"
         justifyContent="space-between"
         alignItems={{ sm: "center" }}
         flexDirection={{ xs: "column", sm: "row" }}
+        sx={{
+          pb: 1.5,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        }}
       >
-        <Typography variant="h6" fontWeight="bold">
-          <CollectionsOutlined sx={{ mr: 1, verticalAlign: "middle" }} />
-          Contract Uploads
+        <Typography
+          variant="h6"
+          fontWeight="bold"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            color: theme.palette.text.primary,
+          }}
+        >
+          <CollectionsOutlined
+            sx={{
+              mr: 1,
+              color: theme.palette.primary.main,
+            }}
+          />
+          {TRANSLATIONS.contractUploads}
         </Typography>
         {renderActionButtons()}
       </Box>
 
+      {/* Tabs navigation */}
       <Paper
+        elevation={0}
         sx={{
-          borderRadius: 1,
+          borderRadius: 2,
           overflow: "hidden",
           mb: 3,
-          boxShadow: theme.shadows[1],
+          border: `1px solid ${theme.palette.divider}`,
         }}
       >
         <Tabs
@@ -154,128 +266,66 @@ const UploadsListPage: React.FC<UploadsListPageProps> = ({
             borderBottom: 1,
             borderColor: "divider",
             bgcolor: "background.paper",
+            "& .MuiTab-root": {
+              minHeight: 48,
+              textTransform: "none",
+              fontWeight: 500,
+            },
+            "& .Mui-selected": {
+              fontWeight: 600,
+            },
           }}
         >
           <Tab
             label={
-              <Badge
-                badgeContent={totalUploads.all}
+              <TabBadge
+                count={totalUploads.all}
                 color="primary"
-                max={99}
-                showZero
-              >
-                <span style={{ marginRight: "8px" }}>All</span>
-              </Badge>
+                label={TRANSLATIONS.all}
+              />
             }
           />
           <Tab
             label={
-              <Badge
-                badgeContent={totalUploads.progress}
+              <TabBadge
+                count={totalUploads.progress}
                 color="info"
-                max={99}
-                showZero
-              >
-                <span style={{ marginRight: "8px" }}>Progress</span>
-              </Badge>
+                label={TRANSLATIONS.progress}
+              />
             }
           />
           <Tab
             label={
-              <Badge
-                badgeContent={totalUploads.milestone}
+              <TabBadge
+                count={totalUploads.milestone}
                 color="secondary"
-                max={99}
-                showZero
-              >
-                <span style={{ marginRight: "8px" }}>Milestone</span>
-              </Badge>
+                label={TRANSLATIONS.milestone}
+              />
             }
           />
           <Tab
             label={
-              <Badge
-                badgeContent={totalUploads.revision}
+              <TabBadge
+                count={totalUploads.revision}
                 color="warning"
-                max={99}
-                showZero
-              >
-                <span style={{ marginRight: "8px" }}>Revision</span>
-              </Badge>
+                label={TRANSLATIONS.revision}
+              />
             }
           />
           <Tab
             label={
-              <Badge
-                badgeContent={totalUploads.final}
+              <TabBadge
+                count={totalUploads.final}
                 color="success"
-                max={99}
-                showZero
-              >
-                <span style={{ marginRight: "8px" }}>Final</span>
-              </Badge>
+                label={TRANSLATIONS.final}
+              />
             }
           />
         </Tabs>
       </Paper>
 
-      {/* Tab Panels */}
-      <Box sx={{ mt: 2 }}>
-        {tabValue === 0 && (
-          <AllUploadsList
-            uploads={uploads}
-            username={username}
-            contractId={contractId}
-            formatDate={formatDate}
-            getStatusColor={getStatusColor}
-            isClient={isClient}
-          />
-        )}
-
-        {tabValue === 1 && (
-          <ProgressUploadsList
-            uploads={uploads.progressStandard}
-            username={username}
-            contractId={contractId}
-            formatDate={formatDate}
-            getStatusColor={getStatusColor}
-            isClient={isClient}
-          />
-        )}
-
-        {tabValue === 2 && (
-          <MilestoneUploadsList
-            uploads={uploads.progressMilestone}
-            username={username}
-            contractId={contractId}
-            formatDate={formatDate}
-            getStatusColor={getStatusColor}
-            isClient={isClient}
-          />
-        )}
-
-        {tabValue === 3 && (
-          <RevisionUploadsList
-            uploads={uploads.revision}
-            username={username}
-            contractId={contractId}
-            formatDate={formatDate}
-            getStatusColor={getStatusColor}
-            isClient={isClient}
-          />
-        )}
-
-        {tabValue === 4 && (
-          <FinalUploadsList
-            uploads={uploads.final}
-            username={username}
-            contractId={contractId}
-            formatDate={formatDate}
-            getStatusColor={getStatusColor}
-            isClient={isClient}
-          />
-        )}
-      </Box>
+      {/* Tab content section */}
+      <Box sx={{ mt: 2 }}>{renderTabContent()}</Box>
     </Box>
   );
 };

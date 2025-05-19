@@ -559,7 +559,17 @@ export default function DashboardGalleryPage({
   );
 
   return (
-    <Box maxWidth="lg" sx={{ py: 4 }}>
+    <Box
+      sx={{
+        py: 4,
+        maxWidth: "100%",
+        animation: "fadeIn 0.3s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+      }}
+    >
       {/* Header */}
       <Box
         sx={{

@@ -2,9 +2,6 @@
 
 import React from "react";
 import {
-  ListItem,
-  ListItemText,
-  Chip,
   Box,
   Typography,
   Paper,
@@ -13,6 +10,7 @@ import {
   useTheme,
   Button,
   Tooltip,
+  Chip,
 } from "@mui/material";
 import Link from "next/link";
 import {
@@ -24,30 +22,27 @@ import {
 } from "@mui/icons-material";
 import { IContract } from "@/lib/db/models/contract.model";
 
+// Types
 interface ContractListingItemProps {
   contract: IContract;
   username: string;
   isArtist: boolean;
 }
 
-// Helper to get the status color
-const getStatusColor = (status: string) => {
-  const statusMap: Record<string, string> = {
-    active: "primary",
-    completed: "success",
-    completedLate: "success",
-    cancelledClient: "error",
-    cancelledClientLate: "error",
-    cancelledArtist: "error",
-    cancelledArtistLate: "error",
-    notCompleted: "error",
-  };
-
-  return statusMap[status] || "default";
+// Constants
+const STATUS_COLORS: Record<string, string> = {
+  active: "primary",
+  completed: "success",
+  completedLate: "success",
+  cancelledClient: "error",
+  cancelledClientLate: "error",
+  cancelledArtist: "error",
+  cancelledArtistLate: "error",
+  notCompleted: "error",
 };
 
-// Format date helper
-const formatDate = (date: string | Date) => {
+// Helper functions
+const formatDate = (date: string | Date): string => {
   return new Date(date).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -55,8 +50,7 @@ const formatDate = (date: string | Date) => {
   });
 };
 
-// Format currency helper
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
@@ -64,6 +58,16 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+const getStatusColor = (status: string): string => {
+  return STATUS_COLORS[status] || "default";
+};
+
+const formatStatusText = (status: string): string => {
+  const statusText = status.replace(/([A-Z])/g, " $1").trim();
+  return statusText.charAt(0).toUpperCase() + statusText.slice(1);
+};
+
+// Component
 const ContractListingItem: React.FC<ContractListingItemProps> = ({
   contract,
   username,
@@ -83,10 +87,26 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
   );
   const isOverdue = daysRemaining < 0;
 
-  // Status display
-  const statusText = contract.status.replace(/([A-Z])/g, " $1").trim();
-  const formattedStatus =
-    statusText.charAt(0).toUpperCase() + statusText.slice(1);
+  // Get formatted status text
+  const formattedStatus = formatStatusText(contract.status);
+
+  // Translations
+  const translations = {
+    asArtist: "Anda sebagai Seniman",
+    asClient: "Anda sebagai Klien",
+    client: "Klien",
+    artist: "Seniman",
+    amount: "Jumlah",
+    deadline: "Tenggat",
+    daysLeft: "hari lagi",
+    overdue: "Terlambat",
+    days: "hari",
+    created: "Dibuat",
+    progress: "Kemajuan",
+    milestones: "milestone",
+    notStarted: "Belum dimulai",
+    viewDetails: "Lihat Detail",
+  };
 
   return (
     <Paper
@@ -103,15 +123,9 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
       }}
       elevation={1}
     >
-      <ListItem
-        component={Link}
+      <Link
         href={`/${username}/dashboard/contracts/${contract._id}`}
-        sx={{
-          textDecoration: "none",
-          color: "inherit",
-          p: 0,
-          display: "block",
-        }}
+        style={{ textDecoration: "none", color: "inherit" }}
       >
         {/* Status header */}
         <Box
@@ -141,7 +155,9 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
               variant="subtitle2"
               color={`${getStatusColor(contract.status)}.main`}
             >
-              {role === "artist" ? "Anda sebagai Seniman" : "Anda sebagai Klien"}
+              {role === "artist"
+                ? translations.asArtist
+                : translations.asClient}
             </Typography>
           </Box>
           <Chip
@@ -163,6 +179,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
             sx={{ mt: 2, mb: 2 }}
             divider={<Divider orientation="vertical" flexItem />}
           >
+            {/* Party information */}
             <Box sx={{ display: "flex", alignItems: "center" }}>
               {role === "artist" ? (
                 <PersonIcon
@@ -176,7 +193,9 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                 />
               )}
               <Typography variant="body2" color="text.secondary">
-                {role === "artist" ? "Klien: " : "Seniman: "}
+                {role === "artist"
+                  ? `${translations.client}: `
+                  : `${translations.artist}: `}
                 <Typography
                   component="span"
                   variant="body2"
@@ -187,13 +206,14 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
               </Typography>
             </Box>
 
+            {/* Payment information */}
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <MoneyIcon
                 fontSize="small"
                 sx={{ mr: 1, color: "text.secondary" }}
               />
               <Typography variant="body2" color="text.secondary">
-                Jumlah:
+                {translations.amount}:
                 <Typography
                   component="span"
                   variant="body2"
@@ -205,13 +225,16 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
               </Typography>
             </Box>
 
+            {/* Deadline information */}
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <CalendarIcon
                 fontSize="small"
                 sx={{ mr: 1, color: "text.secondary" }}
               />
               <Tooltip
-                title={`Dibuat: ${formatDate(contract.createdAt as Date)}`}
+                title={`${translations.created}: ${formatDate(
+                  contract.createdAt as Date
+                )}`}
               >
                 <Typography variant="body2" color="text.secondary">
                   {isOverdue && contract.status === "active" ? (
@@ -221,23 +244,24 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                       color="error.main"
                       fontWeight="medium"
                     >
-                      Terlambat {Math.abs(daysRemaining)} hari
+                      {translations.overdue} {Math.abs(daysRemaining)}{" "}
+                      {translations.days}
                     </Typography>
                   ) : contract.status === "active" ? (
                     <>
-                      Deadline:
+                      {translations.deadline}:
                       <Typography
                         component="span"
                         variant="body2"
                         fontWeight="medium"
                       >
-                        {formatDate(contract.deadlineAt)} ({daysRemaining} hari
-                        lagi)
+                        {formatDate(contract.deadlineAt)} ({daysRemaining}{" "}
+                        {translations.daysLeft})
                       </Typography>
                     </>
                   ) : (
                     <>
-                      Deadline:
+                      {translations.deadline}:
                       <Typography
                         component="span"
                         variant="body2"
@@ -256,12 +280,12 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
           {contract.milestones && contract.milestones.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                Kemajuan:{" "}
+                {translations.progress}:{" "}
                 {contract.currentMilestoneIndex !== undefined
                   ? `${contract.currentMilestoneIndex + 1}/${
                       contract.milestones.length
-                    } tonggak`
-                  : "Belum dimulai"}
+                    } ${translations.milestones}`
+                  : translations.notStarted}
               </Typography>
               <Box
                 sx={{
@@ -276,7 +300,7 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                   sx={{
                     height: "100%",
                     width: `${contract.workPercentage}%`,
-                    bgcolor: getStatusColor(contract.status) as string,
+                    bgcolor: `${getStatusColor(contract.status)}.main`,
                     borderRadius: 5,
                   }}
                 />
@@ -298,11 +322,11 @@ const ContractListingItem: React.FC<ContractListingItemProps> = ({
                 },
               }}
             >
-              Lihat Detail
+              {translations.viewDetails}
             </Button>
           </Box>
         </Box>
-      </ListItem>
+      </Link>
     </Paper>
   );
 };

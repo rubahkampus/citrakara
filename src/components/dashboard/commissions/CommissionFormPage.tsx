@@ -50,7 +50,7 @@ const TEXT = {
     dashboard: "Dashboard",
     commissions: "Komisi",
     create: "Buat Komisi",
-    edit: "Edit Komisi"
+    edit: "Edit Komisi",
   },
   backButton: "Kembali ke Daftar Komisi",
   cancelButton: "Batal",
@@ -428,7 +428,17 @@ export default function CommissionFormPage({
 
   return (
     <FormProvider {...methods}>
-      <Box sx={{ maxWidth: 1200, mx: "auto", pb: 8, py: 4  }} maxWidth="lg">
+      <Box
+        sx={{
+          py: 4,
+          maxWidth: "100%",
+          animation: "fadeIn 0.3s ease-in-out",
+          "@keyframes fadeIn": {
+            "0%": { opacity: 0, transform: "translateY(10px)" },
+            "100%": { opacity: 1, transform: "translateY(0)" },
+          },
+        }}
+      >
         {/* Header & Navigation */}
         <Box sx={SPACING.headerWrapper}>
           <Box sx={SPACING.titleContainer}>
@@ -457,7 +467,9 @@ export default function CommissionFormPage({
                 color="text.primary"
                 sx={{ display: "flex", alignItems: "center" }}
               >
-                {mode == "create" ? TEXT.breadcrumbs.create : TEXT.breadcrumbs.edit}
+                {mode == "create"
+                  ? TEXT.breadcrumbs.create
+                  : TEXT.breadcrumbs.edit}
               </Typography>
             </Breadcrumbs>
 
@@ -741,7 +753,7 @@ function getDefaults(mode: "create" | "edit", data: any): CommissionFormValues {
     revLimit: false,
     revFree: 2,
     revExtraAllowed: true,
-    revFee: 10,
+    revFee: 0,
     milestones: [],
     allowContractChange: true,
     changeable: [

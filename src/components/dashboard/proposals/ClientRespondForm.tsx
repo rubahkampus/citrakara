@@ -306,7 +306,7 @@ export default function ClientRespondForm({
                 // Tangani keberhasilan (Anda bisa menambahkan logika tambahan di sini)
                 // Misalnya, mengarahkan ke halaman kontrak
                 if (response.data.contractId) {
-                  window.location.href = `/${username}/contracts/${response.data.contractId}`;
+                  window.location.href = `/${username}/dashboard/contracts/${response.data.contractId}`;
                 }
               } catch (err: any) {
                 console.error("Error membuat kontrak:", err);

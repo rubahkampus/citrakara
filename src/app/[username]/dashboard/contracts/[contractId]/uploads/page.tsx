@@ -19,7 +19,7 @@ interface UploadsListPageProps {
 export default async function UploadsListPage({
   params,
 }: UploadsListPageProps) {
-  const param = await params
+  const param = await params;
   const { username, contractId } = param;
   const session = await getAuthSession();
 
@@ -66,18 +66,6 @@ export default async function UploadsListPage({
           isClient={isClient}
           contractStatus={contract.status}
         />
-        <Box>
-          <Typography>
-            Upload listings for contract {contractId} would be displayed here.
-          </Typography>
-          <Typography>
-            There are {uploads.progressStandard.length} standard progress
-            uploads,
-            {uploads.progressMilestone.length} milestone progress uploads,
-            {uploads.revision.length} revision uploads, and
-            {uploads.final.length} final uploads.
-          </Typography>
-        </Box>
       </Suspense>
     </Box>
   );

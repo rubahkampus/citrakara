@@ -475,7 +475,7 @@ export const TemplateSection: React.FC = () => {
       slots: tpl.slots,
       type: tpl.type,
       flow: tpl.flow,
-      samples: tpl.samples || [],
+      samples: [],
       thumbnailIdx: tpl.thumbnailIdx !== undefined ? tpl.thumbnailIdx : 0,
       description: tpl.description,
       deadlineMode: tpl.deadlineMode,
@@ -567,7 +567,7 @@ export const TemplateSection: React.FC = () => {
             basePrice: l.basePrice,
             currency: l.currency || "IDR",
             slots: l.slots || -1,
-            samples: l.samples || [],
+            samples: [],
             thumbnailIdx: l.thumbnailIdx,
             description:
               l.description?.length > 0

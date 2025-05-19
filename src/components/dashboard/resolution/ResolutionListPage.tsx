@@ -158,7 +158,7 @@ export default function ResolutionListPage({
               <Icon
                 sx={{
                   mr: 0.5,
-                  fontSize: 18
+                  fontSize: 18,
                 }}
               />
               <span style={{ marginRight: 8 }}>{category.label}</span>
@@ -180,7 +180,17 @@ export default function ResolutionListPage({
   };
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box
+      sx={{
+        py: 4,
+        maxWidth: "100%",
+        animation: "fadeIn 0.3s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+      }}
+    >
       {error && (
         <Alert
           severity="error"
@@ -262,9 +272,9 @@ export default function ResolutionListPage({
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Jika Anda perlu mengeskalasi masalah terkait kontrak, silakan gunakan
-          tombol <strong>"Buka Sengketa"</strong> di halaman tiket atau unggahan kontrak.
-          Kedua pihak akan memiliki waktu 24 jam untuk memberikan bukti sebelum
-          admin meninjau kasus tersebut.
+          tombol <strong>"Buka Sengketa"</strong> di halaman tiket atau unggahan
+          kontrak. Kedua pihak akan memiliki waktu 24 jam untuk memberikan bukti
+          sebelum admin meninjau kasus tersebut.
         </Typography>
       </Paper>
     </Box>

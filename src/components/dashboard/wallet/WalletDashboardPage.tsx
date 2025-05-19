@@ -60,7 +60,17 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
   };
 
   return (
-    <Box>
+    <Box
+      sx={{
+        py: 4,
+        maxWidth: "100%",
+        animation: "fadeIn 0.3s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+      }}
+    >
       {/* Navigation tabs - already handled by parent component */}
       <Box sx={{ mb: 3 }}>
         <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
@@ -300,7 +310,7 @@ const WalletDashboardPage: React.FC<WalletDashboardPageProps> = ({
                     <CreditCard color="primary" sx={{ mr: 2, fontSize: 28 }} />
                     <Box>
                       <Typography variant="h6" fontWeight="500">
-                        Klaim Kontrak 
+                        Klaim Kontrak
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Klaim pembayaran atau uang kembali

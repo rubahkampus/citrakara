@@ -13,29 +13,88 @@ import {
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
 
+interface FinanceItem {
+  label: string;
+  amount: number;
+  isAddition?: boolean;
+  isDeduction?: boolean;
+}
+
+interface ContractFinance {
+  basePrice: number;
+  optionFees: number;
+  addons: number;
+  rushFee: number;
+  discount: number;
+  surcharge: number;
+  runtimeFees: number;
+  total: number;
+}
+
 interface ContractFinancialsTableProps {
-  finance: {
-    basePrice: number;
-    optionFees: number;
-    addons: number;
-    rushFee: number;
-    discount: number;
-    surcharge: number;
-    runtimeFees: number;
-    total: number;
-  };
+  finance: ContractFinance;
 }
 
 const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
   finance,
 }) => {
-  // Format currency
+  // Format currency using Indonesian locale
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
     }).format(amount);
   };
+
+  // Define reusable styles
+  const iconStyle = { mr: 1 };
+
+  // Helper function to render line items conditionally
+  const renderLineItem = ({
+    label,
+    amount,
+    isAddition,
+    isDeduction,
+  }: FinanceItem) => {
+    if (amount <= 0) return null;
+
+    return (
+      <TableRow>
+        <TableCell component="th" scope="row">
+          <Box display="flex" alignItems="center">
+            {isAddition && (
+              <AddCircleIcon fontSize="small" color="success" sx={iconStyle} />
+            )}
+            {isDeduction && (
+              <RemoveCircleIcon fontSize="small" color="error" sx={iconStyle} />
+            )}
+            {label}
+          </Box>
+        </TableCell>
+        <TableCell
+          align="right"
+          sx={isDeduction ? { color: "error.main" } : undefined}
+        >
+          {isDeduction ? "-" : ""}
+          {formatCurrency(amount)}
+        </TableCell>
+      </TableRow>
+    );
+  };
+
+  // Define line items
+  const financeItems: FinanceItem[] = [
+    { label: "Opsi", amount: finance.optionFees, isAddition: true },
+    { label: "Tambahan", amount: finance.addons, isAddition: true },
+    {
+      label: "Biaya Pengerjaan Cepat",
+      amount: finance.rushFee,
+      isAddition: true,
+    },
+    { label: "Diskon Seniman", amount: finance.discount, isDeduction: true },
+    { label: "Tambahan Seniman", amount: finance.surcharge, isAddition: true },
+    { label: "Biaya Berjalan", amount: finance.runtimeFees, isAddition: true },
+  ];
 
   return (
     <TableContainer
@@ -45,6 +104,7 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
     >
       <Table size="small">
         <TableBody>
+          {/* Base Price - Always shown */}
           <TableRow>
             <TableCell component="th" scope="row">
               Harga Dasar
@@ -53,108 +113,11 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
               {formatCurrency(finance.basePrice)}
             </TableCell>
           </TableRow>
-          {finance.optionFees > 0 && (
-            <TableRow>
-              <TableCell component="th" scope="row">
-                <Box display="flex" alignItems="center">
-                  <AddCircleIcon
-                    fontSize="small"
-                    color="success"
-                    sx={{ mr: 1 }}
-                  />
-                  Opsi
-                </Box>
-              </TableCell>
-              <TableCell align="right">
-                {formatCurrency(finance.optionFees)}
-              </TableCell>
-            </TableRow>
-          )}
-          {finance.addons > 0 && (
-            <TableRow>
-              <TableCell component="th" scope="row">
-                <Box display="flex" alignItems="center">
-                  <AddCircleIcon
-                    fontSize="small"
-                    color="success"
-                    sx={{ mr: 1 }}
-                  />
-                  Tambahan
-                </Box>
-              </TableCell>
-              <TableCell align="right">
-                {formatCurrency(finance.addons)}
-              </TableCell>
-            </TableRow>
-          )}
-          {finance.rushFee > 0 && (
-            <TableRow>
-              <TableCell component="th" scope="row">
-                <Box display="flex" alignItems="center">
-                  <AddCircleIcon
-                    fontSize="small"
-                    color="success"
-                    sx={{ mr: 1 }}
-                  />
-                  Biaya Pengerjaan Cepat
-                </Box>
-              </TableCell>
-              <TableCell align="right">
-                {formatCurrency(finance.rushFee)}
-              </TableCell>
-            </TableRow>
-          )}
-          {finance.discount > 0 && (
-            <TableRow>
-              <TableCell component="th" scope="row">
-                <Box display="flex" alignItems="center">
-                  <RemoveCircleIcon
-                    fontSize="small"
-                    color="error"
-                    sx={{ mr: 1 }}
-                  />
-                  Diskon Seniman
-                </Box>
-              </TableCell>
-              <TableCell align="right" sx={{ color: "error.main" }}>
-                -{formatCurrency(finance.discount)}
-              </TableCell>
-            </TableRow>
-          )}
-          {finance.surcharge > 0 && (
-            <TableRow>
-              <TableCell component="th" scope="row">
-                <Box display="flex" alignItems="center">
-                  <AddCircleIcon
-                    fontSize="small"
-                    color="success"
-                    sx={{ mr: 1 }}
-                  />
-                  Tambahan Seniman
-                </Box>
-              </TableCell>
-              <TableCell align="right">
-                {formatCurrency(finance.surcharge)}
-              </TableCell>
-            </TableRow>
-          )}
-          {finance.runtimeFees > 0 && (
-            <TableRow>
-              <TableCell component="th" scope="row">
-                <Box display="flex" alignItems="center">
-                  <AddCircleIcon
-                    fontSize="small"
-                    color="success"
-                    sx={{ mr: 1 }}
-                  />
-                  Biaya Berjalan
-                </Box>
-              </TableCell>
-              <TableCell align="right">
-                {formatCurrency(finance.runtimeFees)}
-              </TableCell>
-            </TableRow>
-          )}
+
+          {/* Dynamic Finance Items */}
+          {financeItems.map((item, index) => renderLineItem(item))}
+
+          {/* Total Row */}
           <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
             <TableCell component="th" scope="row">
               <Typography fontWeight="bold">Total Jumlah</Typography>

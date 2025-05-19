@@ -37,7 +37,7 @@ import { Session } from "@/lib/utils/session";
 
 // Types
 interface BookmarkPageProps {
-  session: Session
+  session: Session;
 }
 
 interface TabPanelProps {
@@ -132,7 +132,7 @@ export default function BookmarkPage({ session }: BookmarkPageProps) {
     try {
       const response = await axiosClient.get("/api/user/bookmarks");
 
-      console.log(response.data.commissions)
+      console.log(response.data.commissions);
 
       if (response.data) {
         setBookmarkedArtists(response.data.artists || []);
@@ -195,7 +195,17 @@ export default function BookmarkPage({ session }: BookmarkPageProps) {
   };
 
   return (
-    <Box maxWidth="lg" sx={{ py: 4 }}>
+    <Box
+      sx={{
+        py: 4,
+        maxWidth: "100%",
+        animation: "fadeIn 0.3s ease-in-out",
+        "@keyframes fadeIn": {
+          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+      }}
+    >
       <Box
         sx={{
           mb: 3,

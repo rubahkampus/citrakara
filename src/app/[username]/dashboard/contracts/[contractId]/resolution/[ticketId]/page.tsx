@@ -66,18 +66,6 @@ export default async function ResolutionTicketPage({
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        Resolution Request
-      </Typography>
-
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="body2">
-          <strong>Contract:</strong>{" "}
-          {contract.proposalSnapshot.listingSnapshot.title ||
-            `Contract #${contract._id.toString().substring(0, 8)}`}
-        </Typography>
-      </Box>
-
       <ResolutionTicketDetails
         ticket={serializedTicket}
         userId={(session as Session).id}

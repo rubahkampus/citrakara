@@ -1,10 +1,11 @@
 // src/components/dashboard/contracts/tabs/ContractTermsTab.tsx
 import React, { useState } from "react";
+
+// MUI Components
 import {
   Box,
   Typography,
   Grid,
-  Link as MuiLink,
   Paper,
   Accordion,
   AccordionSummary,
@@ -15,16 +16,19 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
   Divider,
   Card,
   CardContent,
 } from "@mui/material";
+
+// MUI Icons
 import {
   ExpandMore as ExpandMoreIcon,
-  AttachMoney as AttachMoneyIcon,
   Description as DescriptionIcon,
+  Settings as SettingsIcon,
 } from "@mui/icons-material";
+
+// Types
 import { IContract } from "@/lib/db/models/contract.model";
 import {
   IOptionGroup,
@@ -32,10 +36,14 @@ import {
   IQuestion,
 } from "@/lib/db/models/commissionListing.model";
 
+// Interfaces
 interface ContractTermsTabProps {
   contract: IContract;
 }
 
+/**
+ * ContractTermsTab component displays the terms and details of a contract
+ */
 const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
   const [expandedSection, setExpandedSection] = useState<string | false>(
     "description"
@@ -46,6 +54,8 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
     contract.contractTerms[contract.contractTerms.length - 1];
   const proposalSnapshot = contract.proposalSnapshot;
   const listingSnapshot = proposalSnapshot.listingSnapshot;
+
+  // ==== Helper Functions ====
 
   // Handle section expansion
   const handleSectionToggle =
@@ -68,6 +78,8 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
       minute: "2-digit",
     });
   };
+
+  // ==== Data Lookup Helpers ====
 
   // Helper to find option group, selection, or addon details from the listing snapshot
   const findOptionDetails = (type: string, id: number) => {
@@ -113,18 +125,84 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
     return null;
   };
 
-  // Helper to find selection details from a group
-  const findSelectionDetails = (groupDetails: any, selectionId: number) => {
-    if (!groupDetails || !groupDetails.selections) return null;
-    return groupDetails.selections.find(
-      (selection: any) => selection.id === selectionId
-    );
-  };
+  // ==== UI Components ====
+
+  // Component: Section Headers
+  const SectionHeader: React.FC<{
+    title: string;
+    icon?: React.ReactNode;
+    color?: string;
+  }> = ({ title, icon, color = "primary.main" }) => (
+    <Typography
+      variant="subtitle1"
+      sx={{
+        mb: 1,
+        fontWeight: "medium",
+        color,
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      {icon && <Box sx={{ mr: 1 }}>{icon}</Box>}
+      {title}
+    </Typography>
+  );
+
+  // Component: Data Table
+  const DataTable: React.FC<{
+    headers: string[];
+    alignRight?: boolean[];
+    children: React.ReactNode;
+  }> = ({ headers, alignRight = [], children }) => (
+    <TableContainer
+      component={Paper}
+      variant="outlined"
+      sx={{ borderRadius: 1, mb: 3 }}
+    >
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ bgcolor: "background.default" }}>
+            {headers.map((header, index) => (
+              <TableCell
+                key={index}
+                align={alignRight?.at(index) ? "right" : "left"}
+              >
+                {header}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>{children}</TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  // Component: Response Box
+  const ResponseBox: React.FC<{
+    question: string;
+    answer: string;
+  }> = ({ question, answer }) => (
+    <Box
+      sx={{
+        mb: 2,
+        bgcolor: "background.default",
+        p: 2,
+        borderRadius: 1,
+      }}
+    >
+      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+        {question}
+      </Typography>
+      <Typography variant="body1">{answer}</Typography>
+    </Box>
+  );
+
+  // ==== Content Rendering Functions ====
 
   // Render general options
   const renderGeneralOptions = () => {
     if (!currentTerms.generalOptions) {
-      return <Typography>No options selected</Typography>;
+      return <Typography>Tidak ada opsi yang dipilih</Typography>;
     }
 
     return (
@@ -134,52 +212,30 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
           {currentTerms.generalOptions.optionGroups &&
             currentTerms.generalOptions.optionGroups.length > 0 && (
               <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
+                <SectionHeader title="Kelompok Opsi" />
+                <DataTable
+                  headers={["Opsi", "Pilihan", "Harga"]}
+                  alignRight={[false, false, true]}
                 >
-                  Option Groups
-                </Typography>
-                <TableContainer
-                  component={Paper}
-                  variant="outlined"
-                  sx={{ borderRadius: 1 }}
-                >
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: "background.default" }}>
-                        <TableCell>Option</TableCell>
-                        <TableCell>Selection</TableCell>
-                        <TableCell align="right">Price</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {currentTerms.generalOptions.optionGroups.map(
-                        (option) => {
-                          const groupDetails = findOptionDetails(
-                            "group",
-                            option.groupId
-                          ) as IOptionGroup;
+                  {currentTerms.generalOptions.optionGroups.map((option) => {
+                    const groupDetails = findOptionDetails(
+                      "group",
+                      option.groupId
+                    ) as IOptionGroup;
 
-                          return (
-                            <TableRow key={option.id}>
-                              <TableCell>
-                                {groupDetails?.title ||
-                                  `Option Group ${option.groupId}`}
-                              </TableCell>
-                              <TableCell>
-                                {option.selectedSelectionLabel}
-                              </TableCell>
-                              <TableCell align="right">
-                                {formatCurrency(option.price)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        }
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                    return (
+                      <TableRow key={option.id}>
+                        <TableCell>
+                          {groupDetails?.title || `Opsi ${option.groupId}`}
+                        </TableCell>
+                        <TableCell>{option.selectedSelectionLabel}</TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(option.price)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </DataTable>
               </Box>
             )}
 
@@ -187,45 +243,29 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
           {currentTerms.generalOptions.addons &&
             currentTerms.generalOptions.addons.length > 0 && (
               <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
+                <SectionHeader title="Tambahan" />
+                <DataTable
+                  headers={["Tambahan", "Harga"]}
+                  alignRight={[false, true]}
                 >
-                  Add-ons
-                </Typography>
-                <TableContainer
-                  component={Paper}
-                  variant="outlined"
-                  sx={{ borderRadius: 1 }}
-                >
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: "background.default" }}>
-                        <TableCell>Add-on</TableCell>
-                        <TableCell align="right">Price</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {currentTerms.generalOptions.addons.map((addon) => {
-                        const addonDetails = findOptionDetails(
-                          "addon",
-                          addon.addonId
-                        ) as IAddon;
+                  {currentTerms.generalOptions.addons.map((addon) => {
+                    const addonDetails = findOptionDetails(
+                      "addon",
+                      addon.addonId
+                    ) as IAddon;
 
-                        return (
-                          <TableRow key={addon.id}>
-                            <TableCell>
-                              {addonDetails?.label || `Add-on ${addon.addonId}`}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCurrency(addon.price)}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                    return (
+                      <TableRow key={addon.id}>
+                        <TableCell>
+                          {addonDetails?.label || `Tambahan ${addon.addonId}`}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(addon.price)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </DataTable>
               </Box>
             )}
 
@@ -233,12 +273,7 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
           {currentTerms.generalOptions.answers &&
             currentTerms.generalOptions.answers.length > 0 && (
               <Box>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
-                >
-                  Client Responses
-                </Typography>
+                <SectionHeader title="Respon Klien" />
                 {currentTerms.generalOptions.answers.map((answer) => {
                   const questionDetails = findOptionDetails(
                     "question",
@@ -246,25 +281,14 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
                   ) as IQuestion;
 
                   return (
-                    <Box
+                    <ResponseBox
                       key={answer.id}
-                      sx={{
-                        mb: 2,
-                        bgcolor: "background.default",
-                        p: 2,
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        gutterBottom
-                      >
-                        {questionDetails?.text ||
-                          `Question ${answer.questionId}`}
-                      </Typography>
-                      <Typography variant="body1">{answer.answer}</Typography>
-                    </Box>
+                      question={
+                        questionDetails?.text ||
+                        `Pertanyaan ${answer.questionId}`
+                      }
+                      answer={answer.answer}
+                    />
                   );
                 })}
               </Box>
@@ -281,7 +305,9 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
       currentTerms.subjectOptions.length === 0
     ) {
       return (
-        <Typography variant="body2">No subject options selected</Typography>
+        <Typography variant="body2">
+          Tidak ada opsi subjek yang dipilih
+        </Typography>
       );
     }
 
@@ -292,7 +318,7 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
         <Card key={subject.subjectId} sx={{ mb: 3, overflow: "visible" }}>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-              {subjectDetails?.title || `Subject ${subject.subjectId}`}
+              {subjectDetails?.title || `Subjek ${subject.subjectId}`}
             </Typography>
 
             {subject.instances.map((instance) => (
@@ -309,116 +335,77 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
                   variant="subtitle1"
                   sx={{ mb: 2, fontWeight: "medium" }}
                 >
-                  Instance {instance.id}
+                  Instansi {instance.id}
                 </Typography>
 
                 {/* Instance Option Groups */}
                 {instance.optionGroups && instance.optionGroups.length > 0 && (
                   <Box sx={{ mb: 3 }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: "primary.main" }}
+                    <SectionHeader title="Opsi" color="primary.main" />
+                    <DataTable
+                      headers={["Opsi", "Pilihan", "Harga"]}
+                      alignRight={[false, false, true]}
                     >
-                      Options
-                    </Typography>
-                    <TableContainer
-                      component={Paper}
-                      variant="outlined"
-                      sx={{ borderRadius: 1 }}
-                    >
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Option</TableCell>
-                            <TableCell>Selection</TableCell>
-                            <TableCell align="right">Price</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {instance.optionGroups.map((option) => {
-                            const groupDetails = findSubjectOptionDetails(
-                              subject.subjectId,
-                              "group",
-                              option.groupId
-                            ) as IOptionGroup;
+                      {instance.optionGroups.map((option) => {
+                        const groupDetails = findSubjectOptionDetails(
+                          subject.subjectId,
+                          "group",
+                          option.groupId
+                        ) as IOptionGroup;
 
-                            return (
-                              <TableRow key={option.id}>
-                                <TableCell>
-                                  {groupDetails?.title ||
-                                    `Option ${option.groupId}`}
-                                </TableCell>
-                                <TableCell>
-                                  {option.selectedSelectionLabel}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCurrency(option.price)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                        return (
+                          <TableRow key={option.id}>
+                            <TableCell>
+                              {groupDetails?.title || `Opsi ${option.groupId}`}
+                            </TableCell>
+                            <TableCell>
+                              {option.selectedSelectionLabel}
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatCurrency(option.price)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </DataTable>
                   </Box>
                 )}
 
                 {/* Instance Add-ons */}
                 {instance.addons && instance.addons.length > 0 && (
                   <Box sx={{ mb: 3 }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: "primary.main" }}
+                    <SectionHeader title="Tambahan" color="primary.main" />
+                    <DataTable
+                      headers={["Tambahan", "Harga"]}
+                      alignRight={[false, true]}
                     >
-                      Add-ons
-                    </Typography>
-                    <TableContainer
-                      component={Paper}
-                      variant="outlined"
-                      sx={{ borderRadius: 1 }}
-                    >
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow sx={{ bgcolor: "background.default" }}>
-                            <TableCell>Add-on</TableCell>
-                            <TableCell align="right">Price</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {instance.addons.map((addon) => {
-                            const addonDetails = findSubjectOptionDetails(
-                              subject.subjectId,
-                              "addon",
-                              addon.addonId
-                            ) as IAddon;
+                      {instance.addons.map((addon) => {
+                        const addonDetails = findSubjectOptionDetails(
+                          subject.subjectId,
+                          "addon",
+                          addon.addonId
+                        ) as IAddon;
 
-                            return (
-                              <TableRow key={addon.id}>
-                                <TableCell>
-                                  {addonDetails?.label ||
-                                    `Add-on ${addon.addonId}`}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCurrency(addon.price)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                        return (
+                          <TableRow key={addon.id}>
+                            <TableCell>
+                              {addonDetails?.label ||
+                                `Tambahan ${addon.addonId}`}
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatCurrency(addon.price)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </DataTable>
                   </Box>
                 )}
 
                 {/* Instance Answers */}
                 {instance.answers && instance.answers.length > 0 && (
                   <Box>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: "primary.main" }}
-                    >
-                      Client Responses
-                    </Typography>
+                    <SectionHeader title="Respon Klien" color="primary.main" />
                     {instance.answers.map((answer) => {
                       const questionDetails = findSubjectOptionDetails(
                         subject.subjectId,
@@ -427,27 +414,14 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
                       ) as IQuestion;
 
                       return (
-                        <Box
+                        <ResponseBox
                           key={answer.id}
-                          sx={{
-                            mb: 2,
-                            bgcolor: "background.default",
-                            p: 2,
-                            borderRadius: 1,
-                          }}
-                        >
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            gutterBottom
-                          >
-                            {questionDetails?.text ||
-                              `Question ${answer.questionId}`}
-                          </Typography>
-                          <Typography variant="body1">
-                            {answer.answer}
-                          </Typography>
-                        </Box>
+                          question={
+                            questionDetails?.text ||
+                            `Pertanyaan ${answer.questionId}`
+                          }
+                          answer={answer.answer}
+                        />
                       );
                     })}
                   </Box>
@@ -460,8 +434,11 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
     });
   };
 
+  // ==== Main Component ====
+
   return (
     <Box>
+      {/* Description & References Accordion */}
       <Accordion
         expanded={expandedSection === "description"}
         onChange={handleSectionToggle("description")}
@@ -472,12 +449,12 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
             variant="h6"
             sx={{ display: "flex", alignItems: "center" }}
           >
-            <DescriptionIcon sx={{ mr: 1 }} /> Description & References
+            <DescriptionIcon sx={{ mr: 1 }} /> Deskripsi & Referensi
           </Typography>
         </AccordionSummary>
         <AccordionDetails>
           <Typography fontWeight="bold" gutterBottom>
-            Project Description
+            Deskripsi Proyek
           </Typography>
           <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 1 }}>
             <Typography>{currentTerms.generalDescription}</Typography>
@@ -486,7 +463,7 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
           {currentTerms.referenceImages?.length > 0 && (
             <Box mt={2}>
               <Typography fontWeight="bold" gutterBottom>
-                Reference Images
+                Gambar Referensi
               </Typography>
               <Grid container spacing={1}>
                 {currentTerms.referenceImages.map((image, index) => (
@@ -494,12 +471,17 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
                     <Box
                       component="img"
                       src={image}
-                      alt={`Reference ${index + 1}`}
+                      alt={`Referensi ${index + 1}`}
                       sx={{
                         width: "100%",
                         height: 150,
                         objectFit: "cover",
                         borderRadius: 1,
+                        boxShadow: 1,
+                        transition: "transform 0.2s",
+                        "&:hover": {
+                          transform: "scale(1.02)",
+                        },
                       }}
                     />
                   </Grid>
@@ -510,37 +492,29 @@ const ContractTermsTab: React.FC<ContractTermsTabProps> = ({ contract }) => {
         </AccordionDetails>
       </Accordion>
 
+      {/* Options Accordion */}
       <Accordion
         expanded={expandedSection === "options"}
         onChange={handleSectionToggle("options")}
         sx={{ mb: 2, borderRadius: 1 }}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Selected Options</Typography>
+          <Typography
+            variant="h6"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <SettingsIcon sx={{ mr: 1 }} /> Opsi yang Dipilih
+          </Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <Typography
-            variant="subtitle1"
-            fontWeight="medium"
-            color="primary.main"
-            gutterBottom
-          >
-            General Options
-          </Typography>
+          <SectionHeader title="Opsi Umum" color="primary.main" />
           {renderGeneralOptions()}
 
           {currentTerms.subjectOptions &&
             currentTerms.subjectOptions.length > 0 && (
               <>
                 <Divider sx={{ my: 3 }} />
-                <Typography
-                  variant="subtitle1"
-                  fontWeight="medium"
-                  color="primary.main"
-                  gutterBottom
-                >
-                  Subject Options
-                </Typography>
+                <SectionHeader title="Opsi Subjek" color="primary.main" />
                 {renderSubjectOptions()}
               </>
             )}

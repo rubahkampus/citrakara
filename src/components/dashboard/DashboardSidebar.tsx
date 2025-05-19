@@ -31,6 +31,7 @@ import {
   ChevronRight as ChevronRightIcon,
   BookmarkBorderRounded,
   Bookmarks,
+  PaletteRounded,
 } from "@mui/icons-material";
 import { useUIStore } from "@/lib/stores";
 
@@ -97,7 +98,7 @@ export default function DashboardSidebar({
     {
       label: "Kontrak",
       href: (u) => `/${u}/dashboard/contracts`,
-      icon: <ContractIcon fontSize="small" />,
+      icon: <PaletteRounded fontSize="small" />,
     },
     {
       label: "Dompet",

@@ -88,10 +88,6 @@ export default async function ResolutionTicketPage({
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        Request Resolution
-      </Typography>
-
       {targetId && targetType && (
         <ResolutionTicketForm
           contract={serializedContract}

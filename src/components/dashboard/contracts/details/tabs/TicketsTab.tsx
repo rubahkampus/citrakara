@@ -130,7 +130,7 @@ const TicketsTab: React.FC<TicketsTabProps> = ({ contract, username }) => {
           {TRANSLATIONS.noTicketsFound}
         </Typography>
       ) : (
-        <Grid container spacing={2} sx={{ mt: 0.5 }}>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           {ticketTypes.map(
             (type, index) =>
               type.count > 0 && (

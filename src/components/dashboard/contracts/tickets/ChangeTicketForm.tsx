@@ -369,8 +369,6 @@ export default function ChangeTicketFormPage({
         );
       }
 
-      // console.log(JSON.stringify(latestTerms))
-
       for (var pair of formData.entries()) {
         console.log(pair[0] + ", " + pair[1]);
       } // Debugging line
@@ -455,7 +453,6 @@ export default function ChangeTicketFormPage({
             );
           }
         )}
-        sx={{ maxWidth: 800, mx: "auto" }}
       >
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -603,10 +600,59 @@ function transformOptions(
   generalOptions: Record<string, any>,
   subjectOptions: Record<string, any>
 ) {
-  // Deep clone the generalOptions to avoid mutations
-  const transformedGeneralOptions = JSON.parse(
-    JSON.stringify(generalOptions)
-  ) as ProposalGeneralOptions;
+  // Transform generalOptions
+  const transformedGeneralOptions: any = {
+    optionGroups: [],
+    addons: [],
+    answers: [],
+  };
+
+  // Transform optionGroups from object to array format
+  if (generalOptions.optionGroups) {
+    transformedGeneralOptions.optionGroups = Object.entries(
+      generalOptions.optionGroups
+    ).map(([groupId, group]: [string, any]) => {
+      return {
+        id: parseInt(groupId),
+        groupId: parseInt(groupId),
+        selectedSelectionID: group.selectedId,
+        selectedSelectionLabel: group.selectedLabel,
+        price: group.price || 0,
+      };
+    });
+  }
+
+  // Transform addons from object to array format
+  if (generalOptions.addons && Object.keys(generalOptions.addons).length > 0) {
+    transformedGeneralOptions.addons = Object.entries(
+      generalOptions.addons
+    ).map(([addonId, price]: [string, any]) => {
+      return {
+        id: parseInt(addonId),
+        addonId: parseInt(addonId),
+        price: price,
+      };
+    });
+  }
+
+  // Transform answers from object to array format
+  if (generalOptions.answers) {
+    transformedGeneralOptions.answers = Object.entries(generalOptions.answers)
+      .filter(
+        ([questionId, answer]) =>
+          answer !== undefined &&
+          answer !== null &&
+          typeof answer === "string" &&
+          answer.trim() !== ""
+      )
+      .map(([questionId, answer]: [string, any]) => {
+        return {
+          id: parseInt(questionId),
+          questionId: parseInt(questionId),
+          answer: answer,
+        };
+      });
+  }
 
   // Transform subjectOptions from object with keys to array with subjectId
   const transformedSubjectOptions: ProposalSubjectOptions = Object.entries(
@@ -633,14 +679,14 @@ function transformOptions(
                 groupId: parseInt(groupId),
                 selectedSelectionID: group.selectedId,
                 selectedSelectionLabel: group.selectedLabel,
-                price: group.price,
+                price: group.price || 0,
               };
             }
           );
         }
 
         // Transform addons from object to array format
-        if (instance.addons) {
+        if (instance.addons && Object.keys(instance.addons).length > 0) {
           newInstance.addons = Object.entries(instance.addons).map(
             ([addonId, price]) => {
               return {
@@ -653,16 +699,22 @@ function transformOptions(
         }
 
         // Transform answers from object to array format
-        if (instance.answers) {
-          newInstance.answers = Object.entries(instance.answers).map(
-            ([questionId, answer]) => {
+        if (instance.answers && Object.keys(instance.answers).length > 0) {
+          newInstance.answers = Object.entries(instance.answers)
+            .filter(
+              ([questionId, answer]) =>
+                answer !== undefined &&
+                answer !== null &&
+                typeof answer === "string" &&
+                answer.trim() !== ""
+            )
+            .map(([questionId, answer]) => {
               return {
                 id: parseInt(questionId),
                 questionId: parseInt(questionId),
                 answer: answer,
               };
-            }
-          );
+            });
         }
 
         return newInstance;
@@ -670,7 +722,6 @@ function transformOptions(
     };
   });
 
-  // Return the combined object with both transformed parts
   return {
     generalOptions: transformedGeneralOptions,
     subjectOptions: transformedSubjectOptions,

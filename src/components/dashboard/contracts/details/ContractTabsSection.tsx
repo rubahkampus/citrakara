@@ -67,7 +67,7 @@ const ContractTabsSection: React.FC<ContractTabsSectionProps> = ({
   };
 
   return (
-    <Paper elevation={0} sx={{ borderRadius: 1 }}>
+    <Paper elevation={0} sx={{ borderRadius: 1 }} >
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs
           value={tabValue}

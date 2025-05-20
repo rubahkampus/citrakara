@@ -16,7 +16,16 @@ interface UploadCardProps {
   contractId: string;
   uploadType: string;
   formatDate: (date: string) => string;
-  getStatusColor: (status: string) => "default" | "primary" | "secondary" | "error" | "warning" | "success" | "info";
+  getStatusColor: (
+    status: string
+  ) =>
+    | "default"
+    | "primary"
+    | "secondary"
+    | "error"
+    | "warning"
+    | "success"
+    | "info";
   isClient: boolean;
   renderExtraContent?: (upload: any) => React.ReactNode;
 }
@@ -34,6 +43,13 @@ const UploadCard: React.FC<UploadCardProps> = ({
   const theme = useTheme();
   const actualUploadType = upload.type || uploadType;
 
+  // Function to check if upload is expired
+  const isExpired = (upload: any) => {
+    return upload.expiresAt && new Date(upload.expiresAt) < new Date();
+  };
+
+  const expired = isExpired(upload);
+
   return (
     <Paper
       elevation={1}
@@ -44,6 +60,8 @@ const UploadCard: React.FC<UploadCardProps> = ({
         borderRadius: 1,
         overflow: "hidden",
         transition: "transform 0.2s, box-shadow 0.2s",
+        opacity: expired && upload.status === 'submitted' ? 0.7 : 1,
+        backgroundColor: expired && upload.status === 'submitted' ? "rgba(0, 0, 0, 0.03)" : "background.paper",
         "&:hover": {
           transform: "translateY(-4px)",
           boxShadow: theme.shadows[4],
@@ -97,20 +115,48 @@ const UploadCard: React.FC<UploadCardProps> = ({
             </Box>
           )}
 
-          {/* Status chip */}
-          {upload.status && (
-            <Chip
-              label={upload.status}
-              color={getStatusColor(upload.status) as "default" | "primary" | "secondary" | "error" | "warning" | "success" | "info"}
-              size="small"
-              sx={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                textTransform: "capitalize",
-              }}
-            />
-          )}
+          {/* Status chips */}
+          <Box
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+              alignItems: "flex-end",
+            }}
+          >
+            {upload.status && (
+              <Chip
+                label={
+                  expired && upload.status === "submitted"
+                    ? "Auto-Accepted"
+                    : upload.status
+                }
+                color={
+                  expired && upload.status === "submitted"
+                    ? "success"
+                    : getStatusColor(upload.status)
+                }
+                size="small"
+                sx={{
+                  textTransform: "capitalize",
+                }}
+              />
+            )}
+
+            {expired && (
+              <Chip
+                label="Expired"
+                color="default"
+                size="small"
+                sx={{
+                  backgroundColor: "rgba(0,0,0,0.1)",
+                }}
+              />
+            )}
+          </Box>
 
           {/* Overlay with number of images indicator */}
           {upload.images && upload.images.length > 1 && (
@@ -141,7 +187,7 @@ const UploadCard: React.FC<UploadCardProps> = ({
         <Box
           display="flex"
           justifyContent="space-between"
-          alignItems="center"
+          alignItems="flex-start"
           mb={1}
         >
           <Typography variant="subtitle2" fontWeight="bold">
@@ -151,9 +197,26 @@ const UploadCard: React.FC<UploadCardProps> = ({
               ? "(Partial)"
               : ""}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {formatDate(upload.createdAt)}
-          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+            }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              {formatDate(upload.createdAt)}
+            </Typography>
+            {upload.expiresAt && (
+              <Typography
+                variant="caption"
+                color={expired ? "error" : "text.secondary"}
+              >
+                {expired ? "Expired: " : "Expires: "}
+                {formatDate(upload.expiresAt)}
+              </Typography>
+            )}
+          </Box>
         </Box>
 
         {upload.description && (
@@ -166,22 +229,38 @@ const UploadCard: React.FC<UploadCardProps> = ({
         {/* Render extra content if provided */}
         {renderExtraContent && renderExtraContent(upload)}
 
-        {/* Review button for clients */}
+        {/* Review button for clients or automatic acceptance message */}
         {upload.status === "submitted" && isClient && (
           <Box mt={1}>
-            <Link
-              href={`/${username}/dashboard/contracts/${contractId}/uploads/${actualUploadType}/${upload._id}?review=true`}
-              passHref
-            >
-              <Button
-                size="small"
-                variant="contained"
-                fullWidth
-                sx={{ borderRadius: 1 }}
+            {expired ? (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  textAlign: "center",
+                  p: 1,
+                  bgcolor: "background.default",
+                  borderRadius: 1,
+                  fontStyle: "italic",
+                }}
               >
-                Review
-              </Button>
-            </Link>
+                Diterima otomatis karena klien tidak membalas tepat waktu
+              </Typography>
+            ) : (
+              <Link
+                href={`/${username}/dashboard/contracts/${contractId}/uploads/${actualUploadType}/${upload._id}?review=true`}
+                passHref
+              >
+                <Button
+                  size="small"
+                  variant="contained"
+                  fullWidth
+                  sx={{ borderRadius: 1 }}
+                >
+                  Review
+                </Button>
+              </Link>
+            )}
           </Box>
         )}
       </Box>

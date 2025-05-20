@@ -1,15 +1,24 @@
 // src/lib/services/wallet.service.ts
+
 import { ClientSession, startSession } from "mongoose";
 import type { ObjectId, Cents } from "@/types/common";
-import * as walletRepo from "@/lib/db/repositories/wallet.repository";
-import * as escrowTransactionRepo from "@/lib/db/repositories/escrowTransaction.repository";
 import { connectDB } from "@/lib/db/connection";
 import { HttpError } from "./commissionListing.service";
 import { getUserContracts } from "./contract.service";
+import * as walletRepo from "@/lib/db/repositories/wallet.repository";
+import * as escrowTransactionRepo from "@/lib/db/repositories/escrowTransaction.repository";
 import { isAdminById } from "../db/repositories/user.repository";
 
+/* ======================================================================
+ * Wallet Retrieval Functions
+ * ====================================================================== */
+
 /**
- * Get a user's wallet
+ * Get a user's wallet details
+ *
+ * @param userId ID of the user whose wallet to retrieve
+ * @returns Wallet document with balance information
+ * @throws HttpError if wallet not found
  */
 export async function getUserWallet(userId: string): Promise<any> {
   const wallet = await walletRepo.findWalletByUserId(userId);
@@ -20,7 +29,11 @@ export async function getUserWallet(userId: string): Promise<any> {
 }
 
 /**
- * Get wallet summary (available, escrowed, total)
+ * Get wallet summary with available, escrowed, and total amounts
+ *
+ * @param userId ID of the user whose wallet summary to retrieve
+ * @returns Object containing available, escrowed, and total balances in cents
+ * @throws HttpError if wallet not found
  */
 export async function getWalletSummary(userId: string): Promise<{
   available: Cents;
@@ -35,8 +48,32 @@ export async function getWalletSummary(userId: string): Promise<{
 }
 
 /**
+ * Check if a user has sufficient funds for a transaction
+ *
+ * @param userId ID of the user to check funds for
+ * @param amount Amount in cents to check availability
+ * @returns Boolean indicating whether the user has sufficient funds
+ */
+export async function checkSufficientFunds(
+  userId: string,
+  amount: Cents
+): Promise<boolean> {
+  return walletRepo.hasSufficientFunds(userId, amount);
+}
+
+/* ======================================================================
+ * Wallet Management Functions
+ * ====================================================================== */
+
+/**
  * Add funds to a user's wallet
  * This might be connected to a payment gateway in a real implementation
+ *
+ * @param userId ID of the user to add funds for
+ * @param amount Amount in cents to add to the wallet
+ * @param clientSession Optional Mongoose session for transaction management
+ * @returns Updated wallet document
+ * @throws HttpError if amount is invalid or wallet not found
  */
 export async function addFundsToWallet(
   userId: string,
@@ -82,55 +119,12 @@ export async function addFundsToWallet(
 }
 
 /**
- * Check if a user has sufficient funds
- */
-export async function checkSufficientFunds(
-  userId: string,
-  amount: Cents
-): Promise<boolean> {
-  return walletRepo.hasSufficientFunds(userId, amount);
-}
-
-/**
- * Get all transactions for a user
- */
-export async function getTransactions(userId: string): Promise<any[]> {
-  // Find all contracts associated with this user
-  // This would need to be implemented based on your data structure
-  const contracts = await getUserContracts(userId); // This would be populated from contract repository
-  const mergedContracts = [...contracts.asArtist, ...contracts.asClient];
-
-  // Get transactions from all contracts
-  const transactions = [];
-  for (const contract of mergedContracts) {
-    const contractTransactions =
-      await escrowTransactionRepo.findEscrowTransactionsByContract(
-        contract._id
-      );
-
-    // Filter transactions relevant to this user
-    for (const tx of contractTransactions) {
-      const isRelevant =
-        (tx.from === "client" && contract.clientId.toString() === userId) ||
-        (tx.to === "artist" && contract.artistId.toString() === userId) ||
-        (tx.to === "client" && contract.clientId.toString() === userId);
-
-      if (isRelevant) {
-        transactions.push({
-          ...tx.toObject(),
-          contractId: contract.id,
-        });
-      }
-    }
-  }
-
-  return transactions.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-}
-/**
  * Create or update a wallet for a user
  * Typically called during user registration
+ *
+ * @param userId ID of the user to ensure wallet exists for
+ * @returns Wallet document (either existing or newly created)
+ * @throws Error if wallet creation fails
  */
 export async function ensureWalletExists(userId: string): Promise<any> {
   await connectDB();
@@ -159,6 +153,13 @@ export async function ensureWalletExists(userId: string): Promise<any> {
 
 /**
  * Move funds between users (admin only)
+ *
+ * @param fromUserId ID of the user to transfer funds from
+ * @param toUserId ID of the user to transfer funds to
+ * @param amount Amount in cents to transfer
+ * @param adminId ID of the admin performing the transfer
+ * @param reason Reason for the transfer
+ * @throws HttpError if permissions invalid, insufficient funds, or other error
  */
 export async function transferBetweenUsers(
   fromUserId: string,
@@ -173,7 +174,7 @@ export async function transferBetweenUsers(
   try {
     session.startTransaction();
 
-    // Verify admin permissions (to be implemented)
+    // Verify admin permissions
     const isAdmin = isAdminById(adminId);
     if (!isAdmin) {
       throw new HttpError(
@@ -215,4 +216,49 @@ export async function transferBetweenUsers(
   } finally {
     session.endSession();
   }
+}
+
+/* ======================================================================
+ * Transaction History Functions
+ * ====================================================================== */
+
+/**
+ * Get all transactions for a user across all contracts
+ *
+ * @param userId ID of the user to get transactions for
+ * @returns Array of transaction records relevant to the user
+ */
+export async function getTransactions(userId: string): Promise<any[]> {
+  // Find all contracts associated with this user
+  const contracts = await getUserContracts(userId);
+  const mergedContracts = [...contracts.asArtist, ...contracts.asClient];
+
+  // Get transactions from all contracts
+  const transactions = [];
+  for (const contract of mergedContracts) {
+    const contractTransactions =
+      await escrowTransactionRepo.findEscrowTransactionsByContract(
+        contract._id
+      );
+
+    // Filter transactions relevant to this user
+    for (const tx of contractTransactions) {
+      const isRelevant =
+        (tx.from === "client" && contract.clientId.toString() === userId) ||
+        (tx.to === "artist" && contract.artistId.toString() === userId) ||
+        (tx.to === "client" && contract.clientId.toString() === userId);
+
+      if (isRelevant) {
+        transactions.push({
+          ...tx.toObject(),
+          contractId: contract.id,
+        });
+      }
+    }
+  }
+
+  // Sort by date descending (most recent first)
+  return transactions.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 }

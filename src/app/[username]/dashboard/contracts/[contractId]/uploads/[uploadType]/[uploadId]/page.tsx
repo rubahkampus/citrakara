@@ -1,5 +1,12 @@
 // src/app/[username]/dashboard/contracts/[contractId]/uploads/[uploadType]/[uploadId]/page.tsx
-import { Box, Alert, Typography, Button } from "@mui/material";
+import {
+  Box,
+  Alert,
+  Typography,
+  Button,
+  Link,
+  Breadcrumbs,
+} from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getContractById } from "@/lib/services/contract.service";
 import {
@@ -19,6 +26,13 @@ import ProgressUploadDetails from "@/components/dashboard/contracts/uploads/Prog
 import MilestoneUploadDetails from "@/components/dashboard/contracts/uploads/MilestoneUploadDetails";
 import RevisionUploadDetails from "@/components/dashboard/contracts/uploads/RevisionUploadDetails";
 import FinalUploadDetails from "@/components/dashboard/contracts/uploads/FinalUploadDetails";
+import {
+  NavigateNext,
+  Home,
+  PaletteRounded,
+  CloudUploadRounded,
+  ArrowBack,
+} from "@mui/icons-material";
 
 interface UploadDetailsPageProps {
   params: {
@@ -83,7 +97,14 @@ export default async function UploadDetailsPage({
   const serializedContract = JSON.parse(JSON.stringify(contract));
   const serializedUpload = JSON.parse(JSON.stringify(upload));
 
-  // Check if the client can review this upload
+  // Check if the upload is expired
+  const currentTime = new Date();
+  const isExpired =
+    "expiresAt" in upload &&
+    upload.expiresAt &&
+    new Date(upload.expiresAt) <= currentTime;
+
+  // Log debug information
   console.log("isClient:", isClient);
   console.log("uploadType:", uploadType);
   console.log("upload:", upload);
@@ -101,7 +122,9 @@ export default async function UploadDetailsPage({
     "upload.status:",
     (upload as IProgressUploadMilestone | IFinalUpload | IRevisionUpload).status
   );
+  console.log("isExpired:", isExpired);
 
+  // Check if the client can review this upload (including expiry check)
   const canReview =
     isClient &&
     ((uploadType === "milestone" &&
@@ -110,7 +133,8 @@ export default async function UploadDetailsPage({
       uploadType === "final") &&
     "expiresAt" in upload &&
     "status" in upload &&
-    upload.status === "submitted";
+    upload.status === "submitted" &&
+    !isExpired; // Add expiry check here
 
   console.log(isClient);
   console.log(
@@ -145,12 +169,97 @@ export default async function UploadDetailsPage({
   // }
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        {uploadType === "milestone" && "Milestone Progress Upload"}
-        {uploadType === "revision" && "Revision Upload"}
-        {uploadType === "final" && "Final Delivery"}
-      </Typography>
+    <Box py={4}>
+      {/* Show non-blocking expired alert if needed for client */}
+      {isExpired && isClient && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Anda terlalu lama meresponnya dan unggahan ini telah diterima secara
+          otomatis. Batas waktu untuk meninjau telah berakhir.
+        </Alert>
+      )}
+
+      {/* Header section */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/contracts`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <PaletteRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Daftar Kontrak
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/contracts/${contractId}`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Detail Kontrak
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/contracts/${contractId}/uploads`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Daftar Unggahan
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Detail Unggahan
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5} mb={2}>
+            <CloudUploadRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              Detail Unggahan
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard/contracts/${contractId}/uploads`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+        >
+          Kembali ke Daftar Unggahan
+        </Button>
+      </Box>
 
       {uploadType === "milestone" && (
         <MilestoneUploadDetails
@@ -174,6 +283,7 @@ export default async function UploadDetailsPage({
           isClient={isClient}
           isAdmin={false}
           canReview={canReview}
+          username={(session as Session).username}
         />
       )}
 

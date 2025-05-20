@@ -31,6 +31,7 @@ interface RevisionTicketFormProps {
   userId: string;
   username: string;
   isClient: boolean;
+  unresolvedQty: number
 }
 
 interface FormValues {
@@ -43,6 +44,7 @@ export default function RevisionTicketForm({
   userId,
   username,
   isClient,
+  unresolvedQty
 }: RevisionTicketFormProps) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
@@ -52,16 +54,20 @@ export default function RevisionTicketForm({
   const [success, setSuccess] = useState(false);
   const [revisionInfo, setRevisionInfo] = useState<{
     type: string;
+    isRevisionAllowed: boolean;
     isFree: boolean;
     remainingFree: number;
     isPaid: boolean;
     fee: number;
+    isAllowedPaid: boolean
   }>({
     type: "",
+    isRevisionAllowed: true,
     isFree: true,
     remainingFree: 0,
     isPaid: false,
     fee: 0,
+    isAllowedPaid: false
   });
 
   const {
@@ -95,6 +101,11 @@ export default function RevisionTicketForm({
 
   // Determine revision policy on load and when milestone changes
   useEffect(() => {
+    console.log("Updated revisionInfo:", revisionInfo);
+  }, [revisionInfo]);
+
+  // Fix the main revisionInfo calculation:
+  useEffect(() => {
     const getRevisionInfo = () => {
       const revisionType =
         contract.proposalSnapshot.listingSnapshot.revisions?.type || "none";
@@ -103,10 +114,12 @@ export default function RevisionTicketForm({
       if (revisionType === "none") {
         return {
           type: "none",
+          isRevisionAllowed: false,
           isFree: false,
           remainingFree: 0,
           isPaid: false,
           fee: 0,
+          isAllowedPaid: false
         };
       }
 
@@ -122,10 +135,12 @@ export default function RevisionTicketForm({
 
         return {
           type: "standard",
+          isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed), // FIX: Logic reversed
           isFree: remainingFree > 0,
           remainingFree,
-          isPaid: remainingFree === 0 && policy.extraAllowed,
+          isPaid: remainingFree === 0 && policy.extraAllowed, // This is correct
           fee: policy.fee || 0,
+          isAllowedPaid: !((remainingFree === 0 && policy.extraAllowed) && unresolvedQty === policy.free && revisionsDone === policy.free)
         };
       }
 
@@ -137,10 +152,12 @@ export default function RevisionTicketForm({
         if (!milestone || !milestone.revisionPolicy) {
           return {
             type: "milestone",
+            isRevisionAllowed: false,
             isFree: false,
             remainingFree: 0,
             isPaid: false,
             fee: 0,
+            isAllowedPaid: false
           };
         }
 
@@ -148,21 +165,28 @@ export default function RevisionTicketForm({
         const revisionsDone = milestone.revisionDone || 0;
         const remainingFree = Math.max(0, policy.free - revisionsDone);
 
+        // Calculate this as a plain boolean, don't store in a variable with the same name
+        const shouldBePaid = remainingFree === 0 && policy.extraAllowed;
+
         return {
           type: "milestone",
+          isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed), // FIX: Logic reversed
           isFree: remainingFree > 0,
           remainingFree,
-          isPaid: remainingFree === 0 && policy.extraAllowed,
+          isPaid: shouldBePaid, // Use the calculated boolean directly
           fee: policy.fee || 0,
+          isAllowedPaid: !((remainingFree === 0 && policy.extraAllowed) && unresolvedQty === policy.free && revisionsDone === policy.free)
         };
       }
 
       return {
         type: revisionType,
+        isRevisionAllowed: false,
         isFree: false,
         remainingFree: 0,
         isPaid: false,
         fee: 0,
+        isAllowedPaid: false
       };
     };
 
@@ -257,6 +281,32 @@ export default function RevisionTicketForm({
   if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
     return (
       <Alert severity="error">Kontrak ini tidak mengizinkan revisi.</Alert>
+    );
+  }
+
+  // Periksa apakah revisi diperbolehkan
+  if (
+    contract.proposalSnapshot.listingSnapshot.revisions?.type === "milestone" &&
+    !revisionInfo.isRevisionAllowed
+  ) {
+    return (
+      <Alert severity="error">
+        Milestone{" "}
+        {contract.milestones?.[parseInt(watchMilestoneIdx || "0")].title ||
+          "ini"}{" "}
+        tidak mengizinkan revisi.
+      </Alert>
+    );
+  }
+
+  // Periksa apakah revisi diperbolehkan
+  if (
+    !revisionInfo.isAllowedPaid
+  ) {
+    return (
+      <Alert severity="error">
+        Masih terdapat permintaan jatah revisi gratis yang memerlukan tindak lanjut seniman sebelum Anda dapat menggunakan jatah berbayar.
+      </Alert>
     );
   }
 
@@ -471,7 +521,8 @@ export default function RevisionTicketForm({
                   helperText={errors.description?.message}
                   disabled={
                     isSubmitting ||
-                    (!revisionInfo.isFree && !revisionInfo.isPaid)
+                    (!revisionInfo.isFree && !revisionInfo.isPaid) ||
+                    !revisionInfo.isRevisionAllowed
                   }
                 />
               )}
@@ -509,7 +560,8 @@ export default function RevisionTicketForm({
                   disabled={
                     isSubmitting ||
                     (!revisionInfo.isFree && !revisionInfo.isPaid) ||
-                    files.length >= 5
+                    files.length >= 5 ||
+                    !revisionInfo.isRevisionAllowed
                   }
                 />
               </Button>
@@ -571,7 +623,9 @@ export default function RevisionTicketForm({
               variant="contained"
               color="primary"
               disabled={
-                isSubmitting || (!revisionInfo.isFree && !revisionInfo.isPaid)
+                isSubmitting ||
+                (!revisionInfo.isFree && !revisionInfo.isPaid) ||
+                !revisionInfo.isRevisionAllowed
               }
               sx={{ minWidth: 120 }}
             >

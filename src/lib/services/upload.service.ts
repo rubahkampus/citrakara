@@ -15,8 +15,18 @@ import {
 import { connectDB } from "../db/connection";
 import { isUserAdminById } from "./user.service";
 
+//=============================================================================
+// CREATE UPLOAD FUNCTIONS
+//=============================================================================
+
 /**
  * Create a standard progress upload using FormData
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user creating the upload (must be artist)
+ * @param form - FormData containing images, description, etc.
+ * @returns The created upload object
+ * @throws HttpError if validation fails or user doesn't have permission
  */
 export async function createProgressUploadStandard(
   contractId: string | ObjectId,
@@ -104,6 +114,12 @@ export async function createProgressUploadStandard(
 
 /**
  * Create a milestone progress upload using FormData
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user creating the upload (must be artist)
+ * @param form - FormData containing images, description, milestoneIdx, isFinal
+ * @returns The created upload object
+ * @throws HttpError if validation fails or user doesn't have permission
  */
 export async function createProgressUploadMilestone(
   contractId: string | ObjectId,
@@ -225,6 +241,12 @@ export async function createProgressUploadMilestone(
 
 /**
  * Create a revision upload using FormData
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user creating the upload (must be artist)
+ * @param form - FormData containing images, description, revisionTicketId
+ * @returns The created upload object
+ * @throws HttpError if validation fails or user doesn't have permission
  */
 export async function createRevisionUpload(
   contractId: string | ObjectId,
@@ -324,8 +346,15 @@ export async function createRevisionUpload(
     session.endSession();
   }
 }
+
 /**
  * Create a final upload using FormData
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user creating the upload (must be artist)
+ * @param form - FormData containing images, description, workProgress, optional cancelTicketId
+ * @returns The created upload object
+ * @throws HttpError if validation fails or user doesn't have permission
  */
 export async function createFinalUpload(
   contractId: string | ObjectId,
@@ -454,14 +483,19 @@ export async function createFinalUpload(
   }
 }
 
+//=============================================================================
+// GET UPLOAD FUNCTIONS
+//=============================================================================
+
 /**
  * Get an upload based on its type and ID, with permission checks
- * @param uploadType The type of upload (milestone, revision, or final)
- * @param uploadId The ID of the upload
- * @param contractId The ID of the contract the upload should belong to
- * @param userId The ID of the requesting user
- * @param userRole Optional - if provided, will specifically check for this role
+ *
+ * @param uploadType - The type of upload (milestone, revision, or final)
+ * @param uploadId - The ID of the upload
+ * @param contractId - The ID of the contract the upload should belong to
+ * @param userId - The ID of the requesting user
  * @returns The upload if found and user has access
+ * @throws HttpError if upload not found or user doesn't have permission
  */
 export async function getUpload(
   uploadType: "milestone" | "revision" | "final",
@@ -481,7 +515,7 @@ export async function getUpload(
     // Check if user has permission to view this contract
     const isClient = contract.clientId.toString() === userId;
     const isArtist = contract.artistId.toString() === userId;
-    const isAdmin = await isUserAdminById(userId); // Assuming there's a userService to check admin status
+    const isAdmin = await isUserAdminById(userId);
 
     if (!isClient && !isArtist && !isAdmin) {
       throw new HttpError("You don't have permission to view this upload", 403);
@@ -521,7 +555,98 @@ export async function getUpload(
 }
 
 /**
+ * Get all uploads for a contract (grouped by type)
+ *
+ * @param contractId - ID of the contract
+ * @returns Object containing arrays of different upload types
+ */
+export async function getContractUploads(
+  contractId: string | ObjectId
+): Promise<{
+  progressStandard: any[];
+  progressMilestone: any[];
+  revision: any[];
+  final: any[];
+}> {
+  const [progressStandard, progressMilestone, finalUploads] = await Promise.all(
+    [
+      uploadRepo.findProgressUploadStandardByContract(contractId),
+      uploadRepo.findProgressUploadMilestoneByContract(contractId),
+      uploadRepo.findFinalUploadsByContract(contractId),
+    ]
+  );
+
+  // For revision uploads, we need the contract to get the tickets
+  const contract = await contractRepo.findContractById(contractId, {
+    populate: ["revisionTickets"],
+  });
+
+  // Get all revision tickets and their uploads
+  const revisionUploads = [];
+  if (
+    contract &&
+    contract.revisionTickets &&
+    contract.revisionTickets.length > 0
+  ) {
+    for (const ticketId of contract.revisionTickets) {
+      const uploads = await uploadRepo.findRevisionUploadsByTicket(
+        ticketId._id
+      );
+      revisionUploads.push(...uploads);
+    }
+  }
+
+  return {
+    progressStandard,
+    progressMilestone,
+    revision: revisionUploads,
+    final: finalUploads,
+  };
+}
+
+/**
+ * Get uploads for a specific milestone
+ *
+ * @param contractId - ID of the contract
+ * @param milestoneIdx - Index of the milestone
+ * @returns Array of milestone uploads
+ */
+export async function getMilestoneUploads(
+  contractId: string | ObjectId,
+  milestoneIdx: number
+): Promise<any[]> {
+  return uploadRepo.findProgressUploadMilestoneByMilestone(
+    contractId,
+    milestoneIdx
+  );
+}
+
+/**
+ * Get revision uploads for a specific ticket
+ *
+ * @param revisionTicketId - ID of the revision ticket
+ * @returns Array of revision uploads for the ticket
+ */
+export async function getRevisionUploads(
+  revisionTicketId: string | ObjectId
+): Promise<any[]> {
+  return uploadRepo.findRevisionUploadsByTicket(revisionTicketId);
+}
+
+//=============================================================================
+// UPLOAD REVIEW FUNCTIONS
+//=============================================================================
+
+/**
  * Review an upload (milestone, revision, or final)
+ *
+ * @param uploadType - The type of upload (milestone, revision, or final)
+ * @param uploadId - The ID of the upload
+ * @param contractId - The ID of the contract the upload belongs to
+ * @param userId - The ID of the reviewing user (must be client)
+ * @param action - Accept or reject the upload
+ * @returns Object containing the updated upload and action taken
+ * @throws HttpError if upload not found or user doesn't have permission
  */
 export async function reviewUpload(
   uploadType: "milestone" | "revision" | "final",
@@ -681,76 +806,10 @@ export async function reviewUpload(
 }
 
 /**
- * Get all uploads for a contract (grouped by type)
- */
-export async function getContractUploads(
-  contractId: string | ObjectId
-): Promise<{
-  progressStandard: any[];
-  progressMilestone: any[];
-  revision: any[];
-  final: any[];
-}> {
-  const [progressStandard, progressMilestone, finalUploads] = await Promise.all(
-    [
-      uploadRepo.findProgressUploadStandardByContract(contractId),
-      uploadRepo.findProgressUploadMilestoneByContract(contractId),
-      uploadRepo.findFinalUploadsByContract(contractId),
-    ]
-  );
-
-  // For revision uploads, we need the contract to get the tickets
-  const contract = await contractRepo.findContractById(contractId, {
-    populate: ["revisionTickets"],
-  });
-
-  // Get all revision tickets and their uploads
-  const revisionUploads = [];
-  if (
-    contract &&
-    contract.revisionTickets &&
-    contract.revisionTickets.length > 0
-  ) {
-    for (const ticketId of contract.revisionTickets) {
-      const uploads = await uploadRepo.findRevisionUploadsByTicket(
-        ticketId._id
-      );
-      revisionUploads.push(...uploads);
-    }
-  }
-
-  return {
-    progressStandard,
-    progressMilestone,
-    revision: revisionUploads,
-    final: finalUploads,
-  };
-}
-
-/**
- * Get uploads for a specific milestone
- */
-export async function getMilestoneUploads(
-  contractId: string | ObjectId,
-  milestoneIdx: number
-): Promise<any[]> {
-  return uploadRepo.findProgressUploadMilestoneByMilestone(
-    contractId,
-    milestoneIdx
-  );
-}
-
-/**
- * Get revision uploads for a specific ticket
- */
-export async function getRevisionUploads(
-  revisionTicketId: string | ObjectId
-): Promise<any[]> {
-  return uploadRepo.findRevisionUploadsByTicket(revisionTicketId);
-}
-
-/**
  * Check if an upload is past its review deadline
+ *
+ * @param upload - The upload object to check
+ * @returns True if the upload is past its review deadline
  */
 export function isUploadPastDeadline(upload: any): boolean {
   return upload.expiresAt && new Date(upload.expiresAt) < new Date();
@@ -758,6 +817,12 @@ export function isUploadPastDeadline(upload: any): boolean {
 
 /**
  * Auto-accept an upload that is past its review deadline
+ *
+ * @param uploadType - The type of upload (milestone, revision, or final)
+ * @param uploadId - The ID of the upload
+ * @param contractId - The ID of the contract the upload belongs to
+ * @returns Result of the auto-acceptance process
+ * @throws HttpError if upload not found or not eligible for auto-acceptance
  */
 export async function autoAcceptExpiredUpload(
   uploadType: "milestone" | "revision" | "final",
@@ -819,9 +884,14 @@ export async function autoAcceptExpiredUpload(
   }
 }
 
+//=============================================================================
+// UNFINISHED UPLOAD UTILITY FUNCTIONS
+//=============================================================================
+
 /**
  * Find unfinished revision uploads
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of unfinished revision uploads
  */
 export async function getUnfinishedRevisionUploads(
@@ -829,19 +899,23 @@ export async function getUnfinishedRevisionUploads(
 ): Promise<IRevisionUpload[]> {
   await connectDB();
 
+  const currentTime = new Date();
   const revisionUploads = await uploadRepo.findRevisionUploadsByContract(
     contractId
   );
 
-  // Filter for uploads in submitted or disputed status
+  // Filter for uploads in submitted or disputed status that haven't expired
   return revisionUploads.filter(
-    (upload) => upload.status === "submitted" || upload.status === "disputed"
+    (upload) =>
+      (upload.status === "submitted" || upload.status === "disputed") &&
+      (!upload.expiresAt || upload.expiresAt > currentTime)
   );
 }
 
 /**
  * Find unfinished final uploads
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of unfinished final uploads
  */
 export async function getUnfinishedFinalUploads(
@@ -849,18 +923,22 @@ export async function getUnfinishedFinalUploads(
 ): Promise<IFinalUpload[]> {
   await connectDB();
 
+  const currentTime = new Date();
   const finalUploads = await uploadRepo.findFinalUploadsByContract(contractId);
 
-  // Filter for uploads in submitted or disputed status
+  // Filter for uploads in submitted or disputed status that haven't expired
   return finalUploads.filter(
-    (upload) => upload.status === "submitted" || upload.status === "disputed"
+    (upload) =>
+      (upload.status === "submitted" || upload.status === "disputed") &&
+      (!upload.expiresAt || upload.expiresAt > currentTime)
   );
 }
 
 /**
  * Find unfinished final milestone uploads
- * @param contractId Contract ID to check
- * @param milestoneIdx Optional milestone index to check specifically
+ *
+ * @param contractId - Contract ID to check
+ * @param milestoneIdx - Optional milestone index to check specifically
  * @returns Array of unfinished final milestone uploads
  */
 export async function getUnfinishedFinalMilestoneUploads(
@@ -869,21 +947,26 @@ export async function getUnfinishedFinalMilestoneUploads(
 ): Promise<IProgressUploadMilestone[]> {
   await connectDB();
 
+  const currentTime = new Date();
   const uploads = await uploadRepo.findProgressUploadMilestoneByContract(
     contractId
   );
 
-  // Filter for final milestone uploads that are in submitted or disputed status
+  // Filter for final milestone uploads that are in submitted or disputed status and haven't expired
   return uploads.filter(
     (upload) =>
       upload.isFinal &&
       (upload.status === "submitted" || upload.status === "disputed") &&
+      (!upload.expiresAt || upload.expiresAt > currentTime) &&
       (milestoneIdx === undefined || upload.milestoneIdx === milestoneIdx)
   );
 }
 
 /**
  * Check if there are unfinished revision uploads
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are unfinished revision uploads
  */
 export async function hasUnfinishedRevisionUpload(
   contractId: string | ObjectId
@@ -894,6 +977,9 @@ export async function hasUnfinishedRevisionUpload(
 
 /**
  * Check if there are unfinished final uploads
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are unfinished final uploads
  */
 export async function hasUnfinishedFinalUpload(
   contractId: string | ObjectId
@@ -904,6 +990,10 @@ export async function hasUnfinishedFinalUpload(
 
 /**
  * Check if there are unfinished final milestone uploads
+ *
+ * @param contractId - Contract ID to check
+ * @param milestoneIdx - Optional milestone index to check specifically
+ * @returns True if there are unfinished final milestone uploads
  */
 export async function hasUnfinishedFinalMilestoneUpload(
   contractId: string | ObjectId,

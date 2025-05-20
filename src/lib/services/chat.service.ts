@@ -1,3 +1,6 @@
+// src/lib/services/chat.service.ts
+import { Types } from "mongoose";
+import { v4 as uuid } from "uuid";
 import {
   findOrCreateConversation,
   addMessage,
@@ -12,13 +15,15 @@ import {
   findUserById,
 } from "@/lib/db/repositories/user.repository";
 import { uploadFileToR2 } from "@/lib/utils/cloudflare";
-import { v4 as uuid } from "uuid";
-import { Types } from "mongoose";
 import { HttpError } from "@/lib/services/commissionListing.service";
 import { IMessage } from "../db/models/chat.model";
 
 /**
- * Service function to create or retrieve a conversation between two users
+ * Create or retrieve a conversation between two users
+ * @param userId1 ID of the first user in the conversation
+ * @param userId2 ID of the second user in the conversation
+ * @returns The conversation object
+ * @throws HttpError if conversation creation fails
  */
 export async function getOrStartConversation(userId1: string, userId2: string) {
   try {
@@ -29,7 +34,10 @@ export async function getOrStartConversation(userId1: string, userId2: string) {
 }
 
 /**
- * Service function to get a conversation by ID with participant details
+ * Get a conversation by ID with participant details
+ * @param conversationId ID of the conversation to retrieve
+ * @returns The conversation with its messages and participants
+ * @throws HttpError if conversation not found or retrieval fails
  */
 export async function getChatConversation(conversationId: string) {
   try {
@@ -45,7 +53,10 @@ export async function getChatConversation(conversationId: string) {
 }
 
 /**
- * Service function to get all conversations for a user
+ * Get all conversations for a user with additional metadata
+ * @param userId User ID to get conversations for
+ * @returns Array of conversations with other participant info and unread counts
+ * @throws HttpError if retrieval fails
  */
 export async function getUserChatList(userId: string) {
   try {
@@ -81,7 +92,13 @@ export async function getUserChatList(userId: string) {
 }
 
 /**
- * Service function to send a message
+ * Send a message in a conversation with optional image attachments
+ * @param senderId ID of the user sending the message
+ * @param conversationId ID of the conversation
+ * @param content Text content of the message
+ * @param imageFiles Optional array of image files to attach
+ * @returns Object containing updated conversation and the new message
+ * @throws HttpError if message sending fails
  */
 export async function sendMessage(
   senderId: string,
@@ -122,7 +139,11 @@ export async function sendMessage(
 }
 
 /**
- * Service function to mark messages as read
+ * Mark all messages in a conversation as read for a specific user
+ * @param userId User ID marking messages as read
+ * @param conversationId ID of the conversation
+ * @returns The updated conversation
+ * @throws HttpError if operation fails
  */
 export async function markMessagesAsRead(
   userId: string,
@@ -136,7 +157,10 @@ export async function markMessagesAsRead(
 }
 
 /**
- * Service function to get total unread message count for a user
+ * Get total unread message count across all conversations for a user
+ * @param userId User ID to check unread messages for
+ * @returns Total count of unread messages
+ * @throws HttpError if count operation fails
  */
 export async function getUnreadMessageCount(userId: string) {
   try {
@@ -147,7 +171,11 @@ export async function getUnreadMessageCount(userId: string) {
 }
 
 /**
- * Service function to start a conversation by username
+ * Start a conversation with a user by their username
+ * @param currentUserId ID of the current user
+ * @param targetUsername Username of the user to start conversation with
+ * @returns Object with conversation ID and target user details
+ * @throws HttpError if target user not found or conversation creation fails
  */
 export async function startConversationByUsername(
   currentUserId: string,
@@ -187,7 +215,10 @@ export async function startConversationByUsername(
 }
 
 /**
- * Find chat participants by conversation ID
+ * Get participants in a conversation
+ * @param conversationId ID of the conversation
+ * @returns Array of participant user objects
+ * @throws HttpError if conversation not found or retrieval fails
  */
 export async function getChatParticipants(conversationId: string) {
   try {
@@ -204,7 +235,10 @@ export async function getChatParticipants(conversationId: string) {
 }
 
 /**
- * Check if user is part of conversation
+ * Check if a user is part of a conversation
+ * @param userId User ID to check
+ * @param conversationId Conversation ID to check
+ * @returns Boolean indicating if user is a participant in the conversation
  */
 export async function isUserInConversation(
   userId: string,

@@ -115,7 +115,38 @@ const ContractFinancialsTable: React.FC<ContractFinancialsTableProps> = ({
           </TableRow>
 
           {/* Dynamic Finance Items */}
-          {financeItems.map((item, index) => renderLineItem(item))}
+          {financeItems.map((item, index) =>
+            item.amount > 0 ? (
+              <TableRow key={`finance-item-${index}`}>
+                <TableCell component="th" scope="row">
+                  <Box display="flex" alignItems="center">
+                    {item.isAddition && (
+                      <AddCircleIcon
+                        fontSize="small"
+                        color="success"
+                        sx={iconStyle}
+                      />
+                    )}
+                    {item.isDeduction && (
+                      <RemoveCircleIcon
+                        fontSize="small"
+                        color="error"
+                        sx={iconStyle}
+                      />
+                    )}
+                    {item.label}
+                  </Box>
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={item.isDeduction ? { color: "error.main" } : undefined}
+                >
+                  {item.isDeduction ? "-" : ""}
+                  {formatCurrency(item.amount)}
+                </TableCell>
+              </TableRow>
+            ) : null
+          )}
 
           {/* Total Row */}
           <TableRow sx={{ backgroundColor: "#f5f5f5" }}>

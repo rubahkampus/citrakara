@@ -73,7 +73,25 @@ export default function MilestoneUploadForm({
   const milestone = contract.milestones?.[milestoneIdx];
 
   if (!milestone) {
-    return <Alert severity="error">Milestone not found</Alert>;
+    return <Alert severity="error">Milestone tidak ditemukan</Alert>;
+  }
+
+  if (milestoneIdx < (contract?.currentMilestoneIndex ?? 0)) {
+    return <Alert severity="error">Milestone {milestone.title} telah diselesaikan</Alert>;
+  }
+
+  if (milestoneIdx > (contract?.currentMilestoneIndex ?? 999)) {
+    const currentMilestoneTitle =
+      contract.currentMilestoneIndex !== undefined &&
+      contract.milestones &&
+      contract.milestones[contract.currentMilestoneIndex]
+        ? contract.milestones[contract.currentMilestoneIndex].title
+        : "milestone sebelumnya";
+    return (
+      <Alert severity="error">
+        Harap selesaikan {currentMilestoneTitle} terlebih dahulu
+      </Alert>
+    );
   }
 
   // Handle file input change

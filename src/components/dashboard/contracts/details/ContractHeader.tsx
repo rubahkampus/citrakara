@@ -38,56 +38,6 @@ const ContractHeader: React.FC<ContractHeaderProps> = ({
 
   return (
     <>
-      <Box sx={{ mb: 3 }}>
-        <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
-          <Link
-            component={Link}
-            href={`/${username}/dashboard`}
-            underline="hover"
-            color="inherit"
-            sx={linkStyle}
-          >
-            <Home fontSize="small" sx={iconStyle} />
-            Dasbor
-          </Link>
-          <Link
-            component={Link}
-            href={`/${username}/dashboard/contracts`}
-            underline="hover"
-            color="inherit"
-            sx={linkStyle}
-          >
-            <LocalAtm fontSize="small" sx={iconStyle} />
-            Kontrak
-          </Link>
-          <Typography color="text.primary" sx={linkStyle}>
-            Detail Kontrak
-          </Typography>
-        </Breadcrumbs>
-
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mt: 2,
-          }}
-        >
-          <Typography variant="h5" fontWeight="500">
-            Detail Kontrak
-          </Typography>
-          <Button
-            component={Link}
-            href={`/${username}/dashboard/wallet`}
-            variant="outlined"
-            startIcon={<ArrowBack />}
-            size="small"
-          >
-            Kembali ke Kontrak
-          </Button>
-        </Box>
-      </Box>
-
       <Box
         display="flex"
         justifyContent="space-between"

@@ -28,6 +28,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import InfoIcon from "@mui/icons-material/Info";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import WarningIcon from "@mui/icons-material/Warning";
 import { IContract } from "@/lib/db/models/contract.model";
 import { IRevisionUpload } from "@/lib/db/models/upload.model";
 import { IRevisionTicket } from "@/lib/db/models/ticket.model";
@@ -40,6 +41,7 @@ interface RevisionUploadDetailsProps {
   isClient: boolean;
   isAdmin: boolean;
   canReview: boolean;
+  username: string;
 }
 
 interface ReviewFormValues {
@@ -54,6 +56,7 @@ export default function RevisionUploadDetails({
   isClient,
   isAdmin,
   canReview,
+  username,
 }: RevisionUploadDetailsProps) {
   const router = useRouter();
   const [ticket, setTicket] = useState<IRevisionTicket | null>(null);
@@ -61,6 +64,7 @@ export default function RevisionUploadDetails({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [reviewAction, setReviewAction] = useState<"accept" | "reject" | null>(
     null
   );
@@ -83,7 +87,7 @@ export default function RevisionUploadDetails({
     const fetchTicket = async () => {
       try {
         const response = await axiosClient.get(
-          `/api/contract/${contract._id}/tickets/revision?ticketId=${upload.revisionTicketId}`
+          `/api/contract/${contract._id}/tickets/revision/${upload.revisionTicketId}`
         );
         setTicket(response.data.ticket);
       } catch (err) {
@@ -163,6 +167,19 @@ export default function RevisionUploadDetails({
   // Check if upload is past deadline
   const isPastDeadline =
     upload.expiresAt && new Date(upload.expiresAt) < new Date();
+
+  // Handle escalation request
+  const handleEscalation = () => {
+    setShowEscalateDialog(true);
+  };
+
+  // Confirm escalation
+  const confirmEscalation = () => {
+    setShowEscalateDialog(false);
+    router.push(
+      `/${username}/dashboard/contracts/${contract._id}/resolution/new?targetType=milestone&targetId=${upload._id}`
+    );
+  };
 
   if (isLoading) {
     return (
@@ -475,7 +492,35 @@ export default function RevisionUploadDetails({
         </Box>
       )}
 
-      {/* Riwayat Status */}
+      {/* Bagian Eskalasi ke Resolusi */}
+      {(isClient || isArtist) && upload.status && (
+        <Box sx={{ mt: 4 }}>
+          <Divider sx={{ mb: 3 }} />
+          <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+            Tidak puas dengan prosesnya?
+          </Typography>
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={handleEscalation}
+            disabled={isAdmin || isSubmitting}
+            startIcon={<WarningIcon />}
+          >
+            Eskalasi ke Resolusi
+          </Button>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 1 }}
+          >
+            Eskalasi akan ditinjau oleh tim dukungan kami untuk membantu
+            menyelesaikan masalah.
+          </Typography>
+        </Box>
+      )}
+
+      {/* Riwayat Status
       <Box>
         <Typography variant="h6" fontWeight="medium" sx={{ mb: 1.5 }}>
           Timeline Status
@@ -535,7 +580,7 @@ export default function RevisionUploadDetails({
             )}
           </Grid>
         </Box>
-      </Box>
+      </Box> */}
 
       {/* Dialog Konfirmasi */}
       <Dialog
@@ -571,6 +616,49 @@ export default function RevisionUploadDetails({
               : reviewAction === "accept"
               ? "Ya, Terima"
               : "Ya, Tolak"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Eskalasi */}
+      <Dialog
+        open={showEscalateDialog}
+        onClose={() => setShowEscalateDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <WarningIcon sx={{ mr: 1, color: "warning.main" }} />
+            Eskalasi ke Resolusi?
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Mengeskalasi masalah ini akan membuat tiket resolusi untuk tinjauan
+            admin. Anda perlu memberikan bukti dan menjelaskan posisi Anda.
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+              Kapan Anda harus mengeskalasi?
+            </Typography>
+            <Typography variant="body2">
+              • Jika komunikasi terputus
+              <br />
+              • Jika ada ketidaksepakatan tentang syarat kontrak
+              <br />• Jika Anda percaya pihak lain tidak memenuhi kewajibannya
+            </Typography>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEscalateDialog(false)} color="inherit">
+            Batal
+          </Button>
+          <Button
+            onClick={confirmEscalation}
+            color="warning"
+            variant="contained"
+            disabled={isAdmin}
+          >
+            Lanjutkan ke Resolusi
           </Button>
         </DialogActions>
       </Dialog>

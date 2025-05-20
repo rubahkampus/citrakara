@@ -20,8 +20,18 @@ import {
   IRevisionTicket,
 } from "../db/models/ticket.model";
 
+//=============================================================================
+// CANCEL TICKET OPERATIONS
+//=============================================================================
+
 /**
- * Create a cancellation ticket
+ * Create a cancellation ticket for a contract
+ *
+ * @param contractId - ID of the contract to be cancelled
+ * @param userId - ID of the user creating the ticket (must be client or artist)
+ * @param reason - Explanation for cancellation request
+ * @returns The created cancel ticket
+ * @throws HttpError if contract not found or user doesn't have permission
  */
 export async function createCancelTicket(
   contractId: string | ObjectId,
@@ -81,7 +91,14 @@ export async function createCancelTicket(
 }
 
 /**
- * Respond to a cancellation ticket
+ * Respond to a cancellation ticket with accept, reject, or forcedAccept
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the cancel ticket
+ * @param userId - ID of the user responding (must be counterparty or admin)
+ * @param response - Type of response (accept, reject, or forcedAccept)
+ * @returns Object containing ticket and action taken
+ * @throws HttpError if ticket not found or user doesn't have permission
  */
 export async function respondToCancelTicket(
   contractId: string | ObjectId,
@@ -156,8 +173,18 @@ export async function respondToCancelTicket(
   }
 }
 
+//=============================================================================
+// REVISION TICKET OPERATIONS
+//=============================================================================
+
 /**
- * Create a revision ticket using FormData
+ * Create a revision ticket for a contract using FormData
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user creating the ticket (must be client)
+ * @param form - FormData containing description, reference images, and optional milestone index
+ * @returns The created revision ticket
+ * @throws HttpError if contract not found or user doesn't have permission
  */
 export async function createRevisionTicket(
   contractId: string | ObjectId,
@@ -218,6 +245,8 @@ export async function createRevisionTicket(
       );
     }
 
+    const revisionInfo = getRevisionInfo(contract);
+
     // Create revision ticket
     const ticket = await ticketRepo.createRevisionTicket(
       {
@@ -225,6 +254,7 @@ export async function createRevisionTicket(
         description,
         referenceImages: imageUrls,
         milestoneIdx,
+        paidFee: revisionInfo.isPaid ? revisionInfo.fee : undefined,
       },
       session
     );
@@ -235,6 +265,13 @@ export async function createRevisionTicket(
       "revision",
       ticket._id,
       session
+    );
+
+    // Increment the revisionDone
+    await contractService.incrementRevisionCounter(
+      contractId,
+      session,
+      ticket.milestoneIdx
     );
 
     await session.commitTransaction();
@@ -248,9 +285,16 @@ export async function createRevisionTicket(
 }
 
 /**
- * Respond to a revision ticket
+ * Respond to a revision ticket with accept, reject, or forcedAcceptArtist
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the revision ticket
+ * @param userId - ID of the user responding (must be artist or admin)
+ * @param response - Type of response (accept, reject, or forcedAcceptArtist)
+ * @param rejectionReason - Required if response is "reject"
+ * @returns Object containing the updated ticket and action taken
+ * @throws HttpError if ticket not found or user doesn't have permission
  */
-// src/lib/services/ticket.service.ts (continued)
 export async function respondToRevisionTicket(
   contractId: string | ObjectId,
   ticketId: string | ObjectId,
@@ -299,6 +343,12 @@ export async function respondToRevisionTicket(
         throw new HttpError("Rejection reason is required", 400);
       }
       newStatus = "rejected";
+
+      await contractService.decrementRevisionCounter(
+        contractId,
+        session,
+        ticket.milestoneIdx
+      );
     } else {
       throw new HttpError("Invalid response", 400);
     }
@@ -324,8 +374,20 @@ export async function respondToRevisionTicket(
     session.endSession();
   }
 }
+
 /**
  * Pay for a revision ticket that requires payment
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the revision ticket
+ * @param userId - ID of the user paying (must be client)
+ * @param paymentMethod - Method of payment (wallet, card, or combo)
+ * @param walletAmount - Amount to pay from wallet
+ * @param paymentAmount - Total payment amount
+ * @param secondaryMethod - Secondary payment method for combo
+ * @param remainingAmount - Amount to pay with secondary method
+ * @returns Object containing ticket and transaction details
+ * @throws HttpError if ticket not found or payment invalid
  */
 export async function payRevisionFee(
   contractId: string | ObjectId,
@@ -339,7 +401,6 @@ export async function payRevisionFee(
 ): Promise<any> {
   await connectDB();
   const session = await startSession();
-
   try {
     session.startTransaction();
 
@@ -383,8 +444,6 @@ export async function payRevisionFee(
     }
 
     if (feeAmount !== paymentAmount) {
-      console.log(feeAmount);
-      console.log(paymentAmount);
       throw new HttpError("Payment does not match fee", 400);
     }
 
@@ -459,8 +518,18 @@ export async function payRevisionFee(
   }
 }
 
+//=============================================================================
+// CHANGE TICKET OPERATIONS
+//=============================================================================
+
 /**
- * Create a change ticket using FormData
+ * Create a change ticket for a contract using FormData
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user creating the ticket (must be client)
+ * @param form - FormData containing reason, deadline, description, options, and reference images
+ * @returns The created change ticket
+ * @throws HttpError if contract not found or user doesn't have permission
  */
 export async function createChangeTicket(
   contractId: string | ObjectId,
@@ -571,9 +640,6 @@ export async function createChangeTicket(
       .getAll("existingReferenceImages[]")
       .filter((v) => typeof v === "string") as string[];
 
-    console.log(form.get("existingReferenceImages[]"));
-    console.log(existingReferenceImages);
-
     // Get image blobs from form data
     const referenceImageBlobs = form
       .getAll("referenceImages[]")
@@ -625,7 +691,15 @@ export async function createChangeTicket(
 }
 
 /**
- * Respond to a change ticket as an artist
+ * Respond to a change ticket with various actions (accept, reject, propose, etc.)
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the change ticket
+ * @param userId - ID of the user responding
+ * @param response - Type of response (accept, reject, propose, forcedAcceptArtist, forcedAcceptClient)
+ * @param paidFee - Optional fee amount for paid changes
+ * @returns Object containing the updated ticket and action taken
+ * @throws HttpError if ticket not found or user doesn't have permission
  */
 export async function respondToChangeTicket(
   contractId: string | ObjectId,
@@ -674,17 +748,6 @@ export async function respondToChangeTicket(
     let newStatus: any;
     const updates: any = {};
 
-    console.log("Response:", response);
-    console.log(
-      "User Role - isArtist:",
-      isArtist,
-      "isClient:",
-      isClient,
-      "isAdmin:",
-      isAdmin
-    );
-    console.log("Paid Fee:", paidFee);
-
     if (response === "accept" && isArtist) {
       newStatus = "acceptedArtist";
       if (paidFee !== undefined && paidFee > 0) {
@@ -719,9 +782,6 @@ export async function respondToChangeTicket(
       throw new HttpError("Invalid response", 400);
     }
 
-    console.log("New Status:", newStatus);
-    console.log("Updates:", updates);
-
     const updatedTicket = await ticketRepo.updateChangeTicketStatus(
       ticketId,
       newStatus,
@@ -743,8 +803,20 @@ export async function respondToChangeTicket(
     session.endSession();
   }
 }
+
 /**
  * Pay for a change ticket that requires payment
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the change ticket
+ * @param userId - ID of the user paying (must be client)
+ * @param paymentMethod - Method of payment (wallet, card, or combo)
+ * @param walletAmount - Amount to pay from wallet
+ * @param paymentAmount - Total payment amount
+ * @param secondaryMethod - Secondary payment method for combo
+ * @param remainingAmount - Amount to pay with secondary method
+ * @returns Object containing ticket and transaction details
+ * @throws HttpError if ticket not found or payment invalid
  */
 export async function payChangeFee(
   contractId: string | ObjectId,
@@ -775,16 +847,10 @@ export async function payChangeFee(
       throw new HttpError("Ticket not found", 404);
     }
 
-    console.log(contract.clientId.toString());
-    console.log(userId);
-
     // Verify user is the client
     if (contract.clientId.toString() !== userId) {
       throw new HttpError("Only the client can pay for changes", 403);
     }
-
-    console.log(ticket.status);
-    console.log(ticket.isPaidChange);
 
     // Verify ticket is in pendingClient status and isPaidChange is true
     if (ticket.status !== "pendingClient" || !ticket.isPaidChange) {
@@ -796,21 +862,12 @@ export async function payChangeFee(
     }
 
     if (ticket.paidFee !== paymentAmount) {
-      console.log(ticket.paidFee);
-      console.log(paymentAmount);
       throw new HttpError("Payment does not match fee", 400);
     }
-
-    console.log("Payment Method:", paymentMethod);
-    console.log("Wallet Amount:", walletAmount);
-    console.log("Payment Amount:", paymentAmount);
-    console.log("Secondary Method:", secondaryMethod);
-    console.log("Remaining Amount:", remainingAmount);
 
     // Handle payment based on method
     switch (paymentMethod) {
       case "wallet":
-        console.log("Wallet");
         // Check if user has sufficient funds
         const hasFunds = await checkSufficientFunds(userId, paymentAmount);
         if (!hasFunds) {
@@ -819,14 +876,12 @@ export async function payChangeFee(
         break;
 
       case "card":
-        console.log("Card");
         // For card payments, we'd normally process the payment with a payment gateway
         // Here we'll simulate by adding funds to the wallet first, then proceeding
         await addFundsToWallet(userId, paymentAmount, session);
         break;
 
       case "combo":
-        console.log("Combo");
         // Check if user has sufficient funds for wallet portion
         const hasPartialFunds = await checkSufficientFunds(
           userId,
@@ -848,7 +903,6 @@ export async function payChangeFee(
         }
         break;
     }
-    console.log("Starting escrow transaction creation...");
 
     // Create escrow transaction
     const transaction = await escrowService.createChangeFeeTransaction(
@@ -858,7 +912,6 @@ export async function payChangeFee(
       `Change fee for ticket ${ticketId}`,
       session
     );
-    console.log("Escrow transaction created:", transaction);
 
     // Update ticket
     const updates = {
@@ -866,26 +919,21 @@ export async function payChangeFee(
       contractVersionBefore: contract.contractVersion,
     };
 
-    console.log("Updating ticket status to 'paid'...");
     await ticketRepo.updateChangeTicketStatus(
       ticketId,
       "paid",
       updates,
       session
     );
-    console.log("Ticket status updated to 'paid'.");
 
     // Apply contract changes
-    console.log("Applying contract changes...");
     const versionAfter = await applyContractChanges(
       contractId,
       ticket.changeSet,
       session
     );
-    console.log("Contract changes applied. New version:", versionAfter);
 
     // Update ticket with version after
-    console.log("Updating ticket with new contract version...");
     await ticketRepo.updateChangeTicketStatus(
       ticketId,
       "paid",
@@ -894,32 +942,563 @@ export async function payChangeFee(
       },
       session
     );
-    console.log("Ticket updated with new contract version.");
 
     // Update contract runtime fees
-    console.log("Updating contract runtime fees...");
     await contractService.updateContractFinance(
       contractId,
       ticket.paidFee,
       session
     );
-    console.log("Contract runtime fees updated.");
 
     await session.commitTransaction();
-    console.log("Transaction committed successfully.");
     return { ticket, transaction };
   } catch (error) {
-    console.error("Error occurred:", error);
     await session.abortTransaction();
     throw error;
   } finally {
-    console.log("Ending session...");
     session.endSession();
   }
 }
 
 /**
- * Create a resolution ticket using FormData with improved validation and edge case handling
+ * Apply contract changes from a change ticket
+ *
+ * @param contractId - ID of the contract to change
+ * @param changeSet - Set of changes to apply to the contract
+ * @param session - Optional MongoDB session for transaction
+ * @returns The new contract version number after changes
+ * @throws Error if contract not found
+ */
+async function applyContractChanges(
+  contractId: string | ObjectId,
+  changeSet: any,
+  session?: ClientSession
+): Promise<number> {
+  // Get the contract
+  const contract = await contractRepo.findContractById(contractId, { session });
+  if (!contract) {
+    throw new Error("Contract not found");
+  }
+
+  // Create the new terms object
+  const newTerms = {
+    generalDescription: changeSet.generalDescription,
+    referenceImages: changeSet.referenceImages,
+    generalOptions: changeSet.generalOptions,
+    subjectOptions: changeSet.subjectOptions,
+  };
+
+  // If deadline change is included, update it
+  if (changeSet.deadlineAt) {
+    // Calculate new grace period
+    const newGraceEndsAt = new Date(changeSet.deadlineAt);
+    newGraceEndsAt.setDate(
+      newGraceEndsAt.getDate() +
+        (contract.proposalSnapshot.listingSnapshot.graceDays || 7)
+    );
+
+    await contractRepo.updateContractDeadline(
+      contractId,
+      changeSet.deadlineAt,
+      newGraceEndsAt,
+      session
+    );
+  }
+
+  // Update contract terms
+  const updatedContract = await contractRepo.updateContractTerms(
+    contractId,
+    newTerms,
+    session
+  );
+
+  return updatedContract!.contractVersion;
+}
+
+//=============================================================================
+// RESOLUTION-ADJACENT TICKET OPERATIONS
+//=============================================================================
+
+/**
+ * Apply resolution to a cancel ticket
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the cancel ticket
+ * @param decision - Decision to favor client or artist
+ * @param session - Optional MongoDB session for transaction
+ * @throws Error if ticket not found
+ */
+async function applyCancelResolution(
+  contractId: string | ObjectId,
+  ticketId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const ticket = await ticketRepo.findCancelTicketById(ticketId, session);
+  if (!ticket) {
+    throw new Error("Cancel ticket not found");
+  }
+
+  if (decision === "favorClient") {
+    // Force acceptance of cancellation
+    await ticketRepo.updateCancelTicketStatus(
+      ticketId,
+      "forcedAccepted",
+      session
+    );
+  } else {
+    // Reject cancellation in favor of artist
+    await ticketRepo.updateCancelTicketStatus(ticketId, "rejected", session);
+  }
+}
+
+/**
+ * Apply resolution to a revision ticket
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the revision ticket
+ * @param decision - Decision to favor client or artist
+ * @param session - Optional MongoDB session for transaction
+ * @throws Error if ticket not found
+ */
+async function applyRevisionResolution(
+  contractId: string | ObjectId,
+  ticketId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const ticket = await ticketRepo.findRevisionTicketById(ticketId, session);
+  if (!ticket) {
+    throw new Error("Revision ticket not found");
+  }
+
+  if (decision === "favorClient") {
+    // Force artist to accept revision
+    await ticketRepo.updateRevisionTicketStatus(
+      ticketId,
+      "forcedAcceptedArtist",
+      undefined,
+      undefined,
+      undefined,
+      session
+    );
+  } else {
+    // Reject revision in favor of artist
+    await ticketRepo.updateRevisionTicketStatus(
+      ticketId,
+      "rejected",
+      "Rejected through admin resolution in favor of artist",
+      undefined,
+      undefined,
+      session
+    );
+  }
+}
+
+/**
+ * Apply resolution to a change ticket
+ *
+ * @param contractId - ID of the contract
+ * @param ticketId - ID of the change ticket
+ * @param decision - Decision to favor client or artist
+ * @param session - Optional MongoDB session for transaction
+ * @throws Error if ticket not found
+ */
+async function applyChangeResolution(
+  contractId: string | ObjectId,
+  ticketId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const ticket = await ticketRepo.findChangeTicketById(ticketId, session);
+  if (!ticket) {
+    throw new Error("Change ticket not found");
+  }
+
+  if (decision === "favorClient") {
+    // Force artist to accept change
+    if (ticket.status === "pendingArtist") {
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "forcedAcceptedArtist",
+        { isPaidChange: false }, // No fee for forced acceptance
+        session
+      );
+
+      // Apply contract changes
+      await applyContractChanges(contractId, ticket.changeSet, session);
+    } else if (ticket.status === "pendingClient") {
+      // If artist proposed a fee but admin favors client, force client acceptance but without fee
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "forcedAcceptedClient",
+        { isPaidChange: false }, // Remove fee
+        session
+      );
+
+      // Apply contract changes
+      await applyContractChanges(contractId, ticket.changeSet, session);
+    }
+  } else {
+    // Favor artist - reject the change or enforce fee
+    if (ticket.status === "pendingArtist") {
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "rejectedArtist",
+        {},
+        session
+      );
+    } else if (ticket.status === "pendingClient" && ticket.isPaidChange) {
+      // If artist proposed a fee, enforce it
+      await ticketRepo.updateChangeTicketStatus(
+        ticketId,
+        "forcedAcceptedClient",
+        {},
+        session
+      );
+    }
+  }
+}
+
+/**
+ * Apply resolution to a final upload
+ *
+ * @param contractId - ID of the contract
+ * @param uploadId - ID of the final upload
+ * @param decision - Decision to favor client or artist
+ * @param session - Optional MongoDB session for transaction
+ * @throws Error if upload not found
+ */
+async function applyFinalUploadResolution(
+  contractId: string | ObjectId,
+  uploadId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const upload = await uploadRepo.findFinalUploadById(uploadId);
+  if (!upload) {
+    throw new Error("Final upload not found");
+  }
+
+  if (decision === "favorClient") {
+    // Reject upload in favor of client
+    await uploadRepo.updateFinalUploadStatus(uploadId, "rejected", session);
+  } else {
+    // Force acceptance in favor of artist
+    await uploadRepo.updateFinalUploadStatus(
+      uploadId,
+      "forcedAccepted",
+      session
+    );
+
+    // If this was a completion upload, process contract completion
+    if (upload.workProgress === 100) {
+      // Get the contract to check if it's late
+      const contract = await contractRepo.findContractById(contractId, {
+        session,
+      });
+      if (!contract) {
+        throw new Error("Contract not found");
+      }
+
+      await contractService.processContractCompletion(
+        contractId,
+        contractService.isContractLate(contract)
+      );
+    }
+    // If this was a cancellation upload, process cancellation
+    else {
+      // Get the contract and relevant information for cancellation
+      const contract = await contractRepo.findContractById(contractId, {
+        session,
+      });
+      if (!contract) {
+        throw new Error("Contract not found");
+      }
+
+      // Check if this is related to a cancel ticket
+      if (upload.cancelTicketId) {
+        // Get the cancel ticket to determine who initiated the cancellation
+        const cancelTicket = await ticketRepo.findCancelTicketById(
+          upload.cancelTicketId
+        );
+        if (cancelTicket) {
+          // Process the cancellation based on who requested it and if it's late
+          await contractService.processContractCancellation(
+            contractId,
+            cancelTicket.requestedBy, // "client" or "artist"
+            upload.workProgress,
+            contractService.isContractLate(contract)
+          );
+        } else {
+          // If ticket not found for some reason, default to artist-initiated cancellation
+          // since the artist is the one who uploaded the partial work
+          await contractService.processContractCancellation(
+            contractId,
+            "artist",
+            upload.workProgress,
+            contractService.isContractLate(contract)
+          );
+        }
+      } else {
+        // If no cancel ticket is associated (unusual case),
+        // treat as artist-initiated cancellation
+        await contractService.processContractCancellation(
+          contractId,
+          "artist",
+          upload.workProgress,
+          contractService.isContractLate(contract)
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Apply resolution to a progress milestone upload
+ *
+ * @param contractId - ID of the contract
+ * @param uploadId - ID of the progress milestone upload
+ * @param decision - Decision to favor client or artist
+ * @param session - Optional MongoDB session for transaction
+ * @throws Error if upload not found
+ */
+async function applyProgressMilestoneResolution(
+  contractId: string | ObjectId,
+  uploadId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const upload = await uploadRepo.findProgressUploadMilestoneById(
+    uploadId,
+    session
+  );
+  if (!upload) {
+    throw new Error("Progress milestone upload not found");
+  }
+
+  if (!upload.isFinal) {
+    throw new Error("Only final milestone uploads can have resolutions");
+  }
+
+  if (decision === "favorClient") {
+    // Reject upload in favor of client
+    await uploadRepo.updateMilestoneUploadStatus(uploadId, "rejected", session);
+  } else {
+    // Force acceptance in favor of artist
+    await uploadRepo.updateMilestoneUploadStatus(
+      uploadId,
+      "forcedAccepted",
+      session
+    );
+
+    // Update milestone status
+    await contractService.updateMilestoneStatus(
+      contractId,
+      upload.milestoneIdx,
+      "accepted",
+      uploadId,
+      session
+    );
+  }
+}
+
+/**
+ * Apply resolution to a revision upload
+ *
+ * @param contractId - ID of the contract
+ * @param uploadId - ID of the revision upload
+ * @param decision - Decision to favor client or artist
+ * @param session - Optional MongoDB session for transaction
+ * @throws Error if upload not found
+ */
+async function applyRevisionUploadResolution(
+  contractId: string | ObjectId,
+  uploadId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  const upload = await uploadRepo.findRevisionUploadById(uploadId, session);
+  if (!upload) {
+    throw new Error("Revision upload not found");
+  }
+
+  if (decision === "favorClient") {
+    // Reject upload in favor of client
+    await uploadRepo.updateRevisionUploadStatus(uploadId, "rejected", session);
+  } else {
+    // Force acceptance in favor of artist
+    await uploadRepo.updateRevisionUploadStatus(
+      uploadId,
+      "forcedAccepted",
+      session
+    );
+
+    // Mark the revision ticket as resolved
+    const ticket = await ticketRepo.findRevisionTicketById(
+      upload.revisionTicketId,
+      session
+    );
+    if (ticket && !ticket.resolved) {
+      await ticketRepo.updateRevisionTicketStatus(
+        upload.revisionTicketId,
+        ticket.status, // Keep current status
+        undefined,
+        undefined,
+        undefined,
+        session
+      );
+    }
+  }
+}
+
+/**
+ * Apply resolution decision to the target object
+ *
+ * @param contractId - ID of the contract
+ * @param targetType - Type of the target (cancelTicket, revisionTicket, etc.)
+ * @param targetId - ID of the target object
+ * @param decision - Decision to favor client or artist
+ * @param session - Optional MongoDB session for transaction
+ * @throws Error if target type is unknown
+ */
+async function applyResolutionDecision(
+  contractId: string | ObjectId,
+  targetType: string,
+  targetId: string | ObjectId,
+  decision: "favorClient" | "favorArtist",
+  session?: ClientSession
+): Promise<void> {
+  switch (targetType) {
+    case "cancelTicket":
+      await applyCancelResolution(contractId, targetId, decision, session);
+      break;
+    case "revisionTicket":
+      await applyRevisionResolution(contractId, targetId, decision, session);
+      break;
+    case "changeTicket":
+      await applyChangeResolution(contractId, targetId, decision, session);
+      break;
+    case "finalUpload":
+      await applyFinalUploadResolution(contractId, targetId, decision, session);
+      break;
+    case "progressMilestoneUpload":
+      await applyProgressMilestoneResolution(
+        contractId,
+        targetId,
+        decision,
+        session
+      );
+      break;
+    case "revisionUpload":
+      await applyRevisionUploadResolution(
+        contractId,
+        targetId,
+        decision,
+        session
+      );
+      break;
+    default:
+      throw new Error(`Unknown target type: ${targetType}`);
+  }
+}
+
+/**
+ * Validate that the target exists and the user can create a resolution for it
+ *
+ * @param contract - The contract object
+ * @param targetType - Type of the target (cancel, revision, final, etc.)
+ * @param targetId - ID of the target object
+ * @param submittedBy - Role of the user submitting (client or artist)
+ * @param session - Optional MongoDB session for transaction
+ * @returns Object indicating if the request is valid with optional error message
+ */
+async function validateResolutionTicketRequest(
+  contract: IContract,
+  targetType: string,
+  targetId: string | ObjectId,
+  submittedBy: "client" | "artist",
+  session?: ClientSession
+): Promise<{ valid: boolean; error?: string }> {
+  try {
+    // Check that the target exists based on type
+    switch (targetType) {
+      case "cancelTicket":
+        const cancelTicket = await ticketRepo.findCancelTicketById(
+          targetId,
+          session
+        );
+        if (!cancelTicket)
+          return { valid: false, error: "Cancel ticket not found" };
+        break;
+
+      case "revisionTicket":
+        const revisionTicket = await ticketRepo.findRevisionTicketById(
+          targetId,
+          session
+        );
+        if (!revisionTicket)
+          return { valid: false, error: "Revision ticket not found" };
+        break;
+
+      case "changeTicket":
+        const changeTicket = await ticketRepo.findChangeTicketById(
+          targetId,
+          session
+        );
+        if (!changeTicket)
+          return { valid: false, error: "Change ticket not found" };
+        break;
+
+      case "finalUpload":
+        const finalUpload = await uploadRepo.findFinalUploadById(
+          targetId,
+          session
+        );
+        if (!finalUpload)
+          return { valid: false, error: "Final upload not found" };
+        break;
+
+      case "progressMilestoneUpload":
+        const progressUpload = await uploadRepo.findProgressUploadMilestoneById(
+          targetId,
+          session
+        );
+        if (!progressUpload)
+          return { valid: false, error: "Progress milestone upload not found" };
+        break;
+
+      case "revisionUpload":
+        const revisionUpload = await uploadRepo.findRevisionUploadById(
+          targetId,
+          session
+        );
+        if (!revisionUpload)
+          return { valid: false, error: "Revision upload not found" };
+        break;
+
+      default:
+        return { valid: false, error: "Invalid target type" };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: `Validation error` };
+  }
+}
+
+//=============================================================================
+// RESOLUTION TICKET OPERATIONS
+//=============================================================================
+
+/**
+ * Create a resolution ticket for resolving disputes using FormData
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user creating the ticket (must be client or artist)
+ * @param form - FormData containing targetType, targetId, description, and proof images
+ * @returns The created resolution ticket with message
+ * @throws HttpError if contract not found or validation fails
  */
 export async function createResolutionTicket(
   contractId: string | ObjectId,
@@ -953,12 +1532,12 @@ export async function createResolutionTicket(
 
     // Get target info from form data
     const targetType = form.get("targetType")?.toString() as
-    | "cancelTicket" // CancelTicket
-    | "revisionTicket" // RevisionTicket
-    | "changeTicket" // ChangeTicket
-    | "finalUpload" // FinalUpload
-    | "progressMilestoneUpload" // ProgressUploadMilestone
-    | "revisionUpload"; // RevisionUpload
+      | "cancelTicket" // CancelTicket
+      | "revisionTicket" // RevisionTicket
+      | "changeTicket" // ChangeTicket
+      | "finalUpload" // FinalUpload
+      | "progressMilestoneUpload" // ProgressUploadMilestone
+      | "revisionUpload"; // RevisionUpload
 
     if (
       !targetType ||
@@ -991,21 +1570,21 @@ export async function createResolutionTicket(
     const submittedBy = isClient ? "client" : "artist";
 
     // Validate the resolution ticket request
-    const validation = validateResolutionTicketRequest(
+    const validation = await validateResolutionTicketRequest(
       contract,
       targetType,
       targetId,
-      submittedBy
+      submittedBy,
+      session
     );
 
-    if (!validation) {
+    if (!validation.valid) {
       throw new HttpError(
-        validation || "Invalid resolution ticket request",
+        validation.error || "Invalid resolution ticket request",
         400
       );
     }
 
-    // Check for existing open resolutions for this target
     // Check for existing open resolutions for this target
     const hasExistingResolution = await hasUnresolvedResolutionTicket(
       contractId
@@ -1081,6 +1660,12 @@ export async function createResolutionTicket(
 
 /**
  * Submit counterproof for a resolution ticket using FormData
+ *
+ * @param ticketId - ID of the resolution ticket
+ * @param userId - ID of the user submitting counterproof (must be counterparty)
+ * @param form - FormData containing counterDescription and counterProofImages
+ * @returns The updated resolution ticket
+ * @throws HttpError if ticket not found or user doesn't have permission
  */
 export async function submitCounterproof(
   ticketId: string | ObjectId,
@@ -1176,6 +1761,13 @@ export async function submitCounterproof(
 
 /**
  * Resolve a dispute (admin only)
+ *
+ * @param ticketId - ID of the resolution ticket
+ * @param adminId - ID of the admin resolving the dispute
+ * @param decision - Decision to favor client or artist
+ * @param resolutionNote - Admin note explaining the resolution
+ * @returns The resolved ticket
+ * @throws HttpError if ticket not found or user is not admin
  */
 export async function resolveDispute(
   ticketId: string | ObjectId,
@@ -1189,7 +1781,7 @@ export async function resolveDispute(
   try {
     session.startTransaction();
 
-    // Verify user is admin (to be implemented)
+    // Verify user is admin
     const isAdmin = await isAdminById(adminId);
     if (!isAdmin) {
       throw new HttpError("Only administrators can resolve disputes", 403);
@@ -1233,405 +1825,14 @@ export async function resolveDispute(
     session.endSession();
   }
 }
-/**
- * Get all resolution tickets (admin view)
- */
-export async function getAllResolutionTickets(filters?: {
-  status?: string[];
-  targetType?: string[];
-}): Promise<any[]> {
-  return ticketRepo.findAllResolutionTickets(filters);
-}
-
-/**
- * Get resolution tickets for a contract
- */
-export async function getResolutionTicketsByContract(
-  contractId: string | ObjectId
-): Promise<any[]> {
-  return ticketRepo.findResolutionTicketsByContract(contractId);
-}
-
-/**
- * Get resolution tickets for a user
- */
-export async function getResolutionTicketsByUser(
-  userId: string | ObjectId,
-  role: "submitter" | "counterparty" | "both" = "both"
-): Promise<any[]> {
-  return ticketRepo.findResolutionTicketsByUser(userId, role);
-}
-
-// ======= Helper Functions =======
-
-/**
- * Check if revision is allowed based on contract policy
- */
-async function checkRevisionAllowed(
-  contract: IContract,
-  milestoneIdx?: number
-): Promise<{
-  allowed: boolean;
-  message?: string;
-  isPaid?: boolean;
-  fee?: number;
-}> {
-  // Check revision type
-  if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
-    return {
-      allowed: false,
-      message: "This contract does not allow revisions",
-    };
-  }
-
-  console.log("Checking revision allowance for milestone revisions...");
-  if (
-    contract.proposalSnapshot.listingSnapshot.revisions?.type === "milestone" &&
-    milestoneIdx !== undefined
-  ) {
-    console.log("Milestone index provided:", milestoneIdx);
-
-    if (!contract.milestones || !contract.milestones[milestoneIdx]) {
-      console.log("Milestone not found for index:", milestoneIdx);
-      return { allowed: false, message: "Milestone not found" };
-    }
-
-    const milestone = contract.milestones[milestoneIdx];
-    const policy = milestone.revisionPolicy;
-
-    if (!policy) {
-      console.log("Policy not found for milestone index:", milestoneIdx);
-      return { allowed: false, message: "Milestone policy not found" };
-    }
-
-    // Count revisions done for this milestone
-    const revisionsDone = milestone.revisionDone || 0;
-    console.log("Revisions done for this milestone:", revisionsDone);
-
-    // Check if limit reached
-    if (policy.limit && revisionsDone >= policy.free) {
-      console.log(
-        `Revision limit reached (${policy.free}) for this milestone. Checking if extra revisions are allowed...`
-      );
-
-      // Check if extra is allowed
-      if (!policy.extraAllowed) {
-        console.log("Extra revisions are not allowed for this milestone.");
-        return {
-          allowed: false,
-          message: `Revision limit reached (${policy.free}) for this milestone`,
-        };
-      }
-
-      console.log(
-        "Extra revisions are allowed, but payment is required. Fee:",
-        policy.fee
-      );
-      // Extra is allowed, but needs payment
-      return {
-        allowed: true,
-        isPaid: true,
-        fee: policy.fee,
-      };
-    }
-
-    console.log("Within free revision limit for this milestone.");
-    // Within free revision limit
-    return { allowed: true, isPaid: false };
-  }
-
-  // For standard revisions
-  if (
-    contract.proposalSnapshot.listingSnapshot.revisions?.type === "standard"
-  ) {
-    const policy = contract.revisionPolicy;
-    const revisionsDone = contract.revisionDone || 0;
-
-    if (!policy) {
-      console.log("Policy not found for the contract");
-      return { allowed: false, message: "Global policy not found" };
-    }
-
-    // Check if limit reached
-    if (policy.limit && revisionsDone >= policy.free) {
-      // Check if extra is allowed
-      if (!policy.extraAllowed) {
-        return {
-          allowed: false,
-          message: `Revision limit reached (${policy.free})`,
-        };
-      }
-
-      // Extra is allowed, but needs payment
-      return {
-        allowed: true,
-        isPaid: true,
-        fee: policy.fee,
-      };
-    }
-
-    // Within free revision limit
-    return { allowed: true, isPaid: false };
-  }
-
-  return { allowed: false, message: "Revision policy not configured properly" };
-}
-
-/**
- * Apply contract changes from a change ticket
- */
-async function applyContractChanges(
-  contractId: string | ObjectId,
-  changeSet: any,
-  session?: ClientSession
-): Promise<number> {
-  // Get the contract
-  const contract = await contractRepo.findContractById(contractId, { session });
-  if (!contract) {
-    throw new Error("Contract not found");
-  }
-
-  // Create the new terms object
-  const newTerms = {
-    generalDescription: changeSet.generalDescription,
-    referenceImages: changeSet.referenceImages,
-    generalOptions: changeSet.generalOptions,
-    subjectOptions: changeSet.subjectOptions,
-  };
-
-  // If deadline change is included, update it
-  if (changeSet.deadlineAt) {
-    // Calculate new grace period
-    const newGraceEndsAt = new Date(changeSet.deadlineAt);
-    newGraceEndsAt.setDate(
-      newGraceEndsAt.getDate() +
-        (contract.proposalSnapshot.listingSnapshot.graceDays || 7)
-    );
-
-    await contractRepo.updateContractDeadline(
-      contractId,
-      changeSet.deadlineAt,
-      newGraceEndsAt,
-      session
-    );
-  }
-
-  // Update contract terms
-  const updatedContract = await contractRepo.updateContractTerms(
-    contractId,
-    newTerms,
-    session
-  );
-
-  return updatedContract!.contractVersion;
-}
-
-/**
- * Apply resolution decision to the target object
- */
-async function applyResolutionDecision(
-  contractId: string | ObjectId,
-  targetType: string,
-  targetId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  switch (targetType) {
-    case "cancel":
-      await applyCancelResolution(contractId, targetId, decision, session);
-      break;
-    case "revision":
-      await applyRevisionResolution(contractId, targetId, decision, session);
-      break;
-    case "change":
-      await applyChangeResolution(contractId, targetId, decision, session);
-      break;
-    case "final":
-      await applyFinalUploadResolution(contractId, targetId, decision, session);
-      break;
-    case "progressMilestone":
-      await applyProgressMilestoneResolution(
-        contractId,
-        targetId,
-        decision,
-        session
-      );
-      break;
-    case "revisionUpload":
-      await applyRevisionUploadResolution(
-        contractId,
-        targetId,
-        decision,
-        session
-      );
-      break;
-    default:
-      throw new Error(`Unknown target type: ${targetType}`);
-  }
-}
-
-/**
- * Apply resolution to a cancel ticket
- */
-async function applyCancelResolution(
-  contractId: string | ObjectId,
-  ticketId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  // Implementation will depend on business rules
-  // Typically would involve:
-  // 1. Updating the cancel ticket status
-  // 2. If favorClient, process cancellation
-  // 3. If favorArtist, reject cancellation
-
-  const ticket = await ticketRepo.findCancelTicketById(ticketId, session);
-  if (!ticket) {
-    throw new Error("Cancel ticket not found");
-  }
-
-  if (decision === "favorClient") {
-    // Force acceptance of cancellation
-    await ticketRepo.updateCancelTicketStatus(
-      ticketId,
-      "forcedAccepted",
-      session
-    );
-  } else {
-    // Reject cancellation in favor of artist
-    await ticketRepo.updateCancelTicketStatus(ticketId, "rejected", session);
-  }
-}
-
-/**
- * Apply resolution to a revision ticket
- */
-async function applyRevisionResolution(
-  contractId: string | ObjectId,
-  ticketId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  const ticket = await ticketRepo.findRevisionTicketById(ticketId, session);
-  if (!ticket) {
-    throw new Error("Revision ticket not found");
-  }
-
-  if (decision === "favorClient") {
-    // Force artist to accept revision
-    await ticketRepo.updateRevisionTicketStatus(
-      ticketId,
-      "forcedAcceptedArtist",
-      undefined,
-      undefined,
-      undefined,
-      session
-    );
-  } else {
-    // Reject revision in favor of artist
-    await ticketRepo.updateRevisionTicketStatus(
-      ticketId,
-      "rejected",
-      "Rejected through admin resolution in favor of artist",
-      undefined,
-      undefined,
-      session
-    );
-  }
-}
-
-/**
- * Apply resolution to a final upload
- */
-async function applyFinalUploadResolution(
-  contractId: string | ObjectId,
-  uploadId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  const upload = await uploadRepo.findFinalUploadById(uploadId);
-  if (!upload) {
-    throw new Error("Final upload not found");
-  }
-
-  if (decision === "favorClient") {
-    // Reject upload in favor of client
-    await uploadRepo.updateFinalUploadStatus(uploadId, "rejected", session);
-  } else {
-    // Force acceptance in favor of artist
-    await uploadRepo.updateFinalUploadStatus(
-      uploadId,
-      "forcedAccepted",
-      session
-    );
-
-    // If this was a completion upload, process contract completion
-    if (upload.workProgress === 100) {
-      // Get the contract to check if it's late
-      const contract = await contractRepo.findContractById(contractId, {
-        session,
-      });
-      if (!contract) {
-        throw new Error("Contract not found");
-      }
-
-      await contractService.processContractCompletion(
-        contractId,
-        contractService.isContractLate(contract)
-      );
-    }
-    // If this was a cancellation upload, process cancellation
-    else {
-      // Get the contract and relevant information for cancellation
-      const contract = await contractRepo.findContractById(contractId, {
-        session,
-      });
-      if (!contract) {
-        throw new Error("Contract not found");
-      }
-
-      // Check if this is related to a cancel ticket
-      if (upload.cancelTicketId) {
-        // Get the cancel ticket to determine who initiated the cancellation
-        const cancelTicket = await ticketRepo.findCancelTicketById(
-          upload.cancelTicketId
-        );
-        if (cancelTicket) {
-          // Process the cancellation based on who requested it and if it's late
-          await contractService.processContractCancellation(
-            contractId,
-            cancelTicket.requestedBy, // "client" or "artist"
-            upload.workProgress,
-            contractService.isContractLate(contract)
-          );
-        } else {
-          // If ticket not found for some reason, default to artist-initiated cancellation
-          // since the artist is the one who uploaded the partial work
-          await contractService.processContractCancellation(
-            contractId,
-            "artist",
-            upload.workProgress,
-            contractService.isContractLate(contract)
-          );
-        }
-      } else {
-        // If no cancel ticket is associated (unusual case),
-        // treat as artist-initiated cancellation
-        await contractService.processContractCancellation(
-          contractId,
-          "artist",
-          upload.workProgress,
-          contractService.isContractLate(contract)
-        );
-      }
-    }
-  }
-}
-
 
 /**
  * Cancel a resolution ticket if the underlying issue is resolved
- * This can be called when parties resolve their issues without admin intervention
+ *
+ * @param ticketId - ID of the resolution ticket
+ * @param userId - ID of the user cancelling (must be submitter)
+ * @returns The cancelled ticket
+ * @throws HttpError if ticket not found or user doesn't have permission
  */
 export async function cancelResolutionTicket(
   ticketId: string | ObjectId,
@@ -1697,11 +1898,56 @@ export async function cancelResolutionTicket(
   }
 }
 
-// Add this function to your existing ticket service file
+//=============================================================================
+// TICKET RETRIEVAL FUNCTIONS
+//=============================================================================
+
+/**
+ * Get all resolution tickets (admin view)
+ *
+ * @param filters - Optional filters for status and targetType
+ * @returns Array of resolution tickets
+ */
+export async function getAllResolutionTickets(filters?: {
+  status?: string[];
+  targetType?: string[];
+}): Promise<any[]> {
+  return ticketRepo.findAllResolutionTickets(filters);
+}
+
+/**
+ * Get resolution tickets for a contract
+ *
+ * @param contractId - ID of the contract
+ * @returns Array of resolution tickets
+ */
+export async function getResolutionTicketsByContract(
+  contractId: string | ObjectId
+): Promise<any[]> {
+  return ticketRepo.findResolutionTicketsByContract(contractId);
+}
+
+/**
+ * Get resolution tickets for a user
+ *
+ * @param userId - ID of the user
+ * @param role - Filter by role (submitter, counterparty, or both)
+ * @returns Array of resolution tickets
+ */
+export async function getResolutionTicketsByUser(
+  userId: string | ObjectId,
+  role: "submitter" | "counterparty" | "both" = "both"
+): Promise<any[]> {
+  return ticketRepo.findResolutionTicketsByUser(userId, role);
+}
 
 /**
  * Find active cancellation tickets for a contract
- * An active ticket is one with status 'accepted' or 'forcedAccepted'
+ *
+ * @param contractId - ID of the contract
+ * @param userId - ID of the user (must be client or artist of the contract)
+ * @returns Array of active cancel tickets
+ * @throws HttpError if contract not found or user doesn't have permission
  */
 export async function findActiveCancelTickets(
   contractId: string | ObjectId,
@@ -1727,33 +1973,50 @@ export async function findActiveCancelTickets(
   return ticketRepo.findActiveCancelTickets(contractId);
 }
 
+/**
+ * Get a revision ticket by ID
+ *
+ * @param id - ID of the revision ticket
+ * @returns The revision ticket or null if not found
+ */
 export async function getRevisionTicketById(
   id: string
 ): Promise<IRevisionTicket | null> {
-  // Call the repository function to find the ticket
-  const ticket = await ticketRepo.findRevisionTicketById(id);
-  return ticket;
-}
-
-export async function getCancelTicketById(
-  id: string
-): Promise<ICancelTicket | null> {
-  // Call the repository function to find the ticket
-  const ticket = await ticketRepo.findCancelTicketById(id);
-  return ticket;
-}
-
-export async function getChangeTicketById(
-  id: string
-): Promise<IChangeTicket | null> {
-  // Call the repository function to find the ticket
-  const ticket = await ticketRepo.findChangeTicketById(id);
-  return ticket;
+  return ticketRepo.findRevisionTicketById(id);
 }
 
 /**
+ * Get a cancel ticket by ID
+ *
+ * @param id - ID of the cancel ticket
+ * @returns The cancel ticket or null if not found
+ */
+export async function getCancelTicketById(
+  id: string
+): Promise<ICancelTicket | null> {
+  return ticketRepo.findCancelTicketById(id);
+}
+
+/**
+ * Get a change ticket by ID
+ *
+ * @param id - ID of the change ticket
+ * @returns The change ticket or null if not found
+ */
+export async function getChangeTicketById(
+  id: string
+): Promise<IChangeTicket | null> {
+  return ticketRepo.findChangeTicketById(id);
+}
+
+//=============================================================================
+// UNRESOLVED TICKET FUNCTIONS
+//=============================================================================
+
+/**
  * Find unresolved cancel tickets
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of unresolved cancel tickets
  */
 export async function getUnresolvedCancelTickets(
@@ -1761,15 +2024,23 @@ export async function getUnresolvedCancelTickets(
 ): Promise<ICancelTicket[]> {
   await connectDB();
 
+  const currentTime = new Date();
+
   const tickets = await ticketRepo.findCancelTicketsByContract(contractId);
-  return tickets.filter(
-    (ticket) => ticket.status === "pending" || ticket.status === "disputed"
-  );
+  return tickets
+    .filter(
+      (ticket) =>
+        ticket.expiresAt !== undefined && ticket.expiresAt > currentTime // Compare expiration date with current time
+    )
+    .filter(
+      (ticket) => ticket.status === "pending" || ticket.status === "disputed"
+    );
 }
 
 /**
  * Find unresolved change tickets
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of unresolved change tickets
  */
 export async function getUnresolvedChangeTickets(
@@ -1777,19 +2048,27 @@ export async function getUnresolvedChangeTickets(
 ): Promise<IChangeTicket[]> {
   await connectDB();
 
+  const currentTime = new Date();
+
   const tickets = await ticketRepo.findChangeTicketsByContract(contractId);
-  return tickets.filter(
-    (ticket) =>
-      ticket.status === "pendingArtist" ||
-      ticket.status === "pendingClient" ||
-      ticket.status === "acceptedArtist" ||
-      ticket.status === "rejectedClient"
-  );
+  return tickets
+    .filter(
+      (ticket) => ticket.expiresAt > currentTime // Compare expiration date with current time
+    )
+    .filter(
+      (ticket) =>
+        ticket.status === "pendingArtist" ||
+        ticket.status === "pendingClient" ||
+        (ticket.status === "acceptedArtist" && ticket.isPaidChange) ||
+        (ticket.status === "forcedAcceptedArtist" && ticket.isPaidChange) ||
+        ticket.status === "rejectedClient"
+    );
 }
 
 /**
  * Find unresolved resolution tickets
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of unresolved resolution tickets
  */
 export async function getUnresolvedResolutionTickets(
@@ -1805,7 +2084,8 @@ export async function getUnresolvedResolutionTickets(
 
 /**
  * Find unresolved revision tickets
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of unresolved revision tickets
  */
 export async function getUnresolvedRevisionTickets(
@@ -1813,19 +2093,26 @@ export async function getUnresolvedRevisionTickets(
 ): Promise<IRevisionTicket[]> {
   await connectDB();
 
+  const currentTime = new Date();
+
   const tickets = await ticketRepo.findRevisionTicketsByContract(contractId);
-  return tickets.filter(
-    (ticket) =>
-      ticket.status === "disputed" ||
-      ticket.status === "forcedAcceptedArtist" ||
-      ticket.status === "accepted" ||
-      ticket.status === "pending"
-  );
+  return tickets
+    .filter(
+      (ticket) => ticket.expiresAt > currentTime // Compare expiration date with current time
+    )
+    .filter(
+      (ticket) =>
+        ticket.status === "disputed" ||
+        (ticket.status === "forcedAcceptedArtist" && ticket.paidFee) ||
+        (ticket.status === "accepted" && ticket.paidFee) ||
+        ticket.status === "pending"
+    );
 }
 
 /**
  * Find revision tickets that need an upload
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of revision tickets that need uploads
  */
 export async function getUnfinishedRevisionTickets(
@@ -1833,6 +2120,7 @@ export async function getUnfinishedRevisionTickets(
 ): Promise<IRevisionTicket[]> {
   await connectDB();
 
+  const currentTime = new Date();
   const tickets = await ticketRepo.findRevisionTicketsByContract(contractId);
   const result: IRevisionTicket[] = [];
 
@@ -1840,7 +2128,8 @@ export async function getUnfinishedRevisionTickets(
     // Check if ticket is in a state requiring upload
     if (
       ticket.status === "paid" ||
-      ticket.status === "forcedAcceptedArtist" ||
+      (ticket.status === "forcedAcceptedArtist" &&
+        ticket.paidFee === undefined) ||
       (ticket.status === "accepted" && ticket.paidFee === undefined)
     ) {
       // Look for an accepted upload for this ticket
@@ -1850,8 +2139,16 @@ export async function getUnfinishedRevisionTickets(
           upload.status === "accepted" || upload.status === "forcedAccepted"
       );
 
-      // If no accepted upload found, this is unresolved
-      if (!hasAcceptedUpload) {
+      // Check if any uploads are expired but not accepted/forcedAccepted
+      const hasExpiredUpload = uploads.some(
+        (upload) =>
+          upload.expiresAt <= currentTime &&
+          upload.status !== "accepted" &&
+          upload.status !== "forcedAccepted"
+      );
+
+      // If no accepted upload found and no expired uploads, this is unfinished
+      if (!hasAcceptedUpload && !hasExpiredUpload) {
         result.push(ticket);
       }
     }
@@ -1862,7 +2159,8 @@ export async function getUnfinishedRevisionTickets(
 
 /**
  * Find cancel tickets that need a final upload
- * @param contractId Contract ID to check
+ *
+ * @param contractId - Contract ID to check
  * @returns Array of cancel tickets that need final uploads
  */
 export async function getUnfinishedCancelTickets(
@@ -1870,6 +2168,7 @@ export async function getUnfinishedCancelTickets(
 ): Promise<ICancelTicket[]> {
   await connectDB();
 
+  const currentTime = new Date();
   const tickets = await ticketRepo.findCancelTicketsByContract(contractId);
   const result: ICancelTicket[] = [];
 
@@ -1878,16 +2177,21 @@ export async function getUnfinishedCancelTickets(
     if (ticket.status === "accepted" || ticket.status === "forcedAccepted") {
       // Look for an accepted final upload that references this ticket
       const uploads = await uploadRepo.findFinalUploadsByContract(contractId);
-      const hasAcceptedUpload = uploads.some(
+
+      // Check for accepted uploads or expired uploads
+      const validUpload = uploads.some(
         (upload) =>
+          // Either accepted/forcedAccepted uploads
           (upload.status === "accepted" ||
-            upload.status === "forcedAccepted") &&
+            upload.status === "forcedAccepted" ||
+            // Or uploads that have passed their expiry date (considered valid)
+            (upload.expiresAt && upload.expiresAt <= currentTime)) &&
           upload.cancelTicketId &&
           upload.cancelTicketId.toString() === ticket._id.toString()
       );
 
-      // If no accepted upload found, this is unresolved
-      if (!hasAcceptedUpload) {
+      // If no valid upload found, this is unfinished
+      if (!validUpload) {
         result.push(ticket);
       }
     }
@@ -1896,218 +2200,15 @@ export async function getUnfinishedCancelTickets(
   return result;
 }
 
-// In src/lib/services/ticket.service.ts (add these new functions)
-
-/**
- * Apply resolution to a change ticket
- */
-async function applyChangeResolution(
-  contractId: string | ObjectId,
-  ticketId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  const ticket = await ticketRepo.findChangeTicketById(ticketId, session);
-  if (!ticket) {
-    throw new Error("Change ticket not found");
-  }
-
-  if (decision === "favorClient") {
-    // Force artist to accept change
-    if (ticket.status === "pendingArtist") {
-      await ticketRepo.updateChangeTicketStatus(
-        ticketId,
-        "forcedAcceptedArtist",
-        { isPaidChange: false }, // No fee for forced acceptance
-        session
-      );
-
-      // Apply contract changes
-      await applyContractChanges(contractId, ticket.changeSet, session);
-    } else if (ticket.status === "pendingClient") {
-      // If artist proposed a fee but admin favors client, force client acceptance but without fee
-      await ticketRepo.updateChangeTicketStatus(
-        ticketId,
-        "forcedAcceptedClient",
-        { isPaidChange: false }, // Remove fee
-        session
-      );
-
-      // Apply contract changes
-      await applyContractChanges(contractId, ticket.changeSet, session);
-    }
-  } else {
-    // Favor artist - reject the change or enforce fee
-    if (ticket.status === "pendingArtist") {
-      await ticketRepo.updateChangeTicketStatus(
-        ticketId,
-        "rejectedArtist",
-        {},
-        session
-      );
-    } else if (ticket.status === "pendingClient" && ticket.isPaidChange) {
-      // If artist proposed a fee, enforce it
-      await ticketRepo.updateChangeTicketStatus(
-        ticketId,
-        "forcedAcceptedClient",
-        {},
-        session
-      );
-    }
-  }
-}
-
-/**
- * Apply resolution to a progress milestone upload
- */
-async function applyProgressMilestoneResolution(
-  contractId: string | ObjectId,
-  uploadId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  const upload = await uploadRepo.findProgressUploadMilestoneById(
-    uploadId,
-    session
-  );
-  if (!upload) {
-    throw new Error("Progress milestone upload not found");
-  }
-
-  if (!upload.isFinal) {
-    throw new Error("Only final milestone uploads can have resolutions");
-  }
-
-  if (decision === "favorClient") {
-    // Reject upload in favor of client
-    await uploadRepo.updateMilestoneUploadStatus(uploadId, "rejected", session);
-  } else {
-    // Force acceptance in favor of artist
-    await uploadRepo.updateMilestoneUploadStatus(
-      uploadId,
-      "forcedAccepted",
-      session
-    );
-
-    // Update milestone status
-    await contractService.updateMilestoneStatus(
-      contractId,
-      upload.milestoneIdx,
-      "accepted",
-      uploadId,
-      session
-    );
-  }
-}
-
-/**
- * Apply resolution to a revision upload
- */
-async function applyRevisionUploadResolution(
-  contractId: string | ObjectId,
-  uploadId: string | ObjectId,
-  decision: "favorClient" | "favorArtist",
-  session?: ClientSession
-): Promise<void> {
-  const upload = await uploadRepo.findRevisionUploadById(uploadId, session);
-  if (!upload) {
-    throw new Error("Revision upload not found");
-  }
-
-  if (decision === "favorClient") {
-    // Reject upload in favor of client
-    await uploadRepo.updateRevisionUploadStatus(uploadId, "rejected", session);
-  } else {
-    // Force acceptance in favor of artist
-    await uploadRepo.updateRevisionUploadStatus(
-      uploadId,
-      "forcedAccepted",
-      session
-    );
-
-    // Mark the revision ticket as resolved
-    const ticket = await ticketRepo.findRevisionTicketById(
-      upload.revisionTicketId,
-      session
-    );
-    if (ticket && !ticket.resolved) {
-      await ticketRepo.updateRevisionTicketStatus(
-        upload.revisionTicketId,
-        ticket.status, // Keep current status
-        undefined,
-        undefined,
-        undefined,
-        session
-      );
-    }
-  }
-}
-
-// In src/lib/services/ticket.service.ts (add this validation function)
-
-/**
- * Validate that the target exists and the user can create a resolution for it
- */
-async function validateResolutionTicketRequest(
-  contract: IContract,
-  targetType: string,
-  targetId: string | ObjectId,
-  submittedBy: "client" | "artist",
-  session?: ClientSession
-): Promise<{ valid: boolean; error?: string }> {
-  try {
-    // Check that the target exists based on type
-    switch (targetType) {
-      case "cancel":
-        const cancelTicket = await ticketRepo.findCancelTicketById(targetId, session);
-        if (!cancelTicket) return { valid: false, error: "Cancel ticket not found" };
-        break;
-        
-      case "revision":
-        const revisionTicket = await ticketRepo.findRevisionTicketById(targetId, session);
-        if (!revisionTicket) return { valid: false, error: "Revision ticket not found" };
-        break;
-        
-      case "change":
-        const changeTicket = await ticketRepo.findChangeTicketById(targetId, session);
-        if (!changeTicket) return { valid: false, error: "Change ticket not found" };
-        break;
-        
-      case "final":
-        const finalUpload = await uploadRepo.findFinalUploadById(targetId, session);
-        if (!finalUpload) return { valid: false, error: "Final upload not found" };
-        break;
-        
-      case "milestone":
-        // For milestones, we need to check if the milestone exists in the contract
-        const milestoneIdx = Number(targetId);
-        if (isNaN(milestoneIdx) || !contract.milestones || !contract.milestones[milestoneIdx]) {
-          return { valid: false, error: "Milestone not found" };
-        }
-        break;
-        
-      case "progressMilestone":
-        const progressUpload = await uploadRepo.findProgressUploadMilestoneById(targetId, session);
-        if (!progressUpload) return { valid: false, error: "Progress milestone upload not found" };
-        break;
-        
-      case "revisionUpload":
-        const revisionUpload = await uploadRepo.findRevisionUploadById(targetId, session);
-        if (!revisionUpload) return { valid: false, error: "Revision upload not found" };
-        break;
-        
-      default:
-        return { valid: false, error: "Invalid target type" };
-    }
-    
-    return { valid: true };
-  } catch (error) {
-    return { valid: false, error: `Validation error` };
-  }
-}
+//=============================================================================
+// HELPER FUNCTIONS
+//=============================================================================
 
 /**
  * Check if there are unresolved cancel tickets
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are unresolved cancel tickets
  */
 export async function hasUnresolvedCancelTicket(
   contractId: string | ObjectId
@@ -2118,6 +2219,9 @@ export async function hasUnresolvedCancelTicket(
 
 /**
  * Check if there are unresolved change tickets
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are unresolved change tickets
  */
 export async function hasUnresolvedChangeTicket(
   contractId: string | ObjectId
@@ -2128,6 +2232,9 @@ export async function hasUnresolvedChangeTicket(
 
 /**
  * Check if there are unresolved resolution tickets
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are unresolved resolution tickets
  */
 export async function hasUnresolvedResolutionTicket(
   contractId: string | ObjectId
@@ -2138,6 +2245,9 @@ export async function hasUnresolvedResolutionTicket(
 
 /**
  * Check if there are unresolved revision tickets
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are unresolved revision tickets
  */
 export async function hasUnresolvedRevisionTicket(
   contractId: string | ObjectId
@@ -2148,6 +2258,9 @@ export async function hasUnresolvedRevisionTicket(
 
 /**
  * Check if there are revision tickets that need uploads
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are revision tickets that need uploads
  */
 export async function hasUnfinishedRevisionTicket(
   contractId: string | ObjectId
@@ -2158,6 +2271,9 @@ export async function hasUnfinishedRevisionTicket(
 
 /**
  * Check if there are cancel tickets that need final uploads
+ *
+ * @param contractId - Contract ID to check
+ * @returns True if there are cancel tickets that need uploads
  */
 export async function hasUnfinishedCancelTicket(
   contractId: string | ObjectId
@@ -2165,3 +2281,190 @@ export async function hasUnfinishedCancelTicket(
   const tickets = await getUnfinishedCancelTickets(contractId);
   return tickets.length > 0;
 }
+
+/**
+ * Check if revision is allowed based on contract policy
+ *
+ * @param contract - The contract to check
+ * @param milestoneIdx - Optional milestone index for milestone-based revisions
+ * @returns Object with allowance info, message, and fee details
+ */
+async function checkRevisionAllowed(
+  contract: IContract,
+  milestoneIdx?: number
+): Promise<{
+  allowed: boolean;
+  message?: string;
+  isPaid?: boolean;
+  fee?: number;
+}> {
+  // Check revision type
+  if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
+    return {
+      allowed: false,
+      message: "This contract does not allow revisions",
+    };
+  }
+
+  if (
+    contract.proposalSnapshot.listingSnapshot.revisions?.type === "milestone" &&
+    milestoneIdx !== undefined
+  ) {
+    if (!contract.milestones || !contract.milestones[milestoneIdx]) {
+      return { allowed: false, message: "Milestone not found" };
+    }
+
+    const milestone = contract.milestones[milestoneIdx];
+    const policy = milestone.revisionPolicy;
+
+    if (!policy) {
+      return { allowed: false, message: "Milestone policy not found" };
+    }
+
+    // Count revisions done for this milestone
+    const revisionsDone = milestone.revisionDone || 0;
+
+    // Check if limit reached
+    if (policy.limit && revisionsDone >= policy.free) {
+      // Check if extra is allowed
+      if (!policy.extraAllowed) {
+        return {
+          allowed: false,
+          message: `Revision limit reached (${policy.free}) for this milestone`,
+        };
+      }
+
+      // Extra is allowed, but needs payment
+      return {
+        allowed: true,
+        isPaid: true,
+        fee: policy.fee,
+      };
+    }
+
+    // Within free revision limit
+    return { allowed: true, isPaid: false };
+  }
+
+  // For standard revisions
+  if (
+    contract.proposalSnapshot.listingSnapshot.revisions?.type === "standard"
+  ) {
+    const policy = contract.revisionPolicy;
+    const revisionsDone = contract.revisionDone || 0;
+
+    if (!policy) {
+      return { allowed: false, message: "Global policy not found" };
+    }
+
+    // Check if limit reached
+    if (policy.limit && revisionsDone >= policy.free) {
+      // Check if extra is allowed
+      if (!policy.extraAllowed) {
+        return {
+          allowed: false,
+          message: `Revision limit reached (${policy.free})`,
+        };
+      }
+
+      // Extra is allowed, but needs payment
+      return {
+        allowed: true,
+        isPaid: true,
+        fee: policy.fee,
+      };
+    }
+
+    // Within free revision limit
+    return { allowed: true, isPaid: false };
+  }
+
+  return { allowed: false, message: "Revision policy not configured properly" };
+}
+
+/**
+ * Get revision info for a contract
+ *
+ * @param contract - The contract to get revision info for
+ * @returns Object with revision type, allowance, remaining free revisions, and fee info
+ */
+const getRevisionInfo = (contract: IContract) => {
+  const revisionType =
+    contract.proposalSnapshot.listingSnapshot.revisions?.type || "none";
+
+  // If no revisions allowed
+  if (revisionType === "none") {
+    return {
+      type: "none",
+      isRevisionAllowed: false,
+      isFree: false,
+      remainingFree: 0,
+      isPaid: false,
+      fee: 0,
+    };
+  }
+
+  // Standard flow (applies to both standard and milestone flow with standard revisions)
+  if (
+    (revisionType === "standard" ||
+      (revisionType === "milestone" && contract.revisionPolicy)) &&
+    contract.revisionPolicy
+  ) {
+    const policy = contract.revisionPolicy;
+    const revisionsDone = contract.revisionDone || 0;
+    const remainingFree = Math.max(0, policy.free - revisionsDone);
+
+    return {
+      type: "standard",
+      isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed),
+      isFree: remainingFree > 0,
+      remainingFree,
+      isPaid: remainingFree === 0 && policy.extraAllowed,
+      fee: policy.fee || 0,
+    };
+  }
+
+  // Milestone-based revisions
+  if (revisionType === "milestone" && contract.currentMilestoneIndex !== null) {
+    const milestone =
+      contract.milestones?.[
+        parseInt(String(contract.currentMilestoneIndex) || "0")
+      ];
+
+    if (!milestone || !milestone.revisionPolicy) {
+      return {
+        type: "milestone",
+        isRevisionAllowed: false,
+        isFree: false,
+        remainingFree: 0,
+        isPaid: false,
+        fee: 0,
+      };
+    }
+
+    const policy = milestone.revisionPolicy;
+    const revisionsDone = milestone.revisionDone || 0;
+    const remainingFree = Math.max(0, policy.free - revisionsDone);
+
+    // Calculate this as a plain boolean
+    const shouldBePaid = remainingFree === 0 && policy.extraAllowed;
+
+    return {
+      type: "milestone",
+      isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed),
+      isFree: remainingFree > 0,
+      remainingFree,
+      isPaid: shouldBePaid,
+      fee: policy.fee || 0,
+    };
+  }
+
+  return {
+    type: revisionType,
+    isRevisionAllowed: false,
+    isFree: false,
+    remainingFree: 0,
+    isPaid: false,
+    fee: 0,
+  };
+};

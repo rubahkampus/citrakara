@@ -1,6 +1,13 @@
 // src/lib/services/proposal.service.ts
+
 import { Types } from "mongoose";
 import { IProposal } from "@/lib/db/models/proposal.model";
+import { ICommissionListing } from "../db/models/commissionListing.model";
+import { HttpError } from "./commissionListing.service";
+import { connectDB } from "@/lib/db/connection";
+import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
+import type { Cents, ISODate, ObjectId } from "@/types/common";
+
 import {
   createProposal as repoCreateProposal,
   getProposalById,
@@ -21,15 +28,15 @@ import {
   ArtistAdjustment,
   cancelProposal,
 } from "@/lib/db/repositories/proposal.repository";
+
 import { findCommissionListingById } from "@/lib/db/repositories/commissionListing.repository";
-import { connectDB } from "@/lib/db/connection";
-import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
-import type { Cents, ISODate, ObjectId } from "@/types/common";
-import { HttpError } from "./commissionListing.service";
-import { ICommissionListing } from "../db/models/commissionListing.model";
+
 import { getLatestActiveContractDeadline } from "../db/repositories/contract.repository";
 
-// ========== Service Interfaces ==========
+/* ======================================================================
+ * Service Interfaces
+ * ====================================================================== */
+
 export interface ServiceOptionSelection {
   id: number;
   groupId: number;
@@ -109,9 +116,16 @@ export interface ProposalFilters {
   beforeExpire?: boolean;
 }
 
-// ========== Helper Functions ==========
+/* ======================================================================
+ * Helper Functions
+ * ====================================================================== */
 
-// Helper function to convert service general options to repository format
+/**
+ * Convert service general options to repository format
+ *
+ * @param options The service-level general options
+ * @returns Repository-formatted general options or undefined if no options provided
+ */
 function convertGeneralOptions(
   options?: ServiceGeneralOptionsInput
 ): ProposalGeneralOptionsInput | undefined {
@@ -134,7 +148,12 @@ function convertGeneralOptions(
   return result;
 }
 
-// Helper function to convert service subject options to repository format
+/**
+ * Convert service subject options to repository format
+ *
+ * @param options The service-level subject options
+ * @returns Repository-formatted subject options or undefined if no options provided
+ */
 function convertSubjectOptions(
   options?: ServiceSubjectOptionsInput
 ): ProposalSubjectOptionsInput[] | undefined {
@@ -143,7 +162,15 @@ function convertSubjectOptions(
   return options.subjects;
 }
 
-// Helper function to validate deadline based on listing policy
+/**
+ * Validate deadline based on listing policy
+ *
+ * @param listing The commission listing containing deadline policy
+ * @param deadline The proposed deadline
+ * @param earliestDate The earliest possible start date
+ * @param latestDate The latest possible start date
+ * @throws HttpError if deadline validation fails
+ */
 function validateDeadline(
   listing: ICommissionListing,
   deadline: Date,
@@ -177,9 +204,46 @@ function validateDeadline(
   }
 }
 
-// ========== Service Implementation ==========
+/**
+ * Validate proposal input before creating or updating
+ *
+ * @param input The proposal input to validate
+ * @throws Error if validation fails
+ */
+export function validateProposalInput(input: any): void {
+  // Validate dates
+  if (input.earliestDate >= input.latestDate) {
+    throw new Error("Earliest date must be before latest date");
+  }
 
-// ========== Main CRUD Operations ==========
+  // Validate description
+  if (!input.generalDescription.trim()) {
+    throw new Error("Description is required");
+  }
+
+  // Validate reference images
+  if (input.referenceImages && input.referenceImages.length > 5) {
+    throw new Error("Maximum 5 reference images allowed");
+  }
+
+  // Validate baseDate is present
+  if (!input.baseDate) {
+    throw new Error("Base date is required");
+  }
+}
+
+/* ======================================================================
+ * Main CRUD Operations
+ * ====================================================================== */
+
+/**
+ * Create a proposal from form data
+ *
+ * @param clientId ID of the client creating the proposal
+ * @param form FormData containing proposal details and reference images
+ * @returns Created proposal object
+ * @throws HttpError if validation fails or creation fails
+ */
 export async function createProposalFromForm(
   clientId: string,
   form: FormData
@@ -287,6 +351,15 @@ export async function createProposalFromForm(
   }
 }
 
+/**
+ * Update a proposal from form data
+ *
+ * @param proposalId ID of the proposal to update
+ * @param userId ID of the user updating the proposal
+ * @param form FormData containing updated proposal details
+ * @returns Updated proposal object
+ * @throws HttpError if validation fails or update fails
+ */
 export async function updateProposalFromForm(
   proposalId: string,
   userId: string,
@@ -413,7 +486,19 @@ export async function updateProposalFromForm(
   }
 }
 
-// ========== Response Operations ==========
+/* ======================================================================
+ * Response Operations
+ * ====================================================================== */
+
+/**
+ * Handle artist response to a proposal
+ *
+ * @param artistId ID of the artist responding to the proposal
+ * @param proposalId ID of the proposal to respond to
+ * @param decision Artist decision (accept/reject with optional adjustments)
+ * @returns Updated proposal object
+ * @throws Error if validation fails or response fails
+ */
 export async function artistRespond(
   artistId: string,
   proposalId: string,
@@ -476,6 +561,15 @@ export async function artistRespond(
   }
 }
 
+/**
+ * Handle client response to a proposal
+ *
+ * @param clientId ID of the client responding to the proposal
+ * @param proposalId ID of the proposal to respond to
+ * @param decision Client decision (accept adjustments or cancel)
+ * @returns Updated proposal object
+ * @throws Error if validation fails or response fails
+ */
 export async function clientRespond(
   clientId: string,
   proposalId: string,
@@ -514,7 +608,19 @@ export async function clientRespond(
   }
 }
 
-// ========== Query Operations ==========
+/* ======================================================================
+ * Query Operations
+ * ====================================================================== */
+
+/**
+ * Get proposals for a user based on role and filters
+ *
+ * @param userId ID of the user
+ * @param role Role of the user (client or artist)
+ * @param filters Optional filters for proposal status and expiration
+ * @returns Array of proposals matching the criteria
+ * @throws Error if the query fails
+ */
 export async function getUserProposals(
   userId: string,
   role: "client" | "artist",
@@ -535,6 +641,14 @@ export async function getUserProposals(
   }
 }
 
+/**
+ * Get incoming proposals for an artist
+ *
+ * @param artistId ID of the artist
+ * @param filters Optional filters for proposal status and expiration
+ * @returns Array of incoming proposals
+ * @throws Error if the query fails
+ */
 export async function getIncomingProposals(
   artistId: string,
   filters?: ProposalFilters
@@ -549,6 +663,14 @@ export async function getIncomingProposals(
   }
 }
 
+/**
+ * Get outgoing proposals for a client
+ *
+ * @param clientId ID of the client
+ * @param filters Optional filters for proposal status and expiration
+ * @returns Array of outgoing proposals
+ * @throws Error if the query fails
+ */
 export async function getOutgoingProposals(
   clientId: string,
   filters?: ProposalFilters
@@ -567,6 +689,14 @@ export async function getOutgoingProposals(
   }
 }
 
+/**
+ * Fetch a specific proposal by ID with permission check
+ *
+ * @param proposalId ID of the proposal to fetch
+ * @param userId ID of the user requesting the proposal
+ * @returns Proposal object if authorized
+ * @throws Error if not found or not authorized
+ */
 export async function fetchProposalById(
   proposalId: string,
   userId: string
@@ -594,7 +724,17 @@ export async function fetchProposalById(
   }
 }
 
-// ========== Permission Helpers ==========
+/* ======================================================================
+ * Permission Helpers
+ * ====================================================================== */
+
+/**
+ * Check if a user can edit a proposal
+ *
+ * @param proposalId ID of the proposal to check
+ * @param userId ID of the user attempting to edit
+ * @returns Boolean indicating whether user can edit
+ */
 export async function canEditProposal(
   proposalId: string,
   userId: string
@@ -613,6 +753,14 @@ export async function canEditProposal(
   }
 }
 
+/**
+ * Check if a user can respond to a proposal
+ *
+ * @param proposalId ID of the proposal to check
+ * @param userId ID of the user attempting to respond
+ * @param role Role of the user (client or artist)
+ * @returns Boolean indicating whether user can respond
+ */
 export async function canRespondToProposal(
   proposalId: string,
   userId: string,
@@ -639,7 +787,17 @@ export async function canRespondToProposal(
   }
 }
 
-// ========== Status Operations ==========
+/* ======================================================================
+ * Status Operations
+ * ====================================================================== */
+
+/**
+ * Finalize an accepted proposal
+ *
+ * @param proposalId ID of the proposal to finalize
+ * @returns Finalized proposal object
+ * @throws Error if proposal not found or not in accepted status
+ */
 export async function finalizeProposal(proposalId: string): Promise<IProposal> {
   try {
     await connectDB();
@@ -660,6 +818,13 @@ export async function finalizeProposal(proposalId: string): Promise<IProposal> {
   }
 }
 
+/**
+ * Expire old pending proposals
+ *
+ * @param asOf Date to check expiration against (defaults to current date)
+ * @returns Number of expired proposals
+ * @throws Error if operation fails
+ */
 export async function expireOldProposals(
   asOf: Date = new Date()
 ): Promise<number> {
@@ -672,7 +837,17 @@ export async function expireOldProposals(
   }
 }
 
-// ========== Dashboard Helpers ==========
+/* ======================================================================
+ * Dashboard Helpers
+ * ====================================================================== */
+
+/**
+ * Get dashboard data for a user showing incoming and outgoing proposals
+ *
+ * @param userId ID of the user
+ * @returns Object containing incoming and outgoing proposals with counts
+ * @throws Error if data fetching fails
+ */
 export async function getDashboardData(userId: string): Promise<{
   incoming: IProposal[];
   outgoing: IProposal[];
@@ -699,30 +874,17 @@ export async function getDashboardData(userId: string): Promise<{
   }
 }
 
-// ========== Validation Helpers ==========
-export function validateProposalInput(input: any): void {
-  // Validate dates
-  if (input.earliestDate >= input.latestDate) {
-    throw new Error("Earliest date must be before latest date");
-  }
+/* ======================================================================
+ * Utility Operations
+ * ====================================================================== */
 
-  // Validate description
-  if (!input.generalDescription.trim()) {
-    throw new Error("Description is required");
-  }
-
-  // Validate reference images
-  if (input.referenceImages && input.referenceImages.length > 5) {
-    throw new Error("Maximum 5 reference images allowed");
-  }
-
-  // Validate baseDate is present
-  if (!input.baseDate) {
-    throw new Error("Base date is required");
-  }
-}
-
-// ========== Utility Operations ==========
+/**
+ * Get dynamic estimate for start and end dates based on listing
+ *
+ * @param listingId ID of the commission listing
+ * @returns Object with earliest date, latest date, and base date
+ * @throws Error if listing not found
+ */
 export async function getDynamicEstimate(listingId: string) {
   await connectDB();
   const listing = await findCommissionListingById(listingId);

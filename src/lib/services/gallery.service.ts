@@ -14,6 +14,8 @@ const DEFAULT_GALLERY_NAMES = ["General", "Commissions"] as const;
 
 /**
  * Get all galleries for the specified user
+ * @param userId User ID to get galleries for
+ * @returns Array of galleries owned by the user
  */
 export async function getUserGalleries(userId: string) {
   return findGalleriesByUserId(userId);
@@ -21,6 +23,10 @@ export async function getUserGalleries(userId: string) {
 
 /**
  * Create a new gallery for the user
+ * @param userId User ID to create gallery for
+ * @param name Name of the new gallery
+ * @returns The newly created gallery
+ * @throws Error if gallery name is invalid
  */
 export async function createUserGallery(userId: string, name: string) {
   const trimmedName = name.trim();
@@ -33,6 +39,11 @@ export async function createUserGallery(userId: string, name: string) {
 /**
  * Rename an existing gallery
  * Validates ownership and prevents renaming default galleries
+ * @param userId User ID attempting to rename the gallery
+ * @param galleryId ID of the gallery to rename
+ * @param name New name for the gallery
+ * @returns The updated gallery
+ * @throws Error if gallery not found, access denied, or default gallery
  */
 export async function renameGallery(
   userId: string,
@@ -54,6 +65,9 @@ export async function renameGallery(
 /**
  * Delete a gallery and all its posts (soft delete)
  * Validates ownership and prevents deleting default galleries
+ * @param userId User ID attempting to delete the gallery
+ * @param galleryId ID of the gallery to delete
+ * @throws Error if gallery not found, access denied, or default gallery
  */
 export async function deleteGallery(userId: string, galleryId: string) {
   const gallery = await findGalleryById(galleryId);
@@ -78,6 +92,9 @@ export async function deleteGallery(userId: string, galleryId: string) {
 
 /**
  * Get public galleries for a user by username
+ * @param username Username to get galleries for
+ * @returns Array of galleries owned by the specified user
+ * @throws Error if user not found
  */
 export async function getGalleriesByUsername(username: string) {
   const user = await findUserByUsername(username);

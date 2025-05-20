@@ -70,6 +70,7 @@ interface ChangeTicketDetailsProps {
   isClient: boolean;
   isAdmin: boolean;
   username: string;
+  canReview: boolean;
 }
 
 export default function ChangeTicketDetails({
@@ -80,6 +81,7 @@ export default function ChangeTicketDetails({
   isClient,
   isAdmin,
   username,
+  canReview
 }: ChangeTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<
@@ -1097,9 +1099,9 @@ export default function ChangeTicketDetails({
                   Deskripsi
                 </Typography>
               </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
+              <AccordionDetails sx={{pb:10}}>
+                <Grid container spacing={10} mb={2}>
+                  <Grid item xs={12} md={12}>
                     <Typography
                       variant="subtitle2"
                       color="text.secondary"
@@ -1119,7 +1121,7 @@ export default function ChangeTicketDetails({
                       </Typography>
                     </Paper>
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} md={12}>
                     <Typography
                       variant="subtitle2"
                       color="text.secondary"
@@ -1161,8 +1163,8 @@ export default function ChangeTicketDetails({
                   variant="subtitle1"
                   sx={{ display: "flex", alignItems: "center" }}
                 >
-                  <SyncAltIcon sx={{ mr: 1 }} fontSize="small" /> General
-                  Perubahan Opsi
+                  <SyncAltIcon sx={{ mr: 1 }} fontSize="small" />
+                  Perubahan Opsi Umum
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -1182,8 +1184,8 @@ export default function ChangeTicketDetails({
                   variant="subtitle1"
                   sx={{ display: "flex", alignItems: "center" }}
                 >
-                  <SyncAltIcon sx={{ mr: 1 }} fontSize="small" /> Subject
-                  Perubahan Opsi
+                  <SyncAltIcon sx={{ mr: 1 }} fontSize="small" /> 
+                  Perubahan Opsi Subjek
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -1209,7 +1211,7 @@ export default function ChangeTicketDetails({
                       variant={response === "accept" ? "contained" : "outlined"}
                       color="success"
                       onClick={() => setResponse("accept")}
-                      disabled={isAdmin || isSubmitting}
+                      disabled={isAdmin || canReview || isSubmitting}
                       startIcon={<ThumbUpIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -1222,7 +1224,7 @@ export default function ChangeTicketDetails({
                       }
                       color="primary"
                       onClick={() => setResponse("propose")}
-                      disabled={isAdmin || isSubmitting}
+                      disabled={isAdmin || canReview || isSubmitting}
                       startIcon={<PaymentIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -1233,7 +1235,7 @@ export default function ChangeTicketDetails({
                       variant={response === "reject" ? "contained" : "outlined"}
                       color="error"
                       onClick={() => setResponse("reject")}
-                      disabled={isAdmin || isSubmitting}
+                      disabled={isAdmin || canReview || isSubmitting}
                       startIcon={<ThumbDownIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -1269,7 +1271,7 @@ export default function ChangeTicketDetails({
                       onChange={(e) => setProposedFee(Number(e.target.value))}
                       placeholder="Masukkan jumlah biaya"
                       required
-                      disabled={isAdmin || isSubmitting}
+                      disabled={isAdmin || canReview || isSubmitting}
                       error={
                         response === "propose" &&
                         (proposedFee <= 0 || isNaN(proposedFee))
@@ -1296,7 +1298,7 @@ export default function ChangeTicketDetails({
                       onChange={(e) => setRejectionReason(e.target.value)}
                       placeholder="Jelaskan mengapa Anda menolak perubahan ini"
                       required
-                      disabled={isAdmin || isSubmitting}
+                      disabled={isAdmin || canReview || isSubmitting}
                       error={
                         response === "reject" && rejectionReason.trim() === ""
                       }
@@ -1315,7 +1317,7 @@ export default function ChangeTicketDetails({
                   color="primary"
                   onClick={handleSubmit}
                   disabled={
-                    isAdmin ||
+                    isAdmin || canReview ||
                     !response ||
                     (response === "reject" && !rejectionReason.trim()) ||
                     (response === "propose" &&
@@ -1359,7 +1361,7 @@ export default function ChangeTicketDetails({
                   variant="contained"
                   color="success"
                   onClick={() => setShowPaymentDialog(true)}
-                  disabled={isAdmin || isSubmitting}
+                  disabled={isAdmin || canReview || isSubmitting}
                   startIcon={<PaymentIcon />}
                   sx={{ flexGrow: 1 }}
                   size="large"
@@ -1370,7 +1372,7 @@ export default function ChangeTicketDetails({
                   variant={response === "reject" ? "contained" : "outlined"}
                   color="error"
                   onClick={() => setResponse("reject")}
-                  disabled={isAdmin || isSubmitting}
+                  disabled={isAdmin || canReview || isSubmitting}
                   startIcon={<ThumbDownIcon />}
                   sx={{ flexGrow: 1 }}
                   size="large"
@@ -1390,7 +1392,7 @@ export default function ChangeTicketDetails({
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Explain why you are rejecting this fee"
                     required
-                    disabled={isAdmin || isSubmitting}
+                    disabled={isAdmin || canReview || isSubmitting}
                     error={
                       response === "reject" && rejectionReason.trim() === ""
                     }
@@ -1406,7 +1408,7 @@ export default function ChangeTicketDetails({
                     color="primary"
                     onClick={handleSubmit}
                     disabled={
-                      isAdmin || !rejectionReason.trim() || isSubmitting
+                      isAdmin || canReview || !rejectionReason.trim() || isSubmitting
                     }
                   >
                     {isSubmitting ? (

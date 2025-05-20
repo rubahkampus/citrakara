@@ -655,6 +655,7 @@ export default function MilestoneUploadDetails({
             onClick={confirmEscalation}
             color="warning"
             variant="contained"
+            disabled={isAdmin}
           >
             Lanjutkan ke Resolusi
           </Button>

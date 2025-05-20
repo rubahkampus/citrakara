@@ -11,7 +11,7 @@ import {
   IResolutionTicket,
 } from "@/lib/db/models/ticket.model";
 import { ClientSession } from "mongoose";
-import type { ObjectId, ISODate } from "@/types/common";
+import type { ObjectId, ISODate, Cents } from "@/types/common";
 import { toObjectId } from "@/lib/utils/toObjectId";
 
 // CANCEL TICKET OPERATIONS
@@ -92,6 +92,7 @@ export interface CreateRevisionTicketInput {
   description: string;
   referenceImages?: string[];
   milestoneIdx?: number;
+  paidFee?: Cents;
 }
 
 export async function createRevisionTicket(
@@ -108,6 +109,7 @@ export async function createRevisionTicket(
     description: input.description,
     referenceImages: input.referenceImages || [],
     milestoneIdx: input.milestoneIdx,
+    paidFee: input.paidFee,
     status: "pending",
     resolved: false,
     expiresAt,

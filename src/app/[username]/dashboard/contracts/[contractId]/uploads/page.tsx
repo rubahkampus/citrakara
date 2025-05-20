@@ -52,10 +52,6 @@ export default async function UploadsListPage({
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        Contract Uploads
-      </Typography>
-
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
         <UploadsListPageWrapper
@@ -65,6 +61,8 @@ export default async function UploadsListPage({
           isArtist={isArtist}
           isClient={isClient}
           contractStatus={contract.status}
+          contractFlow={contract.proposalSnapshot.listingSnapshot.flow}
+          currentMilestoneIndex={contract?.currentMilestoneIndex}
         />
       </Suspense>
     </Box>

@@ -1,5 +1,5 @@
 // src/app/[username]/dashboard/contracts/[contractId]/uploads/[uploadType]/new/page.tsx
-import { Box, Alert, Typography, Paper } from "@mui/material";
+import { Box, Alert, Typography, Paper, Link, Breadcrumbs, Button } from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getContractById } from "@/lib/services/contract.service";
 import {
@@ -22,6 +22,7 @@ import ProgressUploadForm from "@/components/dashboard/contracts/uploads/Progres
 import RevisionUploadForm from "@/components/dashboard/contracts/uploads/RevisionUploadForm";
 import FinalUploadForm from "@/components/dashboard/contracts/uploads/FinalUploadForm";
 import MilestoneUploadForm from "@/components/dashboard/contracts/uploads/MilestoneUploadForm";
+import { NavigateNext, Home, PaletteRounded, ConfirmationNumberRounded, ArrowBack, CloudUploadRounded } from "@mui/icons-material";
 
 interface CreateUploadPageProps {
   params: {
@@ -46,7 +47,9 @@ export default async function CreateUploadPage({
   const session = await getAuthSession();
 
   if (!session || !isUserOwner(session as Session, username)) {
-    return <Alert severity="error">You do not have access to this page</Alert>;
+    return (
+      <Alert severity="error">Anda tidak memiliki akses ke halaman ini</Alert>
+    );
   }
 
   let contract;
@@ -54,13 +57,15 @@ export default async function CreateUploadPage({
     contract = await getContractById(contractId, (session as Session).id);
   } catch (err) {
     console.error("Error fetching contract:", err);
-    return <Alert severity="error">Failed to load contract data</Alert>;
+    return <Alert severity="error">Gagal memuat data kontrak</Alert>;
   }
 
   // Verify user has permission to create this upload type
   const isArtist = contract.artistId.toString() === (session as Session).id;
   if (!isArtist) {
-    return <Alert severity="error">Only artists can create uploads</Alert>;
+    return (
+      <Alert severity="error">Hanya seniman yang dapat membuat unggahan</Alert>
+    );
   }
 
   // Check if contract allows this upload type
@@ -69,7 +74,9 @@ export default async function CreateUploadPage({
     contract.proposalSnapshot.listingSnapshot.flow !== "milestone"
   ) {
     return (
-      <Alert severity="error">This contract does not use milestone flow</Alert>
+      <Alert severity="error">
+        Kontrak ini tidak menggunakan alur milestone
+      </Alert>
     );
   }
 
@@ -78,16 +85,16 @@ export default async function CreateUploadPage({
     contract.proposalSnapshot.listingSnapshot.flow !== "standard"
   ) {
     return (
-      <Alert severity="error">This contract does not use standard flow</Alert>
+      <Alert severity="error">Kontrak ini tidak menggunakan alur standar</Alert>
     );
   }
 
   if (uploadType === "revision" && !ticketId) {
-    return <Alert severity="error">Revision ticket ID is required</Alert>;
+    return <Alert severity="error">ID tiket revisi diperlukan</Alert>;
   }
 
   if (uploadType === "milestone" && !milestoneIdx) {
-    return <Alert severity="error">Milestone index is required</Alert>;
+    return <Alert severity="error">Indeks milestone diperlukan</Alert>;
   }
 
   // Get revision ticket if this is a revision upload
@@ -96,7 +103,7 @@ export default async function CreateUploadPage({
     try {
       revisionTicket = await findRevisionTicketById(ticketId);
       if (!revisionTicket) {
-        return <Alert severity="error">Revision ticket not found</Alert>;
+        return <Alert severity="error">Tiket revisi tidak ditemukan</Alert>;
       }
 
       // Check if the ticket is in a state that allows uploads
@@ -107,15 +114,13 @@ export default async function CreateUploadPage({
       ) {
         return (
           <Alert severity="error">
-            This revision ticket is not in a state that allows uploads
+            Tiket revisi ini tidak dalam status yang memungkinkan unggahan
           </Alert>
         );
       }
     } catch (err) {
       console.error("Error fetching revision ticket:", err);
-      return (
-        <Alert severity="error">Failed to load revision ticket data</Alert>
-      );
+      return <Alert severity="error">Gagal memuat data tiket revisi</Alert>;
     }
   }
 
@@ -151,7 +156,23 @@ export default async function CreateUploadPage({
     warnings.push({
       type: "warning",
       message:
-        "There are active resolution cases for this contract. It's recommended to wait for them to be resolved before creating new uploads.",
+        "Terdapat tiket resolusi yang masih aktif untuk kontrak ini. Sebaiknya tunggu hingga kasus tersebut diselesaikan sebelum mengunggah progres baru.",
+    });
+  }
+
+  if (unresolvedCancelTickets.length > 0) {
+    warnings.push({
+      type: "warning",
+      message:
+        "Terdapat permintaan pembatalan yang masih aktif untuk kontrak ini. Disarankan untuk menunggu hingga permintaan tersebut diproses sebelum melanjutkan unggahan.",
+    });
+  }
+
+  if (unresolvedChangeTickets.length > 0) {
+    warnings.push({
+      type: "warning",
+      message:
+        "Terdapat permintaan perubahan kontrak yang masih aktif. Disarankan untuk menunggu hingga permintaan tersebut diproses sebelum melanjutkan unggahan.",
     });
   }
 
@@ -160,12 +181,6 @@ export default async function CreateUploadPage({
     case "progress":
       // Standard progress uploads don't have many restrictions
       // But we can show informational warnings
-      if (unresolvedCancelTickets.length > 0) {
-        warnings.push({
-          type: "warning",
-          message: "There is an active cancellation request for this contract.",
-        });
-      }
       break;
 
     case "milestone":
@@ -179,20 +194,33 @@ export default async function CreateUploadPage({
         if (activeMilestoneUploads.length > 0) {
           warnings.push({
             type: "error",
-            message: `There is already an active final upload for milestone #${
-              milestoneIdxNum + 1
-            }. Please wait for client review before submitting a new one.`,
+            message: `Sudah ada unggahan final aktif untuk milestone ${
+              contract?.milestones?.[milestoneIdxNum]?.title || "ini"
+            }. Mohon tunggu ulasan klien sebelum mengirimkan yang baru.`,
           });
+          
           hasBlockingWarning = true;
         }
       }
 
       // Other informational warnings
-      if (unfinishedRevisionTickets.length > 0) {
+      if (unresolvedRevisionTickets.length > 0) {
         warnings.push({
           type: "info",
-          message: `You have ${unfinishedRevisionTickets.length} revision ticket(s) that need uploads.`,
+          message: `Anda memiliki ${unresolvedRevisionTickets.length} permintaan revisi yang memerlukan tanggapan anda atau pembayaran klien. Disarankan untuk menunggu hingga permintaan tersebut diproses sebelum melanjutkan unggahan.`,
         });
+        
+          // hasBlockingWarning = true;
+      }
+
+      // Other informational warnings
+      if (unfinishedRevisionTickets.length > 0) {
+        warnings.push({
+          type: "error",
+          message: `Anda memiliki ${unfinishedRevisionTickets.length} tiket revisi yang memerlukan unggahan anda untuk milestone ini. Harap selesaikan revisi terlebih dahulu`,
+        });
+        
+          hasBlockingWarning = true;
       }
       break;
 
@@ -207,7 +235,7 @@ export default async function CreateUploadPage({
           warnings.push({
             type: "error",
             message:
-              "There is already an active revision upload for this ticket. Please wait for client review before submitting a new one.",
+              "Sudah ada unggahan revisi aktif untuk tiket ini. Mohon tunggu ulasan klien sebelum mengirimkan yang baru.",
           });
           hasBlockingWarning = true;
         }
@@ -221,7 +249,7 @@ export default async function CreateUploadPage({
       if (otherRevisionTickets.length > 0) {
         warnings.push({
           type: "info",
-          message: `You have ${otherRevisionTickets.length} other revision ticket(s) that need uploads.`,
+          message: `Anda memiliki ${otherRevisionTickets.length} tiket revisi lain yang memerlukan unggahan.`,
         });
       }
       break;
@@ -232,7 +260,7 @@ export default async function CreateUploadPage({
         warnings.push({
           type: "error",
           message:
-            "There is already an active final upload. Please wait for client review before submitting a new one.",
+            "Sudah ada unggahan final aktif. Mohon tunggu ulasan klien sebelum mengirimkan yang baru.",
         });
         hasBlockingWarning = true;
       }
@@ -244,9 +272,8 @@ export default async function CreateUploadPage({
           warnings.push({
             type: "error",
             message:
-              "You must complete all revision requests before submitting a cancellation proof.",
+              `Anda masih memiliki ${unfinishedRevisionTickets.length} revisi yang menunggu unggahan. Namun, Anda dapat langsung mengunggah bukti pembatalan sekarang.`,
           });
-          hasBlockingWarning = true;
         }
       } else {
         // For regular final delivery
@@ -263,7 +290,7 @@ export default async function CreateUploadPage({
             warnings.push({
               type: "error",
               message:
-                "All milestones must be completed before submitting a final delivery.",
+                "Semua milestone harus diselesaikan sebelum mengirimkan pengiriman final.",
             });
             hasBlockingWarning = true;
           }
@@ -274,7 +301,7 @@ export default async function CreateUploadPage({
           warnings.push({
             type: "error",
             message:
-              "You must complete all revision requests before submitting the final delivery.",
+              "Anda harus menyelesaikan semua permintaan revisi sebelum mengirimkan pengiriman final.",
           });
           hasBlockingWarning = true;
         }
@@ -286,14 +313,90 @@ export default async function CreateUploadPage({
   const serializedContract = JSON.parse(JSON.stringify(contract));
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
-        {uploadType === "progress" && "Upload Progress"}
-        {uploadType === "milestone" && "Upload Milestone Progress"}
-        {uploadType === "revision" && "Upload Revision"}
-        {uploadType === "final" && "Upload Final Delivery"}
-      </Typography>
+    <Box py={4}>
+      {/* Header section */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/contracts`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <PaletteRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Daftar Kontrak
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/contracts/${contractId}`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Detail Kontrak
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/contracts/${contractId}/uploads`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Daftar Unggahan
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Buat Unggahan
+            </Typography>
+          </Breadcrumbs>
 
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5} mb={2}>
+            <CloudUploadRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              Buat Unggahan
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard/contracts/${contractId}/uploads`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+        >
+          Kembali ke Daftar Unggahan
+        </Button>
+      </Box>
+      
       {/* Display warnings */}
       {warnings.length > 0 && (
         <Box sx={{ mb: 3 }}>
@@ -356,8 +459,7 @@ export default async function CreateUploadPage({
       {/* {hasBlockingWarning && (
         <Paper sx={{ p: 3, bgcolor: "#f5f5f5" }}>
           <Typography variant="body1" color="error">
-            You cannot create a new {uploadType} upload at this time. Please
-            address the issues mentioned above first.
+            Anda tidak dapat membuat unggahan {uploadType} baru saat ini. Mohon selesaikan masalah yang disebutkan di atas terlebih dahulu.
           </Typography>
         </Paper>
       )} */}

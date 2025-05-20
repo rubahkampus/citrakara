@@ -17,6 +17,8 @@ import {
 
 /**
  * Register a new user with all required sub-entities
+ * @param req NextRequest containing user registration data
+ * @returns NextResponse with registration status and tokens in cookies
  */
 export async function registerUser(req: NextRequest) {
   try {
@@ -91,7 +93,9 @@ export async function registerUser(req: NextRequest) {
 }
 
 /**
- * Login a user
+ * Login a user with username and password
+ * @param req NextRequest containing login credentials
+ * @returns NextResponse with login status and tokens in cookies
  */
 export async function loginUser(req: NextRequest) {
   try {
@@ -154,7 +158,8 @@ export async function loginUser(req: NextRequest) {
 }
 
 /**
- * Logout a user
+ * Logout a user by clearing authentication cookies
+ * @returns NextResponse confirming successful logout
  */
 export function logoutUser() {
   const response = NextResponse.json({ message: "Logged out successfully" });
@@ -164,7 +169,9 @@ export function logoutUser() {
 }
 
 /**
- * Refresh access token using refresh token
+ * Refresh access token using the refresh token
+ * @param req NextRequest containing refresh token in cookies
+ * @returns NextResponse with new access token in cookies
  */
 export function refreshAccessToken(req: NextRequest) {
   try {

@@ -1,4 +1,8 @@
 // lib/services/user.service.ts
+
+import { Types } from "mongoose";
+import { HttpError } from "./commissionListing.service";
+import { uploadFileToR2 } from "@/lib/utils/cloudflare";
 import {
   findUserByEmail,
   findUserByUsername,
@@ -16,10 +20,19 @@ import {
   hasBookmarkedCommission,
   searchArtists,
 } from "@/lib/db/repositories/user.repository";
-import { uploadFileToR2 } from "@/lib/utils/cloudflare";
-import { Types } from "mongoose";
-import { HttpError } from "./commissionListing.service";
 
+/* ======================================================================
+ * User Management Functions
+ * ====================================================================== */
+
+/**
+ * Check if an email or username is available for registration
+ *
+ * @param email Optional email to check availability
+ * @param username Optional username to check availability
+ * @returns Object with error message if unavailable, success message if available
+ * @throws Error if neither email nor username is provided
+ */
 export async function checkUserAvailability(email?: string, username?: string) {
   if (!email && !username) throw new Error("Missing email or username");
 
@@ -36,10 +49,23 @@ export async function checkUserAvailability(email?: string, username?: string) {
   return { message: "Available" };
 }
 
+/**
+ * Get a user's public profile by username
+ *
+ * @param username Username of the user to fetch
+ * @returns User's public profile or null if not found
+ */
 export async function getUserPublicProfile(username: string) {
   return findUserPublicProfileByUsername(username);
 }
 
+/**
+ * Update a user's profile information from form data
+ *
+ * @param username Username of the user to update
+ * @param formData Form data containing profile updates
+ * @returns Updated user document
+ */
 export async function updateUserProfile(username: string, formData: FormData) {
   const updates: Record<string, any> = {};
 
@@ -99,13 +125,27 @@ export async function updateUserProfile(username: string, formData: FormData) {
   return updateUserByUsername(username, updates);
 }
 
-/** Service: Determine if a user is admin by their ID */
+/* ======================================================================
+ * Admin Functions
+ * ====================================================================== */
+
+/**
+ * Determine if a user is admin by their ID
+ *
+ * @param userId ID of the user to check
+ * @returns Boolean indicating whether the user is an admin
+ */
 export async function isUserAdminById(userId: string): Promise<boolean> {
   const isAdmin = await repoIsAdminById(new Types.ObjectId(userId));
   return isAdmin;
 }
 
-/** Service: Determine if a user is admin by their username */
+/**
+ * Determine if a user is admin by their username
+ *
+ * @param username Username of the user to check
+ * @returns Boolean indicating whether the user is an admin
+ */
 export async function isUserAdminByUsername(
   username: string
 ): Promise<boolean> {
@@ -113,7 +153,13 @@ export async function isUserAdminByUsername(
   return isAdmin;
 }
 
-/** Optional: Guard middleware for Express-like routes */
+/**
+ * Guard middleware for Express-like routes to restrict access to admins
+ *
+ * @param roles Array of allowed roles (defaults to ["admin"])
+ * @returns Middleware function for route protection
+ * @throws HttpError if user is not authenticated or not an admin
+ */
 export function requireAdmin(roles: string[] = ["admin"]) {
   return async function (req: any, res: any, next: any) {
     const userId = req.user?.id;
@@ -124,6 +170,19 @@ export function requireAdmin(roles: string[] = ["admin"]) {
   };
 }
 
+/* ======================================================================
+ * Bookmark Functions
+ * ====================================================================== */
+
+/**
+ * Toggle bookmark status for an artist
+ *
+ * @param userId ID of the user performing the action
+ * @param artistId ID of the artist to bookmark/unbookmark
+ * @param action Whether to bookmark or unbookmark
+ * @returns Object with status message and current bookmark state
+ * @throws HttpError if parameters are invalid
+ */
 export async function toggleArtistBookmark(
   userId: string,
   artistId: string,
@@ -154,6 +213,15 @@ export async function toggleArtistBookmark(
   }
 }
 
+/**
+ * Toggle bookmark status for a commission listing
+ *
+ * @param userId ID of the user performing the action
+ * @param commissionId ID of the commission to bookmark/unbookmark
+ * @param action Whether to bookmark or unbookmark
+ * @returns Object with status message and current bookmark state
+ * @throws HttpError if parameters are invalid
+ */
 export async function toggleCommissionBookmark(
   userId: string,
   commissionId: string,
@@ -186,14 +254,33 @@ export async function toggleCommissionBookmark(
   }
 }
 
+/**
+ * Get all artists bookmarked by a user
+ *
+ * @param userId ID of the user
+ * @returns Array of bookmarked artist documents
+ */
 export async function getUserBookmarkedArtists(userId: string) {
   return getBookmarkedArtists(userId);
 }
 
+/**
+ * Get all commission listings bookmarked by a user
+ *
+ * @param userId ID of the user
+ * @returns Array of bookmarked commission documents
+ */
 export async function getUserBookmarkedCommissions(userId: string) {
   return getBookmarkedCommissions(userId);
 }
 
+/**
+ * Check if a user has bookmarked a specific artist
+ *
+ * @param userId ID of the user
+ * @param artistId ID of the artist
+ * @returns Boolean indicating whether the user has bookmarked the artist
+ */
 export async function getArtistBookmarkStatus(
   userId: string,
   artistId: string
@@ -202,6 +289,13 @@ export async function getArtistBookmarkStatus(
   return hasBookmarkedArtist(userId, artistId);
 }
 
+/**
+ * Check if a user has bookmarked a specific commission listing
+ *
+ * @param userId ID of the user
+ * @param commissionId ID of the commission
+ * @returns Boolean indicating whether the user has bookmarked the commission
+ */
 export async function getCommissionBookmarkStatus(
   userId: string,
   commissionId: string
@@ -210,6 +304,16 @@ export async function getCommissionBookmarkStatus(
   return hasBookmarkedCommission(userId, commissionId);
 }
 
+/* ======================================================================
+ * Search Functions
+ * ====================================================================== */
+
+/**
+ * Search for artists based on query parameters
+ *
+ * @param params Object containing search parameters (query, tags, pagination)
+ * @returns Search results with artists matching the criteria
+ */
 export async function searchArtistsService(params: {
   query?: string;
   tags?: string[];

@@ -133,8 +133,8 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
     roleTabValue === 0 ? "incoming" : "outgoing";
 
   // Count contracts by category for badges
-  const incomingContracts = useMemo(() => asClient, [asClient]);
-  const outgoingContracts = useMemo(() => asArtist, [asArtist]);
+  const incomingContracts = useMemo(() => asArtist, [asClient]);
+  const outgoingContracts = useMemo(() => asClient, [asArtist]);
 
   const countByCategory = useMemo(() => {
     const counts: Record<StatusCategory, number> = {
@@ -518,7 +518,7 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
                     key={contract._id.toString()}
                     contract={contract}
                     username={username}
-                    isArtist={currentRoleView === "outgoing"}
+                    isArtist={currentRoleView === "incoming"}
                   />
                 ))}
               </List>

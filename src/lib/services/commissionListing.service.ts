@@ -1,6 +1,11 @@
 // src/lib/services/commissionListing.service.ts
+
+import { Types } from "mongoose";
 import { toObjectId } from "@/lib/utils/toObjectId";
 import { uploadGalleryImagesToR2 } from "@/lib/utils/cloudflare";
+import { getUserDefaultTos } from "./tos.service";
+import { findUserByUsername } from "@/lib/db/repositories/user.repository";
+import { ID } from "../db/models/commissionListing.model";
 import {
   createCommissionListing,
   findCommissionListingById,
@@ -16,14 +21,11 @@ import {
   searchListingsEnhanced,
   CommissionListingPayload,
 } from "@/lib/db/repositories/commissionListing.repository";
-import { findUserByUsername } from "@/lib/db/repositories/user.repository";
-import { getUserDefaultTos } from "./tos.service";
-import { Types } from "mongoose";
-import { ID } from "../db/models/commissionListing.model";
 
 /* ======================================================================
  * Types and Utilities
  * ====================================================================== */
+
 /**
  * Custom error class for HTTP status mapping
  */
@@ -43,6 +45,10 @@ export class HttpError extends Error {
 
 /**
  * Generate sequential IDs for new components
+ *
+ * @param items Array of items that may or may not have IDs
+ * @param startId Starting ID value for new items
+ * @returns Array of items with guaranteed IDs
  */
 function generateIds<T extends { id?: ID }>(
   items: T[],
@@ -56,6 +62,9 @@ function generateIds<T extends { id?: ID }>(
 
 /**
  * Convert old string questions format to new ID-based format
+ *
+ * @param questions Optional array of string questions
+ * @returns Array of questions with IDs
  */
 function convertQuestionsToIdFormat(
   questions?: string[]
@@ -70,6 +79,9 @@ function convertQuestionsToIdFormat(
 /**
  * Computes the price range (min/max) for a commission listing
  * based on all options, selections, and addons
+ *
+ * @param input Commission listing payload
+ * @returns Object with min and max prices
  */
 function computePriceRange(input: Partial<CommissionListingPayload>) {
   let min = input.basePrice ?? 0;
@@ -99,6 +111,9 @@ function computePriceRange(input: Partial<CommissionListingPayload>) {
 
 /**
  * Extract only allowed fields from JSON for commission listing
+ *
+ * @param rawPayload Raw payload from form data
+ * @returns Sanitized payload with only allowed fields
  */
 function sanitizePayload(rawPayload: any): Partial<CommissionListingPayload> {
   const allowedFields = [
@@ -136,6 +151,9 @@ function sanitizePayload(rawPayload: any): Partial<CommissionListingPayload> {
 
 /**
  * Validates a commission listing payload before creation
+ *
+ * @param payload Commission listing data to validate
+ * @throws HttpError if validation fails
  */
 function validateListingPayload(payload: Partial<CommissionListingPayload>) {
   console.log("Validating payload...");
@@ -194,6 +212,9 @@ function validateListingPayload(payload: Partial<CommissionListingPayload>) {
 
 /**
  * Process payload to convert legacy format to ID-based format
+ *
+ * @param payload Raw commission listing payload
+ * @returns Processed payload with IDs assigned to all components
  */
 function processPayloadWithIds(
   payload: Partial<CommissionListingPayload>
@@ -309,6 +330,11 @@ function processPayloadWithIds(
 /**
  * Create a commission listing from form data
  * Handles file uploads to R2 and JSON parsing
+ *
+ * @param artistId ID of the artist creating the listing
+ * @param form FormData containing listing details and images
+ * @returns Created commission listing object
+ * @throws HttpError if validation fails
  */
 export async function createListingFromForm(artistId: string, form: FormData) {
   // 1. Parse & sanitize JSON payload
@@ -331,7 +357,7 @@ export async function createListingFromForm(artistId: string, form: FormData) {
 
   console.log("Form data (raw):", form);
 
-  const tos = (await getUserDefaultTos(artistId))._id.toString()
+  const tos = (await getUserDefaultTos(artistId))._id.toString();
 
   // 3. Build our partial listingData (without thumbnail/samples yet)
   const listingData: Partial<CommissionListingPayload> = {
@@ -400,6 +426,12 @@ export async function createListingFromForm(artistId: string, form: FormData) {
 /**
  * Update a commission listing from form data
  * Handles file uploads to R2 and JSON parsing
+ *
+ * @param artistId ID of the artist updating the listing
+ * @param listingId ID of the listing to update
+ * @param form FormData containing updated listing details and images
+ * @returns Updated commission listing object
+ * @throws HttpError if validation fails or user not authorized
  */
 export async function updateListingFromForm(
   artistId: string,
@@ -503,6 +535,12 @@ export async function updateListingFromForm(
 
 /**
  * Update a commission listing with JSON data
+ *
+ * @param artistId ID of the artist updating the listing
+ * @param listingId ID of the listing to update
+ * @param updates Partial payload with fields to update
+ * @returns Updated commission listing object
+ * @throws HttpError if validation fails or user not authorized
  */
 export async function updateListing(
   artistId: string,
@@ -547,6 +585,9 @@ export async function updateListing(
 
 /**
  * Get all active listings for an artist by ID
+ *
+ * @param artistId ID of the artist
+ * @returns Array of active commission listings
  */
 export async function getArtistListings(artistId: string) {
   return findActiveListingsByArtist(artistId);
@@ -554,6 +595,11 @@ export async function getArtistListings(artistId: string) {
 
 /**
  * Set the active state of a listing (enables/disables it)
+ *
+ * @param artistId ID of the artist (for auth)
+ * @param listingId ID of the listing to update
+ * @param active Boolean indicating whether to set listing as active
+ * @returns Updated commission listing
  */
 export async function setListingActiveState(
   artistId: string,
@@ -566,6 +612,10 @@ export async function setListingActiveState(
 
 /**
  * Soft delete a listing (marks as deleted but keeps in database)
+ *
+ * @param artistId ID of the artist who owns the listing
+ * @param listingId ID of the listing to delete
+ * @returns Result of the delete operation
  */
 export async function deleteListing(artistId: string, listingId: string) {
   return softDeleteListing(artistId, listingId);
@@ -573,6 +623,10 @@ export async function deleteListing(artistId: string, listingId: string) {
 
 /**
  * Update the slots used in a listing (for order creation/cancellation)
+ *
+ * @param listingId ID of the listing to update
+ * @param delta Number of slots to add/subtract
+ * @returns Updated commission listing
  */
 export async function applySlotDelta(listingId: string, delta: number) {
   return adjustSlotsUsed(listingId, delta);
@@ -580,6 +634,13 @@ export async function applySlotDelta(listingId: string, delta: number) {
 
 /**
  * Add a question to a commission listing
+ *
+ * @param artistId ID of the artist who owns the listing
+ * @param listingId ID of the listing to update
+ * @param questionText Text of the question to add
+ * @param target Where to add the question (general or specific subject)
+ * @returns Updated commission listing
+ * @throws HttpError if not authorized
  */
 export async function addQuestionToListing(
   artistId: string,
@@ -599,6 +660,12 @@ export async function addQuestionToListing(
 
 /**
  * Remove a question from a commission listing
+ *
+ * @param artistId ID of the artist who owns the listing
+ * @param listingId ID of the listing to update
+ * @param target Where to remove the question from (general or specific subject)
+ * @returns Updated commission listing
+ * @throws HttpError if not authorized
  */
 export async function removeQuestionFromListing(
   artistId: string,
@@ -623,6 +690,10 @@ export async function removeQuestionFromListing(
 
 /**
  * Get active listings for a user by username (public)
+ *
+ * @param username Username of the artist
+ * @returns Array of active commission listings
+ * @throws HttpError if user not found
  */
 export async function getListingsByUsername(username: string) {
   const artist = await findUserByUsername(username);
@@ -635,6 +706,10 @@ export async function getListingsByUsername(username: string) {
 /**
  * Get a specific listing by ID (public)
  * Validates that it exists and is active
+ *
+ * @param listingId ID of the listing to retrieve
+ * @returns Commission listing object
+ * @throws HttpError if listing not found or not active
  */
 export async function getListingPublic(listingId: string) {
   const listing = await findCommissionListingById(listingId, { lean: true });
@@ -646,6 +721,9 @@ export async function getListingPublic(listingId: string) {
 
 /**
  * Search for listings with basic filtering options
+ *
+ * @param options Search options including label, tags, artistId, pagination
+ * @returns Search results with count and listings
  */
 export async function browseListings(options: {
   label?: string;
@@ -659,6 +737,9 @@ export async function browseListings(options: {
 
 /**
  * Enhanced search for listings with advanced filtering options
+ *
+ * @param params Advanced search parameters
+ * @returns Search results with count and filtered listings
  */
 export async function searchCommissionListings(params: {
   label?: string;
@@ -675,6 +756,9 @@ export async function searchCommissionListings(params: {
 
 /**
  * Get bookmarked commission listings with artist information
+ *
+ * @param commissionIds Array of commission listing IDs
+ * @returns Array of commission listings with artist details
  */
 export async function getBookmarkedCommissionsWithArtist(
   commissionIds: string[]

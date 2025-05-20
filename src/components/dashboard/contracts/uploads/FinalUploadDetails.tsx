@@ -964,6 +964,7 @@ export default function FinalUploadDetails({
             onClick={confirmEscalation}
             color="warning"
             variant="contained"
+            disabled={isAdmin}
           >
             Lanjutkan ke Resolusi
           </Button>

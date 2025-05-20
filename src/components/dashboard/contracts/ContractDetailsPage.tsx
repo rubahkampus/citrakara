@@ -2,12 +2,26 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Box, Paper, useTheme } from "@mui/material";
+import {
+  Box,
+  Breadcrumbs,
+  Button,
+  Link,
+  Paper,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import { IContract } from "@/lib/db/models/contract.model";
 import ContractHeader from "./details/ContractHeader";
 import ContractInfoSection from "./details/ContractInfoSection";
 import ContractTabsSection from "./details/ContractTabsSection";
 import MilestonesList from "./details/MilestonesList";
+import {
+  NavigateNext,
+  Home,
+  PaletteRounded,
+  ArrowBack,
+} from "@mui/icons-material";
 
 // Types
 interface ContractDetailsPageProps {
@@ -74,6 +88,70 @@ const ContractDetailsPage: React.FC<ContractDetailsPageProps> = ({
         },
       }}
     >
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </Link>
+            <Link
+              component={Link}
+              href={`/${username}/dashboard/contracts`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <PaletteRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Kontrak
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Detail Kontrak
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5} mb={2}>
+            <PaletteRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              Detail Kontrak
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard/contracts`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+          sx={{ mt: 1 }}
+        >
+          Kembali ke Kontrak
+        </Button>
+      </Box>
       {/* Contract Header & Info Section */}
       <SectionPaper>
         <ContractHeader contract={contract} username={username} />

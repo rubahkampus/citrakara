@@ -141,11 +141,13 @@ export default function CancelTicketForm({
           totalAmount * (workProgress / 100) -
           totalAmount * (latePenalty / 100);
         clientAmount =
+          totalAmount -
           totalAmount * (workProgress / 100) +
           totalAmount * (latePenalty / 100);
       } else {
         artistAmount = totalAmount * (workProgress / 100) + cancellationFee;
-        clientAmount = totalAmount * (workProgress / 100) - cancellationFee;
+        clientAmount =
+          totalAmount - totalAmount * (workProgress / 100) - cancellationFee;
       }
     } else {
       // Artist cancellation
@@ -164,6 +166,7 @@ export default function CancelTicketForm({
           totalAmount * (latePenalty / 100) -
           cancellationFee;
         clientAmount =
+          totalAmount -
           totalAmount * (workProgress / 100) +
           totalAmount * (latePenalty / 100) +
           cancellationFee;
@@ -172,6 +175,11 @@ export default function CancelTicketForm({
         clientAmount =
           totalAmount - totalAmount * (workProgress / 100) + cancellationFee;
       }
+    }
+
+    if (artistAmount < 0) {
+      artistAmount = 0;
+      clientAmount = totalAmount;
     }
 
     return {

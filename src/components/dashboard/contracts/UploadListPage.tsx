@@ -12,6 +12,8 @@ import {
   Paper,
   useTheme,
   Tooltip,
+  Breadcrumbs,
+  Link as MUILink,
 } from "@mui/material";
 import Link from "next/link";
 import {
@@ -20,6 +22,11 @@ import {
   CollectionsOutlined,
   HighlightAlt,
   CheckCircleOutline,
+  ArrowBack,
+  Home,
+  NavigateNext,
+  PaletteRounded,
+  CloudUploadRounded,
 } from "@mui/icons-material";
 
 // Import upload list components
@@ -36,9 +43,8 @@ import { formatDate, getStatusColor } from "@/lib/utils/formatters";
 
 // Constants - Indonesian translations
 const TRANSLATIONS = {
-  contractUploads: "Unggahan Kontrak",
   progress: "Kemajuan",
-  milestone: "Milestone Pencapaian",
+  milestone: "Unggah Milestone",
   revision: "Revisi",
   final: "Final",
   all: "Semua",
@@ -58,6 +64,8 @@ interface UploadsListPageProps {
   isArtist: boolean;
   isClient: boolean;
   contractStatus: string;
+  contractFlow: string;
+  currentMilestoneIndex: number | undefined;
 }
 
 const UploadsListPage: React.FC<UploadsListPageProps> = ({
@@ -67,6 +75,8 @@ const UploadsListPage: React.FC<UploadsListPageProps> = ({
   isArtist,
   isClient,
   contractStatus,
+  contractFlow,
+  currentMilestoneIndex,
 }) => {
   const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
@@ -97,39 +107,41 @@ const UploadsListPage: React.FC<UploadsListPageProps> = ({
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={1.5}
-        sx={{ mt: { xs: 2, sm: 0 } }}
+        sx={{ mt: { xs: 0, sm: 0 } }}
       >
-        <Tooltip title={`Unggah ${TRANSLATIONS.progress}`} arrow>
-          <Link
-            href={`/${username}/dashboard/contracts/${contractId}/uploads/progress/new`}
-            passHref
-          >
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<UploadFile />}
-              sx={{ borderRadius: 1.5 }}
+        {contractFlow === "standard" ? (
+          <Tooltip title={`Unggah ${TRANSLATIONS.progress}`} arrow>
+            <Link
+              href={`/${username}/dashboard/contracts/${contractId}/uploads/progress/new`}
+              passHref
             >
-              {TRANSLATIONS.progress}
-            </Button>
-          </Link>
-        </Tooltip>
-
-        <Tooltip title={`Unggah ${TRANSLATIONS.milestone}`} arrow>
-          <Link
-            href={`/${username}/dashboard/contracts/${contractId}/uploads/milestone/new`}
-            passHref
-          >
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<HighlightAlt />}
-              sx={{ borderRadius: 1.5 }}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<UploadFile />}
+                sx={{ borderRadius: 1.5 }}
+              >
+                {TRANSLATIONS.progress}
+              </Button>
+            </Link>
+          </Tooltip>
+        ) : (
+          <Tooltip title={`Unggah ${TRANSLATIONS.milestone}`} arrow>
+            <Link
+              href={`/${username}/dashboard/contracts/${contractId}/uploads/milestone/new?milestoneIdx=${currentMilestoneIndex}`}
+              passHref
             >
-              {TRANSLATIONS.milestone}
-            </Button>
-          </Link>
-        </Tooltip>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<HighlightAlt />}
+                sx={{ borderRadius: 1.5 }}
+              >
+                {TRANSLATIONS.milestone}
+              </Button>
+            </Link>
+          </Tooltip>
+        )}
 
         <Tooltip title={TRANSLATIONS.finalDelivery} arrow>
           <Link
@@ -160,7 +172,14 @@ const UploadsListPage: React.FC<UploadsListPageProps> = ({
   // Tab badge component to reduce repetition
   interface TabBadgeProps {
     count: number;
-    color: "primary" | "secondary" | "default" | "error" | "info" | "success" | "warning";
+    color:
+      | "primary"
+      | "secondary"
+      | "default"
+      | "error"
+      | "info"
+      | "success"
+      | "warning";
     label: string;
   }
   const TabBadge: React.FC<TabBadgeProps> = ({ count, color, label }) => (
@@ -214,36 +233,92 @@ const UploadsListPage: React.FC<UploadsListPageProps> = ({
   };
 
   return (
-    <Box>
+    <Box py={4}>
       {/* Header section */}
       <Box
-        mb={3}
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <MUILink
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </MUILink>
+            <MUILink
+              component={Link}
+              href={`/${username}/dashboard/contracts`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <PaletteRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Daftar Kontrak
+            </MUILink>
+            <MUILink
+              component={Link}
+              href={`/${username}/dashboard/contracts/${contractId}`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Detail Kontrak
+            </MUILink>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Daftar Unggahan
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5} mb={2}>
+            <CloudUploadRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              Daftar Unggahan
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard/contracts/${contractId}`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+        >
+          Kembali ke Detail Kontrak
+        </Button>
+      </Box>
+
+      <Box
+        mb={1}
         display="flex"
         justifyContent="space-between"
         alignItems={{ sm: "center" }}
         flexDirection={{ xs: "column", sm: "row" }}
         sx={{
-          pb: 1.5,
+          pb: 1,
           borderBottom: `1px solid ${theme.palette.divider}`,
         }}
       >
-        <Typography
-          variant="h6"
-          fontWeight="bold"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            color: theme.palette.text.primary,
-          }}
-        >
-          <CollectionsOutlined
-            sx={{
-              mr: 1,
-              color: theme.palette.primary.main,
-            }}
-          />
-          {TRANSLATIONS.contractUploads}
-        </Typography>
         {renderActionButtons()}
       </Box>
 

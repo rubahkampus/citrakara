@@ -74,7 +74,7 @@ export interface IChangeTicket extends Document {
   contractId: ObjectId;
 
   createdAt: ISODate; // ticket opened
-  expiresAt?: ISODate; // Change is void if it does not end the reach the EOL in 48H  and becomes uninteractable other than dispute escalation
+  expiresAt: ISODate; // Change is void if it does not end the reach the EOL in 48H  and becomes uninteractable other than dispute escalation
 
   reason: string; // client's explanation
   changeSet: {

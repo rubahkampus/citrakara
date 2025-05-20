@@ -16,8 +16,17 @@ import { connectDB } from "../db/connection";
 import { ClientSession, startSession } from "mongoose";
 import { toObjectId } from "../utils/toObjectId";
 
+//=============================================================================
+// CONTRACT RETRIEVAL FUNCTIONS
+//=============================================================================
+
 /**
- * Get contract by ID
+ * Get contract by ID with appropriate permissions check
+ *
+ * @param contractId - ID of the contract to retrieve
+ * @param userId - ID of the user requesting the contract
+ * @returns The contract document if found and user has permission
+ * @throws HttpError if contract not found or user doesn't have permission
  */
 export async function getContractById(
   contractId: string | ObjectId,
@@ -91,8 +100,12 @@ export async function getContractById(
     throw error;
   }
 }
+
 /**
  * Get all contracts for a user (as client, artist or both)
+ *
+ * @param userId - ID of the user whose contracts to retrieve
+ * @returns Object containing two arrays: contracts as client and contracts as artist
  */
 export async function getUserContracts(userId: string): Promise<{
   asClient: IContract[];
@@ -116,7 +129,39 @@ export async function getUserContracts(userId: string): Promise<{
 }
 
 /**
+ * Get the artist's latest active contract deadline
+ * Used for calculating availability windows for new proposals
+ *
+ * @param artistId - ID of the artist to check
+ * @returns The latest deadline date or null if no active contracts
+ */
+export async function getLatestActiveContractDeadline(
+  artistId: string | ObjectId
+): Promise<Date | null> {
+  try {
+    const deadline = await contractRepo.getLatestActiveContractDeadline(
+      artistId
+    );
+    return deadline;
+  } catch (error) {
+    console.error("Error getting latest contract deadline:", error);
+    // In case of error, return null to indicate no active contracts
+    // This is safer than blocking proposal creation
+    return null;
+  }
+}
+
+//=============================================================================
+// CONTRACT CREATION FUNCTIONS
+//=============================================================================
+
+/**
  * Create a new contract from an accepted proposal
+ *
+ * @param proposalId - ID of the accepted proposal
+ * @param paymentAmount - Initial payment amount in cents
+ * @returns The newly created contract
+ * @throws HttpError if proposal not found or not in accepted status
  */
 export async function createContractFromProposal(
   proposalId: string | ObjectId,
@@ -254,8 +299,17 @@ export async function createContractFromProposal(
   }
 }
 
+//=============================================================================
+// CONTRACT UPDATE FUNCTIONS
+//=============================================================================
+
 /**
  * Update contract status
+ *
+ * @param contractId - ID of the contract to update
+ * @param status - New status for the contract
+ * @param workPercentage - Optional work percentage completion
+ * @returns The updated contract
  */
 export async function updateContractStatus(
   contractId: string | ObjectId,
@@ -271,6 +325,12 @@ export async function updateContractStatus(
 
 /**
  * Extend contract deadline
+ *
+ * @param contractId - ID of the contract to extend
+ * @param userId - ID of the user requesting the extension (must be client)
+ * @param newDeadline - New deadline date
+ * @returns The updated contract
+ * @throws HttpError if contract not found or user doesn't have permission
  */
 export async function extendContractDeadline(
   contractId: string | ObjectId,
@@ -302,7 +362,199 @@ export async function extendContractDeadline(
 }
 
 /**
+ * Update contract terms (after a change ticket is accepted)
+ *
+ * @param contractId - ID of the contract to update
+ * @param newTerms - New terms to apply to the contract
+ * @returns The updated contract
+ */
+export async function updateContractTerms(
+  contractId: string | ObjectId,
+  newTerms: any
+): Promise<any> {
+  return contractRepo.updateContractTerms(contractId, newTerms);
+}
+
+/**
+ * Update contract finance (for runtime fees like revision or change fees)
+ *
+ * @param contractId - ID of the contract to update
+ * @param runtimeFees - Fees to add to the contract
+ * @param session - MongoDB session for transaction
+ * @returns The updated contract
+ */
+export async function updateContractFinance(
+  contractId: string | ObjectId,
+  runtimeFees: number,
+  session: ClientSession
+): Promise<any> {
+  return contractRepo.updateContractFinance(contractId, runtimeFees, session);
+}
+
+//=============================================================================
+// CONTRACT MILESTONE FUNCTIONS
+//=============================================================================
+
+/**
+ * Update milestone status
+ *
+ * @param contractId - ID of the contract containing the milestone
+ * @param milestoneIdx - Index of the milestone to update
+ * @param status - New status for the milestone
+ * @param uploadId - Optional ID of the upload associated with this milestone update
+ * @param session - Optional MongoDB session for transaction
+ * @returns The updated contract with updated milestone
+ */
+export async function updateMilestoneStatus(
+  contractId: string | ObjectId,
+  milestoneIdx: number,
+  status: "pending" | "inProgress" | "submitted" | "accepted" | "rejected",
+  uploadId?: string | ObjectId,
+  session?: ClientSession
+): Promise<any> {
+  return contractRepo.updateMilestoneStatus(
+    contractId,
+    milestoneIdx,
+    status,
+    uploadId,
+    session
+  );
+}
+
+/**
+ * Increment revision counter for a contract or specific milestone
+ *
+ * @param contractId - ID of the contract
+ * @param session - MongoDB session for transaction
+ * @param milestoneIdx - Optional index of the milestone (for milestone-based revisions)
+ * @returns The updated contract
+ */
+export async function incrementRevisionCounter(
+  contractId: string | ObjectId,
+  session: ClientSession,
+  milestoneIdx?: number
+): Promise<any> {
+  return contractRepo.incrementRevisionCounter(
+    contractId,
+    milestoneIdx,
+    session
+  );
+}
+
+/**
+ * Decrement revision counter for a contract or specific milestone
+ *
+ * @param contractId - ID of the contract
+ * @param session - MongoDB session for transaction
+ * @param milestoneIdx - Optional index of the milestone (for milestone-based revisions)
+ * @returns The updated contract
+ */
+export async function decrementRevisionCounter(
+  contractId: string | ObjectId,
+  session: ClientSession,
+  milestoneIdx?: number
+): Promise<any> {
+  return contractRepo.decrementRevisionCounter(
+    contractId,
+    milestoneIdx,
+    session
+  );
+}
+
+//=============================================================================
+// CONTRACT TICKET & UPLOAD FUNCTIONS
+//=============================================================================
+
+/**
+ * Add a ticket reference to a contract
+ *
+ * @param contractId - ID of the contract
+ * @param ticketType - Type of ticket (cancel, revision, change, resolution)
+ * @param ticketId - ID of the ticket to add
+ * @param session - Optional MongoDB session for transaction
+ * @returns The updated contract
+ * @throws Error if contract not found or ticket type invalid
+ */
+export async function addTicketToContract(
+  contractId: string | ObjectId,
+  ticketType: "cancel" | "revision" | "change" | "resolution",
+  ticketId: string | ObjectId,
+  session?: ClientSession
+): Promise<IContract | null> {
+  await connectDB();
+
+  // Get the contract
+  const contract = await contractRepo.findContractById(contractId, { session });
+  if (!contract) {
+    throw new Error("Contract not found");
+  }
+
+  // Map ticket type to the appropriate contract field
+  let updateField;
+  switch (ticketType) {
+    case "cancel":
+      updateField = "cancelTickets";
+      break;
+    case "revision":
+      updateField = "revisionTickets";
+      break;
+    case "change":
+      updateField = "changeTickets";
+      break;
+    case "resolution":
+      updateField = "resolutionTickets";
+      break;
+    default:
+      throw new Error(`Invalid ticket type: ${ticketType}`);
+  }
+
+  // Create update object
+  const update = { $push: { [updateField]: toObjectId(ticketId) } };
+
+  // Update the contract
+  return contractRepo.addTicketToContract(
+    contractId,
+    ticketType,
+    toObjectId(ticketId),
+    session
+  );
+}
+
+/**
+ * Add an upload to a contract
+ *
+ * @param contractId - ID of the contract
+ * @param uploadType - Type of upload (progressStandard, progressMilestone, revision, final)
+ * @param uploadId - ID of the upload to add
+ * @param session - Optional MongoDB session for transaction
+ * @returns The updated contract
+ */
+export async function addUploadToContract(
+  contractId: string | ObjectId,
+  uploadType: "progressStandard" | "progressMilestone" | "revision" | "final",
+  uploadId: string | ObjectId,
+  session?: ClientSession
+): Promise<any> {
+  return contractRepo.addUploadToContract(
+    contractId,
+    uploadType,
+    uploadId,
+    session
+  );
+}
+
+//=============================================================================
+// CONTRACT COMPLETION & CANCELLATION FUNCTIONS
+//=============================================================================
+
+/**
  * Process contract completion (Final delivery accepted)
+ *
+ * @param contractId - ID of the contract to complete
+ * @param isLate - Whether the completion is late (past deadline)
+ * @param session - Optional MongoDB session for transaction
+ * @returns Object containing the updated contract and transaction details
+ * @throws HttpError if contract not found
  */
 export async function processContractCompletion(
   contractId: string | ObjectId,
@@ -391,6 +643,14 @@ export async function processContractCompletion(
 
 /**
  * Process contract cancellation
+ *
+ * @param contractId - ID of the contract to cancel
+ * @param by - Who initiated the cancellation (client or artist)
+ * @param workPercentage - Percentage of work completed at cancellation
+ * @param isLate - Whether the cancellation is late (past deadline)
+ * @param session - Optional MongoDB session for transaction
+ * @returns Object containing the updated contract and transaction details
+ * @throws HttpError if contract not found
  */
 export async function processContractCancellation(
   contractId: string | ObjectId,
@@ -502,6 +762,10 @@ export async function processContractCancellation(
 
 /**
  * Process contract not completed (grace period passed)
+ *
+ * @param contractId - ID of the contract to mark as not completed
+ * @returns Object containing the updated contract and refund transaction
+ * @throws HttpError if contract not found
  */
 export async function processContractNotCompleted(
   contractId: string | ObjectId
@@ -552,6 +816,11 @@ export async function processContractNotCompleted(
 
 /**
  * Claim payment or refund for a contract
+ *
+ * @param contractId - ID of the contract to claim funds from
+ * @param userId - ID of the user claiming funds (must be client or artist)
+ * @returns Result of the appropriate process function
+ * @throws HttpError if contract not found, user doesn't have permission, or no funds to claim
  */
 export async function claimFunds(
   contractId: string | ObjectId,
@@ -620,118 +889,15 @@ export async function claimFunds(
   }
 }
 
-/**
- * Add a ticket reference to a contract
- */
-export async function addTicketToContract(
-  contractId: string | ObjectId,
-  ticketType: "cancel" | "revision" | "change" | "resolution",
-  ticketId: string | ObjectId,
-  session?: ClientSession
-): Promise<IContract | null> {
-  await connectDB();
-
-  // Get the contract
-  const contract = await contractRepo.findContractById(contractId, { session });
-  if (!contract) {
-    throw new Error("Contract not found");
-  }
-
-  // Map ticket type to the appropriate contract field
-  let updateField;
-  switch (ticketType) {
-    case "cancel":
-      updateField = "cancelTickets";
-      break;
-    case "revision":
-      updateField = "revisionTickets";
-      break;
-    case "change":
-      updateField = "changeTickets";
-      break;
-    case "resolution":
-      updateField = "resolutionTickets";
-      break;
-    default:
-      throw new Error(`Invalid ticket type: ${ticketType}`);
-  }
-
-  // Create update object
-  const update = { $push: { [updateField]: toObjectId(ticketId) } };
-
-  // Update the contract
-  return contractRepo.addTicketToContract(contractId, ticketType, toObjectId(ticketId), session);
-}
-
-/**
- * Add an upload to a contract
- */
-export async function addUploadToContract(
-  contractId: string | ObjectId,
-  uploadType: "progressStandard" | "progressMilestone" | "revision" | "final",
-  uploadId: string | ObjectId,
-  session?: ClientSession
-): Promise<any> {
-  return contractRepo.addUploadToContract(
-    contractId,
-    uploadType,
-    uploadId,
-    session
-  );
-}
-
-/**
- * Update milestone status
- */
-export async function updateMilestoneStatus(
-  contractId: string | ObjectId,
-  milestoneIdx: number,
-  status: "pending" | "inProgress" | "submitted" | "accepted" | "rejected",
-  uploadId?: string | ObjectId,
-  session?: ClientSession
-): Promise<any> {
-  return contractRepo.updateMilestoneStatus(
-    contractId,
-    milestoneIdx,
-    status,
-    uploadId,
-    session
-  );
-}
-
-/**
- * Increment revision counter
- */
-export async function incrementRevisionCounter(
-  contractId: string | ObjectId,
-  milestoneIdx?: number
-): Promise<any> {
-  return contractRepo.incrementRevisionCounter(contractId, milestoneIdx);
-}
-
-/**
- * Update contract terms (after a change ticket is accepted)
- */
-export async function updateContractTerms(
-  contractId: string | ObjectId,
-  newTerms: any
-): Promise<any> {
-  return contractRepo.updateContractTerms(contractId, newTerms);
-}
-
-/**
- * Update contract finance (for runtime fees like revision or change fees)
- */
-export async function updateContractFinance(
-  contractId: string | ObjectId,
-  runtimeFees: number,
-  session: ClientSession
-): Promise<any> {
-  return contractRepo.updateContractFinance(contractId, runtimeFees, session);
-}
+//=============================================================================
+// CONTRACT UTILITY FUNCTIONS
+//=============================================================================
 
 /**
  * Calculate appropriate payouts for a contract
+ *
+ * @param contractId - ID of the contract to calculate payouts for
+ * @returns Object containing artist and client payout amounts
  */
 export async function calculatePayouts(
   contractId: string | ObjectId
@@ -741,6 +907,9 @@ export async function calculatePayouts(
 
 /**
  * Determine if a contract is late based on its deadline
+ *
+ * @param contract - The contract to check
+ * @returns True if the current date is past the deadline
  */
 export function isContractLate(contract: IContract): boolean {
   // Check if there's a deadline and if current date is past it
@@ -750,29 +919,13 @@ export function isContractLate(contract: IContract): boolean {
   }
   return false;
 }
+
 /**
  * Check if a contract is past grace period
+ *
+ * @param contract - The contract to check
+ * @returns True if the current date is past the grace period end date
  */
 export function isContractPastGrace(contract: any): boolean {
   return new Date(contract.graceEndsAt) < new Date();
-}
-
-/**
- * Get the artist's latest active contract deadline
- * Used for calculating availability windows for new proposals
- */
-export async function getLatestActiveContractDeadline(
-  artistId: string | ObjectId
-): Promise<Date | null> {
-  try {
-    const deadline = await contractRepo.getLatestActiveContractDeadline(
-      artistId
-    );
-    return deadline;
-  } catch (error) {
-    console.error("Error getting latest contract deadline:", error);
-    // In case of error, return null to indicate no active contracts
-    // This is safer than blocking proposal creation
-    return null;
-  }
 }

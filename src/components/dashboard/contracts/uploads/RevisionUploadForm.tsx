@@ -69,7 +69,8 @@ export default function RevisionUploadForm({
         const response = await axiosClient.get(
           `/api/contract/${contract._id}/tickets/revision/${ticketId}`
         );
-        setTicket(response.data);
+        setTicket(response.data.ticket);
+        console.log(response.data)
       } catch (err) {
         if (axios.isAxiosError(err) && err.response) {
           setError(err.response.data.error || "Failed to fetch ticket details");
@@ -143,7 +144,7 @@ export default function RevisionUploadForm({
 
       // Submit to API using axios
       await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/revision/new`,
+        `/api/contract/${contract._id}/uploads/revision`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },

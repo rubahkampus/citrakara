@@ -44,6 +44,7 @@ interface CancelTicketDetailsProps {
   isClient: boolean;
   isAdmin: boolean;
   username: string;
+  canReview: boolean;
 }
 
 interface FormValues {
@@ -58,6 +59,7 @@ export default function CancelTicketDetails({
   isClient,
   isAdmin,
   username,
+  canReview
 }: CancelTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<"accept" | "reject" | "">("");
@@ -471,7 +473,7 @@ export default function CancelTicketDetails({
                       variant={response === "accept" ? "contained" : "outlined"}
                       color="success"
                       onClick={() => setResponse("accept")}
-                      disabled={isAdmin || isSubmitting}
+                      disabled={isAdmin || canReview || isSubmitting}
                       startIcon={<ThumbUpIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -483,7 +485,7 @@ export default function CancelTicketDetails({
                       variant={response === "reject" ? "contained" : "outlined"}
                       color="error"
                       onClick={() => setResponse("reject")}
-                      disabled={isAdmin || isSubmitting}
+                      disabled={isAdmin || canReview || isSubmitting}
                       startIcon={<ThumbDownIcon />}
                       sx={{ flexGrow: 1 }}
                       size="large"
@@ -527,7 +529,7 @@ export default function CancelTicketDetails({
                           fullWidth
                           placeholder="Jelaskan mengapa Anda menolak permintaan pembatalan ini"
                           required
-                          disabled={isAdmin || isSubmitting}
+                          disabled={isAdmin || canReview || isSubmitting}
                           error={!!errors.rejectionReason}
                           helperText={errors.rejectionReason?.message}
                           sx={{ mb: 2 }}
@@ -542,7 +544,7 @@ export default function CancelTicketDetails({
                   color="primary"
                   type="submit"
                   disabled={
-                    isAdmin ||
+                    isAdmin || canReview ||
                     !response ||
                     (response === "reject" &&
                       !control._formValues.rejectionReason) ||

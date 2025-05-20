@@ -1,3 +1,4 @@
+// src/lib/services/review.service.ts
 import { Types } from "mongoose";
 import {
   ReviewCreationPayload,
@@ -32,6 +33,11 @@ export class HttpError extends Error {
 
 /**
  * Create a new review and update related entities with new rating data
+ * @param clientId ID of the client creating the review
+ * @param uploadId ID of the final upload being reviewed
+ * @param data Review data including rating, comment, and selected images
+ * @returns The newly created review
+ * @throws HttpError if upload not found, already reviewed, or other validation fails
  */
 export async function createClientReview(
   clientId: string,
@@ -104,6 +110,9 @@ export async function createClientReview(
 
 /**
  * Get a review by ID
+ * @param reviewId ID of the review to retrieve
+ * @returns The requested review
+ * @throws HttpError if review not found
  */
 export async function getReviewById(reviewId: string) {
   const review = await findReviewById(reviewId, { lean: true });
@@ -115,6 +124,8 @@ export async function getReviewById(reviewId: string) {
 
 /**
  * Get a review by upload ID
+ * @param uploadId Upload ID to find the review for
+ * @returns The review for the specified upload or null if not found
  */
 export async function getReviewByUploadId(uploadId: string) {
   return findReviewByUploadId(uploadId, { lean: true });
@@ -122,6 +133,8 @@ export async function getReviewByUploadId(uploadId: string) {
 
 /**
  * Get all reviews for a contract
+ * @param contractId Contract ID to get reviews for
+ * @returns Array of reviews for the specified contract
  */
 export async function getReviewsByContractId(contractId: string) {
   return findReviewsByContractId(contractId);
@@ -129,6 +142,8 @@ export async function getReviewsByContractId(contractId: string) {
 
 /**
  * Get all reviews for a listing
+ * @param listingId Listing ID to get reviews for
+ * @returns Array of reviews for the specified listing
  */
 export async function getReviewsByListingId(listingId: string) {
   return findReviewsByListingId(listingId);
@@ -136,6 +151,8 @@ export async function getReviewsByListingId(listingId: string) {
 
 /**
  * Get all reviews left by a client
+ * @param clientId Client ID to get reviews for
+ * @returns Array of reviews created by the specified client
  */
 export async function getReviewsByClientId(clientId: string) {
   return findReviewsByClientId(clientId);
@@ -143,6 +160,8 @@ export async function getReviewsByClientId(clientId: string) {
 
 /**
  * Get all reviews for an artist
+ * @param artistId Artist ID to get reviews for
+ * @returns Array of reviews for the specified artist
  */
 export async function getReviewsByArtistId(artistId: string) {
   return findReviewsByArtistId(artistId);
@@ -150,6 +169,10 @@ export async function getReviewsByArtistId(artistId: string) {
 
 /**
  * Check if a user can review an upload
+ * @param userId User ID checking review permissions
+ * @param uploadId Upload ID to check if reviewable
+ * @returns Boolean indicating if the user can review the upload
+ * @throws HttpError if contract not found
  */
 export async function canUserReviewUpload(userId: string, uploadId: string) {
   // 1. Find the upload

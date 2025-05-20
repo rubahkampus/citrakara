@@ -12,6 +12,8 @@ import {
   Paper,
   useTheme,
   Tooltip,
+  Link as MUILink,
+  Breadcrumbs
 } from "@mui/material";
 import Link from "next/link";
 import {
@@ -20,6 +22,13 @@ import {
   SwapHorizontalCircleOutlined,
   GavelOutlined,
   ConfirmationNumberOutlined,
+  ArrowBack,
+  CloudUploadRounded,
+  Home,
+  NavigateNext,
+  PaletteRounded,
+  AirplaneTicketRounded,
+  ConfirmationNumberRounded,
 } from "@mui/icons-material";
 
 // Import ticket list components
@@ -171,29 +180,6 @@ const TicketsListPage: React.FC<TicketsListPageProps> = ({
             </Link>
           </Tooltip>
         )}
-
-        <Tooltip title={TRANSLATIONS.dispute} arrow>
-          <Link
-            href={`/${username}/dashboard/contracts/${contractId}/tickets/resolution/new`}
-            passHref
-          >
-            <Button
-              size="small"
-              variant="outlined"
-              color="warning"
-              startIcon={<GavelOutlined />}
-              sx={{
-                borderRadius: 1.5,
-                boxShadow: theme.shadows[1],
-                "&:hover": {
-                  boxShadow: theme.shadows[3],
-                },
-              }}
-            >
-              {TRANSLATIONS.dispute}
-            </Button>
-          </Link>
-        </Tooltip>
       </Stack>
     );
   };
@@ -250,36 +236,92 @@ const TicketsListPage: React.FC<TicketsListPageProps> = ({
   };
 
   return (
-    <Box>
+    <Box  py={4}>
       {/* Header section */}
       <Box
-        mb={3}
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+            <MUILink
+              component={Link}
+              href={`/${username}/dashboard`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Home fontSize="small" sx={{ mr: 0.5 }} />
+              Dashboard
+            </MUILink>
+            <MUILink
+              component={Link}
+              href={`/${username}/dashboard/contracts`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <PaletteRounded fontSize="small" sx={{ mr: 0.5 }} />
+              Daftar Kontrak
+            </MUILink>
+            <MUILink
+              component={Link}
+              href={`/${username}/dashboard/contracts/${contractId}`}
+              underline="hover"
+              color="inherit"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Detail Kontrak
+            </MUILink>
+            <Typography
+              color="text.primary"
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              Daftar Tiket
+            </Typography>
+          </Breadcrumbs>
+
+          <Box display="flex" alignItems="center" mt={4} ml={-0.5} mb={2}>
+            <ConfirmationNumberRounded
+              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+            />
+            <Typography variant="h4" fontWeight="bold">
+              Daftar Tiket
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          component={Link}
+          href={`/${username}/dashboard/contracts/${contractId}`}
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          size="small"
+        >
+          Kembali ke Detail Kontrak
+        </Button>
+      </Box>
+
+      <Box
+        mb={1}
         display="flex"
-        justifyContent="space-between"
+        justifyContent="flex-end"
         alignItems={{ sm: "center" }}
         flexDirection={{ xs: "column", sm: "row" }}
         sx={{
-          pb: 1.5,
+          pb: 1,
           borderBottom: `1px solid ${theme.palette.divider}`,
         }}
       >
-        <Typography
-          variant="h6"
-          fontWeight="bold"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            color: theme.palette.text.primary,
-          }}
-        >
-          <ConfirmationNumberOutlined
-            sx={{
-              mr: 1,
-              color: theme.palette.primary.main,
-            }}
-          />
-          {TRANSLATIONS.contractTickets}
-        </Typography>
         {renderActionButtons()}
       </Box>
 

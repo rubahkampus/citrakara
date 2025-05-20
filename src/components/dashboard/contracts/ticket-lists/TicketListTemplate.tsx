@@ -36,6 +36,11 @@ const TicketListTemplate: React.FC<TicketListTemplateProps> = ({
 }) => {
   const theme = useTheme();
 
+  // Function to check if a ticket is expired
+  const isExpired = (ticket: any) => {
+    return ticket.expiresAt && new Date(ticket.expiresAt) < new Date();
+  };
+
   if (tickets.length === 0) {
     return (
       <Box
@@ -54,63 +59,109 @@ const TicketListTemplate: React.FC<TicketListTemplateProps> = ({
 
   return (
     <List sx={{ p: 0 }}>
-      {tickets.map((ticket: any) => (
-        <Paper
-          key={ticket._id.toString()}
-          sx={{
-            mb: 2,
-            borderRadius: 1,
-            transition: "transform 0.2s, box-shadow 0.2s",
-            "&:hover": {
-              transform: "translateY(-2px)",
-              boxShadow: theme.shadows[3],
-            },
-          }}
-          elevation={1}
-        >
-          <ListItem
-            component={Link}
-            href={ticketType === "resolution" ? `/${username}/dashboard/contracts/${contractId}/resolution/${ticket._id}` : `/${username}/dashboard/contracts/${contractId}/tickets/${ticket.type || ticketType}/${ticket._id}`}
+      {tickets.map((ticket: any) => {
+        const expired = isExpired(ticket);
+
+        return (
+          <Paper
+            key={ticket._id.toString()}
             sx={{
-              display: "block",
-              textDecoration: "none",
-              color: "inherit",
-              p: 2,
+              mb: 2,
+              borderRadius: 1,
+              transition: "transform 0.2s, box-shadow 0.2s",
+              opacity: expired && !ticket.resolvedAt ? 0.7 : 1,
+              backgroundColor: expired && !ticket.resolvedAt
+                ? "rgba(0, 0, 0, 0.03)"
+                : "background.paper",
               "&:hover": {
-                backgroundColor: "rgba(0, 0, 0, 0.02)",
+                transform: "translateY(-2px)",
+                boxShadow: theme.shadows[3],
               },
             }}
+            elevation={1}
           >
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              mb={1}
+            <ListItem
+              component={Link}
+              href={
+                ticketType === "resolution"
+                  ? `/${username}/dashboard/contracts/${contractId}/resolution/${ticket._id}`
+                  : `/${username}/dashboard/contracts/${contractId}/tickets/${
+                      ticket.type || ticketType
+                    }/${ticket._id}`
+              }
+              sx={{
+                display: "block",
+                textDecoration: "none",
+                color: "inherit",
+                p: 2,
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.02)",
+                },
+              }}
             >
-              <Box display="flex" alignItems="center" flexWrap="wrap" gap={1}>
-                <Typography
-                  variant="subtitle1"
-                  component="span"
-                  fontWeight="bold"
-                  sx={{ mr: 1 }}
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={1}
+              >
+                <Box display="flex" alignItems="center" flexWrap="wrap" gap={1}>
+                  <Typography
+                    variant="subtitle1"
+                    component="span"
+                    fontWeight="bold"
+                    sx={{ mr: 1 }}
+                  >
+                    {titleFormatter(ticket.type || ticketType)}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={ticket.status}
+                    color={
+                      getStatusColor(ticket.status) as
+                        | "default"
+                        | "primary"
+                        | "secondary"
+                        | "error"
+                        | "success"
+                        | "warning"
+                        | "info"
+                    }
+                  />
+                  {expired && !ticket.resolvedAt && (
+                    <Chip
+                      size="small"
+                      label="Expired"
+                      color="default"
+                      sx={{ backgroundColor: "rgba(0, 0, 0, 0.1)" }}
+                    />
+                  )}
+                </Box>
+                <Box
+                  display="flex"
+                  flexDirection="column"
+                  alignItems="flex-end"
                 >
-                  {titleFormatter(ticket.type || ticketType)}
-                </Typography>
-                <Chip
-                  size="small"
-                  label={ticket.status}
-                  color={getStatusColor(ticket.status) as "default" | "primary" | "secondary" | "error" | "success" | "warning" | "info"}
-                />
+                  <Typography variant="body2" color="textSecondary">
+                    {formatDate(ticket.createdAt)}
+                  </Typography>
+                  {ticket.expiresAt && (
+                    <Typography
+                      variant="caption"
+                      color={expired && !ticket.resolvedAt ? "error" : "textSecondary"}
+                    >
+                      {expired && !ticket.resolvedAt ? "Expired: " : "Expires: "}
+                      {formatDate(ticket.expiresAt)}
+                    </Typography>
+                  )}
+                </Box>
               </Box>
-              <Typography variant="body2" color="textSecondary">
-                {formatDate(ticket.createdAt)}
-              </Typography>
-            </Box>
 
-            {renderTicketContent(ticket)}
-          </ListItem>
-        </Paper>
-      ))}
+              {renderTicketContent(ticket)}
+            </ListItem>
+          </Paper>
+        );
+      })}
     </List>
   );
 };

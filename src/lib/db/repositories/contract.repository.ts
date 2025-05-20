@@ -426,6 +426,45 @@ export async function incrementRevisionCounter(
   return contract.save({ session });
 }
 
+// Increment revision counter
+export async function decrementRevisionCounter(
+  contractId: string | ObjectId,
+  milestoneIdx?: number,
+  session?: ClientSession
+): Promise<IContract | null> {
+  await connectDB();
+
+  const contract = await Contract.findById(toObjectId(contractId)).session(
+    session || null
+  );
+  if (!contract) return null;
+
+  // For milestone revisions
+  if (
+    milestoneIdx !== undefined &&
+    contract.milestones &&
+    contract.milestones[milestoneIdx] &&
+    contract.milestones[milestoneIdx].revisionDone !== 0
+  ) {
+    if (contract.milestones[milestoneIdx].revisionDone === undefined) {
+      contract.milestones[milestoneIdx].revisionDone = 0;
+    } else {
+      contract.milestones[milestoneIdx].revisionDone -= 1;
+    }
+  }
+  // For standard revisions
+  else if (
+    contract.revisionDone !== undefined &&
+    contract.revisionDone !== 0
+  ) {
+    contract.revisionDone -= 1;
+  } else {
+    contract.revisionDone = 0;
+  }
+
+  return contract.save({ session });
+}
+
 // Update finance details (for runtime fees)
 export async function updateContractFinance(
   contractId: string | ObjectId,

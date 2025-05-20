@@ -227,6 +227,7 @@ export default async function AdminItemDetailsPage({
           isClient={contract.clientId.toString() === (session as Session).id}
           isAdmin={true}
           username={(session as Session).username}
+          canReview={false}
         />
       )}
 
@@ -239,6 +240,7 @@ export default async function AdminItemDetailsPage({
           isClient={contract.clientId.toString() === (session as Session).id}
           isAdmin={true}
           username={(session as Session).username}
+          canReview={false}
         />
       )}
 
@@ -251,6 +253,7 @@ export default async function AdminItemDetailsPage({
           isClient={contract.clientId.toString() === (session as Session).id}
           isAdmin={true}
           username={(session as Session).username}
+          canReview={false}
         />
       )}
 
@@ -289,6 +292,7 @@ export default async function AdminItemDetailsPage({
           isClient={contract.clientId.toString() === (session as Session).id}
           isAdmin={true}
           canReview={false}
+          username={(session as Session).username}
         />
       )}
 

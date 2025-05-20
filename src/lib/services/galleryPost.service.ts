@@ -15,6 +15,9 @@ import { toObjectId } from "@/lib/utils/toObjectId";
 
 /**
  * List all posts in a gallery with optional filter for deleted posts
+ * @param galleryId Gallery ID to list posts from
+ * @param options Optional parameters including whether to include deleted posts
+ * @returns Array of gallery posts for the specified gallery
  */
 export async function listGalleryPosts(
   galleryId: string,
@@ -25,6 +28,10 @@ export async function listGalleryPosts(
 
 /**
  * Get all posts for a specific user by username
+ * @param username Username to get posts for
+ * @param options Optional parameters including whether to include deleted posts
+ * @returns Array of gallery posts created by the user
+ * @throws Error if user not found
  */
 export async function getUserPosts(
   username: string,
@@ -40,6 +47,10 @@ export async function getUserPosts(
 
 /**
  * Create a new gallery post from form data with image uploads
+ * @param userId User ID creating the post
+ * @param formData Form data containing gallery ID, images and optional metadata
+ * @returns The newly created gallery post
+ * @throws Error if gallery not found, access denied, or invalid inputs
  */
 export async function addGalleryPostFromForm(
   userId: string,
@@ -93,6 +104,11 @@ export async function addGalleryPostFromForm(
 /**
  * Update an existing gallery post
  * Validates ownership before allowing edit
+ * @param userId User ID attempting to edit the post
+ * @param postId ID of the post to update
+ * @param updates Object containing fields to update (images and/or description)
+ * @returns The updated gallery post
+ * @throws Error if post not found or access denied
  */
 export async function editGalleryPost(
   userId: string,
@@ -110,6 +126,10 @@ export async function editGalleryPost(
 /**
  * Soft delete a gallery post
  * Validates ownership before allowing deletion
+ * @param userId User ID attempting to delete the post
+ * @param postId ID of the post to delete
+ * @returns The deleted gallery post
+ * @throws Error if post not found or access denied
  */
 export async function deleteGalleryPost(userId: string, postId: string) {
   const post = await findPostById(postId);
@@ -123,6 +143,10 @@ export async function deleteGalleryPost(userId: string, postId: string) {
 /**
  * Get posts for a public gallery
  * Validates both user and gallery exist and are accessible
+ * @param username Username of the gallery owner
+ * @param galleryId ID of the gallery to get posts from
+ * @returns Array of public gallery posts
+ * @throws Error if user or gallery not found or access denied
  */
 export async function getGalleryPostsPublic(
   username: string,
@@ -148,6 +172,11 @@ export async function getGalleryPostsPublic(
 /**
  * Get a single post by ID for public viewing
  * Validates ownership and accessibility
+ * @param username Username of the gallery owner
+ * @param galleryId ID of the gallery containing the post
+ * @param postId ID of the post to retrieve
+ * @returns The requested gallery post
+ * @throws Error if gallery or post not found or access denied
  */
 export async function getGalleryPostPublic(
   username: string,
@@ -167,7 +196,9 @@ export async function getGalleryPostPublic(
 
 /**
  * Get a single post by ID for public viewing
- * Validates ownership and accessibility
+ * @param postId ID of the post to retrieve
+ * @returns The requested gallery post
+ * @throws Error if post not found or is deleted
  */
 export async function getGalleryPostById(postId: string) {
   const post = await findPostById(postId);

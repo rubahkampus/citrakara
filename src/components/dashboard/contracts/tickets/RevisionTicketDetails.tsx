@@ -51,6 +51,7 @@ interface RevisionTicketDetailsProps {
   isClient: boolean;
   isAdmin: boolean;
   username: string;
+  canReview: boolean
 }
 
 export default function RevisionTicketDetails({
@@ -61,6 +62,7 @@ export default function RevisionTicketDetails({
   isClient,
   isAdmin,
   username,
+  canReview
 }: RevisionTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<"accept" | "reject" | "">("");
@@ -490,7 +492,7 @@ export default function RevisionTicketDetails({
                     variant={response === "accept" ? "contained" : "outlined"}
                     color="success"
                     onClick={() => setResponse("accept")}
-                    disabled={isAdmin || isSubmitting}
+                    disabled={isAdmin || canReview || isSubmitting}
                     startIcon={<ThumbUpIcon />}
                     sx={{ flexGrow: 1 }}
                     size="large"
@@ -501,7 +503,7 @@ export default function RevisionTicketDetails({
                     variant={response === "reject" ? "contained" : "outlined"}
                     color="error"
                     onClick={() => setResponse("reject")}
-                    disabled={isAdmin || isSubmitting}
+                    disabled={isAdmin || canReview || isSubmitting}
                     startIcon={<ThumbDownIcon />}
                     sx={{ flexGrow: 1 }}
                     size="large"
@@ -533,7 +535,7 @@ export default function RevisionTicketDetails({
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Jelaskan mengapa Anda menolak permintaan revisi ini"
                     required
-                    disabled={isAdmin || isSubmitting}
+                    disabled={isAdmin || canReview || isSubmitting}
                     error={
                       response === "reject" && rejectionReason.trim() === ""
                     }
@@ -552,7 +554,7 @@ export default function RevisionTicketDetails({
                 color="primary"
                 onClick={handleSubmit}
                 disabled={
-                  isAdmin ||
+                  isAdmin || canReview ||
                   !response ||
                   (response === "reject" && !rejectionReason.trim()) ||
                   isSubmitting
@@ -586,7 +588,7 @@ export default function RevisionTicketDetails({
                 variant="contained"
                 color="primary"
                 onClick={() => setShowPaymentDialog(true)}
-                disabled={isAdmin || isSubmitting}
+                disabled={isAdmin || canReview || isSubmitting}
                 startIcon={<PaymentIcon />}
               >
                 Bayar Biaya Revisi
@@ -630,7 +632,7 @@ export default function RevisionTicketDetails({
                 variant="contained"
                 color="primary"
                 component={Link}
-                href={`/dashboard/${userId}/contracts/${contract._id}/uploads/revision/new?ticketId=${ticket._id}`}
+                href={`/${username}/dashboard/contracts/${contract._id}/uploads/revision/new?ticketId=${ticket._id}`}
                 startIcon={<UploadIcon />}
               >
                 Unggah Revisi

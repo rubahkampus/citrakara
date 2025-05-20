@@ -16,8 +16,8 @@ const TRANSLATIONS = {
   uploads: "Unggahan",
   viewAllUploads: "Lihat Semua Unggahan",
   noUploadsFound: "Tidak ada unggahan ditemukan",
-  progressUploadsStandard: "Unggahan Progres (Standar)",
-  progressUploadsMilestone: "Unggahan Progres (Milestone)",
+  progressUploadsStandard: "Unggahan Kemajuan (Standar)",
+  progressUploadsMilestone: "Unggahan Kemajuan (Milestone)",
   revisionUploads: "Unggahan Revisi",
   finalUploads: "Unggahan Final",
 };
@@ -122,7 +122,7 @@ const UploadsTab: React.FC<UploadsTabProps> = ({ contract, username }) => {
           {TRANSLATIONS.noUploadsFound}
         </Typography>
       ) : (
-        <Grid container spacing={2} sx={{ mt: 0.5 }}>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           {uploadTypes.map(
             (type, index) =>
               type.count > 0 && (

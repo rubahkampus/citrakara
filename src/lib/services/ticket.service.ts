@@ -63,6 +63,26 @@ export async function createCancelTicket(
       );
     }
 
+    // BLOCKING VALIDATION: Check for existing unresolved cancel tickets
+    const existingCancelTickets = await getUnresolvedCancelTickets(contractId);
+    if (existingCancelTickets.length > 0) {
+      throw new HttpError(
+        "There is already an active cancellation request for this contract. Please wait until it is resolved before creating a new one.",
+        409 // Conflict status code
+      );
+    }
+
+    // BLOCKING VALIDATION: Check for unresolved resolution tickets
+    const existingResolutionTickets = await getUnresolvedResolutionTickets(
+      contractId
+    );
+    if (existingResolutionTickets.length > 0) {
+      throw new HttpError(
+        "There are active resolution cases for this contract. Please wait until they are resolved before creating a cancellation request.",
+        409
+      );
+    }
+
     // Create cancel ticket
     const requestedBy = isClient ? "client" : "artist";
     const ticket = await ticketRepo.createCancelTicket(
@@ -207,6 +227,22 @@ export async function createRevisionTicket(
 
     if (contract.clientId.toString() !== userId) {
       throw new HttpError("Only clients can create revision requests", 403);
+    }
+
+    // ADDITIONAL VALIDATION: Check if revisions are allowed in the contract
+    if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
+      throw new HttpError("This contract does not allow revisions", 400);
+    }
+
+    // BLOCKING VALIDATION: Check for unresolved resolution tickets
+    const existingResolutionTickets = await getUnresolvedResolutionTickets(
+      contractId
+    );
+    if (existingResolutionTickets.length > 0) {
+      throw new HttpError(
+        "There are active resolution cases for this contract. Please wait until they are resolved before creating a revision request.",
+        409
+      );
     }
 
     // Get description and milestone index from form data
@@ -557,6 +593,34 @@ export async function createChangeTicket(
     // Verify contract allows changes
     if (!contract.proposalSnapshot.listingSnapshot.allowContractChange) {
       throw new HttpError("This contract does not allow changes", 400);
+    }
+
+    // BLOCKING VALIDATION: Check for existing unresolved change tickets
+    const existingChangeTickets = await getUnresolvedChangeTickets(contractId);
+    if (existingChangeTickets.length > 0) {
+      throw new HttpError(
+        "There is already an active change request for this contract. Please wait until it is resolved before creating a new one.",
+        409 // Conflict status code
+      );
+    }
+
+    // BLOCKING VALIDATION: Check for unresolved resolution tickets
+    const existingResolutionTickets = await getUnresolvedResolutionTickets(
+      contractId
+    );
+    if (existingResolutionTickets.length > 0) {
+      throw new HttpError(
+        "There are active resolution cases for this contract. Please wait until they are resolved before creating a change request.",
+        409
+      );
+    }
+
+    // WARNING VALIDATION: Check for unresolved cancel tickets (not blocking, but warn in logs)
+    const existingCancelTickets = await getUnresolvedCancelTickets(contractId);
+    if (existingCancelTickets.length > 0) {
+      console.warn(
+        `Creating change ticket for contract ${contractId} while there are active cancellation requests. Change may not be processed if cancellation is approved.`
+      );
     }
 
     // Get reason from form data

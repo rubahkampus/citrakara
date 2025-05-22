@@ -101,6 +101,10 @@ export type CommissionListingUpdateInput = Partial<
 
 /**
  * Create a new commission listing
+ *
+ * @param payload - The commission listing data to create
+ * @param session - Optional MongoDB session for transaction support
+ * @returns The newly created commission listing document
  */
 export async function createCommissionListing(
   payload: CommissionListingPayload,
@@ -121,6 +125,11 @@ export async function createCommissionListing(
 
 /**
  * Find a commission listing by ID
+ *
+ * @param id - The ID of the commission listing to find
+ * @param options - Query options
+ * @param options.lean - Whether to return a plain JavaScript object instead of a Mongoose document
+ * @returns The found commission listing or null if not found
  */
 export async function findCommissionListingById(
   id: string | Types.ObjectId,
@@ -141,6 +150,11 @@ export async function findCommissionListingById(
 
 /**
  * Generic atomic update for a commission listing
+ *
+ * @param id - The ID of the commission listing to update
+ * @param updates - The fields to update
+ * @param session - Optional MongoDB session for transaction support
+ * @returns The updated commission listing
  */
 export async function updateCommissionListing(
   id: string | Types.ObjectId,
@@ -156,6 +170,11 @@ export async function updateCommissionListing(
 
 /**
  * Soft delete a listing
+ *
+ * @param artistId - The ID of the artist who owns the listing
+ * @param listingId - The ID of the listing to soft delete
+ * @param session - Optional MongoDB session for transaction support
+ * @returns The updated (soft deleted) commission listing
  */
 export async function softDeleteListing(
   artistId: string | Types.ObjectId,
@@ -176,6 +195,9 @@ export async function softDeleteListing(
 
 /**
  * Find active listings by artist
+ *
+ * @param artistId - The ID of the artist to find listings for
+ * @returns Array of active listings for the specified artist
  */
 export async function findActiveListingsByArtist(
   artistId: string | Types.ObjectId
@@ -186,6 +208,14 @@ export async function findActiveListingsByArtist(
 
 /**
  * Basic public search with simple tag/keyword filter
+ *
+ * @param options - Search options
+ * @param options.label - Optional text search string
+ * @param options.tags - Optional array of tags to filter by
+ * @param options.artistId - Optional artist ID to filter by
+ * @param options.skip - Number of results to skip (pagination)
+ * @param options.limit - Maximum number of results to return
+ * @returns Object containing matching items and total count
  */
 export async function searchListings({
   label,
@@ -222,6 +252,17 @@ export async function searchListings({
 
 /**
  * Enhanced search with more filtering options
+ *
+ * @param options - Search options
+ * @param options.label - Optional text search string
+ * @param options.tags - Optional array of tags to filter by
+ * @param options.artistId - Optional artist ID to filter by
+ * @param options.priceRange - Optional min/max price range
+ * @param options.type - Optional listing type filter
+ * @param options.flow - Optional flow type filter
+ * @param options.skip - Number of results to skip (pagination)
+ * @param options.limit - Maximum number of results to return
+ * @returns Object containing matching items and total count
  */
 export async function searchListingsEnhanced({
   label,
@@ -283,6 +324,9 @@ export async function searchListingsEnhanced({
 
 /**
  * Find bookmarked listings and populate artist info
+ *
+ * @param listingIds - Array of listing IDs to find
+ * @returns Array of listings with populated artist information
  */
 export async function findBookmarkedListingsWithArtist(
   listingIds: Types.ObjectId[]
@@ -306,6 +350,11 @@ export async function findBookmarkedListingsWithArtist(
 
 /**
  * Update specific components with IDs
+ *
+ * @param id - The ID of the commission listing to update
+ * @param updates - Partial listing data with component updates
+ * @param session - Optional MongoDB session for transaction support
+ * @returns The updated commission listing
  */
 export async function updateCommissionListingComponents(
   id: string | Types.ObjectId,
@@ -347,6 +396,11 @@ export async function updateCommissionListingComponents(
 
 /**
  * Adjust slotsUsed by ±n (for order create/cancel)
+ *
+ * @param id - The ID of the commission listing to adjust
+ * @param delta - The amount to adjust slots by (positive or negative)
+ * @param session - Optional MongoDB session for transaction support
+ * @returns The updated commission listing
  */
 export async function adjustSlotsUsed(
   id: string | Types.ObjectId,
@@ -367,6 +421,12 @@ export async function adjustSlotsUsed(
 
 /**
  * Adds a question to either generalOptions or a specific subjectOption
+ *
+ * @param listingId - The ID of the commission listing to update
+ * @param questionlabel - The text of the question to add
+ * @param target - Target location for the question (general or specific subject)
+ * @param session - Optional MongoDB session for transaction support
+ * @returns The updated commission listing or null if target not found
  */
 export async function addQuestion(
   listingId: string | Types.ObjectId,
@@ -437,6 +497,11 @@ export async function addQuestion(
 
 /**
  * Removes a question by ID
+ *
+ * @param listingId - The ID of the commission listing to update
+ * @param target - Target question to remove (from general or specific subject)
+ * @param session - Optional MongoDB session for transaction support
+ * @returns The updated commission listing or null if not found
  */
 export async function removeQuestion(
   listingId: string | Types.ObjectId,
@@ -475,6 +540,3 @@ export async function removeQuestion(
     return listing.save({ session });
   }
 }
-
-// Similar helper functions could be added for managing other components with IDs
-// such as optionGroups, selections, addons, etc.

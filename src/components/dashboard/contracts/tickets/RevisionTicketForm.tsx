@@ -1,7 +1,7 @@
 // src/components/dashboard/contracts/tickets/RevisionTicketForm.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import axios from "axios";
@@ -14,10 +14,6 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   IconButton,
   Stack,
   Grid,
@@ -31,7 +27,7 @@ interface RevisionTicketFormProps {
   userId: string;
   username: string;
   isClient: boolean;
-  unresolvedQty: number
+  unresolvedQty: number;
 }
 
 interface FormValues {
@@ -39,12 +35,22 @@ interface FormValues {
   milestoneIdx: string | null;
 }
 
+interface RevisionPolicyInfo {
+  type: string;
+  isRevisionAllowed: boolean;
+  isFree: boolean;
+  remainingFree: number;
+  isPaid: boolean;
+  fee: number;
+  isAllowedPaid: boolean;
+}
+
 export default function RevisionTicketForm({
   contract,
   userId,
   username,
   isClient,
-  unresolvedQty
+  unresolvedQty,
 }: RevisionTicketFormProps) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
@@ -52,24 +58,8 @@ export default function RevisionTicketForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [revisionInfo, setRevisionInfo] = useState<{
-    type: string;
-    isRevisionAllowed: boolean;
-    isFree: boolean;
-    remainingFree: number;
-    isPaid: boolean;
-    fee: number;
-    isAllowedPaid: boolean
-  }>({
-    type: "",
-    isRevisionAllowed: true,
-    isFree: true,
-    remainingFree: 0,
-    isPaid: false,
-    fee: 0,
-    isAllowedPaid: false
-  });
 
+  // Form setup
   const {
     control,
     handleSubmit,
@@ -99,101 +89,99 @@ export default function RevisionTicketForm({
     }
   }, [contract, setValue]);
 
-  // Determine revision policy on load and when milestone changes
-  useEffect(() => {
-    console.log("Updated revisionInfo:", revisionInfo);
-  }, [revisionInfo]);
+  // Calculate revision policy based on contract type and selected milestone
+  const revisionInfo = useMemo<RevisionPolicyInfo>(() => {
+    const revisionType =
+      contract.proposalSnapshot.listingSnapshot.revisions?.type || "none";
 
-  // Fix the main revisionInfo calculation:
-  useEffect(() => {
-    const getRevisionInfo = () => {
-      const revisionType =
-        contract.proposalSnapshot.listingSnapshot.revisions?.type || "none";
-
-      // If no revisions allowed
-      if (revisionType === "none") {
-        return {
-          type: "none",
-          isRevisionAllowed: false,
-          isFree: false,
-          remainingFree: 0,
-          isPaid: false,
-          fee: 0,
-          isAllowedPaid: false
-        };
-      }
-
-      // Standard flow (applies to both standard and milestone flow with standard revisions)
-      if (
-        (revisionType === "standard" ||
-          (revisionType === "milestone" && contract.revisionPolicy)) &&
-        contract.revisionPolicy
-      ) {
-        const policy = contract.revisionPolicy;
-        const revisionsDone = contract.revisionDone || 0;
-        const remainingFree = Math.max(0, policy.free - revisionsDone);
-
-        return {
-          type: "standard",
-          isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed), // FIX: Logic reversed
-          isFree: remainingFree > 0,
-          remainingFree,
-          isPaid: remainingFree === 0 && policy.extraAllowed, // This is correct
-          fee: policy.fee || 0,
-          isAllowedPaid: !((remainingFree === 0 && policy.extraAllowed) && unresolvedQty === policy.free && revisionsDone === policy.free)
-        };
-      }
-
-      // Milestone-based revisions
-      if (revisionType === "milestone" && watchMilestoneIdx !== null) {
-        const milestone =
-          contract.milestones?.[parseInt(watchMilestoneIdx || "0")];
-
-        if (!milestone || !milestone.revisionPolicy) {
-          return {
-            type: "milestone",
-            isRevisionAllowed: false,
-            isFree: false,
-            remainingFree: 0,
-            isPaid: false,
-            fee: 0,
-            isAllowedPaid: false
-          };
-        }
-
-        const policy = milestone.revisionPolicy;
-        const revisionsDone = milestone.revisionDone || 0;
-        const remainingFree = Math.max(0, policy.free - revisionsDone);
-
-        // Calculate this as a plain boolean, don't store in a variable with the same name
-        const shouldBePaid = remainingFree === 0 && policy.extraAllowed;
-
-        return {
-          type: "milestone",
-          isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed), // FIX: Logic reversed
-          isFree: remainingFree > 0,
-          remainingFree,
-          isPaid: shouldBePaid, // Use the calculated boolean directly
-          fee: policy.fee || 0,
-          isAllowedPaid: !((remainingFree === 0 && policy.extraAllowed) && unresolvedQty === policy.free && revisionsDone === policy.free)
-        };
-      }
-
+    // If no revisions allowed
+    if (revisionType === "none") {
       return {
-        type: revisionType,
+        type: "none",
         isRevisionAllowed: false,
         isFree: false,
         remainingFree: 0,
         isPaid: false,
         fee: 0,
-        isAllowedPaid: false
+        isAllowedPaid: false,
       };
+    }
+
+    // Standard flow (applies to both standard and milestone flow with standard revisions)
+    if (
+      (revisionType === "standard" ||
+        (revisionType === "milestone" && contract.revisionPolicy)) &&
+      contract.revisionPolicy
+    ) {
+      const policy = contract.revisionPolicy;
+      const revisionsDone = contract.revisionDone || 0;
+      const remainingFree = Math.max(0, policy.free - revisionsDone);
+      const isPaid = remainingFree === 0 && policy.extraAllowed;
+
+      return {
+        type: "standard",
+        isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed),
+        isFree: remainingFree > 0,
+        remainingFree,
+        isPaid,
+        fee: policy.fee || 0,
+        isAllowedPaid: !(
+          isPaid &&
+          unresolvedQty === policy.free &&
+          revisionsDone === policy.free
+        ),
+      };
+    }
+
+    // Milestone-based revisions
+    if (revisionType === "milestone" && watchMilestoneIdx !== null) {
+      const milestone =
+        contract.milestones?.[parseInt(watchMilestoneIdx || "0")];
+
+      if (!milestone || !milestone.revisionPolicy) {
+        return {
+          type: "milestone",
+          isRevisionAllowed: false,
+          isFree: false,
+          remainingFree: 0,
+          isPaid: false,
+          fee: 0,
+          isAllowedPaid: false,
+        };
+      }
+
+      const policy = milestone.revisionPolicy;
+      const revisionsDone = milestone.revisionDone || 0;
+      const remainingFree = Math.max(0, policy.free - revisionsDone);
+      const isPaid = remainingFree === 0 && policy.extraAllowed;
+
+      return {
+        type: "milestone",
+        isRevisionAllowed: !(policy.free === 0 && !policy.extraAllowed),
+        isFree: remainingFree > 0,
+        remainingFree,
+        isPaid,
+        fee: policy.fee || 0,
+        isAllowedPaid: !(
+          isPaid &&
+          unresolvedQty === policy.free &&
+          revisionsDone === policy.free
+        ),
+      };
+    }
+
+    return {
+      type: revisionType,
+      isRevisionAllowed: false,
+      isFree: false,
+      remainingFree: 0,
+      isPaid: false,
+      fee: 0,
+      isAllowedPaid: false,
     };
+  }, [contract, watchMilestoneIdx, unresolvedQty]);
 
-    setRevisionInfo(getRevisionInfo());
-  }, [contract, watchMilestoneIdx]);
-
-  // Handle file input change
+  // File handling functions
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
@@ -220,15 +208,13 @@ export default function RevisionTicketForm({
     }
   };
 
-  // Remove a file and its preview
   const removeFile = (index: number) => {
     URL.revokeObjectURL(previewUrls[index]);
-
     setFiles(files.filter((_, i) => i !== index));
     setPreviewUrls(previewUrls.filter((_, i) => i !== index));
   };
 
-  // Handle form submission
+  // Form submission handler
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     setError(null);
@@ -277,40 +263,7 @@ export default function RevisionTicketForm({
     }
   };
 
-  // Periksa apakah revisi diperbolehkan
-  if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
-    return (
-      <Alert severity="error">Kontrak ini tidak mengizinkan revisi.</Alert>
-    );
-  }
-
-  // Periksa apakah revisi diperbolehkan
-  if (
-    contract.proposalSnapshot.listingSnapshot.revisions?.type === "milestone" &&
-    !revisionInfo.isRevisionAllowed
-  ) {
-    return (
-      <Alert severity="error">
-        Milestone{" "}
-        {contract.milestones?.[parseInt(watchMilestoneIdx || "0")].title ||
-          "ini"}{" "}
-        tidak mengizinkan revisi.
-      </Alert>
-    );
-  }
-
-  // Periksa apakah revisi diperbolehkan
-  if (
-    !revisionInfo.isAllowedPaid
-  ) {
-    return (
-      <Alert severity="error">
-        Masih terdapat permintaan jatah revisi gratis yang memerlukan tindak lanjut seniman sebelum Anda dapat menggunakan jatah berbayar.
-      </Alert>
-    );
-  }
-
-  // Get correct milestone options - only the current milestone or completed ones
+  // Helper function to get milestone options
   const getMilestoneOptions = () => {
     if (!contract.milestones) return [];
 
@@ -328,6 +281,44 @@ export default function RevisionTicketForm({
       }));
   };
 
+  // Permission checks - pre-render validation
+  const isRevisionDisabled =
+    !revisionInfo.isRevisionAllowed ||
+    (!revisionInfo.isFree && !revisionInfo.isPaid);
+
+  // No revisions allowed at all
+  if (contract.proposalSnapshot.listingSnapshot.revisions?.type === "none") {
+    return (
+      <Alert severity="error">Kontrak ini tidak mengizinkan revisi.</Alert>
+    );
+  }
+
+  // Milestone type with no revisions allowed for this milestone
+  if (
+    contract.proposalSnapshot.listingSnapshot.revisions?.type === "milestone" &&
+    !revisionInfo.isRevisionAllowed
+  ) {
+    return (
+      <Alert severity="error">
+        Milestone{" "}
+        {contract.milestones?.[parseInt(watchMilestoneIdx || "0")]?.title ||
+          "ini"}{" "}
+        tidak mengizinkan revisi.
+      </Alert>
+    );
+  }
+
+  // Paid revision not allowed because free revisions still pending
+  if (!revisionInfo.isAllowedPaid) {
+    return (
+      <Alert severity="error">
+        Masih terdapat permintaan jatah revisi gratis yang memerlukan tindak
+        lanjut seniman sebelum Anda dapat menggunakan jatah berbayar.
+      </Alert>
+    );
+  }
+
+  // Main form render
   return (
     <Paper elevation={2} sx={{ p: 3 }}>
       {success ? (
@@ -342,6 +333,7 @@ export default function RevisionTicketForm({
             </Alert>
           )}
 
+          {/* Revision Policy Section */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Kebijakan Revisi
@@ -402,7 +394,7 @@ export default function RevisionTicketForm({
             )}
           </Box>
 
-          {/* Milestone display for milestone-based contracts */}
+          {/* Milestone Section for milestone-based contracts */}
           {contract.proposalSnapshot.listingSnapshot.revisions?.type ===
             "milestone" && (
             <Box sx={{ mb: 3 }}>
@@ -446,7 +438,7 @@ export default function RevisionTicketForm({
                 )}
               </Box>
 
-              {/* Kolom tersembunyi untuk nilai form */}
+              {/* Hidden field for form value */}
               <Controller
                 name="milestoneIdx"
                 control={control}
@@ -464,7 +456,7 @@ export default function RevisionTicketForm({
 
           <Divider sx={{ mb: 3 }} />
 
-          {/* Detail permintaan revisi */}
+          {/* Revision Request Details */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Detail Permintaan Revisi
@@ -497,6 +489,7 @@ export default function RevisionTicketForm({
             )}
           </Box>
 
+          {/* Description Field */}
           <Box sx={{ mb: 3 }}>
             <Controller
               name="description"
@@ -519,17 +512,13 @@ export default function RevisionTicketForm({
                   placeholder="Jelaskan perubahan yang Anda butuhkan..."
                   error={!!errors.description}
                   helperText={errors.description?.message}
-                  disabled={
-                    isSubmitting ||
-                    (!revisionInfo.isFree && !revisionInfo.isPaid) ||
-                    !revisionInfo.isRevisionAllowed
-                  }
+                  disabled={isSubmitting || isRevisionDisabled}
                 />
               )}
             />
           </Box>
 
-          {/* Gambar referensi */}
+          {/* Reference Images Section */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom>
               Gambar Referensi (Opsional)
@@ -544,9 +533,7 @@ export default function RevisionTicketForm({
                 variant="outlined"
                 startIcon={<AddPhotoAlternateIcon />}
                 disabled={
-                  isSubmitting ||
-                  (!revisionInfo.isFree && !revisionInfo.isPaid) ||
-                  files.length >= 5
+                  isSubmitting || isRevisionDisabled || files.length >= 5
                 }
                 sx={{ mt: 1 }}
               >
@@ -558,10 +545,7 @@ export default function RevisionTicketForm({
                   onChange={handleFileChange}
                   style={{ display: "none" }}
                   disabled={
-                    isSubmitting ||
-                    (!revisionInfo.isFree && !revisionInfo.isPaid) ||
-                    files.length >= 5 ||
-                    !revisionInfo.isRevisionAllowed
+                    isSubmitting || isRevisionDisabled || files.length >= 5
                   }
                 />
               </Button>
@@ -572,6 +556,7 @@ export default function RevisionTicketForm({
               )}
             </Box>
 
+            {/* Image Previews */}
             {previewUrls.length > 0 && (
               <Grid container spacing={1} sx={{ mt: 1 }}>
                 {previewUrls.map((url, index) => (
@@ -610,6 +595,7 @@ export default function RevisionTicketForm({
             )}
           </Box>
 
+          {/* Action Buttons */}
           <Stack direction="row" spacing={2}>
             <Button
               variant="outlined"
@@ -622,11 +608,7 @@ export default function RevisionTicketForm({
               type="submit"
               variant="contained"
               color="primary"
-              disabled={
-                isSubmitting ||
-                (!revisionInfo.isFree && !revisionInfo.isPaid) ||
-                !revisionInfo.isRevisionAllowed
-              }
+              disabled={isSubmitting || isRevisionDisabled}
               sx={{ minWidth: 120 }}
             >
               {isSubmitting ? (

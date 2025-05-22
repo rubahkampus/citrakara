@@ -5,6 +5,8 @@ import { ObjectId } from "mongoose";
 
 /**
  * Create a default TOS entry for a new user
+ * @param userId The ID of the user to create default TOS for
+ * @returns The newly created TOS document
  */
 export async function createDefaultTos(userId: string | ObjectId) {
   await connectDB();
@@ -43,7 +45,9 @@ export async function createDefaultTos(userId: string | ObjectId) {
 }
 
 /**
- * Find TOS entries by user ID
+ * Find all TOS entries by user ID
+ * @param userId The ID of the user to find TOS entries for
+ * @returns Array of TOS documents belonging to the user
  */
 export async function findTosByUserId(userId: string | ObjectId) {
   await connectDB();
@@ -51,7 +55,9 @@ export async function findTosByUserId(userId: string | ObjectId) {
 }
 
 /**
- * Find default TOS for a user
+ * Find the default TOS for a specific user
+ * @param userId The ID of the user to find default TOS for
+ * @returns The default TOS document for the user, or null if not found
  */
 export async function findDefaultTosByUserId(userId: string | ObjectId) {
   await connectDB();
@@ -59,7 +65,10 @@ export async function findDefaultTosByUserId(userId: string | ObjectId) {
 }
 
 /**
- * Update a TOS entry
+ * Update an existing TOS entry
+ * @param tosId The ID of the TOS document to update
+ * @param updates Object containing fields to update (title and/or content)
+ * @returns The updated TOS document
  */
 export async function updateTos(
   tosId: string | ObjectId,

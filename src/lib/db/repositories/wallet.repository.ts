@@ -7,6 +7,9 @@ import { toObjectId } from "@/lib/utils/toObjectId";
 
 /**
  * Create a new wallet for a user
+ * @param userId ID of the user to create a wallet for
+ * @param session Optional MongoDB session for transactions
+ * @returns The newly created wallet
  */
 export async function createWallet(
   userId: string | ObjectId,
@@ -28,7 +31,10 @@ export async function createWallet(
 }
 
 /**
- * Find wallet by user ID
+ * Find a wallet by the associated user ID
+ * @param userId ID of the user whose wallet to find
+ * @param session Optional MongoDB session for transactions
+ * @returns The user's wallet or null if not found
  */
 export async function findWalletByUserId(
   userId: string | ObjectId,
@@ -43,7 +49,13 @@ export async function findWalletByUserId(
   }
 }
 
-// Add funds to available balance
+/**
+ * Add funds to a user's available balance
+ * @param userId ID of the user to add funds for
+ * @param amount Amount in cents to add to available balance
+ * @param session Optional MongoDB session for transactions
+ * @returns The updated wallet or null if not found
+ */
 export async function addFundsToWallet(
   userId: string | ObjectId,
   amount: Cents,
@@ -58,7 +70,14 @@ export async function addFundsToWallet(
   );
 }
 
-// Move funds from available to escrow (for contract creation)
+/**
+ * Move funds from available balance to escrow balance
+ * @param userId ID of the user to move funds for
+ * @param amount Amount in cents to move from available to escrow
+ * @param session Optional MongoDB session for transactions
+ * @returns The updated wallet or null if not found
+ * @throws Error if insufficient funds available
+ */
 export async function moveToEscrow(
   userId: string | ObjectId,
   amount: Cents,
@@ -87,7 +106,13 @@ export async function moveToEscrow(
   );
 }
 
-// Move funds from escrow to available (for artist payment)
+/**
+ * Move funds from escrow to an artist's available balance
+ * @param userId ID of the artist to release funds to
+ * @param amount Amount in cents to add to available balance
+ * @param session Optional MongoDB session for transactions
+ * @returns The updated wallet or null if not found
+ */
 export async function releaseFromEscrowToArtist(
   userId: string | ObjectId,
   amount: Cents,
@@ -102,7 +127,13 @@ export async function releaseFromEscrowToArtist(
   );
 }
 
-// Move funds from escrow back to client (for refund)
+/**
+ * Return funds from escrow back to client's available balance
+ * @param userId ID of the client to refund funds to
+ * @param amount Amount in cents to refund to available balance
+ * @param session Optional MongoDB session for transactions
+ * @returns The updated wallet or null if not found
+ */
 export async function refundFromEscrowToClient(
   userId: string | ObjectId,
   amount: Cents,
@@ -117,7 +148,13 @@ export async function refundFromEscrowToClient(
   );
 }
 
-// Reduce escrow balance (after payments or refunds)
+/**
+ * Reduce a user's escrow balance after payment or refund
+ * @param userId ID of the user to reduce escrow balance for
+ * @param amount Amount in cents to reduce from escrow balance
+ * @param session Optional MongoDB session for transactions
+ * @returns The updated wallet or null if not found
+ */
 export async function reduceEscrowBalance(
   userId: string | ObjectId,
   amount: Cents,
@@ -132,7 +169,12 @@ export async function reduceEscrowBalance(
   );
 }
 
-// Get wallet summary (for displaying in UI)
+/**
+ * Get a summary of a user's wallet balances
+ * @param userId ID of the user to get wallet summary for
+ * @param session Optional MongoDB session for transactions
+ * @returns Object containing available, escrowed, and total balances, or null if wallet not found
+ */
 export async function getWalletSummary(
   userId: string | ObjectId,
   session?: ClientSession
@@ -158,7 +200,14 @@ export async function getWalletSummary(
   };
 }
 
-// Transfer funds between users (used in admin resolution)
+/**
+ * Transfer funds between two users (for admin resolution)
+ * @param fromUserId ID of the user to transfer funds from
+ * @param toUserId ID of the user to transfer funds to
+ * @param amount Amount in cents to transfer between users
+ * @param session Optional MongoDB session for transactions
+ * @returns Promise that resolves when the transfer is complete
+ */
 export async function transferBetweenUsers(
   fromUserId: string | ObjectId,
   toUserId: string | ObjectId,
@@ -182,7 +231,13 @@ export async function transferBetweenUsers(
   );
 }
 
-// Check if a user has sufficient available funds
+/**
+ * Check if a user has sufficient available funds for a transaction
+ * @param userId ID of the user to check funds for
+ * @param amount Amount in cents to check against available balance
+ * @param session Optional MongoDB session for transactions
+ * @returns Boolean indicating whether user has sufficient funds
+ */
 export async function hasSufficientFunds(
   userId: string | ObjectId,
   amount: Cents,

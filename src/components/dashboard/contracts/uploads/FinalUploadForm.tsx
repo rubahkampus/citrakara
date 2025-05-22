@@ -109,6 +109,7 @@ export default function FinalUploadForm({
     console.log("Default work progress (final delivery): 100");
     return 100;
   };
+
   const {
     control,
     handleSubmit,
@@ -154,7 +155,9 @@ export default function FinalUploadForm({
             // Calculate default work progress for cancellation
             setValue("workProgress", calculateDefaultWorkProgress());
           }
-        }
+        } else {
+            console.log('No active cancellation ticket')
+          }
       } catch (err) {
         console.error("Error fetching active cancellation tickets:", err);
       }
@@ -213,7 +216,7 @@ export default function FinalUploadForm({
       console.log("Switching to cancellation mode, adjusting work progress...");
       setValue(
         "workProgress",
-        cancelTicketId ? calculateDefaultWorkProgress() : 50
+        cancelTicketId ? calculateDefaultWorkProgress() : 100
       );
     } else if (!watchIsForCancellation && watchWorkProgress < 100) {
       console.log(
@@ -343,22 +346,27 @@ export default function FinalUploadForm({
         formData.append("images[]", file);
       });
 
+      for (var pair of formData.entries()) {
+        console.log('fd');
+        console.log(pair[0] + ", " + pair[1]);
+      } // Debugging line
+
       // Submit to API using axios
-      await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/final/new`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      // await axiosClient.post(
+      //   `/api/contract/${contract._id}/uploads/final/new`,
+      //   formData,
+      //   {
+      //     headers: { "Content-Type": "multipart/form-data" },
+      //   }
+      // );
 
-      setSuccess(true);
+      // setSuccess(true);
 
-      // Redirect after successful submission
-      setTimeout(() => {
-        router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
-        router.refresh();
-      }, 1500);
+      // // Redirect after successful submission
+      // setTimeout(() => {
+      //   router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
+      //   router.refresh();
+      // }, 1500);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.error || "Failed to upload final delivery");

@@ -7,25 +7,42 @@ import { createDefaultTos } from "./tos.repository";
 import { createDefaultGalleries } from "./gallery.repository";
 import mongoose, { Types } from "mongoose";
 
-/** Return user by email */
+/**
+ * Find a user by their email address
+ * @param email The email address to search for
+ * @returns The user document or null if not found
+ */
 export async function findUserByEmail(email: string) {
   await connectDB();
   return User.findOne({ email });
 }
 
-/** Return user by username */
+/**
+ * Find a user by their username
+ * @param username The username to search for
+ * @returns The user document or null if not found
+ */
 export async function findUserByUsername(username: string) {
   await connectDB();
   return User.findOne({ username });
 }
 
-/** Return user by username (without password) */
+/**
+ * Find a user's public profile by username (excludes password)
+ * @param username The username to search for
+ * @returns The user document without password field, or null if not found
+ */
 export async function findUserPublicProfileByUsername(username: string) {
   await connectDB();
   return User.findOne({ username }).select("-password");
 }
 
-/** Create a new user with related records */
+/**
+ * Create a new user with related records (wallet, TOS, galleries)
+ * @param data Object containing email, username, and password
+ * @returns The newly created user with all associated records
+ * @throws Error if creation of related records fails
+ */
 export async function createUser(data: {
   email: string;
   username: string;
@@ -87,7 +104,12 @@ export async function createUser(data: {
   }
 }
 
-/** Update user by username */
+/**
+ * Update a user's profile by username
+ * @param username The username of the user to update
+ * @param updates Object containing fields to update
+ * @returns The updated user document without password field
+ */
 export async function updateUserByUsername(
   username: string,
   updates: Record<string, any>
@@ -98,13 +120,21 @@ export async function updateUserByUsername(
   );
 }
 
-/** Get a user by their MongoDB ObjectId */
+/**
+ * Find a user by their MongoDB ObjectId
+ * @param id The user's ObjectId
+ * @returns The user document or null if not found
+ */
 export async function findUserById(id: string | mongoose.Types.ObjectId) {
   await connectDB();
   return User.findById(id);
 }
 
-/** Check if a user has the 'admin' role */
+/**
+ * Check if a user has the 'admin' role by their ID
+ * @param id The user's ObjectId
+ * @returns Boolean indicating whether the user has admin privileges
+ */
 export async function isAdminById(
   id: string | mongoose.Types.ObjectId
 ): Promise<boolean> {
@@ -114,7 +144,11 @@ export async function isAdminById(
   return user.roles.includes("admin");
 }
 
-/** Check if a user identified by username has the 'admin' role */
+/**
+ * Check if a user has the 'admin' role by their username
+ * @param username The username to check
+ * @returns Boolean indicating whether the user has admin privileges
+ */
 export async function isAdminByUsername(username: string): Promise<boolean> {
   await connectDB();
   const user = await User.findOne({ username }).select("roles");
@@ -122,7 +156,12 @@ export async function isAdminByUsername(username: string): Promise<boolean> {
   return user.roles.includes("admin");
 }
 
-/** Bookmark an artist */
+/**
+ * Add an artist to a user's bookmarks
+ * @param userId ID of the user adding the bookmark
+ * @param artistId ID of the artist to bookmark
+ * @returns The updated user's artistBookmarks array
+ */
 export async function bookmarkArtist(
   userId: string | Types.ObjectId,
   artistId: string | Types.ObjectId
@@ -135,7 +174,12 @@ export async function bookmarkArtist(
   ).select("artistBookmarks");
 }
 
-/** Unbookmark an artist */
+/**
+ * Remove an artist from a user's bookmarks
+ * @param userId ID of the user removing the bookmark
+ * @param artistId ID of the artist to unbookmark
+ * @returns The updated user's artistBookmarks array
+ */
 export async function unbookmarkArtist(
   userId: string | Types.ObjectId,
   artistId: string | Types.ObjectId
@@ -148,7 +192,12 @@ export async function unbookmarkArtist(
   ).select("artistBookmarks");
 }
 
-/** Bookmark a commission listing */
+/**
+ * Add a commission to a user's bookmarks
+ * @param userId ID of the user adding the bookmark
+ * @param commissionId ID of the commission to bookmark
+ * @returns The updated user's commissionBookmarks array
+ */
 export async function bookmarkCommission(
   userId: string | Types.ObjectId,
   commissionId: string | Types.ObjectId
@@ -161,7 +210,12 @@ export async function bookmarkCommission(
   ).select("commissionBookmarks");
 }
 
-/** Unbookmark a commission listing */
+/**
+ * Remove a commission from a user's bookmarks
+ * @param userId ID of the user removing the bookmark
+ * @param commissionId ID of the commission to unbookmark
+ * @returns The updated user's commissionBookmarks array
+ */
 export async function unbookmarkCommission(
   userId: string | Types.ObjectId,
   commissionId: string | Types.ObjectId
@@ -174,7 +228,11 @@ export async function unbookmarkCommission(
   ).select("commissionBookmarks");
 }
 
-/** Get bookmarked artists for a user */
+/**
+ * Get all artists bookmarked by a user with populated details
+ * @param userId ID of the user to get bookmarked artists for
+ * @returns Array of artist documents with selected fields
+ */
 export async function getBookmarkedArtists(userId: string | Types.ObjectId) {
   await connectDB();
   const user = await User.findById(userId).select("artistBookmarks").populate({
@@ -186,7 +244,11 @@ export async function getBookmarkedArtists(userId: string | Types.ObjectId) {
   return user?.artistBookmarks || [];
 }
 
-/** Get bookmarked commission listings for a user */
+/**
+ * Get all commissions bookmarked by a user with populated details
+ * @param userId ID of the user to get bookmarked commissions for
+ * @returns Array of commission documents that are not deleted
+ */
 export async function getBookmarkedCommissions(
   userId: string | Types.ObjectId
 ) {
@@ -201,7 +263,12 @@ export async function getBookmarkedCommissions(
   return user?.commissionBookmarks || [];
 }
 
-/** Check if user has bookmarked an artist */
+/**
+ * Check if a user has bookmarked a specific artist
+ * @param userId ID of the user to check
+ * @param artistId ID of the artist to check for in bookmarks
+ * @returns Boolean indicating whether the artist is bookmarked
+ */
 export async function hasBookmarkedArtist(
   userId: string | Types.ObjectId,
   artistId: string | Types.ObjectId
@@ -215,7 +282,12 @@ export async function hasBookmarkedArtist(
   return !!user;
 }
 
-/** Check if user has bookmarked a commission */
+/**
+ * Check if a user has bookmarked a specific commission
+ * @param userId ID of the user to check
+ * @param commissionId ID of the commission to check for in bookmarks
+ * @returns Boolean indicating whether the commission is bookmarked
+ */
 export async function hasBookmarkedCommission(
   userId: string | Types.ObjectId,
   commissionId: string | Types.ObjectId
@@ -229,7 +301,15 @@ export async function hasBookmarkedCommission(
   return !!user;
 }
 
-/** Search for artists by tags and/or name */
+/**
+ * Search for artists by name and/or tags with pagination
+ * @param options Object containing search parameters
+ * @param options.query Optional text to search in username and displayName
+ * @param options.tags Optional array of tags to filter by
+ * @param options.limit Maximum number of results to return (default: 20)
+ * @param options.skip Number of results to skip for pagination (default: 0)
+ * @returns Object with artists array and total count of matching records
+ */
 export async function searchArtists({
   query,
   tags,

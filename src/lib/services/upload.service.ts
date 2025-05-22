@@ -1,5 +1,5 @@
 // src/lib/services/upload.service.ts
-import { startSession } from "mongoose";
+import { ClientSession, startSession } from "mongoose";
 import type { ObjectId } from "@/types/common";
 import * as uploadRepo from "@/lib/db/repositories/upload.repository";
 import * as contractRepo from "@/lib/db/repositories/contract.repository";
@@ -14,9 +14,10 @@ import {
 } from "../db/models/upload.model";
 import { connectDB } from "../db/connection";
 import { isUserAdminById } from "./user.service";
+import { getUnresolvedResolutionTickets, getUnfinishedRevisionTickets } from "./ticket.service";
 
 //=============================================================================
-// CREATE UPLOAD FUNCTIONS
+// CREATE UPLOAD FUNCTIONS WITH BACKEND VALIDATIONS
 //=============================================================================
 
 /**
@@ -62,6 +63,9 @@ export async function createProgressUploadStandard(
         400
       );
     }
+
+    // Backend validation: Check for blocking conditions
+    await validateProgressUploadConditions(contractId, session);
 
     // Get image blobs from form data
     const imageBlobs = form
@@ -176,6 +180,14 @@ export async function createProgressUploadMilestone(
         400
       );
     }
+
+    // Backend validation: Check for blocking conditions specific to milestone uploads
+    await validateMilestoneUploadConditions(
+      contractId,
+      milestoneIdx,
+      isFinal,
+      session
+    );
 
     // Get image blobs from form data
     const imageBlobs = form
@@ -296,6 +308,13 @@ export async function createRevisionUpload(
         400
       );
     }
+
+    // Backend validation: Check for blocking conditions specific to revision uploads
+    await validateRevisionUploadConditions(
+      contractId,
+      revisionTicketId,
+      session
+    );
 
     // Get image blobs from form data
     const imageBlobs = form
@@ -425,6 +444,9 @@ export async function createFinalUpload(
       }
     }
 
+    // Backend validation: Check for blocking conditions specific to final uploads
+    await validateFinalUploadConditions(contractId, cancelTicketId, session);
+
     // Get image blobs from form data
     const imageBlobs = form
       .getAll("images[]")
@@ -481,6 +503,201 @@ export async function createFinalUpload(
   } finally {
     session.endSession();
   }
+}
+
+//=============================================================================
+// BACKEND VALIDATION FUNCTIONS
+//=============================================================================
+
+/**
+ * Validate conditions for progress uploads (standard flow)
+ *
+ * @param contractId - ID of the contract
+ * @param session - Database session
+ * @throws HttpError if validation fails
+ */
+async function validateProgressUploadConditions(
+  contractId: string | ObjectId,
+  session: ClientSession
+): Promise<void> {
+  // Check for unresolved resolution tickets (blocking)
+  const unresolvedResolutionTickets = await getUnresolvedResolutionTickets(
+    contractId
+  );
+  if (unresolvedResolutionTickets.length > 0) {
+    throw new HttpError(
+      "Cannot create progress upload while there are active resolution tickets. Please wait for resolution before uploading.",
+      400
+    );
+  }
+
+  // Note: Progress uploads have minimal restrictions, so no additional blocking validations needed
+}
+
+/**
+ * Validate conditions for milestone uploads
+ *
+ * @param contractId - ID of the contract
+ * @param milestoneIdx - Index of the milestone
+ * @param isFinal - Whether this is a final milestone upload
+ * @param session - Database session
+ * @throws HttpError if validation fails
+ */
+async function validateMilestoneUploadConditions(
+  contractId: string | ObjectId,
+  milestoneIdx: number,
+  isFinal: boolean,
+  session: ClientSession
+): Promise<void> {
+  // Check for unresolved resolution tickets (blocking)
+  const unresolvedResolutionTickets = await getUnresolvedResolutionTickets(
+    contractId
+  );
+  if (unresolvedResolutionTickets.length > 0) {
+    throw new HttpError(
+      "Cannot create milestone upload while there are active resolution tickets. Please wait for resolution before uploading.",
+      400
+    );
+  }
+
+  // If this is a final milestone upload, check for existing active final uploads for this milestone
+  if (isFinal) {
+    const activeMilestoneUploads = await getUnfinishedFinalMilestoneUploads(
+      contractId,
+      milestoneIdx
+    );
+    if (activeMilestoneUploads.length > 0) {
+      throw new HttpError(
+        "There is already an active final milestone upload for this milestone. Please wait for client review before submitting a new one.",
+        400
+      );
+    }
+
+    // Check for unfinished revision tickets that block final submission
+    const unfinishedRevisionTickets = await getUnfinishedRevisionTickets(
+      contractId
+    );
+    if (unfinishedRevisionTickets.length > 0) {
+      throw new HttpError(
+        "You have unfinished revision tickets that require uploads. Please complete all revisions before submitting final milestone work.",
+        400
+      );
+    }
+  }
+}
+
+/**
+ * Validate conditions for revision uploads
+ *
+ * @param contractId - ID of the contract
+ * @param revisionTicketId - ID of the revision ticket
+ * @param session - Database session
+ * @throws HttpError if validation fails
+ */
+async function validateRevisionUploadConditions(
+  contractId: string | ObjectId,
+  revisionTicketId: string,
+  session: ClientSession
+): Promise<void> {
+  // Check for unresolved resolution tickets (blocking)
+  const unresolvedResolutionTickets = await getUnresolvedResolutionTickets(
+    contractId
+  );
+  if (unresolvedResolutionTickets.length > 0) {
+    throw new HttpError(
+      "Cannot create revision upload while there are active resolution tickets. Please wait for resolution before uploading.",
+      400
+    );
+  }
+
+  // Check if there's already an active revision upload for this specific ticket
+  const unfinishedRevisionUploads = await getUnfinishedRevisionUploads(
+    contractId
+  );
+  const activeTicketUploads = unfinishedRevisionUploads.filter(
+    (upload) => upload.revisionTicketId.toString() === revisionTicketId
+  );
+
+  if (activeTicketUploads.length > 0) {
+    throw new HttpError(
+      "There is already an active revision upload for this ticket. Please wait for client review before submitting a new one.",
+      400
+    );
+  }
+}
+
+/**
+ * Validate conditions for final uploads
+ *
+ * @param contractId - ID of the contract
+ * @param cancelTicketId - Optional cancel ticket ID (for cancellation uploads)
+ * @param session - Database session
+ * @throws HttpError if validation fails
+ */
+async function validateFinalUploadConditions(
+  contractId: string | ObjectId,
+  cancelTicketId: string | undefined,
+  session: ClientSession
+): Promise<void> {
+  // Check for unresolved resolution tickets (blocking)
+  const unresolvedResolutionTickets = await getUnresolvedResolutionTickets(
+    contractId
+  );
+  if (unresolvedResolutionTickets.length > 0) {
+    throw new HttpError(
+      "Cannot create final upload while there are active resolution tickets. Please wait for resolution before uploading.",
+      400
+    );
+  }
+
+  // Check if there's already an active final upload
+  const unfinishedFinalUploads = await getUnfinishedFinalUploads(contractId);
+  if (unfinishedFinalUploads.length > 0) {
+    throw new HttpError(
+      "There is already an active final upload. Please wait for client review before submitting a new one.",
+      400
+    );
+  }
+
+  // Get the contract to check flow and milestones
+  const contract = await contractRepo.findContractById(contractId, { session });
+  if (!contract) {
+    throw new HttpError("Contract not found", 404);
+  }
+
+  if (!cancelTicketId) {
+    // For regular final delivery (not cancellation)
+
+    // 1. Check if all milestones are completed for milestone contracts
+    if (
+      contract.proposalSnapshot.listingSnapshot.flow === "milestone" &&
+      contract.milestones
+    ) {
+      const incompleteMilestones = contract.milestones.filter(
+        (milestone: any) => milestone.status !== "accepted"
+      );
+
+      if (incompleteMilestones.length > 0) {
+        throw new HttpError(
+          "All milestones must be completed before submitting final delivery.",
+          400
+        );
+      }
+    }
+
+    // 2. Check if all revisions are completed
+    const unfinishedRevisionTickets = await getUnfinishedRevisionTickets(
+      contractId
+    );
+    if (unfinishedRevisionTickets.length > 0) {
+      throw new HttpError(
+        "You must complete all revision requests before submitting final delivery.",
+        400
+      );
+    }
+  }
+  // Note: For cancellation uploads (when cancelTicketId exists), we allow uploads even with pending revisions
+  // as mentioned in the frontend logic comments
 }
 
 //=============================================================================
@@ -1004,4 +1221,237 @@ export async function hasUnfinishedFinalMilestoneUpload(
     milestoneIdx
   );
   return uploads.length > 0;
+}
+
+//=============================================================================
+// HAS FINISHED UTILITY FUNCTIONS
+//=============================================================================
+
+/**
+ * Check if a contract has a finished final upload (accepted or forcedAccepted)
+ *
+ * @param contractId - Contract ID to check
+ * @param session - Optional MongoDB session for transaction
+ * @returns True if there's an accepted final upload for the contract
+ */
+export async function hasFinishedContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const finalUploads = await uploadRepo.findFinalUploadsByContract(
+    contractId,
+    session
+  );
+
+  // Check if any final upload is accepted or forcedAccepted
+  return finalUploads.some(
+    (upload) =>
+      upload.status === "accepted" || upload.status === "forcedAccepted"
+  );
+}
+
+/**
+ * Check if a milestone has a finished final milestone upload (accepted or forcedAccepted)
+ *
+ * @param contractId - Contract ID to check
+ * @param milestoneIdx - Index of the milestone to check
+ * @param session - Optional MongoDB session for transaction
+ * @returns True if there's an accepted final milestone upload for the specified milestone
+ */
+export async function hasFinishedMilestone(
+  contractId: string | ObjectId,
+  milestoneIdx: number,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const milestoneUploads =
+    await uploadRepo.findProgressUploadMilestoneByMilestone(
+      contractId,
+      milestoneIdx,
+      session
+    );
+
+  // Check if any final milestone upload is accepted or forcedAccepted
+  return milestoneUploads.some(
+    (upload) =>
+      upload.isFinal &&
+      (upload.status === "accepted" || upload.status === "forcedAccepted")
+  );
+}
+
+/**
+ * Check if a cancellation has a finished final upload (accepted or forcedAccepted)
+ *
+ * @param contractId - Contract ID to check
+ * @param cancelTicketId - ID of the cancel ticket to check
+ * @param session - Optional MongoDB session for transaction
+ * @returns True if there's an accepted final upload associated with the cancel ticket
+ */
+export async function hasFinishedCancellation(
+  contractId: string | ObjectId,
+  cancelTicketId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const finalUploads = await uploadRepo.findFinalUploadsByContract(
+    contractId,
+    session
+  );
+
+  // Check if any final upload is linked to the cancel ticket and is accepted/forcedAccepted
+  return finalUploads.some(
+    (upload) =>
+      upload.cancelTicketId &&
+      upload.cancelTicketId.toString() === cancelTicketId.toString() &&
+      (upload.status === "accepted" || upload.status === "forcedAccepted")
+  );
+}
+
+/**
+ * Check if a revision has a finished revision upload (accepted or forcedAccepted)
+ *
+ * @param contractId - Contract ID to check
+ * @param revisionTicketId - ID of the revision ticket to check
+ * @param session - Optional MongoDB session for transaction
+ * @returns True if there's an accepted revision upload for the specified revision ticket
+ */
+export async function hasFinishedRevision(
+  contractId: string | ObjectId,
+  revisionTicketId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const revisionUploads = await uploadRepo.findRevisionUploadsByTicket(
+    revisionTicketId,
+    session
+  );
+
+  // Check if any revision upload is accepted or forcedAccepted
+  return revisionUploads.some(
+    (upload) =>
+      upload.status === "accepted" || upload.status === "forcedAccepted"
+  );
+}
+
+/**
+ * Check if all milestones in a contract have finished final milestone uploads
+ *
+ * @param contractId - Contract ID to check
+ * @param session - Optional MongoDB session for transaction
+ * @returns True if all milestones have accepted final milestone uploads
+ */
+export async function hasFinishedAllMilestones(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  // Get the contract to check milestone count
+  const contract = await contractRepo.findContractById(contractId, { session });
+  if (!contract || !contract.milestones) {
+    return false;
+  }
+
+  // Check each milestone individually
+  for (let i = 0; i < contract.milestones.length; i++) {
+    const hasFinished = await hasFinishedMilestone(contractId, i, session);
+    if (!hasFinished) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Get finished upload status for a contract (summary of all uploads)
+ *
+ * @param contractId - Contract ID to check
+ * @param session - Optional MongoDB session for transaction
+ * @returns Object containing finish status for different upload types
+ */
+export async function getContractFinishStatus(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<{
+  hasFinishedContract: boolean;
+  hasFinishedAllMilestones: boolean;
+  finishedMilestones: number[];
+  finishedRevisions: string[];
+  finishedCancellations: string[];
+}> {
+  await connectDB();
+
+  // Get the contract to check milestones and tickets
+  const contract = await contractRepo.findContractById(contractId, { session });
+  if (!contract) {
+    throw new HttpError("Contract not found", 404);
+  }
+
+  // Check contract-level final upload
+  const contractFinished = await hasFinishedContract(contractId, session);
+
+  // Check milestone uploads
+  const finishedMilestones: number[] = [];
+  let allMilestonesFinished = true;
+
+  if (contract.milestones) {
+    for (let i = 0; i < contract.milestones.length; i++) {
+      const milestoneFinished = await hasFinishedMilestone(
+        contractId,
+        i,
+        session
+      );
+      if (milestoneFinished) {
+        finishedMilestones.push(i);
+      } else {
+        allMilestonesFinished = false;
+      }
+    }
+  } else {
+    allMilestonesFinished = false;
+  }
+
+  // Check revision uploads
+  const finishedRevisions: string[] = [];
+  if (contract.revisionTickets && contract.revisionTickets.length > 0) {
+    for (const ticketId of contract.revisionTickets) {
+      const revisionFinished = await hasFinishedRevision(
+        contractId,
+        ticketId,
+        session
+      );
+      if (revisionFinished) {
+        finishedRevisions.push(ticketId.toString());
+      }
+    }
+  }
+
+  // Check cancellation uploads
+  const finishedCancellations: string[] = [];
+  if (contract.cancelTickets && contract.cancelTickets.length > 0) {
+    for (const ticketId of contract.cancelTickets) {
+      const cancellationFinished = await hasFinishedCancellation(
+        contractId,
+        ticketId,
+        session
+      );
+      if (cancellationFinished) {
+        finishedCancellations.push(ticketId.toString());
+      }
+    }
+  }
+
+  return {
+    hasFinishedContract: contractFinished,
+    hasFinishedAllMilestones: allMilestonesFinished,
+    finishedMilestones,
+    finishedRevisions,
+    finishedCancellations,
+  };
 }

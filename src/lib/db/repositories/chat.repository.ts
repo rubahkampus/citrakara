@@ -5,6 +5,9 @@ import User from "@/lib/db/models/user.model";
 
 /**
  * Find a conversation between two users or create one if it doesn't exist
+ * @param userId1 ID of the first user in the conversation
+ * @param userId2 ID of the second user in the conversation
+ * @returns The existing or newly created conversation
  */
 export async function findOrCreateConversation(
   userId1: string | Types.ObjectId,
@@ -38,7 +41,12 @@ export async function findOrCreateConversation(
 }
 
 /**
- * Add a message to a conversation
+ * Add a message to an existing conversation
+ * @param conversationId ID of the conversation to add the message to
+ * @param senderId ID of the user sending the message
+ * @param content Text content of the message
+ * @param images Optional array of image URLs included in the message
+ * @returns The updated conversation with the new message
  */
 export async function addMessage(
   conversationId: string | Types.ObjectId,
@@ -83,6 +91,8 @@ export async function addMessage(
 
 /**
  * Get all conversations for a user, sorted by most recent activity
+ * @param userId ID of the user to get conversations for
+ * @returns Array of conversations with populated participant details
  */
 export async function getUserConversations(userId: string | Types.ObjectId) {
   await connectDB();
@@ -100,6 +110,8 @@ export async function getUserConversations(userId: string | Types.ObjectId) {
 
 /**
  * Get a single conversation by ID with populated user details
+ * @param conversationId ID of the conversation to retrieve
+ * @returns The conversation with populated participant details
  */
 export async function getConversationById(
   conversationId: string | Types.ObjectId
@@ -120,6 +132,9 @@ export async function getConversationById(
 
 /**
  * Mark all messages in a conversation as read for a specific user
+ * @param conversationId ID of the conversation to mark as read
+ * @param userId ID of the user marking messages as read
+ * @returns The updated conversation
  */
 export async function markConversationAsRead(
   conversationId: string | Types.ObjectId,
@@ -153,7 +168,9 @@ export async function markConversationAsRead(
 }
 
 /**
- * Count unread messages for a user
+ * Count unread messages for a user across all conversations
+ * @param userId ID of the user to count unread messages for
+ * @returns Total number of unread messages
  */
 export async function countUnreadMessages(userId: string | Types.ObjectId) {
   await connectDB();
@@ -177,6 +194,9 @@ export async function countUnreadMessages(userId: string | Types.ObjectId) {
 
 /**
  * Find a conversation between two users by their usernames
+ * @param username1 Username of the first user
+ * @param username2 Username of the second user
+ * @returns The existing or newly created conversation between the users
  */
 export async function findConversationByUsernames(
   username1: string,

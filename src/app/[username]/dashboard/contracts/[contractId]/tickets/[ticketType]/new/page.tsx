@@ -1,5 +1,13 @@
 // src/app/[username]/dashboard/contracts/[contractId]/tickets/[ticketType]/new/page.tsx
-import { Box, Alert, Typography, Paper, Link, Breadcrumbs, Button } from "@mui/material";
+import {
+  Box,
+  Alert,
+  Typography,
+  Paper,
+  Link,
+  Breadcrumbs,
+  Button,
+} from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getContractById } from "@/lib/services/contract.service";
 import {
@@ -20,8 +28,13 @@ import {
 import CancelTicketForm from "@/components/dashboard/contracts/tickets/CancelTicketForm";
 import RevisionTicketForm from "@/components/dashboard/contracts/tickets/RevisionTicketForm";
 import ChangeTicketForm from "@/components/dashboard/contracts/tickets/ChangeTicketForm";
-import ResolutionTicketForm from "@/components/dashboard/contracts/tickets/ResolutionTicketForm";
-import { NavigateNext, Home, PaletteRounded, ConfirmationNumberRounded, ArrowBack } from "@mui/icons-material";
+import {
+  NavigateNext,
+  Home,
+  PaletteRounded,
+  ConfirmationNumberRounded,
+  ArrowBack,
+} from "@mui/icons-material";
 
 interface CreateTicketPageProps {
   params: {
@@ -31,33 +44,126 @@ interface CreateTicketPageProps {
   };
 }
 
+interface Warning {
+  type: "error" | "warning" | "info" | "success";
+  message: string;
+}
+
+interface TicketValidationData {
+  unresolvedCancelTickets: any[];
+  unresolvedChangeTickets: any[];
+  unresolvedResolutionTickets: any[];
+  unresolvedRevisionTickets: any[];
+  unfinishedRevisionTickets: any[];
+  unfinishedCancelTickets: any[];
+  unfinishedRevisionUploads: any[];
+  unfinishedFinalUploads: any[];
+  unfinishedFinalMilestoneUploads: any[];
+}
+
+interface UserPermissions {
+  isArtist: boolean;
+  isClient: boolean;
+}
+
 export default async function CreateTicketPage({
   params,
 }: CreateTicketPageProps) {
   const param = await params;
   const { username, contractId, ticketType } = param;
-  const session = await getAuthSession();
 
+  // Session validation
+  const session = await getAuthSession();
   if (!session || !isUserOwner(session as Session, username)) {
     return (
       <Alert severity="error">Anda tidak memiliki akses ke halaman ini</Alert>
     );
   }
 
-  let contract;
-  try {
-    contract = await getContractById(contractId, (session as Session).id);
-  } catch (err) {
-    console.error("Error fetching contract:", err);
+  // Contract validation
+  const contract = await getContractData(contractId, (session as Session).id);
+  if (!contract) {
     return <Alert severity="error">Gagal memuat data kontrak</Alert>;
   }
 
-  // Verify user has permission to create this ticket type
-  const isArtist = contract.artistId.toString() === (session as Session).id;
-  const isClient = contract.clientId.toString() === (session as Session).id;
+  // Permission validation
+  const permissions = getUserPermissions(contract, session as Session);
+  const permissionCheck = validateTicketPermissions(
+    ticketType,
+    contract,
+    permissions
+  );
+  if (permissionCheck) {
+    return permissionCheck;
+  }
 
-  // Check if user can create this ticket type
-  if (ticketType === "revision" && !isClient) {
+  // Get validation data
+  const validationData = await getTicketValidationData(contractId);
+
+  // Generate warnings
+  const { warnings, hasBlockingWarning } = generateTicketWarnings(
+    ticketType,
+    validationData,
+    permissions
+  );
+
+  // Serialize for client components
+  const serializedContract = JSON.parse(JSON.stringify(contract));
+
+  return (
+    <Box py={4}>
+      {/* Header Section */}
+      <PageHeader username={username} contractId={contractId} />
+
+      {/* Warnings Section */}
+      <WarningsSection warnings={warnings} />
+
+      {/* Form Section */}
+      <TicketFormSection
+        hasBlockingWarning={hasBlockingWarning}
+        ticketType={ticketType}
+        contract={serializedContract}
+        session={session as Session}
+        permissions={permissions}
+        validationData={validationData}
+      />
+
+      {/* Blocking Message */}
+      <BlockingMessageSection
+        hasBlockingWarning={hasBlockingWarning}
+        ticketType={ticketType}
+      />
+    </Box>
+  );
+}
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+async function getContractData(contractId: string, userId: string) {
+  try {
+    return await getContractById(contractId, userId);
+  } catch (err) {
+    console.error("Error fetching contract:", err);
+    return null;
+  }
+}
+
+function getUserPermissions(contract: any, session: Session): UserPermissions {
+  return {
+    isArtist: contract.artistId.toString() === session.id,
+    isClient: contract.clientId.toString() === session.id,
+  };
+}
+
+function validateTicketPermissions(
+  ticketType: string,
+  contract: any,
+  permissions: UserPermissions
+) {
+  // Check user permissions
+  if (ticketType === "revision" && !permissions.isClient) {
     return (
       <Alert severity="error">
         Hanya klien yang dapat membuat tiket revisi
@@ -65,7 +171,7 @@ export default async function CreateTicketPage({
     );
   }
 
-  if (ticketType === "change" && !isClient) {
+  if (ticketType === "change" && !permissions.isClient) {
     return (
       <Alert severity="error">
         Hanya klien yang dapat membuat tiket perubahan
@@ -73,7 +179,7 @@ export default async function CreateTicketPage({
     );
   }
 
-  // Check if contract allows this ticket type
+  // Check contract settings
   if (
     ticketType === "revision" &&
     contract.proposalSnapshot.listingSnapshot.revisions?.type === "none"
@@ -90,7 +196,12 @@ export default async function CreateTicketPage({
     );
   }
 
-  // Check for active tickets and uploads
+  return null;
+}
+
+async function getTicketValidationData(
+  contractId: string
+): Promise<TicketValidationData> {
   const [
     unresolvedCancelTickets,
     unresolvedChangeTickets,
@@ -113,95 +224,171 @@ export default async function CreateTicketPage({
     getUnfinishedFinalMilestoneUploads(contractId),
   ]);
 
-  console.log(unresolvedRevisionTickets)
-  console.log(unfinishedRevisionTickets)
+  return {
+    unresolvedCancelTickets,
+    unresolvedChangeTickets,
+    unresolvedResolutionTickets,
+    unresolvedRevisionTickets,
+    unfinishedRevisionTickets,
+    unfinishedCancelTickets,
+    unfinishedRevisionUploads,
+    unfinishedFinalUploads,
+    unfinishedFinalMilestoneUploads,
+  };
+}
 
-  // Collect warnings based on active tickets and uploads
-  const warnings = [];
+function generateTicketWarnings(
+  ticketType: string,
+  data: TicketValidationData,
+  permissions: UserPermissions
+) {
+  const warnings: Warning[] = [];
   let hasBlockingWarning = false;
 
-  // First, check resolution tickets as they might block other operations
-  if (unresolvedResolutionTickets.length > 0) {
+  // Add general warnings
+  addGeneralTicketWarnings(warnings, data);
+
+  // Add ticket-specific warnings
+  const ticketWarnings = getTicketSpecificWarnings(
+    ticketType,
+    data,
+    permissions
+  );
+  warnings.push(...ticketWarnings.warnings);
+  hasBlockingWarning = ticketWarnings.hasBlockingWarning;
+
+  // Add informational warnings
+  addInformationalWarnings(warnings, data, permissions);
+
+  return { warnings, hasBlockingWarning };
+}
+
+function addGeneralTicketWarnings(
+  warnings: Warning[],
+  data: TicketValidationData
+) {
+  if (data.unresolvedResolutionTickets.length > 0) {
     warnings.push({
       type: "warning",
       message:
         "Ada kasus resolusi aktif untuk kontrak ini. Disarankan untuk menunggu sampai kasus tersebut terselesaikan sebelum membuat tiket baru.",
     });
   }
+}
 
-  // Check for ticket-specific blocks
+function getTicketSpecificWarnings(
+  ticketType: string,
+  data: TicketValidationData,
+  permissions: UserPermissions
+) {
+  const warnings: Warning[] = [];
+  let hasBlockingWarning = false;
+
   switch (ticketType) {
     case "cancel":
-      // Check if there's already an active cancellation request
-      if (unresolvedCancelTickets.length > 0) {
-        warnings.push({
-          type: "error",
-          message:
-            "Sudah ada permintaan pembatalan aktif untuk kontrak ini. Mohon tunggu hingga permintaan tersebut diselesaikan sebelum membuat yang baru.",
-        });
-        hasBlockingWarning = true;
-      }
-
-      // Other informational warnings
-      if (isArtist && unfinishedRevisionTickets.length > 0) {
-        warnings.push({
-          type: "info",
-          message: `Anda memiliki ${unfinishedRevisionTickets.length} tiket revisi yang memerlukan unggahan.`,
-        });
-      }
-      break;
+      return getCancelTicketWarnings(
+        warnings,
+        hasBlockingWarning,
+        data,
+        permissions
+      );
 
     case "revision":
-      // Check if there's already an active revision ticket
-      // if (unresolvedRevisionTickets.length > 0) {
-      //   warnings.push({
-      //     type: "error",
-      //     message:
-      //       "Sudah ada permintaan revisi aktif untuk kontrak ini. Mohon tunggu hingga permintaan tersebut diselesaikan sebelum membuat yang baru.",
-      //   });
-      //   hasBlockingWarning = true;
-      // }
-
-      if (unresolvedRevisionTickets.length > 0) {
-        warnings.push({
-          type: "warning",
-          message: `Ada ${unresolvedRevisionTickets.length} permintaan revisi yang masih menunggu tanggapan seniman atau pembayaran. Apabila ditolak dan revisi menggunakan sistem jatah, jatah anda akan kembali.`,
-        });
-      }
-
-      // Let client know about existing uploads waiting for review
-      if (unfinishedRevisionUploads.length > 0) {
-        warnings.push({
-          type: "warning",
-          message: `Ada ${unfinishedRevisionUploads.length} unggahan revisi yang masih menunggu unggahan seniman.`,
-        });
-      }
-      break;
+      return getRevisionTicketWarnings(warnings, hasBlockingWarning, data);
 
     case "change":
-      // Check if there's already an active change ticket
-      if (unresolvedChangeTickets.length > 0) {
-        warnings.push({
-          type: "error",
-          message:
-            "Sudah ada permintaan perubahan aktif untuk kontrak ini. Mohon tunggu hingga permintaan tersebut diselesaikan sebelum membuat yang baru.",
-        });
-        hasBlockingWarning = true;
-      }
+      return getChangeTicketWarnings(warnings, hasBlockingWarning, data);
 
-      // Additional warnings for change tickets
-      if (unresolvedCancelTickets.length > 0) {
-        warnings.push({
-          type: "warning",
-          message:
-            "Ada permintaan pembatalan aktif untuk kontrak ini. Perubahan kontrak mungkin tidak diproses jika pembatalan disetujui.",
-        });
-      }
-      break;
+    default:
+      return { warnings, hasBlockingWarning };
+  }
+}
+
+function getCancelTicketWarnings(
+  warnings: Warning[],
+  hasBlockingWarning: boolean,
+  data: TicketValidationData,
+  permissions: UserPermissions
+) {
+  // Check for existing cancellation requests
+  if (data.unresolvedCancelTickets.length > 0) {
+    warnings.push({
+      type: "error",
+      message:
+        "Sudah ada permintaan pembatalan aktif untuk kontrak ini. Mohon tunggu hingga permintaan tersebut diselesaikan sebelum membuat yang baru.",
+    });
+    hasBlockingWarning = true;
   }
 
-  // Additional informational warnings
-  if (isArtist && unfinishedCancelTickets.length > 0) {
+  // Artist-specific informational warnings
+  if (permissions.isArtist && data.unfinishedRevisionTickets.length > 0) {
+    warnings.push({
+      type: "info",
+      message: `Anda memiliki ${data.unfinishedRevisionTickets.length} tiket revisi yang memerlukan unggahan.`,
+    });
+  }
+
+  return { warnings, hasBlockingWarning };
+}
+
+function getRevisionTicketWarnings(
+  warnings: Warning[],
+  hasBlockingWarning: boolean,
+  data: TicketValidationData
+) {
+  // Informational warnings about existing revision tickets
+  if (data.unresolvedRevisionTickets.length > 0) {
+    warnings.push({
+      type: "warning",
+      message: `Ada ${data.unresolvedRevisionTickets.length} permintaan revisi yang masih menunggu tanggapan seniman atau pembayaran. Apabila ditolak dan revisi menggunakan sistem jatah, jatah anda akan kembali.`,
+    });
+  }
+
+  // Warning about revision uploads
+  if (data.unfinishedRevisionUploads.length > 0) {
+    warnings.push({
+      type: "warning",
+      message: `Ada ${data.unfinishedRevisionUploads.length} unggahan revisi yang masih menunggu unggahan seniman.`,
+    });
+  }
+
+  return { warnings, hasBlockingWarning };
+}
+
+function getChangeTicketWarnings(
+  warnings: Warning[],
+  hasBlockingWarning: boolean,
+  data: TicketValidationData
+) {
+  // Check for existing change requests
+  if (data.unresolvedChangeTickets.length > 0) {
+    warnings.push({
+      type: "error",
+      message:
+        "Sudah ada permintaan perubahan aktif untuk kontrak ini. Mohon tunggu hingga permintaan tersebut diselesaikan sebelum membuat yang baru.",
+    });
+    hasBlockingWarning = true;
+  }
+
+  // Warning about cancellation conflicts
+  if (data.unresolvedCancelTickets.length > 0) {
+    warnings.push({
+      type: "warning",
+      message:
+        "Ada permintaan pembatalan aktif untuk kontrak ini. Perubahan kontrak mungkin tidak diproses jika pembatalan disetujui.",
+    });
+  }
+
+  return { warnings, hasBlockingWarning };
+}
+
+function addInformationalWarnings(
+  warnings: Warning[],
+  data: TicketValidationData,
+  permissions: UserPermissions
+) {
+  // Artist-specific informational warnings
+  if (permissions.isArtist && data.unfinishedCancelTickets.length > 0) {
     warnings.push({
       type: "info",
       message:
@@ -209,174 +396,210 @@ export default async function CreateTicketPage({
     });
   }
 
-  if (unfinishedFinalUploads.length > 0) {
+  // General upload status warnings
+  if (data.unfinishedFinalUploads.length > 0) {
     warnings.push({
       type: "info",
       message: "Ada unggahan final yang menunggu ulasan.",
     });
   }
 
-  if (unfinishedFinalMilestoneUploads.length > 0) {
+  if (data.unfinishedFinalMilestoneUploads.length > 0) {
     warnings.push({
       type: "info",
       message: "Ada unggahan milestone yang menunggu ulasan.",
     });
   }
+}
 
-  // Serialize for client components
-  const serializedContract = JSON.parse(JSON.stringify(contract));
+// =============================================================================
+// COMPONENT SECTIONS
+// =============================================================================
 
+function PageHeader({
+  username,
+  contractId,
+}: {
+  username: string;
+  contractId: string;
+}) {
   return (
-    <Box py={4}>
-      {/* Header section */}
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+      }}
+    >
       <Box
         sx={{
           display: "flex",
+          flexDirection: "column",
           justifyContent: "space-between",
-          alignItems: "flex-start",
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
-          <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
-            <Link
-              component={Link}
-              href={`/${username}/dashboard`}
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              <Home fontSize="small" sx={{ mr: 0.5 }} />
-              Dashboard
-            </Link>
-            <Link
-              component={Link}
-              href={`/${username}/dashboard/contracts`}
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              <PaletteRounded fontSize="small" sx={{ mr: 0.5 }} />
-              Daftar Kontrak
-            </Link>
-            <Link
-              component={Link}
-              href={`/${username}/dashboard/contracts/${contractId}`}
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              Detail Kontrak
-            </Link>
-            <Link
-              component={Link}
-              href={`/${username}/dashboard/contracts/${contractId}/tickets`}
-              underline="hover"
-              color="inherit"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              Daftar Tiket
-            </Link>
-            <Typography
-              color="text.primary"
-              sx={{ display: "flex", alignItems: "center" }}
-            >
-              Buat Tiket
-            </Typography>
-          </Breadcrumbs>
+        <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
+          <Link
+            component={Link}
+            href={`/${username}/dashboard`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <Home fontSize="small" sx={{ mr: 0.5 }} />
+            Dashboard
+          </Link>
+          <Link
+            component={Link}
+            href={`/${username}/dashboard/contracts`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <PaletteRounded fontSize="small" sx={{ mr: 0.5 }} />
+            Daftar Kontrak
+          </Link>
+          <Link
+            component={Link}
+            href={`/${username}/dashboard/contracts/${contractId}`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            Detail Kontrak
+          </Link>
+          <Link
+            component={Link}
+            href={`/${username}/dashboard/contracts/${contractId}/tickets`}
+            underline="hover"
+            color="inherit"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            Daftar Tiket
+          </Link>
+          <Typography
+            color="text.primary"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            Buat Tiket
+          </Typography>
+        </Breadcrumbs>
 
-          <Box display="flex" alignItems="center" mt={4} ml={-0.5} mb={2}>
-            <ConfirmationNumberRounded
-              sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
-            />
-            <Typography variant="h4" fontWeight="bold">
-              Buat Tiket
-            </Typography>
-          </Box>
+        <Box display="flex" alignItems="center" mt={4} ml={-0.5} mb={2}>
+          <ConfirmationNumberRounded
+            sx={{ mr: 1, color: "primary.main", fontSize: 32 }}
+          />
+          <Typography variant="h4" fontWeight="bold">
+            Buat Tiket
+          </Typography>
         </Box>
-
-        <Button
-          component={Link}
-          href={`/${username}/dashboard/contracts/${contractId}/tickets`}
-          variant="outlined"
-          startIcon={<ArrowBack />}
-          size="small"
-        >
-          Kembali ke Daftar Tiket
-        </Button>
       </Box>
 
-      {/* Display warnings */}
-      {warnings.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          {warnings.map((warning, index) => (
-            <Alert
-              key={index}
-              severity={
-                warning.type as "error" | "warning" | "info" | "success"
-              }
-              sx={{ mb: 1 }}
-            >
-              {warning.message}
-            </Alert>
-          ))}
-        </Box>
-      )}
-
-      {/* Only display the form if there's no blocking warning */}
-      {!hasBlockingWarning && (
-        <>
-          {ticketType === "cancel" && (
-            <CancelTicketForm
-              contract={serializedContract}
-              userId={(session as Session).id}
-              username={(session as Session).username}
-              isArtist={isArtist}
-              isClient={isClient}
-            />
-          )}
-
-          {ticketType === "revision" && (
-            <RevisionTicketForm
-              contract={serializedContract}
-              userId={(session as Session).id}
-              username={(session as Session).username}
-              isClient={isClient}
-              unresolvedQty={unresolvedRevisionTickets.length}
-            />
-          )}
-
-          {ticketType === "change" && (
-            <ChangeTicketForm
-              contract={serializedContract}
-              userId={(session as Session).id}
-              username={(session as Session).username}
-              isClient={isClient}
-            />
-          )}
-        </>
-      )}
-
-      {/* For blocking errors, display a message explaining why the form is not shown */}
-      {hasBlockingWarning && (
-        <Paper sx={{ p: 3, bgcolor: "#f5f5f5" }}>
-          <Typography variant="body1" color="error">
-            Anda tidak dapat membuat tiket{" "}
-            {ticketType === "cancel"
-              ? "pembatalan"
-              : ticketType === "revision"
-              ? "revisi"
-              : "perubahan"}{" "}
-            baru saat ini. Mohon selesaikan masalah yang disebutkan di atas
-            terlebih dahulu.
-          </Typography>
-        </Paper>
-      )}
+      <Button
+        component={Link}
+        href={`/${username}/dashboard/contracts/${contractId}/tickets`}
+        variant="outlined"
+        startIcon={<ArrowBack />}
+        size="small"
+      >
+        Kembali ke Daftar Tiket
+      </Button>
     </Box>
+  );
+}
+
+function WarningsSection({ warnings }: { warnings: Warning[] }) {
+  if (warnings.length === 0) return null;
+
+  return (
+    <Box sx={{ mb: 3 }}>
+      {warnings.map((warning, index) => (
+        <Alert key={index} severity={warning.type} sx={{ mb: 1 }}>
+          {warning.message}
+        </Alert>
+      ))}
+    </Box>
+  );
+}
+
+function TicketFormSection({
+  hasBlockingWarning,
+  ticketType,
+  contract,
+  session,
+  permissions,
+  validationData,
+}: {
+  hasBlockingWarning: boolean;
+  ticketType: string;
+  contract: any;
+  session: Session;
+  permissions: UserPermissions;
+  validationData: TicketValidationData;
+}) {
+  if (hasBlockingWarning) {
+    return null;
+  }
+
+  const commonProps = {
+    contract,
+    userId: session.id,
+    username: session.username,
+  };
+
+  switch (ticketType) {
+    case "cancel":
+      return (
+        <CancelTicketForm
+          {...commonProps}
+          isArtist={permissions.isArtist}
+          isClient={permissions.isClient}
+        />
+      );
+
+    case "revision":
+      return (
+        <RevisionTicketForm
+          {...commonProps}
+          isClient={permissions.isClient}
+          unresolvedQty={validationData.unresolvedRevisionTickets.length}
+        />
+      );
+
+    case "change":
+      return (
+        <ChangeTicketForm {...commonProps} isClient={permissions.isClient} />
+      );
+
+    default:
+      return null;
+  }
+}
+
+function BlockingMessageSection({
+  hasBlockingWarning,
+  ticketType,
+}: {
+  hasBlockingWarning: boolean;
+  ticketType: string;
+}) {
+  if (!hasBlockingWarning) {
+    return null;
+  }
+
+  const ticketTypeMap = {
+    cancel: "pembatalan",
+    revision: "revisi",
+    change: "perubahan",
+  };
+
+  return (
+    <Paper sx={{ p: 3, bgcolor: "#f5f5f5" }}>
+      <Typography variant="body1" color="error">
+        Anda tidak dapat membuat tiket{" "}
+        {ticketTypeMap[ticketType as keyof typeof ticketTypeMap]} baru saat ini.
+        Mohon selesaikan masalah yang disebutkan di atas terlebih dahulu.
+      </Typography>
+    </Paper>
   );
 }

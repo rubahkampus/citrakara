@@ -151,7 +151,9 @@ export default function ProposalDetailsPage({
       });
 
       setSuccess(true);
-      setTimeout(() => router.push(`/${username}/dashboard/proposals`), 1500);
+      setTimeout(() => {
+        router.refresh();
+      }, 1000);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to submit response");
     } finally {
@@ -174,7 +176,9 @@ export default function ProposalDetailsPage({
       });
 
       setSuccess(true);
-      setTimeout(() => router.push(`/${username}/dashboard/proposals`), 1500);
+      setTimeout(() => {
+        router.refresh();
+      }, 1000);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to submit response");
     } finally {

@@ -209,6 +209,7 @@ const ContractListingPage: React.FC<ContractListingPageProps> = ({
     <Box
       sx={{
         py: 4,
+        maxWidth: "100%",
         animation: "fadeIn 0.3s ease-in-out",
         "@keyframes fadeIn": {
           "0%": { opacity: 0, transform: "translateY(10px)" },

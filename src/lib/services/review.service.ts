@@ -141,12 +141,51 @@ export async function getReviewsByContractId(contractId: string) {
 }
 
 /**
- * Get all reviews for a listing
+ * Get all reviews for a listing with client details (profile image and display name)
  * @param listingId Listing ID to get reviews for
- * @returns Array of reviews for the specified listing
+ * @returns Array of reviews with populated client information
  */
 export async function getReviewsByListingId(listingId: string) {
-  return findReviewsByListingId(listingId);
+  const reviews = await findReviewsByListingId(listingId, { lean: true });
+
+  // If no reviews, return empty array
+  if (!reviews || reviews.length === 0) {
+    return [];
+  }
+
+  // Get unique client IDs from reviews
+  const clientIds = [
+    ...new Set(reviews.map((review) => review.clientId.toString())),
+  ];
+
+  // Fetch client data for all unique client IDs
+  const clients = await Promise.all(
+    clientIds.map((clientId) => findUserById(clientId))
+  );
+
+  // Create a map for quick client lookup
+  const clientMap = new Map();
+  clients.forEach((client) => {
+    if (client) {
+      clientMap.set(client._id.toString(), {
+        displayName: client.displayName,
+        profilePicture: client.profilePicture,
+        username: client.username,
+      });
+    }
+  });
+
+  // Add client information to each review
+  const reviewsWithClientInfo = reviews.map((review) => ({
+    ...review,
+    client: clientMap.get(review.clientId.toString()) || {
+      displayName: "Unknown User",
+      profilePicture: "", // or default profile picture URL
+      username: "unknown",
+    },
+  }));
+
+  return reviewsWithClientInfo;
 }
 
 /**

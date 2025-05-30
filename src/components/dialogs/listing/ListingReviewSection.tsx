@@ -22,8 +22,6 @@ import {
   SentimentVeryDissatisfied,
 } from "@mui/icons-material";
 import { axiosClient } from "@/lib/utils/axiosClient";
-import { IReview } from "@/lib/db/models/review.model";
-
 interface ListingReviewSectionProps {
   listingId: string;
   reviewsSummary: {
@@ -37,7 +35,7 @@ export default function ListingReviewSection({
   reviewsSummary,
 }: ListingReviewSectionProps) {
   const theme = useTheme();
-  const [reviews, setReviews] = useState<IReview[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -191,9 +189,7 @@ export default function ListingReviewSection({
                       spacing={2}
                       sx={{ mb: 1 }}
                     >
-                      <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                        {review.clientId.toString().charAt(0).toUpperCase()}
-                      </Avatar>
+                      <Avatar sx={{ bgcolor: theme.palette.primary.main }} src={review.client.profilePicture}/>
                       <Box sx={{ flex: 1 }}>
                         <Stack
                           direction="row"
@@ -201,7 +197,7 @@ export default function ListingReviewSection({
                           alignItems="center"
                         >
                           <Typography variant="subtitle2" fontWeight={600}>
-                            Klien
+                            {review.client.displayName}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {formatDate(
@@ -247,7 +243,7 @@ export default function ListingReviewSection({
                         {review.images && review.images.length > 0 && (
                           <Box sx={{ mt: 2 }}>
                             <Stack direction="row" spacing={1} flexWrap="wrap">
-                              {review.images.map((imageUrl, idx) => (
+                              {review.images.map((imageUrl: string, idx: number) => (
                                 <Box
                                   key={idx}
                                   sx={{

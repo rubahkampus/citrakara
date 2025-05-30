@@ -25,8 +25,6 @@ export default async function SearchArtistsPage({
   // Fetch initial results
   let initialResults = null;
 
-  const bookmarkedArtist = getUserBookmarkedArtists((session as Session).id);
-
   try {
     initialResults = await searchArtistsService({
       query: q,

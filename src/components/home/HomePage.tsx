@@ -383,41 +383,6 @@ export default function HomePage({ session }: HomePageProps) {
               </Grid>
             </form>
           </Paper>
-
-          <Box sx={{ mt: 4, textAlign: "center" }}>
-            <Typography
-              variant="subtitle1"
-              fontWeight="medium"
-              mb={2}
-              sx={{ opacity: 0.9 }}
-            >
-              Kategori Populer:
-            </Typography>
-            <Stack
-              direction="row"
-              spacing={1}
-              justifyContent="center"
-              flexWrap="wrap"
-              sx={{ gap: 1 }}
-            >
-              {popularTags.map((tag) => (
-                <Chip
-                  key={tag}
-                  label={tag}
-                  onClick={() => handleTagClick(tag)}
-                  sx={{
-                    bgcolor: "rgba(255,255,255,0.15)",
-                    color: "white",
-                    fontWeight: 500,
-                    backdropFilter: "blur(4px)",
-                    "&:hover": {
-                      bgcolor: "rgba(255,255,255,0.25)",
-                    },
-                  }}
-                />
-              ))}
-            </Stack>
-          </Box>
         </Container>
       </Box>
 

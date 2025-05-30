@@ -352,21 +352,21 @@ export default function FinalUploadForm({
       } // Debugging line
 
       // Submit to API using axios
-      // await axiosClient.post(
-      //   `/api/contract/${contract._id}/uploads/final/new`,
-      //   formData,
-      //   {
-      //     headers: { "Content-Type": "multipart/form-data" },
-      //   }
-      // );
+      await axiosClient.post(
+        `/api/contract/${contract._id}/uploads/finala`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
 
-      // setSuccess(true);
+      setSuccess(true);
 
-      // // Redirect after successful submission
-      // setTimeout(() => {
-      //   router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
-      //   router.refresh();
-      // }, 1500);
+      // Redirect after successful submission
+      setTimeout(() => {
+        router.push(`/${username}/dashboard/contracts/${contract._id}/uploads`);
+        router.refresh();
+      }, 1500);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.error || "Failed to upload final delivery");
@@ -465,7 +465,7 @@ export default function FinalUploadForm({
             {/* Bagian Jenis Unggahan */}
             <Box sx={{ mb: 3 }}>
               {/* Toggle Pembatalan - hanya tampil jika bukan unggahan pembatalan dan tidak ada tiket aktif */}
-              {!cancelTicketId && !activeCancelTicket && (
+              {/* {!cancelTicketId && !activeCancelTicket && (
                 <Box sx={{ mb: 2 }}>
                   <Controller
                     name="isForCancellation"
@@ -493,7 +493,7 @@ export default function FinalUploadForm({
                     </Alert>
                   )}
                 </Box>
-              )}
+              )} */}
 
               {/* Pemberitahuan Tiket Pembatalan Aktif */}
               {activeCancelTicket && (

@@ -11,12 +11,6 @@ import {
 export default async function Home() {
   const session = await getAuthSession();
 
-  const bookmarkedArtist = getUserBookmarkedArtists((session as Session).id);
-
-  const bookmarkedCommission = getUserBookmarkedCommissions(
-    (session as Session).id
-  );
-
   return (
     <Suspense
       fallback={

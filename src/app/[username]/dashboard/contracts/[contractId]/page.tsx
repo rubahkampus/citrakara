@@ -9,6 +9,7 @@ import { ensureModelsRegistered } from "@/lib/db/models";
 
 // This component would be created in src/components/dashboard/contracts/
 import ContractDetailsPageWrapper from "@/components/dashboard/contracts/ContractDetailsPage";
+import { processExpiredMilestoneUploadsForContract } from "@/lib/services/upload.service";
 
 interface ContractDetailsPageProps {
   params: {
@@ -20,7 +21,7 @@ interface ContractDetailsPageProps {
 export default async function ContractDetailsPage({
   params,
 }: ContractDetailsPageProps) {
-  const param = await params
+  const param = await params;
   const { username, contractId } = param;
 
   // Ensure all models are registered at the page level
@@ -30,6 +31,23 @@ export default async function ContractDetailsPage({
 
   if (!session || !isUserOwner(session as Session, username)) {
     return <Alert severity="error">You do not have access to this page</Alert>;
+  }
+
+  // Process any expired milestone uploads for this specific contract
+  let processResult;
+  try {
+    processResult = await processExpiredMilestoneUploadsForContract(contractId);
+
+    if (processResult.processed.length > 0) {
+      console.log(
+        `Auto-accepted ${processResult.processed.length} expired milestone uploads for contract ${contractId}`
+      );
+    }
+  } catch (error) {
+    console.error(
+      `Error processing expired milestone uploads for contract ${contractId}:`,
+      error
+    );
   }
 
   let contract;

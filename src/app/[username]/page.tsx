@@ -33,12 +33,6 @@ export default async function ProfilePage({ params }: Props) {
       : null;
   const profile = serializeProfile(rawProfile);
 
-  const bookmarkedArtist = getUserBookmarkedArtists((session as Session).id);
-
-  const bookmarkedCommission = getUserBookmarkedCommissions(
-    (session as Session).id
-  );
-
   if (!profile) return notFound();
 
   const isOwner = isUserOwner(session, username);

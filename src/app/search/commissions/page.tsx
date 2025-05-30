@@ -29,10 +29,6 @@ export default async function SearchCommissionsPage({
   // Fetch initial results
   let initialResults = null;
 
-  const bookmarkedCommission = getUserBookmarkedCommissions(
-    (session as Session).id
-  );
-
   try {
     initialResults = await searchCommissionListings({
       label: q,

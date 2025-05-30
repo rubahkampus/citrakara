@@ -15,7 +15,8 @@ export async function GET(
     if (!(session as Session).username) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const uploadId = params.uploadId;
+    const param = await params;
+    const uploadId = param.uploadId;
     const review = await getReviewByUploadId(uploadId);
 
     return NextResponse.json({ exists: !!review, review });
@@ -38,7 +39,8 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const uploadId = params.uploadId;
+    const param = await params;
+    const uploadId = param.uploadId;
     const { rating, comment, selectedImages } = await request.json();
 
     if (!rating || !comment) {

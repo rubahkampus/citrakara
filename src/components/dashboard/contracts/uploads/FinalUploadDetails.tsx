@@ -174,7 +174,7 @@ export default function FinalUploadDetails({
       setIsLoadingReview(true);
       try {
         const response = await axiosClient.get(
-          `/api/contract/${contract.id}/uploads/final/${upload.id}/review`
+          `/api/contract/${contract._id}/uploads/final/${upload._id}/review`
         );
         if (response.data.exists) {
           setExistingReview(response.data.review);

@@ -1,14 +1,14 @@
-import { Box, Container, CircularProgress } from "@mui/material";
+import { Box, Container, CircularProgress, Alert } from "@mui/material";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getUserContracts } from "@/lib/services/contract.service";
-import ContractsClientPage from "@/components/dashboard/contracts/ContractsClientPage";
+import ContractListingPage from "@/components/dashboard/contracts/ContractListingPage";
 
 interface ContractsPageProps {
   params: { username: string };
 }
 
 export default async function ContractsPage({ params }: ContractsPageProps) {
-  const param = await params
+  const param = await params;
   const username = param.username;
   const session = await getAuthSession();
   const isAuthorized = session && isUserOwner(session as Session, username);
@@ -16,12 +16,10 @@ export default async function ContractsPage({ params }: ContractsPageProps) {
   // If not authorized, return the client component with auth error
   if (!isAuthorized) {
     return (
-      <ContractsClientPage
-        username={username}
-        isAuthorized={false}
-        asArtist={[]}
-        asClient={[]}
-      />
+      <Alert severity="error">
+        You do not have access to this page. Please log in with the correct
+        account.
+      </Alert>
     );
   }
 
@@ -43,12 +41,12 @@ export default async function ContractsPage({ params }: ContractsPageProps) {
   const serializedAsClient = JSON.parse(JSON.stringify(asClient));
 
   return (
-    <ContractsClientPage
+    <ContractListingPage
+      key={`contract-list-${serializedAsArtist?.length}-${serializedAsClient?.length}`}
       username={username}
-      asArtist={serializedAsArtist}
-      asClient={serializedAsClient}
-      error={error || undefined}
-      isAuthorized={true}
+      asArtist={serializedAsArtist || []}
+      asClient={serializedAsClient || []}
+      error={error ?? undefined}
     />
   );
 }

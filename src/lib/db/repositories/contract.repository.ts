@@ -774,3 +774,23 @@ export async function isContractPastGracePeriod(
   return !!contract;
 }
 
+export async function updateContractPayouts(
+  contractId: string | ObjectId,
+  totalOwnedByArtist: number,
+  totalOwnedByClient: number,
+  session?: ClientSession
+): Promise<IContract | null> {
+  await connectDB();
+
+  const update = {
+    $set: {
+      "finance.totalOwnedByArtist": totalOwnedByArtist,
+      "finance.totalOwnedByClient": totalOwnedByClient,
+    },
+  };
+
+  return Contract.findByIdAndUpdate(toObjectId(contractId), update, {
+    new: true,
+    session,
+  });
+}

@@ -586,35 +586,33 @@ export async function processContractCompletion(
     const status = isLate ? "completedLate" : "completed";
     await contractRepo.updateContractStatus(contractId, status, 100, session);
 
-    // Calculate payouts
-    const { artistPayout, clientPayout } =
-      await contractRepo.calculateContractPayouts(contractId);
+    // Calculate and assign payouts
+    const totalAmount = contract.finance.total;
+    let artistPayout = totalAmount;
+    let clientPayout = 0;
 
-    // Process payments
-    const transactions = [];
-
-    if (artistPayout > 0) {
-      const releaseTx = await escrowService.createReleaseTransaction(
-        contractId,
-        contract.clientId,
-        contract.artistId,
-        artistPayout,
-        `${status} payment`,
-        session
-      );
-      transactions.push(releaseTx);
+    if (isLate) {
+      // Artist gets total minus late penalty
+      const latePenalty =
+        (totalAmount *
+          (contract.proposalSnapshot.listingSnapshot.latePenaltyPercent ||
+            10)) /
+        100;
+      artistPayout = totalAmount - latePenalty;
+      clientPayout = latePenalty;
     }
 
-    if (clientPayout > 0) {
-      const refundTx = await escrowService.createRefundTransaction(
-        contractId,
-        contract.clientId,
-        clientPayout,
-        `${status} refund (late penalty)`,
-        session
-      );
-      transactions.push(refundTx);
-    }
+    // Ensure no negative payouts
+    artistPayout = Math.max(0, artistPayout);
+    clientPayout = Math.max(0, clientPayout);
+
+    // Update contract with calculated payouts
+    await contractRepo.updateContractPayouts(
+      contractId,
+      artistPayout,
+      clientPayout,
+      session
+    );
 
     // Set contract completion details
     await contractRepo.setContractCompletion(
@@ -629,7 +627,7 @@ export async function processContractCompletion(
       await localSession.commitTransaction();
     }
 
-    return { contract, transactions };
+    return { contract, artistPayout, clientPayout };
   } catch (error) {
     if (localSession) {
       await localSession.abortTransaction();
@@ -696,35 +694,71 @@ export async function processContractCancellation(
       session
     );
 
-    // Calculate payouts
-    const { artistPayout, clientPayout } =
-      await contractRepo.calculateContractPayouts(contractId, session);
+    // Calculate payouts based on cancellation logic (similar to frontend calculateApproximateOutcome)
+    const totalAmount = contract.finance.total;
+    let artistPayout = 0;
+    let clientPayout = 0;
+    const latePenalty =
+      contract.proposalSnapshot.listingSnapshot.latePenaltyPercent || 10;
 
-    // Process payments
-    const transactions = [];
+    const cancellationFee =
+      contract.proposalSnapshot.listingSnapshot.cancelationFee?.kind === "flat"
+        ? contract.proposalSnapshot.listingSnapshot.cancelationFee.amount
+        : (totalAmount *
+            (contract.proposalSnapshot.listingSnapshot.cancelationFee?.amount ||
+              0)) /
+          100;
 
-    if (artistPayout > 0) {
-      const releaseTx = await escrowService.createReleaseTransaction(
-        contractId,
-        contract.clientId,
-        contract.artistId,
-        artistPayout,
-        `${status} payment`,
-        session
-      );
-      transactions.push(releaseTx);
+    if (by === "client") {
+      // Client cancellation
+      if (isLate) {
+        artistPayout =
+          totalAmount * (workPercentage / 100) -
+          totalAmount * (latePenalty / 100);
+        clientPayout =
+          totalAmount -
+          totalAmount * (workPercentage / 100) +
+          totalAmount * (latePenalty / 100);
+      } else {
+        artistPayout = totalAmount * (workPercentage / 100) + cancellationFee;
+        clientPayout =
+          totalAmount - totalAmount * (workPercentage / 100) - cancellationFee;
+      }
+    } else {
+      // Artist cancellation
+      if (isLate) {
+        artistPayout =
+          totalAmount * (workPercentage / 100) -
+          totalAmount * (latePenalty / 100) -
+          cancellationFee;
+        clientPayout =
+          totalAmount -
+          totalAmount * (workPercentage / 100) +
+          totalAmount * (latePenalty / 100) +
+          cancellationFee;
+      } else {
+        artistPayout = totalAmount * (workPercentage / 100) - cancellationFee;
+        clientPayout =
+          totalAmount - totalAmount * (workPercentage / 100) + cancellationFee;
+      }
     }
 
-    if (clientPayout > 0) {
-      const refundTx = await escrowService.createRefundTransaction(
-        contractId,
-        contract.clientId,
-        clientPayout,
-        `${status} refund`,
-        session
-      );
-      transactions.push(refundTx);
+    // Ensure no negative payouts
+    if (artistPayout < 0) {
+      artistPayout = 0;
+      clientPayout = totalAmount;
+    } else {
+      artistPayout = Math.max(0, artistPayout);
+      clientPayout = Math.max(0, clientPayout);
     }
+
+    // Update contract with calculated payouts
+    await contractRepo.updateContractPayouts(
+      contractId,
+      artistPayout,
+      clientPayout,
+      session
+    );
 
     // Update listing slots (free up the slot)
     await applySlotDelta(contract.listingId.toString(), -1);
@@ -739,7 +773,7 @@ export async function processContractCancellation(
         workPercentage,
         artistPayout,
         clientPayout,
-        escrowTxnIds: transactions.map((tx) => tx._id),
+        escrowTxnIds: [], // Will be populated when funds are actually claimed
       },
       session
     );
@@ -748,7 +782,7 @@ export async function processContractCancellation(
       await localSession.commitTransaction();
     }
 
-    return { contract, transactions };
+    return { contract, artistPayout, clientPayout };
   } catch (error) {
     if (localSession) {
       await localSession.abortTransaction();
@@ -769,13 +803,21 @@ export async function processContractCancellation(
  * @throws HttpError if contract not found
  */
 export async function processContractNotCompleted(
-  contractId: string | ObjectId
+  contractId: string | ObjectId,
+  session?: ClientSession
 ): Promise<any> {
   await connectDB();
-  const session = await startSession();
+  let localSession: ClientSession | undefined;
+
+  if (!session) {
+    localSession = await startSession();
+    session = localSession;
+  }
 
   try {
-    session.startTransaction();
+    if (localSession) {
+      localSession.startTransaction();
+    }
 
     const contract = await contractRepo.findContractById(contractId, {
       session,
@@ -792,26 +834,42 @@ export async function processContractNotCompleted(
       session
     );
 
-    // Refund client fully
-    const refundTx = await escrowService.createRefundTransaction(
+    // For not completed: full refund to client, nothing to artist
+    const totalAmount = contract.finance.total;
+    const artistPayout = 0;
+    const clientPayout = totalAmount;
+
+    // Update contract with calculated payouts
+    await contractRepo.updateContractPayouts(
       contractId,
-      contract.clientId,
-      contract.finance.total,
-      "Contract not completed refund",
+      artistPayout,
+      clientPayout,
       session
     );
 
-    // Update listing slots (free up the slot)
-    await applySlotDelta(contract.listingId.toString(), -1);
+    // Set contract completion details
+    await contractRepo.setContractCompletion(
+      contractId,
+      0, // 0% completion
+      undefined,
+      undefined,
+      session
+    );
 
-    await session.commitTransaction();
+    if (localSession) {
+      await localSession.commitTransaction();
+    }
 
-    return { contract, transaction: refundTx };
+    return { contract, artistPayout, clientPayout };
   } catch (error) {
-    await session.abortTransaction();
+    if (localSession) {
+      await localSession.abortTransaction();
+    }
     throw error;
   } finally {
-    session.endSession();
+    if (localSession) {
+      localSession.endSession();
+    }
   }
 }
 
@@ -827,66 +885,124 @@ export async function claimFunds(
   contractId: string | ObjectId,
   userId: string
 ): Promise<any> {
-  const contract = await contractRepo.findContractById(contractId);
-  if (!contract) {
-    throw new HttpError("Contract not found", 404);
-  }
+  await connectDB();
+  const session = await startSession();
 
-  // Verify user is part of the contract
-  const isClient = contract.clientId.toString() === userId;
-  const isArtist = contract.artistId.toString() === userId;
+  try {
+    session.startTransaction();
 
-  if (!isClient && !isArtist) {
-    throw new HttpError("Not authorized to claim funds for this contract", 403);
-  }
-
-  // Verify contract is in a terminal state
-  const terminalStates = [
-    "completed",
-    "completedLate",
-    "cancelledClient",
-    "cancelledClientLate",
-    "cancelledArtist",
-    "cancelledArtistLate",
-    "notCompleted",
-  ];
-
-  if (!terminalStates.includes(contract.status)) {
-    throw new HttpError(
-      "Contract must be completed or cancelled to claim funds",
-      400
-    );
-  }
-
-  // Process based on user role and contract status
-  if (isArtist) {
-    // For artist, we need to check if they are owed money
-    if (contract.finance.totalOwnedByArtist <= 0) {
-      throw new HttpError("No funds to claim", 400);
+    const contract = await contractRepo.findContractById(contractId, {
+      session,
+    });
+    if (!contract) {
+      throw new HttpError("Contract not found", 404);
     }
 
-    // Release funds to artist
-    return processContractCompletion(
-      contractId,
-      contract.status.includes("Late")
-    );
-  } else {
-    // For client, we need to check if they are owed money
-    if (contract.finance.totalOwnedByClient <= 0) {
-      throw new HttpError("No funds to claim", 400);
-    }
+    // Verify user is part of the contract
+    const isClient = contract.clientId.toString() === userId;
+    const isArtist = contract.artistId.toString() === userId;
 
-    // Refund client
-    if (contract.status === "notCompleted") {
-      return processContractNotCompleted(contractId);
-    } else {
-      return processContractCancellation(
-        contractId,
-        contract.status.includes("Client") ? "client" : "artist",
-        contract.workPercentage,
-        contract.status.includes("Late")
+    if (!isClient && !isArtist) {
+      throw new HttpError(
+        "Not authorized to claim funds for this contract",
+        403
       );
     }
+
+    // Verify contract is in a terminal state
+    const terminalStates = [
+      "completed",
+      "completedLate",
+      "cancelledClient",
+      "cancelledClientLate",
+      "cancelledArtist",
+      "cancelledArtistLate",
+      "notCompleted",
+    ];
+
+    if (!terminalStates.includes(contract.status)) {
+      throw new HttpError(
+        "Contract must be completed or cancelled to claim funds",
+        400
+      );
+    }
+
+    // Check if user has funds to claim
+    const amountToClaim = isArtist
+      ? contract.finance.totalOwnedByArtist
+      : contract.finance.totalOwnedByClient;
+
+    if (amountToClaim <= 0) {
+      throw new HttpError("No funds to claim", 400);
+    }
+
+    // Process the appropriate escrow transaction
+    const transactions = [];
+
+    if (isArtist && contract.finance.totalOwnedByArtist > 0) {
+      const releaseTx = await escrowService.createReleaseTransaction(
+        contractId,
+        contract.clientId,
+        contract.artistId,
+        contract.finance.totalOwnedByArtist,
+        `${contract.status} payment`,
+        session
+      );
+      transactions.push(releaseTx);
+
+      // Reset artist payout to 0 after claiming
+      await contractRepo.updateContractPayouts(
+        contractId,
+        0,
+        contract.finance.totalOwnedByClient,
+        session
+      );
+    }
+
+    if (isClient && contract.finance.totalOwnedByClient > 0) {
+      const refundTx = await escrowService.createRefundTransaction(
+        contractId,
+        contract.clientId,
+        contract.finance.totalOwnedByClient,
+        `${contract.status} refund`,
+        session
+      );
+      transactions.push(refundTx);
+
+      // Reset client payout to 0 after claiming
+      await contractRepo.updateContractPayouts(
+        contractId,
+        contract.finance.totalOwnedByArtist,
+        0,
+        session
+      );
+    }
+
+    // Update cancel summary if it exists with transaction IDs
+    if (contract.cancelSummary && transactions.length > 0) {
+      await contractRepo.setContractCancellation(
+        contractId,
+        {
+          ...contract.cancelSummary,
+          escrowTxnIds: transactions.map((tx) => tx._id),
+        },
+        session
+      );
+    }
+
+    await session.commitTransaction();
+
+    return {
+      contract,
+      transactions,
+      amountClaimed: amountToClaim,
+      claimedBy: isArtist ? "artist" : "client",
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
 }
 
@@ -929,238 +1045,6 @@ export function isContractLate(contract: IContract): boolean {
  */
 export function isContractPastGrace(contract: any): boolean {
   return new Date(contract.graceEndsAt) < new Date();
-}
-
-
-//=============================================================================
-// GRACE PERIOD CONTRACT PROCESSING FUNCTIONS
-//=============================================================================
-
-/**
- * Process contracts past grace period for a specific user
- *
- * @param userId - ID of the user (artist or client)
- * @param role - Role of the user ("artist", "client", or "both")
- * @returns Object containing arrays of processed contracts and errors
- */
-export async function processContractsPastGracePeriodForUser(
-  userId: string | ObjectId,
-  role: "artist" | "client" | "both" = "both"
-): Promise<{
-  processed: Array<{
-    contractId: string;
-    clientId: string;
-    artistId: string;
-    refundAmount: number;
-  }>;
-  errors: Array<{
-    contractId: string;
-    error: string;
-  }>;
-}> {
-  await connectDB();
-
-  const processed: Array<{
-    contractId: string;
-    clientId: string;
-    artistId: string;
-    refundAmount: number;
-  }> = [];
-
-  const errors: Array<{
-    contractId: string;
-    error: string;
-  }> = [];
-
-  try {
-    // Find contracts past grace period for this user
-    const expiredContracts =
-      await contractRepo.findContractsPastGracePeriodByUser(userId, role);
-
-    // Process each expired contract
-    for (const contract of expiredContracts) {
-      try {
-        // Create a new session for each contract
-        const session = await startSession();
-
-        try {
-          session.startTransaction();
-
-          // 1. Update contract status to "notCompleted"
-          await contractRepo.updateContractStatus(
-            contract._id,
-            "notCompleted",
-            0, // Work percentage is 0 for not completed
-            session
-          );
-
-          // 2. Process full refund to client
-          const refundTransaction = await escrowService.createRefundTransaction(
-            contract._id,
-            contract.clientId,
-            contract.finance.total,
-            "Contract not completed - grace period expired",
-            session
-          );
-
-          // 3. Update listing slots (free up the slot)
-          await applySlotDelta(contract.listingId.toString(), -1);
-
-          // 4. Set contract completion details
-          await contractRepo.setContractCompletion(
-            contract._id,
-            0, // 0% completion
-            undefined,
-            undefined,
-            session
-          );
-
-          await session.commitTransaction();
-
-          processed.push({
-            contractId: contract._id.toString(),
-            clientId: contract.clientId.toString(),
-            artistId: contract.artistId.toString(),
-            refundAmount: contract.finance.total,
-          });
-        } catch (error) {
-          await session.abortTransaction();
-          throw error;
-        } finally {
-          session.endSession();
-        }
-      } catch (error) {
-        console.error(
-          `Error processing contract past grace period ${contract._id}:`,
-          error
-        );
-        errors.push({
-          contractId: contract._id.toString(),
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  } catch (error) {
-    console.error(
-      `Error in processContractsPastGracePeriodForUser for user ${userId}:`,
-      error
-    );
-  }
-
-  return { processed, errors };
-}
-
-/**
- * Check if a specific contract should be marked as not completed
- *
- * @param contractId - ID of the contract to check
- * @returns Object containing contract status and action taken
- */
-export async function checkAndProcessContractGracePeriod(
-  contractId: string | ObjectId
-): Promise<{
-  contractId: string;
-  wasPastGrace: boolean;
-  processed: boolean;
-  refundAmount?: number;
-  error?: string;
-}> {
-  await connectDB();
-
-  try {
-    // Check if the contract is past its grace period
-    const isPastGrace = await contractRepo.isContractPastGracePeriod(
-      contractId
-    );
-
-    if (!isPastGrace) {
-      return {
-        contractId: contractId.toString(),
-        wasPastGrace: false,
-        processed: false,
-      };
-    }
-
-    // Get the contract details
-    const contract = await contractRepo.findContractById(contractId);
-    if (!contract) {
-      return {
-        contractId: contractId.toString(),
-        wasPastGrace: true,
-        processed: false,
-        error: "Contract not found",
-      };
-    }
-
-    if (contract.status !== "active") {
-      return {
-        contractId: contractId.toString(),
-        wasPastGrace: true,
-        processed: false,
-        error: "Contract is not active",
-      };
-    }
-
-    // Process the contract
-    const session = await startSession();
-    try {
-      session.startTransaction();
-
-      // 1. Update contract status to "notCompleted"
-      await contractRepo.updateContractStatus(
-        contractId,
-        "notCompleted",
-        0,
-        session
-      );
-
-      // 2. Process full refund to client
-      const refundTransaction = await escrowService.createRefundTransaction(
-        contractId,
-        contract.clientId,
-        contract.finance.total,
-        "Contract not completed - grace period expired",
-        session
-      );
-
-      // 3. Update listing slots (free up the slot)
-      await applySlotDelta(contract.listingId.toString(), -1);
-
-      // 4. Set contract completion details
-      await contractRepo.setContractCompletion(
-        contractId,
-        0,
-        undefined,
-        undefined,
-        session
-      );
-
-      await session.commitTransaction();
-
-      return {
-        contractId: contractId.toString(),
-        wasPastGrace: true,
-        processed: true,
-        refundAmount: contract.finance.total,
-      };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
-  } catch (error) {
-    console.error(
-      `Error processing contract grace period ${contractId}:`,
-      error
-    );
-    return {
-      contractId: contractId.toString(),
-      wasPastGrace: true,
-      processed: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
 }
 
 //=============================================================================
@@ -1479,6 +1363,191 @@ export async function processContractExpirations(
 }
 
 //=============================================================================
+// GRACE PERIOD CONTRACT PROCESSING FUNCTIONS
+//=============================================================================
+
+/**
+ * Process contracts past grace period for a specific user
+ *
+ * @param userId - ID of the user (artist or client)
+ * @param role - Role of the user ("artist", "client", or "both")
+ * @returns Object containing arrays of processed contracts and errors
+ */
+export async function processContractsPastGracePeriodForUser(
+  userId: string | ObjectId,
+  role: "artist" | "client" | "both" = "both"
+): Promise<{
+  processed: Array<{
+    contractId: string;
+    clientId: string;
+    artistId: string;
+    refundAmount: number;
+  }>;
+  errors: Array<{
+    contractId: string;
+    error: string;
+  }>;
+}> {
+  await connectDB();
+
+  const processed: Array<{
+    contractId: string;
+    clientId: string;
+    artistId: string;
+    refundAmount: number;
+  }> = [];
+
+  const errors: Array<{
+    contractId: string;
+    error: string;
+  }> = [];
+
+  try {
+    // Find contracts past grace period for this user
+    const expiredContracts =
+      await contractRepo.findContractsPastGracePeriodByUser(userId, role);
+
+    // Process each expired contract
+    for (const contract of expiredContracts) {
+      try {
+        // Create a new session for each contract
+        const session = await startSession();
+
+        try {
+          session.startTransaction();
+
+          // Use processContractNotCompleted for grace period expiry
+          await processContractNotCompleted(contract._id, session);
+
+          // Update listing slots (free up the slot)
+          await applySlotDelta(contract.listingId.toString(), -1);
+
+          await session.commitTransaction();
+
+          processed.push({
+            contractId: contract._id.toString(),
+            clientId: contract.clientId.toString(),
+            artistId: contract.artistId.toString(),
+            refundAmount: contract.finance.total,
+          });
+        } catch (error) {
+          await session.abortTransaction();
+          throw error;
+        } finally {
+          session.endSession();
+        }
+      } catch (error) {
+        console.error(
+          `Error processing contract past grace period ${contract._id}:`,
+          error
+        );
+        errors.push({
+          contractId: contract._id.toString(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error in processContractsPastGracePeriodForUser for user ${userId}:`,
+      error
+    );
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Check if a specific contract should be marked as not completed
+ *
+ * @param contractId - ID of the contract to check
+ * @returns Object containing contract status and action taken
+ */
+export async function checkAndProcessContractGracePeriod(
+  contractId: string | ObjectId
+): Promise<{
+  contractId: string;
+  wasPastGrace: boolean;
+  processed: boolean;
+  refundAmount?: number;
+  error?: string;
+}> {
+  await connectDB();
+
+  try {
+    // Check if the contract is past its grace period
+    const isPastGrace = await contractRepo.isContractPastGracePeriod(
+      contractId
+    );
+
+    if (!isPastGrace) {
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: false,
+        processed: false,
+      };
+    }
+
+    // Get the contract details
+    const contract = await contractRepo.findContractById(contractId);
+    if (!contract) {
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: true,
+        processed: false,
+        error: "Contract not found",
+      };
+    }
+
+    if (contract.status !== "active") {
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: true,
+        processed: false,
+        error: "Contract is not active",
+      };
+    }
+
+    // Process the contract
+    const session = await startSession();
+    try {
+      session.startTransaction();
+
+      // Use processContractNotCompleted for grace period expiry
+      await processContractNotCompleted(contractId, session);
+
+      // Update listing slots (free up the slot)
+      await applySlotDelta(contract.listingId.toString(), -1);
+
+      await session.commitTransaction();
+
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: true,
+        processed: true,
+        refundAmount: contract.finance.total,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error(
+      `Error processing contract grace period ${contractId}:`,
+      error
+    );
+    return {
+      contractId: contractId.toString(),
+      wasPastGrace: true,
+      processed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+//=============================================================================
 // EXPIRED UPLOADS AUTO-ACCEPTANCE FUNCTIONS
 //=============================================================================
 
@@ -1653,17 +1722,8 @@ export async function processExpiredFinalUploadsForContract(
 
             if (cancelTicket) {
               await processContractCancellation(
-                contractId,
-                cancelTicket.requestedBy,
-                upload.workProgress,
-                isContractLate(contract),
-                session
-              );
-            } else {
-              // Fallback: treat as artist-initiated cancellation
-              await processContractCancellation(
-                contractId,
-                "artist",
+                upload.contractId,
+                cancelTicket?.requestedBy || "artist",
                 upload.workProgress,
                 isContractLate(contract),
                 session
@@ -1962,13 +2022,15 @@ async function processUserContractExpiredFinals(
             session
           );
 
-          await processContractCancellation(
-            upload.contractId,
-            cancelTicket?.requestedBy || "artist",
-            upload.workProgress,
-            isContractLate(contract),
-            session
-          );
+          if (cancelTicket) {
+            await processContractCancellation(
+              upload.contractId,
+              cancelTicket?.requestedBy || "artist",
+              upload.workProgress,
+              isContractLate(contract),
+              session
+            );
+          }
         }
 
         await session.commitTransaction();

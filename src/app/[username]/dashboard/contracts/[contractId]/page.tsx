@@ -9,7 +9,7 @@ import { ensureModelsRegistered } from "@/lib/db/models";
 
 // This component would be created in src/components/dashboard/contracts/
 import ContractDetailsPageWrapper from "@/components/dashboard/contracts/ContractDetailsPage";
-import { processExpiredMilestoneUploadsForContract } from "@/lib/services/upload.service";
+import { processContractExpirations } from "@/lib/services/contract.service";
 
 interface ContractDetailsPageProps {
   params: {
@@ -33,30 +33,131 @@ export default async function ContractDetailsPage({
     return <Alert severity="error">You do not have access to this page</Alert>;
   }
 
-  // Process any expired milestone uploads for this specific contract
+  // Process any expired uploads for this specific contract
   let processResult;
   try {
-    processResult = await processExpiredMilestoneUploadsForContract(contractId);
+    console.log(`🔄 Processing expirations for contract ${contractId}...`);
+    processResult = await processContractExpirations(
+      contractId,
+      (session as Session).id
+    );
 
-    if (processResult.processed.length > 0) {
+    // Log detailed results
+    console.log(`📊 Expiration processing results for contract ${contractId}:`);
+    console.log(`   User role: ${processResult.summary.userRole}`);
+
+    // Log upload processing results
+    const { uploads } = processResult;
+    if (uploads.summary.totalProcessed > 0) {
       console.log(
-        `Auto-accepted ${processResult.processed.length} expired milestone uploads for contract ${contractId}`
+        `✅ Auto-accepted ${uploads.summary.totalProcessed} expired uploads:`
       );
+
+      if (uploads.milestones.processed.length > 0) {
+        console.log(
+          `   📝 Milestone uploads (${uploads.milestones.processed.length}):`
+        );
+        uploads.milestones.processed.forEach((milestone) => {
+          console.log(
+            `      - Upload ${milestone.uploadId} for milestone ${milestone.milestoneIdx}`
+          );
+        });
+      }
+
+      if (uploads.finals.processed.length > 0) {
+        console.log(
+          `   🎯 Final uploads (${uploads.finals.processed.length}):`
+        );
+        uploads.finals.processed.forEach((final) => {
+          console.log(
+            `      - Upload ${final.uploadId} with ${final.workProgress}% progress`
+          );
+        });
+      }
+
+      if (uploads.revisions.processed.length > 0) {
+        console.log(
+          `   🔄 Revision uploads (${uploads.revisions.processed.length}):`
+        );
+        uploads.revisions.processed.forEach((revision) => {
+          console.log(
+            `      - Upload ${revision.uploadId} for ticket ${revision.revisionTicketId}`
+          );
+        });
+      }
+    } else {
+      console.log(`✨ No expired uploads found for contract ${contractId}`);
     }
+
+    // Log upload processing errors
+    if (uploads.summary.totalErrors > 0) {
+      console.error(
+        `❌ ${uploads.summary.totalErrors} errors occurred during upload processing:`
+      );
+
+      [
+        ...uploads.milestones.errors,
+        ...uploads.finals.errors,
+        ...uploads.revisions.errors,
+      ].forEach((error) => {
+        console.error(`   - Upload ${error.uploadId}: ${error.error}`);
+      });
+    }
+
+    // Log grace period processing results
+    const { gracePeriod } = processResult;
+    if (gracePeriod.wasPastGrace) {
+      if (gracePeriod.processed) {
+        console.log(
+          `⏰ Contract ${contractId} was past grace period and marked as not completed`
+        );
+        if (gracePeriod.refundAmount) {
+          console.log(
+            `   💰 Refunded ${gracePeriod.refundAmount} cents to client`
+          );
+        }
+      } else if (gracePeriod.error) {
+        console.error(
+          `❌ Failed to process grace period for contract ${contractId}: ${gracePeriod.error}`
+        );
+      }
+    } else {
+      console.log(`✅ Contract ${contractId} is within grace period`);
+    }
+
+    // Summary
+    console.log(`📋 Summary for contract ${contractId}:`);
+    console.log(
+      `   - Uploads processed: ${processResult.summary.totalUploadsProcessed}`
+    );
+    console.log(
+      `   - Contract processed: ${
+        processResult.summary.contractProcessed ? "Yes" : "No"
+      }`
+    );
+    console.log(`   - Total errors: ${processResult.summary.totalErrors}`);
   } catch (error) {
     console.error(
-      `Error processing expired milestone uploads for contract ${contractId}:`,
+      `❌ Error processing expirations for contract ${contractId}:`,
       error
     );
+
+    // Log the full error details for debugging
+    if (error instanceof Error) {
+      console.error(`   Error message: ${error.message}`);
+      console.error(`   Error stack:`, error.stack);
+    }
   }
 
   let contract;
   let error = null;
 
   try {
+    console.log(`📖 Fetching contract details for ${contractId}...`);
     contract = await getContractById(contractId, (session as Session).id);
+    console.log(`✅ Successfully loaded contract ${contractId}`);
   } catch (err) {
-    console.error("Error fetching contract:", err);
+    console.error(`❌ Error fetching contract ${contractId}:`, err);
     error = err;
   }
 
@@ -80,6 +181,22 @@ export default async function ContractDetailsPage({
 
   return (
     <Box>
+      {/* Optional: Show processing results in UI for debugging */}
+      {processResult && process.env.NODE_ENV === "development" && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: "grey.50" }}>
+          <Typography variant="h6" gutterBottom>
+            🔧 Development: Expiration Processing Results
+          </Typography>
+          <Typography variant="body2">
+            Uploads processed: {processResult.summary.totalUploadsProcessed} |
+            Contract processed:{" "}
+            {processResult.summary.contractProcessed ? "Yes" : "No"} | Errors:{" "}
+            {processResult.summary.totalErrors} | User role:{" "}
+            {processResult.summary.userRole}
+          </Typography>
+        </Paper>
+      )}
+
       <Suspense fallback={<DashboardLoadingSkeleton />}>
         {/* This component would be implemented separately */}
         <ContractDetailsPageWrapper

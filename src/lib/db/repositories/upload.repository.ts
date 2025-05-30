@@ -437,3 +437,128 @@ export async function findRevisionUploadsByContract(
     .sort({ createdAt: -1 })
     .session(session || null);
 }
+
+/**
+ * Find all expired milestone uploads that need auto-acceptance
+ *
+ * @param session - Optional MongoDB session for transaction
+ * @returns Array of expired milestone uploads
+ */
+export async function findExpiredMilestoneUploads(
+  session?: ClientSession
+): Promise<IProgressUploadMilestone[]> {
+  await connectDB();
+
+  const currentTime = new Date();
+
+  return ProgressUploadMilestone.find({
+    status: "submitted",
+    isFinal: true,
+    expiresAt: { $lt: currentTime },
+  }).session(session || null);
+}
+
+/**
+ * Find expired milestone uploads for a specific contract
+ *
+ * @param contractId - ID of the contract
+ * @param session - Optional MongoDB session for transaction
+ * @returns Array of expired milestone uploads for the contract
+ */
+export async function findExpiredMilestoneUploadsByContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<IProgressUploadMilestone[]> {
+  await connectDB();
+
+  const currentTime = new Date();
+
+  return ProgressUploadMilestone.find({
+    contractId: toObjectId(contractId),
+    status: "submitted",
+    isFinal: true,
+    expiresAt: { $lt: currentTime },
+  }).session(session || null);
+}
+
+/**
+ * Find all expired final uploads that need auto-acceptance
+ *
+ * @param session - Optional MongoDB session for transaction
+ * @returns Array of expired final uploads
+ */
+export async function findExpiredFinalUploads(
+  session?: ClientSession
+): Promise<IFinalUpload[]> {
+  await connectDB();
+
+  const currentTime = new Date();
+
+  return FinalUpload.find({
+    status: "submitted",
+    expiresAt: { $lt: currentTime },
+  }).session(session || null);
+}
+
+/**
+ * Find expired final uploads for a specific contract
+ *
+ * @param contractId - ID of the contract
+ * @param session - Optional MongoDB session for transaction
+ * @returns Array of expired final uploads for the contract
+ */
+export async function findExpiredFinalUploadsByContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<IFinalUpload[]> {
+  await connectDB();
+
+  const currentTime = new Date();
+
+  return FinalUpload.find({
+    contractId: toObjectId(contractId),
+    status: "submitted",
+    expiresAt: { $lt: currentTime },
+  }).session(session || null);
+}
+
+/**
+ * Find all expired revision uploads that need auto-acceptance
+ *
+ * @param session - Optional MongoDB session for transaction
+ * @returns Array of expired revision uploads
+ */
+export async function findExpiredRevisionUploads(
+  session?: ClientSession
+): Promise<IRevisionUpload[]> {
+  await connectDB();
+
+  const currentTime = new Date();
+
+  return RevisionUpload.find({
+    status: "submitted",
+    expiresAt: { $lt: currentTime },
+  }).session(session || null);
+}
+
+/**
+ * Find expired revision uploads for a specific contract
+ *
+ * @param contractId - ID of the contract
+ * @param session - Optional MongoDB session for transaction
+ * @returns Array of expired revision uploads for the contract
+ */
+export async function findExpiredRevisionUploadsByContract(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<IRevisionUpload[]> {
+  await connectDB();
+
+  const currentTime = new Date();
+
+  return RevisionUpload.find({
+    contractId: toObjectId(contractId),
+    status: "submitted",
+    expiresAt: { $lt: currentTime },
+  }).session(session || null);
+}

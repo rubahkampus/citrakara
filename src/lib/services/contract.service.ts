@@ -15,6 +15,7 @@ import { IContract } from "../db/models/contract.model";
 import { connectDB } from "../db/connection";
 import { ClientSession, startSession } from "mongoose";
 import { toObjectId } from "../utils/toObjectId";
+import { isUserAdminById } from "./user.service";
 
 //=============================================================================
 // CONTRACT RETRIEVAL FUNCTIONS
@@ -928,4 +929,1162 @@ export function isContractLate(contract: IContract): boolean {
  */
 export function isContractPastGrace(contract: any): boolean {
   return new Date(contract.graceEndsAt) < new Date();
+}
+
+
+//=============================================================================
+// GRACE PERIOD CONTRACT PROCESSING FUNCTIONS
+//=============================================================================
+
+/**
+ * Process contracts past grace period for a specific user
+ *
+ * @param userId - ID of the user (artist or client)
+ * @param role - Role of the user ("artist", "client", or "both")
+ * @returns Object containing arrays of processed contracts and errors
+ */
+export async function processContractsPastGracePeriodForUser(
+  userId: string | ObjectId,
+  role: "artist" | "client" | "both" = "both"
+): Promise<{
+  processed: Array<{
+    contractId: string;
+    clientId: string;
+    artistId: string;
+    refundAmount: number;
+  }>;
+  errors: Array<{
+    contractId: string;
+    error: string;
+  }>;
+}> {
+  await connectDB();
+
+  const processed: Array<{
+    contractId: string;
+    clientId: string;
+    artistId: string;
+    refundAmount: number;
+  }> = [];
+
+  const errors: Array<{
+    contractId: string;
+    error: string;
+  }> = [];
+
+  try {
+    // Find contracts past grace period for this user
+    const expiredContracts =
+      await contractRepo.findContractsPastGracePeriodByUser(userId, role);
+
+    // Process each expired contract
+    for (const contract of expiredContracts) {
+      try {
+        // Create a new session for each contract
+        const session = await startSession();
+
+        try {
+          session.startTransaction();
+
+          // 1. Update contract status to "notCompleted"
+          await contractRepo.updateContractStatus(
+            contract._id,
+            "notCompleted",
+            0, // Work percentage is 0 for not completed
+            session
+          );
+
+          // 2. Process full refund to client
+          const refundTransaction = await escrowService.createRefundTransaction(
+            contract._id,
+            contract.clientId,
+            contract.finance.total,
+            "Contract not completed - grace period expired",
+            session
+          );
+
+          // 3. Update listing slots (free up the slot)
+          await applySlotDelta(contract.listingId.toString(), -1);
+
+          // 4. Set contract completion details
+          await contractRepo.setContractCompletion(
+            contract._id,
+            0, // 0% completion
+            undefined,
+            undefined,
+            session
+          );
+
+          await session.commitTransaction();
+
+          processed.push({
+            contractId: contract._id.toString(),
+            clientId: contract.clientId.toString(),
+            artistId: contract.artistId.toString(),
+            refundAmount: contract.finance.total,
+          });
+        } catch (error) {
+          await session.abortTransaction();
+          throw error;
+        } finally {
+          session.endSession();
+        }
+      } catch (error) {
+        console.error(
+          `Error processing contract past grace period ${contract._id}:`,
+          error
+        );
+        errors.push({
+          contractId: contract._id.toString(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error in processContractsPastGracePeriodForUser for user ${userId}:`,
+      error
+    );
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Check if a specific contract should be marked as not completed
+ *
+ * @param contractId - ID of the contract to check
+ * @returns Object containing contract status and action taken
+ */
+export async function checkAndProcessContractGracePeriod(
+  contractId: string | ObjectId
+): Promise<{
+  contractId: string;
+  wasPastGrace: boolean;
+  processed: boolean;
+  refundAmount?: number;
+  error?: string;
+}> {
+  await connectDB();
+
+  try {
+    // Check if the contract is past its grace period
+    const isPastGrace = await contractRepo.isContractPastGracePeriod(
+      contractId
+    );
+
+    if (!isPastGrace) {
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: false,
+        processed: false,
+      };
+    }
+
+    // Get the contract details
+    const contract = await contractRepo.findContractById(contractId);
+    if (!contract) {
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: true,
+        processed: false,
+        error: "Contract not found",
+      };
+    }
+
+    if (contract.status !== "active") {
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: true,
+        processed: false,
+        error: "Contract is not active",
+      };
+    }
+
+    // Process the contract
+    const session = await startSession();
+    try {
+      session.startTransaction();
+
+      // 1. Update contract status to "notCompleted"
+      await contractRepo.updateContractStatus(
+        contractId,
+        "notCompleted",
+        0,
+        session
+      );
+
+      // 2. Process full refund to client
+      const refundTransaction = await escrowService.createRefundTransaction(
+        contractId,
+        contract.clientId,
+        contract.finance.total,
+        "Contract not completed - grace period expired",
+        session
+      );
+
+      // 3. Update listing slots (free up the slot)
+      await applySlotDelta(contract.listingId.toString(), -1);
+
+      // 4. Set contract completion details
+      await contractRepo.setContractCompletion(
+        contractId,
+        0,
+        undefined,
+        undefined,
+        session
+      );
+
+      await session.commitTransaction();
+
+      return {
+        contractId: contractId.toString(),
+        wasPastGrace: true,
+        processed: true,
+        refundAmount: contract.finance.total,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error(
+      `Error processing contract grace period ${contractId}:`,
+      error
+    );
+    return {
+      contractId: contractId.toString(),
+      wasPastGrace: true,
+      processed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+//=============================================================================
+// WRAPPER FUNCTIONS FOR LAYOUT AND CONTRACT PAGE PROCESSING
+//=============================================================================
+
+/**
+ * Process all expired uploads and grace period contracts for a specific user
+ * This function should be called in the top-level layout to handle all user's contracts
+ *
+ * @param userId - ID of the user to process contracts for
+ * @returns Combined results of all processing operations
+ */
+export async function processAllUserExpirations(userId: string): Promise<{
+  uploads: {
+    milestones: {
+      processed: Array<{
+        uploadId: string;
+        contractId: string;
+        milestoneIdx: number;
+      }>;
+      errors: Array<{
+        uploadId: string;
+        contractId: string;
+        error: string;
+      }>;
+    };
+    finals: {
+      processed: Array<{
+        uploadId: string;
+        contractId: string;
+        workProgress: number;
+      }>;
+      errors: Array<{
+        uploadId: string;
+        contractId: string;
+        error: string;
+      }>;
+    };
+    revisions: {
+      processed: Array<{
+        uploadId: string;
+        contractId: string;
+        revisionTicketId: string;
+      }>;
+      errors: Array<{
+        uploadId: string;
+        contractId: string;
+        error: string;
+      }>;
+    };
+    summary: {
+      totalProcessed: number;
+      totalErrors: number;
+    };
+  };
+  gracePeriod: {
+    processed: Array<{
+      contractId: string;
+      clientId: string;
+      artistId: string;
+      refundAmount: number;
+    }>;
+    errors: Array<{
+      contractId: string;
+      error: string;
+    }>;
+  };
+  summary: {
+    totalUploadsProcessed: number;
+    totalContractsProcessed: number;
+    totalErrors: number;
+    userRole: {
+      asArtist: boolean;
+      asClient: boolean;
+    };
+  };
+}> {
+  console.log(`Starting processing of all expirations for user ${userId}...`);
+
+  try {
+    // Get all user contracts to determine their role and filter processing
+    const userContracts = await getUserContracts(userId);
+    const allContracts = [...userContracts.asArtist, ...userContracts.asClient];
+
+    if (allContracts.length === 0) {
+      console.log(`No contracts found for user ${userId}`);
+      return {
+        uploads: {
+          milestones: { processed: [], errors: [] },
+          finals: { processed: [], errors: [] },
+          revisions: { processed: [], errors: [] },
+          summary: { totalProcessed: 0, totalErrors: 0 },
+        },
+        gracePeriod: { processed: [], errors: [] },
+        summary: {
+          totalUploadsProcessed: 0,
+          totalContractsProcessed: 0,
+          totalErrors: 0,
+          userRole: {
+            asArtist: userContracts.asArtist.length > 0,
+            asClient: userContracts.asClient.length > 0,
+          },
+        },
+      };
+    }
+
+    // Get contract IDs for filtering
+    const contractIds = allContracts.map((contract) => contract._id.toString());
+
+    // Process uploads for user's contracts in parallel
+    const [milestonesResult, finalsResult, revisionsResult] = await Promise.all(
+      [
+        processUserContractExpiredMilestones(contractIds),
+        processUserContractExpiredFinals(contractIds),
+        processUserContractExpiredRevisions(contractIds),
+      ]
+    );
+
+    // Process grace period contracts for this user
+    const gracePeriodResult = await processContractsPastGracePeriodForUser(
+      userId,
+      "both"
+    );
+
+    // Calculate summary
+    const totalUploadsProcessed =
+      milestonesResult.processed.length +
+      finalsResult.processed.length +
+      revisionsResult.processed.length;
+
+    const totalUploadsErrors =
+      milestonesResult.errors.length +
+      finalsResult.errors.length +
+      revisionsResult.errors.length;
+
+    const totalErrors = totalUploadsErrors + gracePeriodResult.errors.length;
+
+    console.log(
+      `Completed processing for user ${userId}: ${totalUploadsProcessed} uploads, ${gracePeriodResult.processed.length} contracts, ${totalErrors} errors`
+    );
+
+    return {
+      uploads: {
+        milestones: milestonesResult,
+        finals: finalsResult,
+        revisions: revisionsResult,
+        summary: {
+          totalProcessed: totalUploadsProcessed,
+          totalErrors: totalUploadsErrors,
+        },
+      },
+      gracePeriod: gracePeriodResult,
+      summary: {
+        totalUploadsProcessed,
+        totalContractsProcessed: gracePeriodResult.processed.length,
+        totalErrors,
+        userRole: {
+          asArtist: userContracts.asArtist.length > 0,
+          asClient: userContracts.asClient.length > 0,
+        },
+      },
+    };
+  } catch (error) {
+    console.error(
+      `Error in processAllUserExpirations for user ${userId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+/**
+ * Process expired uploads and grace period check for a specific contract
+ * This function should be called on contract pages to ensure the contract is up-to-date
+ *
+ * @param contractId - ID of the contract to process
+ * @param userId - ID of the user viewing the contract (for permission verification)
+ * @returns Combined results of processing operations for the specific contract
+ */
+export async function processContractExpirations(
+  contractId: string,
+  userId: string
+): Promise<{
+  uploads: {
+    milestones: {
+      processed: Array<{
+        uploadId: string;
+        milestoneIdx: number;
+      }>;
+      errors: Array<{
+        uploadId: string;
+        error: string;
+      }>;
+    };
+    finals: {
+      processed: Array<{
+        uploadId: string;
+        workProgress: number;
+      }>;
+      errors: Array<{
+        uploadId: string;
+        error: string;
+      }>;
+    };
+    revisions: {
+      processed: Array<{
+        uploadId: string;
+        revisionTicketId: string;
+      }>;
+      errors: Array<{
+        uploadId: string;
+        error: string;
+      }>;
+    };
+    summary: {
+      totalProcessed: number;
+      totalErrors: number;
+    };
+  };
+  gracePeriod: {
+    contractId: string;
+    wasPastGrace: boolean;
+    processed: boolean;
+    refundAmount?: number;
+    error?: string;
+  };
+  summary: {
+    totalUploadsProcessed: number;
+    contractProcessed: boolean;
+    totalErrors: number;
+    userRole: "artist" | "client" | "admin" | "unauthorized";
+  };
+}> {
+  console.log(
+    `Starting processing of expirations for contract ${contractId}...`
+  );
+
+  try {
+    // Verify user has access to this contract and determine their role
+    const contract = await getContractById(contractId, userId);
+
+    let userRole: "artist" | "client" | "admin" = "client";
+    if (contract.artistId.toString() === userId) {
+      userRole = "artist";
+    } else if (contract.clientId.toString() === userId) {
+      userRole = "client";
+    } else {
+      // Check if user is admin
+      const isAdmin = await isUserAdminById(userId);
+      if (isAdmin) {
+        userRole = "admin";
+      } else {
+        throw new HttpError("Not authorized to process this contract", 403);
+      }
+    }
+
+    // Process uploads for this specific contract in parallel
+    const [milestonesResult, finalsResult, revisionsResult] = await Promise.all(
+      [
+        processExpiredMilestoneUploadsForContract(contractId),
+        processExpiredFinalUploadsForContract(contractId),
+        processExpiredRevisionUploadsForContract(contractId),
+      ]
+    );
+
+    // Process grace period check for this specific contract
+    const gracePeriodResult = await checkAndProcessContractGracePeriod(
+      contractId
+    );
+
+    // Calculate summary
+    const totalUploadsProcessed =
+      milestonesResult.processed.length +
+      finalsResult.processed.length +
+      revisionsResult.processed.length;
+
+    const totalUploadsErrors =
+      milestonesResult.errors.length +
+      finalsResult.errors.length +
+      revisionsResult.errors.length;
+
+    const totalErrors = totalUploadsErrors + (gracePeriodResult.error ? 1 : 0);
+
+    console.log(
+      `Completed processing for contract ${contractId}: ${totalUploadsProcessed} uploads, grace period ${
+        gracePeriodResult.processed ? "processed" : "not needed"
+      }, ${totalErrors} errors`
+    );
+
+    return {
+      uploads: {
+        milestones: milestonesResult,
+        finals: finalsResult,
+        revisions: revisionsResult,
+        summary: {
+          totalProcessed: totalUploadsProcessed,
+          totalErrors: totalUploadsErrors,
+        },
+      },
+      gracePeriod: gracePeriodResult,
+      summary: {
+        totalUploadsProcessed,
+        contractProcessed: gracePeriodResult.processed,
+        totalErrors,
+        userRole,
+      },
+    };
+  } catch (error) {
+    console.error(
+      `Error in processContractExpirations for contract ${contractId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+//=============================================================================
+// EXPIRED UPLOADS AUTO-ACCEPTANCE FUNCTIONS
+//=============================================================================
+
+/**
+ * Process expired milestone uploads for a specific contract
+ *
+ * @param contractId - ID of the contract to process
+ * @returns Object containing arrays of processed uploads and errors
+ */
+export async function processExpiredMilestoneUploadsForContract(
+  contractId: string | ObjectId
+): Promise<{
+  processed: Array<{
+    uploadId: string;
+    milestoneIdx: number;
+  }>;
+  errors: Array<{
+    uploadId: string;
+    error: string;
+  }>;
+}> {
+  await connectDB();
+
+  const processed: Array<{
+    uploadId: string;
+    milestoneIdx: number;
+  }> = [];
+
+  const errors: Array<{
+    uploadId: string;
+    error: string;
+  }> = [];
+
+  try {
+    // Find expired milestone uploads for this contract
+    const expiredUploads =
+      await uploadRepo.findExpiredMilestoneUploadsByContract(contractId);
+
+    // Process each expired upload
+    for (const upload of expiredUploads) {
+      try {
+        // Create a new session for each upload
+        const session = await startSession();
+
+        try {
+          session.startTransaction();
+
+          // 1. Update the upload status to "accepted"
+          await uploadRepo.updateMilestoneUploadStatus(
+            upload._id,
+            "accepted",
+            session
+          );
+
+          // 2. Update milestone status in the contract
+          await updateMilestoneStatus(
+            contractId,
+            upload.milestoneIdx,
+            "accepted",
+            upload._id,
+            session
+          );
+
+          await session.commitTransaction();
+
+          processed.push({
+            uploadId: upload._id.toString(),
+            milestoneIdx: upload.milestoneIdx,
+          });
+        } catch (error) {
+          await session.abortTransaction();
+          throw error;
+        } finally {
+          session.endSession();
+        }
+      } catch (error) {
+        console.error(
+          `Error processing expired milestone upload ${upload._id}:`,
+          error
+        );
+        errors.push({
+          uploadId: upload._id.toString(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error in processExpiredMilestoneUploadsForContract for contract ${contractId}:`,
+      error
+    );
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Process expired final uploads for a specific contract
+ *
+ * @param contractId - ID of the contract to process
+ * @returns Object containing arrays of processed uploads and errors
+ */
+export async function processExpiredFinalUploadsForContract(
+  contractId: string | ObjectId
+): Promise<{
+  processed: Array<{
+    uploadId: string;
+    workProgress: number;
+  }>;
+  errors: Array<{
+    uploadId: string;
+    error: string;
+  }>;
+}> {
+  await connectDB();
+
+  const processed: Array<{
+    uploadId: string;
+    workProgress: number;
+  }> = [];
+
+  const errors: Array<{
+    uploadId: string;
+    error: string;
+  }> = [];
+
+  try {
+    // Find expired final uploads for this contract
+    const expiredUploads = await uploadRepo.findExpiredFinalUploadsByContract(
+      contractId
+    );
+
+    // Process each expired upload
+    for (const upload of expiredUploads) {
+      try {
+        // Create a new session for each upload
+        const session = await startSession();
+
+        try {
+          session.startTransaction();
+
+          // 1. Update the upload status to "accepted"
+          await uploadRepo.updateFinalUploadStatus(
+            upload._id,
+            "accepted",
+            session
+          );
+
+          // 2. Get the contract to check if it's late
+          const contract = await contractRepo.findContractById(contractId, {
+            session,
+          });
+
+          if (!contract) {
+            throw new Error("Contract not found");
+          }
+
+          // 3. Process based on upload type
+          if (upload.workProgress === 100) {
+            // This is a completion upload - process contract completion
+            await processContractCompletion(
+              contractId,
+              isContractLate(contract),
+              session
+            );
+          } else if (upload.cancelTicketId) {
+            // This is a cancellation upload - process contract cancellation
+            const cancelTicket = await ticketRepo.findCancelTicketById(
+              upload.cancelTicketId,
+              session
+            );
+
+            if (cancelTicket) {
+              await processContractCancellation(
+                contractId,
+                cancelTicket.requestedBy,
+                upload.workProgress,
+                isContractLate(contract),
+                session
+              );
+            } else {
+              // Fallback: treat as artist-initiated cancellation
+              await processContractCancellation(
+                contractId,
+                "artist",
+                upload.workProgress,
+                isContractLate(contract),
+                session
+              );
+            }
+          }
+
+          await session.commitTransaction();
+
+          processed.push({
+            uploadId: upload._id.toString(),
+            workProgress: upload.workProgress,
+          });
+        } catch (error) {
+          await session.abortTransaction();
+          throw error;
+        } finally {
+          session.endSession();
+        }
+      } catch (error) {
+        console.error(
+          `Error processing expired final upload ${upload._id}:`,
+          error
+        );
+        errors.push({
+          uploadId: upload._id.toString(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error in processExpiredFinalUploadsForContract for contract ${contractId}:`,
+      error
+    );
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Process expired revision uploads for a specific contract
+ *
+ * @param contractId - ID of the contract to process
+ * @returns Object containing arrays of processed uploads and errors
+ */
+export async function processExpiredRevisionUploadsForContract(
+  contractId: string | ObjectId
+): Promise<{
+  processed: Array<{
+    uploadId: string;
+    revisionTicketId: string;
+  }>;
+  errors: Array<{
+    uploadId: string;
+    error: string;
+  }>;
+}> {
+  await connectDB();
+
+  const processed: Array<{
+    uploadId: string;
+    revisionTicketId: string;
+  }> = [];
+
+  const errors: Array<{
+    uploadId: string;
+    error: string;
+  }> = [];
+
+  try {
+    // Find expired revision uploads for this contract
+    const expiredUploads =
+      await uploadRepo.findExpiredRevisionUploadsByContract(contractId);
+
+    // Process each expired upload
+    for (const upload of expiredUploads) {
+      try {
+        // Create a new session for each upload
+        const session = await startSession();
+
+        try {
+          session.startTransaction();
+
+          // 1. Update the upload status to "accepted"
+          await uploadRepo.updateRevisionUploadStatus(
+            upload._id,
+            "accepted",
+            session
+          );
+
+          // 2. Mark the revision ticket as resolved
+          const ticket = await ticketRepo.findRevisionTicketById(
+            upload.revisionTicketId,
+            session
+          );
+
+          if (ticket && !ticket.resolved) {
+            await ticketRepo.updateRevisionTicketStatus(
+              upload.revisionTicketId,
+              ticket.status, // Keep current status
+              undefined,
+              undefined,
+              undefined,
+              session
+            );
+          }
+
+          await session.commitTransaction();
+
+          processed.push({
+            uploadId: upload._id.toString(),
+            revisionTicketId: upload.revisionTicketId.toString(),
+          });
+        } catch (error) {
+          await session.abortTransaction();
+          throw error;
+        } finally {
+          session.endSession();
+        }
+      } catch (error) {
+        console.error(
+          `Error processing expired revision upload ${upload._id}:`,
+          error
+        );
+        errors.push({
+          uploadId: upload._id.toString(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error in processExpiredRevisionUploadsForContract for contract ${contractId}:`,
+      error
+    );
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Process expired milestone uploads for specific contracts
+ *
+ * @param contractIds - Array of contract IDs to process
+ * @returns Results of milestone upload processing
+ */
+async function processUserContractExpiredMilestones(
+  contractIds: string[]
+): Promise<{
+  processed: Array<{
+    uploadId: string;
+    contractId: string;
+    milestoneIdx: number;
+  }>;
+  errors: Array<{
+    uploadId: string;
+    contractId: string;
+    error: string;
+  }>;
+}> {
+  const processed: Array<{
+    uploadId: string;
+    contractId: string;
+    milestoneIdx: number;
+  }> = [];
+
+  const errors: Array<{
+    uploadId: string;
+    contractId: string;
+    error: string;
+  }> = [];
+
+  // Find expired milestone uploads for user's contracts
+  const expiredUploads = await uploadRepo.findExpiredMilestoneUploads();
+  const userExpiredUploads = expiredUploads.filter((upload) =>
+    contractIds.includes(upload.contractId.toString())
+  );
+
+  // Process each upload
+  for (const upload of userExpiredUploads) {
+    try {
+      const session = await startSession();
+      try {
+        session.startTransaction();
+
+        await uploadRepo.updateMilestoneUploadStatus(
+          upload._id,
+          "accepted",
+          session
+        );
+
+        await updateMilestoneStatus(
+          upload.contractId,
+          upload.milestoneIdx,
+          "accepted",
+          upload._id,
+          session
+        );
+
+        await session.commitTransaction();
+
+        processed.push({
+          uploadId: upload._id.toString(),
+          contractId: upload.contractId.toString(),
+          milestoneIdx: upload.milestoneIdx,
+        });
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } catch (error) {
+      errors.push({
+        uploadId: upload._id.toString(),
+        contractId: upload.contractId.toString(),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Process expired final uploads for specific contracts
+ *
+ * @param contractIds - Array of contract IDs to process
+ * @returns Results of final upload processing
+ */
+async function processUserContractExpiredFinals(
+  contractIds: string[]
+): Promise<{
+  processed: Array<{
+    uploadId: string;
+    contractId: string;
+    workProgress: number;
+  }>;
+  errors: Array<{
+    uploadId: string;
+    contractId: string;
+    error: string;
+  }>;
+}> {
+  const processed: Array<{
+    uploadId: string;
+    contractId: string;
+    workProgress: number;
+  }> = [];
+
+  const errors: Array<{
+    uploadId: string;
+    contractId: string;
+    error: string;
+  }> = [];
+
+  // Find expired final uploads for user's contracts
+  const expiredUploads = await uploadRepo.findExpiredFinalUploads();
+  const userExpiredUploads = expiredUploads.filter((upload) =>
+    contractIds.includes(upload.contractId.toString())
+  );
+
+  // Process each upload
+  for (const upload of userExpiredUploads) {
+    try {
+      const session = await startSession();
+      try {
+        session.startTransaction();
+
+        await uploadRepo.updateFinalUploadStatus(
+          upload._id,
+          "accepted",
+          session
+        );
+
+        // Get contract and process completion/cancellation
+        const contract = await contractRepo.findContractById(
+          upload.contractId,
+          { session }
+        );
+
+        if (!contract) {
+          throw new Error("Contract not found");
+        }
+
+        if (upload.workProgress === 100) {
+          await processContractCompletion(
+            upload.contractId,
+            isContractLate(contract),
+            session
+          );
+        } else if (upload.cancelTicketId) {
+          const cancelTicket = await ticketRepo.findCancelTicketById(
+            upload.cancelTicketId,
+            session
+          );
+
+          await processContractCancellation(
+            upload.contractId,
+            cancelTicket?.requestedBy || "artist",
+            upload.workProgress,
+            isContractLate(contract),
+            session
+          );
+        }
+
+        await session.commitTransaction();
+
+        processed.push({
+          uploadId: upload._id.toString(),
+          contractId: upload.contractId.toString(),
+          workProgress: upload.workProgress,
+        });
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } catch (error) {
+      errors.push({
+        uploadId: upload._id.toString(),
+        contractId: upload.contractId.toString(),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Process expired revision uploads for specific contracts
+ *
+ * @param contractIds - Array of contract IDs to process
+ * @returns Results of revision upload processing
+ */
+async function processUserContractExpiredRevisions(
+  contractIds: string[]
+): Promise<{
+  processed: Array<{
+    uploadId: string;
+    contractId: string;
+    revisionTicketId: string;
+  }>;
+  errors: Array<{
+    uploadId: string;
+    contractId: string;
+    error: string;
+  }>;
+}> {
+  const processed: Array<{
+    uploadId: string;
+    contractId: string;
+    revisionTicketId: string;
+  }> = [];
+
+  const errors: Array<{
+    uploadId: string;
+    contractId: string;
+    error: string;
+  }> = [];
+
+  // Find expired revision uploads for user's contracts
+  const expiredUploads = await uploadRepo.findExpiredRevisionUploads();
+  const userExpiredUploads = expiredUploads.filter((upload) =>
+    contractIds.includes(upload.contractId.toString())
+  );
+
+  // Process each upload
+  for (const upload of userExpiredUploads) {
+    try {
+      const session = await startSession();
+      try {
+        session.startTransaction();
+
+        await uploadRepo.updateRevisionUploadStatus(
+          upload._id,
+          "accepted",
+          session
+        );
+
+        // Mark revision ticket as resolved
+        const ticket = await ticketRepo.findRevisionTicketById(
+          upload.revisionTicketId,
+          session
+        );
+
+        if (ticket && !ticket.resolved) {
+          await ticketRepo.updateRevisionTicketStatus(
+            upload.revisionTicketId,
+            ticket.status,
+            undefined,
+            undefined,
+            undefined,
+            session
+          );
+        }
+
+        await session.commitTransaction();
+
+        processed.push({
+          uploadId: upload._id.toString(),
+          contractId: upload.contractId.toString(),
+          revisionTicketId: upload.revisionTicketId.toString(),
+        });
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } catch (error) {
+      errors.push({
+        uploadId: upload._id.toString(),
+        contractId: upload.contractId.toString(),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { processed, errors };
 }

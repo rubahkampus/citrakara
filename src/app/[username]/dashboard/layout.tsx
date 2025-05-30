@@ -5,6 +5,7 @@ import { Box, Container } from "@mui/material";
 import { Suspense } from "react";
 import DashboardSidebarWrapper from "@/components/dashboard/DashboardSidebarWrapper";
 import DashboardLoadingSkeleton from "@/components/dashboard/DashboardLoadingSkeleton";
+import ExpirationProcessor from "@/components/ExpirationProcessor";
 import { getAuthSession, isUserOwner, Session } from "@/lib/utils/session";
 import { getUserPublicProfile } from "@/lib/services/user.service";
 
@@ -13,13 +14,10 @@ interface Props {
   params: { username: string };
 }
 
-export default async function DashboardLayout({
-  children,
-  params,
-}: Props) {
+export default async function DashboardLayout({ children, params }: Props) {
   const param = await params;
   const { username } = param;
-  
+
   const session = await getAuthSession();
   const profile = await getUserPublicProfile(username);
 
@@ -33,7 +31,13 @@ export default async function DashboardLayout({
   const serializedProfile = JSON.parse(JSON.stringify(profile));
 
   return (
-    <Container maxWidth="lg"  sx={{ pt: 4, pb: 8 }}>
+    <Container maxWidth="lg" sx={{ pt: 4, pb: 8 }}>
+      {/* Process expirations every 5 minutes */}
+      <ExpirationProcessor
+        userId={(session as Session).id}
+        intervalMinutes={5}
+      />
+
       <Box display="flex" flexDirection={{ xs: "column", md: "row" }} gap={3}>
         <DashboardSidebarWrapper
           username={username}

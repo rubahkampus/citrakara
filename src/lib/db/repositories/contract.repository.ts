@@ -4,7 +4,17 @@ import Contract, { IContract } from "@/lib/db/models/contract.model";
 import { ClientSession, Types } from "mongoose";
 import type { ObjectId, ISODate } from "@/types/common";
 import { toObjectId } from "@/lib/utils/toObjectId";
-import { ensureModelsRegistered } from "../models";
+import {
+  ensureModelsRegistered,
+  FinalUpload,
+  ProgressUploadMilestone,
+  RevisionUpload,
+} from "../models";
+import {
+  IProgressUploadMilestone,
+  IFinalUpload,
+  IRevisionUpload,
+} from "../models/upload.model";
 
 // Interface for creating a new contract
 export interface CreateContractInput {
@@ -453,10 +463,7 @@ export async function decrementRevisionCounter(
     }
   }
   // For standard revisions
-  else if (
-    contract.revisionDone !== undefined &&
-    contract.revisionDone !== 0
-  ) {
+  else if (contract.revisionDone !== undefined && contract.revisionDone !== 0) {
     contract.revisionDone -= 1;
   } else {
     contract.revisionDone = 0;
@@ -708,3 +715,62 @@ export async function getLatestActiveContractDeadline(
     throw error;
   }
 }
+
+/**
+ * Find active contracts that have passed their grace period for a specific user
+ *
+ * @param userId - ID of the user (artist or client)
+ * @param role - Role of the user ("artist", "client", or "both")
+ * @param session - Optional MongoDB session for transaction
+ * @returns Array of contracts that have passed their grace period for the user
+ */
+export async function findContractsPastGracePeriodByUser(
+  userId: string | ObjectId,
+  role: "artist" | "client" | "both" = "both",
+  session?: ClientSession
+): Promise<IContract[]> {
+  await connectDB();
+
+  const currentTime = new Date();
+  const userObjectId = toObjectId(userId);
+
+  let userFilter: any = {};
+  if (role === "artist") {
+    userFilter.artistId = userObjectId;
+  } else if (role === "client") {
+    userFilter.clientId = userObjectId;
+  } else {
+    userFilter.$or = [{ artistId: userObjectId }, { clientId: userObjectId }];
+  }
+
+  return Contract.find({
+    ...userFilter,
+    status: "active",
+    graceEndsAt: { $lt: currentTime },
+  }).session(session || null);
+}
+
+/**
+ * Check if a specific contract has passed its grace period
+ *
+ * @param contractId - ID of the contract to check
+ * @param session - Optional MongoDB session for transaction
+ * @returns Boolean indicating if the contract has passed its grace period
+ */
+export async function isContractPastGracePeriod(
+  contractId: string | ObjectId,
+  session?: ClientSession
+): Promise<boolean> {
+  await connectDB();
+
+  const currentTime = new Date();
+
+  const contract = await Contract.findOne({
+    _id: toObjectId(contractId),
+    status: "active",
+    graceEndsAt: { $lt: currentTime },
+  }).session(session || null);
+
+  return !!contract;
+}
+

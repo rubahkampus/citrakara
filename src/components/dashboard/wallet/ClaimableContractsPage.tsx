@@ -150,8 +150,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     () =>
       asArtist.filter(
         (c) =>
-          c.status !== "active" &&
-          (!c.cancelSummary || !c.cancelSummary.escrowTxnIds)
+          c.status !== "active"
       ),
     [asArtist]
   );
@@ -160,34 +159,33 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     () =>
       asClient.filter(
         (c) =>
-          c.status !== "active" &&
-          (!c.cancelSummary || !c.cancelSummary.escrowTxnIds)
+          c.status !== "active"
       ),
     [asClient]
   );
 
-  // Filter completed/claimed contracts
-  const completedArtistContracts = useMemo(
-    () =>
-      asArtist.filter(
-        (c) =>
-          c.status !== "active" &&
-          c.cancelSummary &&
-          c.cancelSummary.escrowTxnIds
-      ),
-    [asArtist]
-  );
+  // // Filter completed/claimed contracts
+  // const completedArtistContracts = useMemo(
+  //   () =>
+  //     asArtist.filter(
+  //       (c) =>
+  //         c.status !== "active" &&
+  //         c.cancelSummary &&
+  //         c.cancelSummary.escrowTxnIds
+  //     ),
+  //   [asArtist]
+  // );
 
-  const completedClientContracts = useMemo(
-    () =>
-      asClient.filter(
-        (c) =>
-          c.status !== "active" &&
-          c.cancelSummary &&
-          c.cancelSummary.escrowTxnIds
-      ),
-    [asClient]
-  );
+  // const completedClientContracts = useMemo(
+  //   () =>
+  //     asClient.filter(
+  //       (c) =>
+  //         c.status !== "active" &&
+  //         c.cancelSummary &&
+  //         c.cancelSummary.escrowTxnIds
+  //     ),
+  //   [asClient]
+  // );
 
   // Calculate totals for display
   const totalClaimableAsArtist = useMemo(
@@ -238,8 +236,6 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
     role: "artist" | "client"
   ): boolean => {
     if (contract.status === "active") return false;
-    if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds)
-      return false;
 
     const amount =
       role === "artist"
@@ -318,8 +314,10 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
       return "Kontrak masih aktif.";
     }
 
-    if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds) {
-      return "Dana sudah diklaim sebelumnya.";
+    if (contract.cancelSummary) {
+      if ((role === "artist" && contract.cancelSummary.artistPayout === 0) || (role === "client" && contract.cancelSummary.clientPayout === 0)) {
+      return "Tidak ada dana yang dapat diklaim saat ini";
+      }
     }
 
     if (role === "artist") {
@@ -358,11 +356,11 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
       );
     }
 
-    if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds) {
-      return (
-        <Chip label="Claimed" color="default" size="small" icon={<DoneAll />} />
-      );
-    }
+    // if (contract.cancelSummary && contract.cancelSummary.escrowTxnIds) {
+    //   return (
+    //     <Chip label="Claimed" color="default" size="small" icon={<DoneAll />} />
+    //   );
+    // }
 
     return (
       <Chip
@@ -739,7 +737,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                     </Box>
                   )}
 
-                  {/* Completed contracts section */}
+                  {/* Completed contracts section
                   {completedArtistContracts.length > 0 && (
                     <Box>
                       <Box
@@ -771,7 +769,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                         ))}
                       </Grid>
                     </Box>
-                  )}
+                  )} */}
 
                   {asArtist.length === 0 && (
                     <Alert severity="info">
@@ -852,7 +850,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                     </Box>
                   )}
 
-                  {/* Completed contracts section */}
+                  {/* Completed contracts section
                   {completedClientContracts.length > 0 && (
                     <Box>
                       <Box
@@ -884,7 +882,7 @@ const ClaimableContractsPage: React.FC<ClaimableContractsPageProps> = ({
                         ))}
                       </Grid>
                     </Box>
-                  )}
+                  )} */}
 
                   {asClient.length === 0 && (
                     <Alert severity="info">
@@ -1047,8 +1045,7 @@ const ContractCard: React.FC<ContractCardProps> = ({
 }) => {
   const claimAmount = getClaimAmount(contract, role);
   const explanation = getClaimExplanation(contract, role);
-  const isClaimed =
-    contract.cancelSummary && contract.cancelSummary.escrowTxnIds;
+  const isClaimed = claimAmount <= 0;
   const isActive = contract.status === "active";
 
   return (
@@ -1197,12 +1194,12 @@ const ContractCard: React.FC<ContractCardProps> = ({
             startIcon={isClaimed ? <DoneAll /> : <Cancel />}
           >
             {isClaimed
-              ? `Funds Claimed on ${formatDate(
-                  contract.cancelSummary?.at || contract.updatedAt
-                )}`
-              : claimAmount <= 0
-              ? "No Funds to Claim"
-              : "Not Claimable"}
+              // ? `Funds Claimed on ${formatDate(
+              //     contract.cancelSummary?.at || contract.updatedAt
+              //   )}`
+              // : claimAmount <= 0
+              ? "Tidak ada dana untuk diklaim"
+              : "Dana dapat diklaim"}
           </Button>
         </CardActions>
       )}

@@ -53,11 +53,12 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [emailError, setEmailError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({
-    score: 0,
-    message: "",
-    color: "",
-  });
+  // Commented out password strength state - no longer needed
+  // const [passwordStrength, setPasswordStrength] = useState({
+  //   score: 0,
+  //   message: "",
+  //   color: "",
+  // });
 
   const steps = ["Detail Akun", "Pilih Nama Pengguna"];
 
@@ -81,34 +82,34 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   const password = watch("password");
   const username = watch("username");
 
-  // Password strength checker
-  useEffect(() => {
-    if (!password || password.length < 1) {
-      setPasswordStrength({ score: 0, message: "", color: "" });
-      return;
-    }
+  // Commented out password strength checker
+  // useEffect(() => {
+  //   if (!password || password.length < 1) {
+  //     setPasswordStrength({ score: 0, message: "", color: "" });
+  //     return;
+  //   }
 
-    // Simple password strength calculation
-    let score = 0;
-    if (password.length >= 8) score += 1;
-    if (/[A-Z]/.test(password)) score += 1;
-    if (/[0-9]/.test(password)) score += 1;
-    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  //   // Simple password strength calculation
+  //   let score = 0;
+  //   if (password.length >= 8) score += 1;
+  //   if (/[A-Z]/.test(password)) score += 1;
+  //   if (/[0-9]/.test(password)) score += 1;
+  //   if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-    const strengthMap = [
-      { message: "Sangat lemah", color: "#f44336" },
-      { message: "Lemah", color: "#ff9800" },
-      { message: "Sedang", color: "#ffeb3b" },
-      { message: "Kuat", color: "#8bc34a" },
-      { message: "Sangat kuat", color: "#4caf50" },
-    ];
+  //   const strengthMap = [
+  //     { message: "Sangat lemah", color: "#f44336" },
+  //     { message: "Lemah", color: "#ff9800" },
+  //     { message: "Sedang", color: "#ffeb3b" },
+  //     { message: "Kuat", color: "#8bc34a" },
+  //     { message: "Sangat kuat", color: "#4caf50" },
+  //   ];
 
-    setPasswordStrength({
-      score,
-      message: strengthMap[score].message,
-      color: strengthMap[score].color,
-    });
-  }, [password]);
+  //   setPasswordStrength({
+  //     score,
+  //     message: strengthMap[score].message,
+  //     color: strengthMap[score].color,
+  //   });
+  // }, [password]);
 
   const checkAvailability = async (
     type: "email" | "username",
@@ -190,13 +191,15 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   };
 
   const isValidEmail = !errors.email && email && dirtyFields.email;
-  const isStrongPassword =
-    !errors.password &&
-    passwordStrength.score >= 3 &&
-    password &&
-    dirtyFields.password;
+  // Simplified password validation - removed strong password requirement
+  const isValidPassword = !errors.password && password && dirtyFields.password;
+  // const isStrongPassword =
+  //   !errors.password &&
+  //   passwordStrength.score >= 3 &&
+  //   password &&
+  //   dirtyFields.password;
   const isNextButtonEnabled =
-    isValidEmail && isStrongPassword && !checkingAvailability;
+    isValidEmail && isValidPassword && !checkingAvailability;
 
   return (
     <Box>
@@ -280,7 +283,8 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                   helperText={errors.password?.message}
                 />
 
-                {password && password.length > 0 && (
+                {/* Commented out password strength indicator */}
+                {/* {password && password.length > 0 && (
                   <Box sx={{ mt: 1, mb: 2 }}>
                     <Box
                       sx={{ display: "flex", alignItems: "center", mb: 0.5 }}
@@ -321,7 +325,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                       />
                     </Box>
                   </Box>
-                )}
+                )} */}
               </StyledPaper>
 
               {emailError && (

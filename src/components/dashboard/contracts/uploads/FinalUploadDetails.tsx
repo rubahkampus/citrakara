@@ -190,7 +190,9 @@ export default function FinalUploadDetails({
   }, [upload._id, isClient]);
 
   // Determine status colors
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined | null) => {
+    if (!status) return "default"; // Handle undefined/null status
+
     switch (status) {
       case "submitted":
         return "primary";
@@ -208,7 +210,9 @@ export default function FinalUploadDetails({
   };
 
   // Get status label (more user-friendly than raw status)
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string | undefined | null) => {
+    if (!status) return "Status Tidak Diketahui"; // Handle undefined/null status
+
     switch (status) {
       case "submitted":
         return "Menunggu Tinjauan Klien";
@@ -223,6 +227,11 @@ export default function FinalUploadDetails({
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
+  };
+
+  // Additional helper for conditional rendering
+  const shouldShowStatusChip = (status: string | undefined | null): boolean => {
+    return status !== undefined && status !== null;
   };
 
   // Handle accept final delivery
@@ -296,6 +305,9 @@ export default function FinalUploadDetails({
     // Refresh to show updated reviews
     router.refresh();
   };
+
+  console.log(upload.status, "Upload Status");
+  console.log(cancelTicket)
 
   // Determine if client can leave a review (only for accepted deliveries)
   const canLeaveReview =
@@ -531,7 +543,7 @@ export default function FinalUploadDetails({
                     <Divider sx={{ my: 1 }} />
                     <Box sx={{ mt: 1 }}>
                       <Link
-                        href={`/dashboard/${userId}/contracts/${contract._id}/tickets/cancel/${upload.cancelTicketId}`}
+                        href={`/${username}/dashboard/contracts/${contract._id}/tickets/cancel/${upload.cancelTicketId}`}
                         style={{ textDecoration: "none" }}
                       >
                         <Button
@@ -573,7 +585,7 @@ export default function FinalUploadDetails({
                           Diminta oleh:
                         </Typography>
                         <Typography variant="body1">
-                          {cancelTicket.requestedBy === "client"
+                          {(cancelTicket as any).ticket.requestedBy === "client"
                             ? isClient
                               ? "Anda"
                               : "Klien"
@@ -587,8 +599,8 @@ export default function FinalUploadDetails({
                           Status:
                         </Typography>
                         <Chip
-                          label={getStatusLabel(cancelTicket.status)}
-                          color={getStatusColor(cancelTicket.status)}
+                          label={getStatusLabel((cancelTicket as any).ticket.status)}
+                          color={getStatusColor((cancelTicket as any).ticket.status)}
                           size="small"
                         />
                       </Grid>
@@ -597,7 +609,7 @@ export default function FinalUploadDetails({
                           Alasan:
                         </Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>
-                          {cancelTicket.reason}
+                          {(cancelTicket as any).ticket.reason}
                         </Typography>
                       </Grid>
                     </Grid>

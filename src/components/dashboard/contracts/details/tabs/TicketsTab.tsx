@@ -135,58 +135,63 @@ const TicketsTab: React.FC<TicketsTabProps> = ({ contract, username }) => {
             (type, index) =>
               type.count > 0 && (
                 <Grid item xs={6} key={index}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      border: `1px solid ${theme.palette.divider}`,
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      position: "relative",
-                      overflow: "hidden",
-                      "&::before": {
-                        content: '""',
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "5px",
-                        height: "100%",
-                        backgroundColor: `${type.bgColor}`,
-                      },
-                    }}
+                  <Link
+                    href={`/${username}/dashboard/contracts/${contract._id}/tickets`}
+                    passHref
                   >
-                    <Box display="flex" alignItems="center" mb={0.5}>
-                      <Box
-                        sx={{
-                          mr: 1,
-                          display: "flex",
-                          alignItems: "center",
-                        }}
-                      >
-                        {type.icon}
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        border: `1px solid ${theme.palette.divider}`,
+                        height: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "5px",
+                          height: "100%",
+                          backgroundColor: `${type.bgColor}`,
+                        },
+                      }}
+                    >
+                      <Box display="flex" alignItems="center" mb={0.5}>
+                        <Box
+                          sx={{
+                            mr: 1,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          {type.icon}
+                        </Box>
+                        <Typography
+                          variant="body2"
+                          fontWeight={600}
+                          color="text.primary"
+                        >
+                          {type.label}
+                        </Typography>
                       </Box>
-                      <Typography
-                        variant="body2"
-                        fontWeight={600}
-                        color="text.primary"
-                      >
-                        {type.label}
-                      </Typography>
-                    </Box>
 
-                    <Box display="flex" alignItems="center">
-                      <Typography
-                        variant="h5"
-                        fontWeight={700}
-                        sx={{ ml: 0.5 }}
-                      >
-                        {type.count}
-                      </Typography>
-                    </Box>
-                  </Paper>
+                      <Box display="flex" alignItems="center">
+                        <Typography
+                          variant="h5"
+                          fontWeight={700}
+                          sx={{ ml: 0.5 }}
+                        >
+                          {type.count}
+                        </Typography>
+                      </Box>
+                    </Paper>
+                  </Link>
                 </Grid>
               )
           )}

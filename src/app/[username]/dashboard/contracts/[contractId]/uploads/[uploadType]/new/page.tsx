@@ -43,16 +43,16 @@ import {
 } from "@mui/icons-material";
 
 interface CreateUploadPageProps {
-  params: {
-    username: string;
-    contractId: string;
-    uploadType: "progress" | "milestone" | "revision" | "final";
-  };
-  searchParams: {
-    ticketId?: string; // For revision uploads
-    milestoneIdx?: string; // For milestone uploads
-  };
-}
+    params: {
+      username: string;
+      contractId: string;
+      uploadType: "progress" | "milestone" | "revision" | "final";
+    };
+    searchParams: {
+      ticketId?: string; // For revision uploads
+      milestoneIdx?: string; // For milestone uploads
+    };
+  }
 
 interface Warning {
   type: "error" | "warning" | "info" | "success";
@@ -553,6 +553,7 @@ function getFinalWarnings(
   data: UploadValidationData,
   ticketId?: string
 ) {
+  console.log(ticketId, "ticketId in getFinalWarnings");
   // Check if contract is already finished
   if (data.hasFinishedContract) {
     warnings.push({
@@ -573,6 +574,8 @@ function getFinalWarnings(
   }
 
   if (ticketId) {
+    // This is a cancellation upload - different validation rules
+
     // Check if cancellation is already finished
     if (data.hasFinishedCancellation) {
       warnings.push({
@@ -582,15 +585,18 @@ function getFinalWarnings(
       });
     }
 
-    // For cancellation uploads
+    // For cancellation uploads, unfinished revisions are allowed but inform the user
     if (data.unfinishedRevisionTickets.length > 0) {
       warnings.push({
-        type: "error",
-        message: `Anda masih memiliki ${data.unfinishedRevisionTickets.length} revisi yang menunggu unggahan. Namun, Anda dapat langsung mengunggah bukti pembatalan sekarang.`,
+        type: "info", // Changed from "error" to "info"
+        message: `Anda masih memiliki ${data.unfinishedRevisionTickets.length} revisi yang menunggu unggahan. Namun, Anda dapat mengunggah bukti pembatalan untuk mengakhiri kontrak ini.`,
       });
+      // Remove the blocking warning for cancellation uploads
+      // hasBlockingWarning = true; // This line should be removed/commented out
     }
   } else {
-    // For regular final delivery
+    // This is a regular final delivery - strict validation rules
+
     if (
       contract.proposalSnapshot.listingSnapshot.flow === "milestone" &&
       contract.milestones
@@ -619,7 +625,7 @@ function getFinalWarnings(
       }
     }
 
-    // Check for unfinished revisions
+    // Check for unfinished revisions - ONLY block for regular final delivery
     if (data.unfinishedRevisionTickets.length > 0) {
       warnings.push({
         type: "error",
@@ -760,7 +766,13 @@ function FormSection({
   milestoneIdx?: string;
   validationData: UploadValidationData;
 }) {
-  if (hasBlockingWarning) {
+  // For final uploads with a cancel ticket, allow bypassing blocking warnings
+  const shouldAllowUpload =
+    uploadType === "final" && ticketId
+      ? true // Always allow final upload with cancel ticket
+      : !hasBlockingWarning;
+
+  if (!shouldAllowUpload) {
     return null;
   }
 

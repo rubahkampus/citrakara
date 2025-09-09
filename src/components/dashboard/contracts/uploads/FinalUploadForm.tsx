@@ -353,7 +353,7 @@ export default function FinalUploadForm({
 
       // Submit to API using axios
       await axiosClient.post(
-        `/api/contract/${contract._id}/uploads/finala`,
+        `/api/contract/${contract._id}/uploads/final`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },

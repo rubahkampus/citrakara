@@ -146,7 +146,7 @@ export default function ProfileContent({
   };
 
   const handleMessageCreator = () => {
-    if (isAuthenticated) router.push("/dashboard/chat");
+    if (isAuthenticated) router.push(`${session.username}/dashboard/chat`);
     else openDialog("login");
   };
 

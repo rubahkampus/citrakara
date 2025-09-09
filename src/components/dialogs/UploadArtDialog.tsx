@@ -1,5 +1,6 @@
 // src/components/dialogs/UploadArtDialog.tsx
 import { useRef, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import {
   Dialog,
@@ -67,6 +68,7 @@ export default function UploadArtDialog({
   onClose,
   initialGalleryId,
 }: UploadArtDialogProps) {
+  const router = useRouter();
   // Hooks
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -233,6 +235,10 @@ export default function UploadArtDialog({
     setSuccess(null);
 
     // Close dialog
+    setTimeout(() => {
+      router.refresh();
+    }, 2000);
+
     onClose();
   };
 

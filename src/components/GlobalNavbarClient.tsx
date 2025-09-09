@@ -22,6 +22,7 @@ import {
   Badge,
   useMediaQuery,
   useTheme as useMuiTheme,
+  ListItemText,
 } from "@mui/material";
 import { axiosClient } from "@/lib/utils/axiosClient";
 import { KButton } from "./KButton";
@@ -37,6 +38,19 @@ import {
   Search as SearchIcon,
   Notifications as NotificationsIcon,
   Chat as ChatIcon,
+  Person as ProfileIcon,
+  Brush as CommissionIcon,
+  Photo as GalleryIcon,
+  Description as ProposalIcon,
+  GavelRounded as ContractIcon,
+  SupportAgent as ResolutionIcon,
+  AdminPanelSettings as AdminIcon,
+  AccountBalanceWallet as WalletIcon,
+  ExpandMore as ExpandMoreIcon,
+  ChevronRight as ChevronRightIcon,
+  BookmarkBorderRounded,
+  Bookmarks,
+  PaletteRounded,
 } from "@mui/icons-material";
 
 interface Props {
@@ -330,6 +344,71 @@ function AuthenticatedControls({ session }: { session: any }) {
     handleClose();
   };
 
+  // Dashboard menu items based on the sidebar
+  const dashboardMenuItems = [
+    {
+      label: "Pengaturan Profil",
+      href: `/${session.username}/dashboard`,
+      icon: <PersonIcon fontSize="small" />,
+    },
+    {
+      label: "Bookmark",
+      href: `/${session.username}/dashboard/bookmarks`,
+      icon: <BookmarkBorderRounded fontSize="small" />,
+    },
+    {
+      label: "Galeri",
+      href: `/${session.username}/dashboard/galleries`,
+      icon: <GalleryIcon fontSize="small" />,
+    },
+    {
+      label: "Pesan",
+      href: `/${session.username}/dashboard/chat`,
+      icon: <ChatIcon fontSize="small" />,
+    },
+    {
+      label: "Komisi",
+      href: `/${session.username}/dashboard/commissions`,
+      icon: <CommissionIcon fontSize="small" />,
+    },
+    {
+      label: "Proposal",
+      href: `/${session.username}/dashboard/proposals`,
+      icon: <ProposalIcon fontSize="small" />,
+    },
+    {
+      label: "Kontrak",
+      href: `/${session.username}/dashboard/contracts`,
+      icon: <PaletteRounded fontSize="small" />,
+    },
+    {
+      label: "Dompet",
+      href: `/${session.username}/dashboard/wallet`,
+      icon: <WalletIcon fontSize="small" />,
+    },
+    {
+      label: "Resolusi",
+      href: `/${session.username}/dashboard/resolution`,
+      icon: <ResolutionIcon fontSize="small" />,
+    },
+  ];
+
+  // Add admin items if user is admin
+  // const adminMenuItems = session.isAdmin
+  //   ? [
+  //       {
+  //         label: "Admin Resolusi",
+  //         href: `/${session.username}/dashboard/admin-resolution`,
+  //         icon: <AdminPanelSettingsIcon fontSize="small" />,
+  //       },
+  //     ]
+  //   : [];
+
+  const handleMenuItemClick = (href: string) => {
+    router.push(href);
+    handleClose();
+  };
+
   return (
     <>
       <Tooltip title="Account menu">
@@ -348,42 +427,97 @@ function AuthenticatedControls({ session }: { session: any }) {
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         PaperProps={{
-          sx: { mt: 1, width: 220, "& .MuiMenuItem-root": { py: 1.5 } },
+          sx: {
+            mt: 1,
+            width: 240,
+            maxHeight: 400,
+            overflowY: "auto",
+            "& .MuiMenuItem-root": { py: 1.5 },
+          },
         }}
       >
+        {/* User Info Header */}
         <Box sx={{ px: 2, py: 1.5 }}>
           <Typography fontWeight="bold">{session.username}</Typography>
         </Box>
         <Divider />
-        <MenuItem
-          onClick={() => {
-            router.push(`/${session.username}`);
-            handleClose();
-          }}
-        >
+
+        {/* Profile Link */}
+        <MenuItem onClick={() => handleMenuItemClick(`/${session.username}`)}>
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
-          Profile
+          Laman Profil
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            router.push(`/${session.username}/dashboard`);
-            handleClose();
-          }}
-        >
-          <ListItemIcon>
-            <DashboardIcon fontSize="small" />
-          </ListItemIcon>
-          Dashboard
-        </MenuItem>
-        <Divider />
+        
+        {/* Logout */}
         <MenuItem onClick={logout}>
           <ListItemIcon>
             <LogoutIcon fontSize="small" />
           </ListItemIcon>
           Logout
         </MenuItem>
+
+        <Divider />
+
+        {/* Dashboard Section Header */}
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight="bold"
+            sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
+          >
+            Dashboard
+          </Typography>
+        </Box>
+
+        {/* Dashboard Menu Items */}
+        {dashboardMenuItems.map((item) => (
+          <MenuItem
+            key={item.href}
+            onClick={() => handleMenuItemClick(item.href)}
+            sx={{ pl: 3 }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+            <ListItemText
+              primary={item.label}
+              primaryTypographyProps={{ fontSize: 14 }}
+            />
+          </MenuItem>
+        ))}
+
+        {/* Admin Section */}
+        {/* {adminMenuItems.length > 0 && (
+          <>
+            <Divider sx={{ mt: 1 }} />
+            <Box sx={{ px: 2, py: 1 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight="bold"
+                sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
+              >
+                Admin
+              </Typography>
+            </Box>
+            {adminMenuItems.map((item) => (
+              <MenuItem
+                key={item.href}
+                onClick={() => handleMenuItemClick(item.href)}
+                sx={{ pl: 3 }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{ fontSize: 14 }}
+                />
+              </MenuItem>
+            ))}
+          </>
+        )} */}
+
+        <Divider sx={{ mt: 1 }} />
       </Menu>
     </>
   );

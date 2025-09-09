@@ -60,9 +60,9 @@ const translations = {
 
   // Upload section
   uploadActions: "Tindakan Unggah",
-  uploadProgress: "Unggah Progres",
-  uploadMilestone: "Unggah Milestone",
-  uploadMilestoneTooltip: "Unggah progres untuk milestone #",
+  uploadProgress: "Unggah Kemajuan",
+  uploadMilestone: "Unggah Kemajuan Milestone",
+  uploadMilestoneTooltip: "Unggah kemajuan untuk milestone #",
   uploadFinalDelivery: "Unggah Hasil Akhir",
   uploadFinalDeliveryTooltip: "Unggah karya Anda yang sudah selesai",
 

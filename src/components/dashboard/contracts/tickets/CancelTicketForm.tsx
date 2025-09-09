@@ -204,7 +204,7 @@ export default function CancelTicketForm({
 
       // Submit to API using axios
       const response = await axiosClient.post(
-        `/api/contract/${contract._id}/tickets/cancel/new`,
+        `/api/contract/${contract._id}/tickets/cancel`,
         { reason: data.reason },
         {
           headers: { "Content-Type": "application/json" },

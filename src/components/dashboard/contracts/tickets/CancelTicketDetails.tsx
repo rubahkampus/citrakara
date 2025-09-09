@@ -35,6 +35,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import InfoIcon from "@mui/icons-material/Info";
 import UploadIcon from "@mui/icons-material/Upload";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import { Session } from "inspector/promises";
 
 interface CancelTicketDetailsProps {
   contract: IContract;
@@ -59,7 +60,7 @@ export default function CancelTicketDetails({
   isClient,
   isAdmin,
   username,
-  canReview
+  canReview,
 }: CancelTicketDetailsProps) {
   const router = useRouter();
   const [response, setResponse] = useState<"accept" | "reject" | "">("");
@@ -73,11 +74,15 @@ export default function CancelTicketDetails({
     handleSubmit,
     formState: { errors },
     reset,
+    watch, // Add watch to monitor form values
   } = useForm<FormValues>({
     defaultValues: {
       rejectionReason: "",
     },
   });
+
+  // Watch the rejection reason field
+  const rejectionReason = watch("rejectionReason");
 
   // Format date for display
   const formatDate = (date?: string | Date) => {
@@ -283,6 +288,16 @@ export default function CancelTicketDetails({
       isArtist &&
       (ticket.status === "accepted" || ticket.status === "forcedAccepted")
     );
+  };
+
+  // Check if form is valid for submission
+  const isFormValid = () => {
+    if (!response) return false;
+    if (response === "accept") return true;
+    if (response === "reject") {
+      return rejectionReason && rejectionReason.trim().length >= 10;
+    }
+    return false;
   };
 
   return (
@@ -544,11 +559,7 @@ export default function CancelTicketDetails({
                   color="primary"
                   type="submit"
                   disabled={
-                    isAdmin || canReview ||
-                    !response ||
-                    (response === "reject" &&
-                      !control._formValues.rejectionReason) ||
-                    isSubmitting
+                    isAdmin || canReview || !isFormValid() || isSubmitting
                   }
                   sx={{ minWidth: 120 }}
                 >
@@ -585,7 +596,7 @@ export default function CancelTicketDetails({
                     variant="contained"
                     color="primary"
                     component={Link}
-                    href={`/dashboard/${userId}/contracts/${contract._id}/uploads/final/new?cancelTicketId=${ticket._id}`}
+                    href={`/${username}/dashboard/contracts/${contract._id}/uploads/final/new?ticketId=${ticket._id}`}
                     startIcon={<UploadIcon />}
                   >
                     Unggah Bukti Pembatalan

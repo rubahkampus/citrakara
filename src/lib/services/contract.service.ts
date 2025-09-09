@@ -623,6 +623,9 @@ export async function processContractCompletion(
       session
     );
 
+    // Update listing slots (free up the slot)
+    await applySlotDelta(contract.listingId.toString(), -1);
+    
     if (localSession) {
       await localSession.commitTransaction();
     }

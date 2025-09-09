@@ -140,11 +140,11 @@ const MilestonesList: React.FC<MilestonesListProps> = ({ milestones = [] }) => {
             <Typography fontWeight="medium">{milestone.percent}%</Typography>
           </Box>
 
-          <LinearProgress
+          {/* <LinearProgress
             variant="determinate"
             value={progressValue}
             sx={progressBarStyle}
-          />
+          /> */}
 
           {renderMilestoneDates(milestone)}
         </Box>

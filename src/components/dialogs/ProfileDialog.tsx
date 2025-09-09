@@ -1,5 +1,6 @@
 // src/components/dialogs/ProfileDialog.tsx
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogTitle,
@@ -89,6 +90,7 @@ export default function ProfileDialog({
   profile,
   onUpdateSuccess,
 }: ProfileDialogProps) {
+  const router = useRouter();
   // Form handling
   const {
     register,
@@ -258,6 +260,10 @@ export default function ProfileDialog({
       if (onUpdateSuccess) {
         onUpdateSuccess(updatedUser);
       }
+      setTimeout(() => {
+        router.refresh();
+      }, 2000);
+
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.error || "Gagal memperbarui profil.");

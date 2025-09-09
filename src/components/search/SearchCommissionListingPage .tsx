@@ -301,7 +301,7 @@ export default function SearchCommissionListingPage({
                 }}
               />
 
-              <Box mt={3}>
+              {/* <Box mt={3}>
                 <Typography variant="subtitle2" gutterBottom>
                   Rentang Harga
                 </Typography>
@@ -322,7 +322,7 @@ export default function SearchCommissionListingPage({
                     ${priceRange[1]}+
                   </Typography>
                 </Box>
-              </Box>
+              </Box> */}
 
               <FormControl fullWidth margin="normal" size="small">
                 <InputLabel>Tipe</InputLabel>
